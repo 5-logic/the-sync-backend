@@ -103,7 +103,8 @@ model Lecturer {
 
   user User @relation(fields: [userId], references: [id])
 
-  groups Group[] @relation("supervisions")
+  groups    Group[]    @relation("supervisions")
+  feedbacks Feedback[]
 
   @@map("lecturers")
 }
@@ -176,8 +177,22 @@ model TrackingDetail {
   groupId     String @map("group_id")
   milestoneId String @map("milestone_id")
 
-  group     Group     @relation(fields: [groupId], references: [id])
-  milestone Milestone @relation(fields: [milestoneId], references: [id])
+  group     Group      @relation(fields: [groupId], references: [id])
+  milestone Milestone  @relation(fields: [milestoneId], references: [id])
+  feedbacks Feedback[]
 
   @@map("tracking_details")
+}
+
+// Feedback Model
+model Feedback {
+  trackingDetailId String @map("tracking_detail_id")
+  lecturerId       String @map("lecturer_id")
+  detail           String
+
+  trackingDetail TrackingDetail @relation(fields: [trackingDetailId], references: [id])
+  lecturer       Lecturer       @relation(fields: [lecturerId], references: [userId])
+
+  @@id([trackingDetailId, lecturerId])
+  @@map("feedbacks")
 }
