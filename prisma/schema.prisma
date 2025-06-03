@@ -102,6 +102,8 @@ model Lecturer {
 
   user User @relation(fields: [userId], references: [id])
 
+  groups Group[] @relation("supervisions")
+
   @@map("lecturers")
 }
 
@@ -158,6 +160,8 @@ model Group {
   thesis   Thesis?  @relation(fields: [thesisId], references: [id])
   leader   Student  @relation(fields: [leaderId], references: [userId])
   semester Semester @relation(fields: [semesterId], references: [id])
+
+  lecturers Lecturer[] @relation("supervisions")
 
   @@unique([leaderId, semesterId])
   @@map("groups")
