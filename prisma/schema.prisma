@@ -60,6 +60,7 @@ model Semester {
   endRegistrationDate DateTime @map("end_registration_date")
 
   milestones Milestone[]
+  groups     Group[]
 
   @@map("semesters")
 }
@@ -107,14 +108,15 @@ model Lecturer {
 // Student Model
 model Student {
   userId            String  @id @map("id")
-  studentID         String  @unique @map("student_id")
+  studentId         String  @unique @map("student_id")
   roles             String?
   skills            String?
   academicInterests String? @map("academic_interests")
   majorId           String  @map("major_id")
 
-  user  User  @relation(fields: [userId], references: [id])
-  major Major @relation(fields: [majorId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  major  Major   @relation(fields: [majorId], references: [id])
+  groups Group[]
 
   @@map("students")
 }
@@ -151,9 +153,11 @@ model Group {
   expectedRoles      String? @map("expected_roles")
   thesisId           String? @unique @map("thesis_id")
   leaderId           String  @map("leader_id")
-  semesterId         String? @map("semester_id")
+  semesterId         String  @map("semester_id")
 
-  thesis Thesis? @relation(fields: [thesisId], references: [id])
+  thesis   Thesis?  @relation(fields: [thesisId], references: [id])
+  leader   Student  @relation(fields: [leaderId], references: [userId])
+  semester Semester @relation(fields: [semesterId], references: [id])
 
   @@map("groups")
 }
