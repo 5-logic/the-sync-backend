@@ -43,7 +43,7 @@
    pnpm start:dev
    ```
 
-4. The API will be available at [http://localhost:3000](http://localhost:3000).
+4. The API will be available at [http://localhost:4000/swagger](http://localhost:4000/swagger).
 
 ## 🧰 Development Workflow
 
