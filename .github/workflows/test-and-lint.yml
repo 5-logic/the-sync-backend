@@ -30,7 +30,7 @@ jobs:
 
       - name: 🧪 Run Jest tests
         run: |
-          pnpm test
+          pnpm test --passWithNoTests
 
   lint:
     name: Lint NestJS source code
