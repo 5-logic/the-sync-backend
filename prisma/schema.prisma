@@ -9,7 +9,151 @@ generator client {
   output   = "../generated/prisma"
 }
 
+// Gender Enum
+enum Gender {
+  Male
+  Female
+}
+
+// Thesis Status Enum
+enum ThesisStatus {
+  New
+  Pending
+  Rejecte
+  Approve
+}
+
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Admin Model
+model Admin {
+  id       String  @id @default(uuid())
+  username String  @unique
+  email    String? @unique
+  password String
+
+  @@map("admins")
+}
+
+// Major Model
+model Major {
+  id   String @id @default(uuid())
+  name String
+  code String @unique
+
+  students Student[]
+
+  @@map("majors")
+}
+
+// Semester Model
+model Semester {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  name                String
+  startDate           DateTime @map("start_date")
+  endDate             DateTime @map("end_date")
+  endRegistrationDate DateTime @map("end_registration_date")
+
+  milestones Milestone[]
+
+  @@map("semesters")
+}
+
+// Milestone Model
+model Milestone {
+  id         String   @id @default(uuid())
+  name       String
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  semesterId String   @map("semester_id")
+
+  semester Semester @relation(fields: [semesterId], references: [id])
+
+  @@map("milestones")
+}
+
+// User Model
+model User {
+  id          String  @id @default(uuid())
+  email       String  @unique
+  fullName    String  @map("full_name")
+  password    String
+  gender      Gender
+  phoneNumber String  @map("phone_number")
+  isActive    Boolean @default(true) @map("is_active")
+
+  lecturer Lecturer?
+  student  Student?
+  theses   Thesis[]
+
+  @@map("users")
+}
+
+// Lecturer Model
+model Lecturer {
+  userId      String  @id @map("id")
+  isModerator Boolean @default(false) @map("is_moderator")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("lecturers")
+}
+
+// Student Model
+model Student {
+  userId            String  @id @map("id")
+  studentID         String  @unique @map("student_id")
+  roles             String?
+  skills            String?
+  academicInterests String? @map("academic_interests")
+  majorId           String  @map("major_id")
+
+  user  User  @relation(fields: [userId], references: [id])
+  major Major @relation(fields: [majorId], references: [id])
+
+  @@map("students")
+}
+
+// Thesis Model
+model Thesis {
+  id                    String       @id @default(uuid())
+  englishName           String       @map("english_name")
+  vietnameseName        String       @map("vietnamese_name")
+  abbreviation          String
+  context               String
+  supportingDocument    String       @map("supporting_document")
+  status                ThesisStatus
+  expectedOutcome       String?      @map("expected_outcome")
+  requiredSkills        String?      @map("required_skills")
+  suggestedTechnologies String?      @map("suggested_technologies")
+  domain                String?
+  userId                String       @map("user_id")
+
+  user  User   @relation(fields: [userId], references: [id])
+  group Group?
+
+  @@map("theses")
+}
+
+// Group Model
+model Group {
+  id                 String  @id @default(uuid())
+  code               String  @unique
+  name               String
+  description        String?
+  projectDescription String? @map("project_description")
+  requiredSkills     String? @map("required_skills")
+  expectedRoles      String? @map("expected_roles")
+  thesisId           String? @unique @map("thesis_id")
+  leaderId           String  @map("leader_id")
+  semesterId         String? @map("semester_id")
+
+  thesis Thesis? @relation(fields: [thesisId], references: [id])
+
+  @@map("groups")
 }
