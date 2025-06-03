@@ -73,7 +73,8 @@ model Milestone {
   endDate    DateTime @map("end_date")
   semesterId String   @map("semester_id")
 
-  semester Semester @relation(fields: [semesterId], references: [id])
+  semester        Semester         @relation(fields: [semesterId], references: [id])
+  trackingDetails TrackingDetail[]
 
   @@map("milestones")
 }
@@ -161,8 +162,22 @@ model Group {
   leader   Student  @relation(fields: [leaderId], references: [userId])
   semester Semester @relation(fields: [semesterId], references: [id])
 
-  lecturers Lecturer[] @relation("supervisions")
+  lecturers       Lecturer[]       @relation("supervisions")
+  trackingDetails TrackingDetail[]
 
   @@unique([leaderId, semesterId])
   @@map("groups")
+}
+
+// Tracking Detail Model
+model TrackingDetail {
+  id          String @id @default(uuid())
+  documents   Json?  @map("documents")
+  groupId     String @map("group_id")
+  milestoneId String @map("milestone_id")
+
+  group     Group     @relation(fields: [groupId], references: [id])
+  milestone Milestone @relation(fields: [milestoneId], references: [id])
+
+  @@map("tracking_details")
 }
