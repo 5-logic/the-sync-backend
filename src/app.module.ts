@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
 
-@Module({})
+import { DomainModule } from '@/domains/domain.module';
+
+@Module({ imports: [DomainModule] })
 export class AppModule {}
