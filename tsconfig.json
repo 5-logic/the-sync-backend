@@ -12,7 +12,9 @@
 		"baseUrl": "./",
 		"paths": {
 			"~/*": ["./*"],
-			"@/*": ["src/*"]
+			"@/*": ["src/*"],
+			"@/theses/*": ["src/domains/theses/*"],
+			"@/majors/*": ["src/domains/majors/*"],
 		},
 		"incremental": true,
 		"skipLibCheck": true,
