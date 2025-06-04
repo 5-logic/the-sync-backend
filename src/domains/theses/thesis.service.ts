@@ -1,10 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Thesis } from '@prisma/client';
 
 import { PrismaService } from '@/providers/prisma.service';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
-
-import { Thesis } from '~/generated/prisma';
 
 @Injectable()
 export class ThesisService {
@@ -12,10 +11,13 @@ export class ThesisService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createThesisDto: CreateThesisDto): Promise<Thesis> {
+	async create(
+		createThesisDto: CreateThesisDto,
+		userId: string,
+	): Promise<Thesis> {
 		try {
-			const newThesis: Thesis = await this.prisma.thesis.create({
-				data: { ...createThesisDto },
+			const newThesis = await this.prisma.thesis.create({
+				data: { ...createThesisDto, userId },
 			});
 
 			this.logger.log(`Thesis created with ID: ${newThesis.id}`);
@@ -63,11 +65,15 @@ export class ThesisService {
 		}
 	}
 
-	async update(id: string, updateThesisDto: UpdateThesisDto): Promise<Thesis> {
+	async update(
+		id: string,
+		updateThesisDto: UpdateThesisDto,
+		userId: string,
+	): Promise<Thesis> {
 		try {
 			const updatedThesis: Thesis = await this.prisma.thesis.update({
 				where: { id },
-				data: { ...updateThesisDto },
+				data: { ...updateThesisDto, userId },
 			});
 
 			this.logger.log(`Thesis updated with ID: ${updatedThesis.id}`);
