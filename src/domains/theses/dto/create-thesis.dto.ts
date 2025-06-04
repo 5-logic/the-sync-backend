@@ -51,11 +51,6 @@ export class CreateThesisDto {
 	@IsOptional()
 	@IsString()
 	domain?: string;
-
-	@ApiProperty()
-	@IsNotEmpty()
-	@IsString()
-	userId: string;
 }
 
 export type ThesisStatus = 'New' | 'Pending' | 'Rejected' | 'Approved';

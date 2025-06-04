@@ -18,8 +18,8 @@ enum Gender {
 enum ThesisStatus {
   New
   Pending
-  Rejecte
-  Approve
+  Rejected
+  Approved
 }
 
 datasource db {
