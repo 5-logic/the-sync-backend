@@ -4,13 +4,18 @@ import { CreateGroupDto } from '@/groups/dto/create-group.dto';
 import { UpdateGroupDto } from '@/groups/dto/update-group.dto';
 import { PrismaService } from '@/providers/prisma.service';
 
+import { Group } from '~/generated/prisma';
+
 @Injectable()
 export class GroupService {
 	private readonly logger = new Logger(GroupService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createGroupDto: CreateGroupDto, leaderId: string) {
+	async create(
+		createGroupDto: CreateGroupDto,
+		leaderId: string,
+	): Promise<Group> {
 		try {
 			const newGroup = await this.prisma.group.create({
 				data: { ...createGroupDto, leaderId },
@@ -26,7 +31,7 @@ export class GroupService {
 		}
 	}
 
-	async findAll() {
+	async findAll(): Promise<Group[]> {
 		try {
 			const groups = await this.prisma.group.findMany();
 
@@ -39,7 +44,7 @@ export class GroupService {
 		}
 	}
 
-	async findOne(id: string) {
+	async findOne(id: string): Promise<Group | null> {
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id },
@@ -58,7 +63,11 @@ export class GroupService {
 		}
 	}
 
-	async update(id: string, updateGroupDto: UpdateGroupDto, leaderId: string) {
+	async update(
+		id: string,
+		updateGroupDto: UpdateGroupDto,
+		leaderId: string,
+	): Promise<Group> {
 		try {
 			const updatedGroup = await this.prisma.group.update({
 				where: { id },
@@ -75,7 +84,7 @@ export class GroupService {
 		}
 	}
 
-	async remove(id: string) {
+	async remove(id: string): Promise<Group> {
 		try {
 			const deletedGroup = await this.prisma.group.delete({
 				where: { id },
