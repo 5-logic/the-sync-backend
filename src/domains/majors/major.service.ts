@@ -41,7 +41,7 @@ export class MajorService {
 		}
 	}
 
-	async findOne(id: number): Promise<Major | null> {
+	async findOne(id: string): Promise<Major | null> {
 		try {
 			const major = await this.prisma.major.findUnique({
 				where: { id },
@@ -60,7 +60,7 @@ export class MajorService {
 		}
 	}
 
-	async update(id: number, updateMajorDto: UpdateMajorDto): Promise<Major> {
+	async update(id: string, updateMajorDto: UpdateMajorDto): Promise<Major> {
 		try {
 			const updatedMajor = await this.prisma.major.update({
 				where: { id },
@@ -77,7 +77,7 @@ export class MajorService {
 		}
 	}
 
-	async remove(id: number): Promise<Major> {
+	async remove(id: string): Promise<Major> {
 		try {
 			const deletedMajor = await this.prisma.major.delete({
 				where: { id },

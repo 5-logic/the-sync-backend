@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { MajorController } from '@/majors/major.controller';
+import { MajorService } from '@/majors/major.service';
 import { PrismaService } from '@/providers/prisma.service';
-
-import { MajorController } from './major.controller';
-import { MajorService } from './major.service';
 
 @Module({
 	imports: [],
