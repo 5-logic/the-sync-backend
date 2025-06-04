@@ -8,8 +8,9 @@ Create a `.env` file in the root directory of the project and configure the foll
 
 | #   | Variable Name  | Description                                                               | Example                                                                   |
 | --- | -------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | `DATABASE_URL` | Connection string used for database operations through connection pooling | `postgresql://postgres:postgres@localhost:5432/thesync_db?pgbouncer=true` |
-| 2   | `DIRECT_URL`   | Direct connection to the database, primarily used for Prisma migrations   | `postgresql://postgres:postgres@localhost:5432/thesync_db`                |
+| 1   | `NODE_ENV`     | Environment mode, determines if running in development or production      | `development` or `production`                                             |
+| 2   | `DATABASE_URL` | Connection string used for database operations through connection pooling | `postgresql://postgres:postgres@localhost:5432/thesync_db?pgbouncer=true` |
+| 3   | `DIRECT_URL`   | Direct connection to the database, primarily used for Prisma migrations   | `postgresql://postgres:postgres@localhost:5432/thesync_db`                |
 
 ### Required Variables
 
