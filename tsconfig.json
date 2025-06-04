@@ -16,6 +16,8 @@
 			"@/theses/*": ["src/domains/theses/*"],
 			"@/majors/*": ["src/domains/majors/*"],
 			"@/groups/*": ["src/domains/groups/*"],
+			"@/semesters/*": ["src/domains/semesters/*"],
+			"@/milestones/*": ["src/domains/milestones/*"],
 		},
 		"incremental": true,
 		"skipLibCheck": true,
