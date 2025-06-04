@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Thesis } from '@prisma/client';
 
 import { PrismaService } from '@/providers/prisma.service';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
+
+import { Thesis } from '~/generated/prisma';
 
 @Injectable()
 export class ThesisService {
