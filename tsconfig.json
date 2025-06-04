@@ -12,7 +12,9 @@
 		"baseUrl": "./",
 		"paths": {
 			"~/*": ["./*"],
-			"@/*": ["src/*"]
+			"@/*": ["src/*"],
+			"@/theses/*": ["src/domains/theses/*"],
+			"@/majors/*": ["src/domains/majors/*"]
 		},
 		"incremental": true,
 		"skipLibCheck": true,
@@ -20,7 +22,6 @@
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitAny": false,
 		"strictBindCallApply": false,
-		"noFallthroughCasesInSwitch": false,
-		"resolveJsonModule": true
+		"noFallthroughCasesInSwitch": false
 	}
 }

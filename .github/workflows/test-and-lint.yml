@@ -30,6 +30,7 @@ jobs:
 
       - name: 🧪 Run Jest tests
         run: |
+          pnpm prisma:generate
           pnpm test --passWithNoTests
 
   lint:
@@ -59,4 +60,5 @@ jobs:
 
       - name: 🔍 Run ESLint
         run: |
+          pnpm prisma:generate
           pnpm lint
