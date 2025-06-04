@@ -14,7 +14,8 @@
 			"~/*": ["./*"],
 			"@/*": ["src/*"],
 			"@/theses/*": ["src/domains/theses/*"],
-			"@/majors/*": ["src/domains/majors/*"]
+			"@/majors/*": ["src/domains/majors/*"],
+			"@/groups/*": ["src/domains/groups/*"],
 		},
 		"incremental": true,
 		"skipLibCheck": true,
