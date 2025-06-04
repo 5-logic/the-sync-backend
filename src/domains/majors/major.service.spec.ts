@@ -4,7 +4,10 @@ import { CreateMajorDto } from '@/majors/dto/create-major.dto';
 import { MajorService } from '@/majors/major.service';
 import { PrismaService } from '@/providers/prisma.service';
 
-const mockPrisma = {
+const mockMajor = { id: '1', name: 'Software Engineering', code: 'SE' };
+const mockMajors = [mockMajor];
+
+const prismaMock = {
 	major: {
 		create: jest.fn(),
 		findMany: jest.fn(),
@@ -21,63 +24,107 @@ describe('MajorService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MajorService,
-				{ provide: PrismaService, useValue: mockPrisma },
+				{ provide: PrismaService, useValue: prismaMock },
 			],
 		}).compile();
 
 		service = module.get<MajorService>(MajorService);
-	});
 
-	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
-	it('should create a major', async () => {
-		const dto = { name: 'Software Engineering', code: 'SE' };
-		const result = { id: '1', ...dto };
-		mockPrisma.major.create.mockResolvedValue(result);
+	describe('create', () => {
+		it('should create a major', async () => {
+			const dto = { name: 'Software Engineering', code: 'SE' };
+			const result = { id: '1', ...dto };
+			prismaMock.major.create.mockResolvedValue(result);
 
-		expect(await service.create(dto as CreateMajorDto)).toEqual(result);
-		expect(mockPrisma.major.create).toHaveBeenCalledWith({ data: dto });
-	});
+			expect(await service.create(dto as CreateMajorDto)).toEqual(result);
+			expect(prismaMock.major.create).toHaveBeenCalledWith({ data: dto });
+		});
 
-	it('should return all majors', async () => {
-		const result = [{ id: '1', name: 'Software Engineering', code: 'SE' }];
-		mockPrisma.major.findMany.mockResolvedValue(result);
-
-		expect(await service.findAll()).toEqual(result);
-		expect(mockPrisma.major.findMany).toHaveBeenCalled();
-	});
-
-	it('should return a major by id', async () => {
-		const result = { id: '1', name: 'Software Engineering', code: 'SE' };
-		mockPrisma.major.findUnique.mockResolvedValue(result);
-
-		expect(await service.findOne('1')).toEqual(result);
-		expect(mockPrisma.major.findUnique).toHaveBeenCalledWith({
-			where: { id: '1' },
+		it('should throw error if create fails', async () => {
+			const dto = { name: 'Software Engineering', code: 'SE' };
+			prismaMock.major.create.mockRejectedValue(new Error('fail'));
+			await expect(service.create(dto as CreateMajorDto)).rejects.toThrow(
+				'fail',
+			);
 		});
 	});
 
-	it('should update a major', async () => {
-		const dto = { name: 'Software Engineering', code: 'IT' };
-		const result = { id: '1', ...dto };
-		mockPrisma.major.update.mockResolvedValue(result);
+	describe('findAll', () => {
+		it('should return all majors', async () => {
+			prismaMock.major.findMany.mockResolvedValue(mockMajors);
 
-		expect(await service.update('1', dto as CreateMajorDto)).toEqual(result);
-		expect(mockPrisma.major.update).toHaveBeenCalledWith({
-			where: { id: '1' },
-			data: dto,
+			expect(await service.findAll()).toEqual(mockMajors);
+			expect(prismaMock.major.findMany).toHaveBeenCalled();
+		});
+
+		it('should throw error if findMany fails', async () => {
+			prismaMock.major.findMany.mockRejectedValue(new Error('fail'));
+			await expect(service.findAll()).rejects.toThrow('fail');
 		});
 	});
 
-	it('should remove a major', async () => {
-		const result = { id: '1', name: 'Software Engineering', code: 'IT' };
-		mockPrisma.major.delete.mockResolvedValue(result);
+	describe('findOne', () => {
+		it('should return a major by id', async () => {
+			prismaMock.major.findUnique.mockResolvedValue(mockMajor);
 
-		expect(await service.remove('1')).toEqual(result);
-		expect(mockPrisma.major.delete).toHaveBeenCalledWith({
-			where: { id: '1' },
+			expect(await service.findOne('1')).toEqual(mockMajor);
+			expect(prismaMock.major.findUnique).toHaveBeenCalledWith({
+				where: { id: '1' },
+			});
+		});
+
+		it('should return null if major not found', async () => {
+			prismaMock.major.findUnique.mockResolvedValue(null);
+
+			const result = await service.findOne('not-found');
+			expect(result).toBeNull();
+		});
+
+		it('should throw error if findUnique fails', async () => {
+			prismaMock.major.findUnique.mockRejectedValue(new Error('fail'));
+			await expect(service.findOne('1')).rejects.toThrow('fail');
+		});
+	});
+
+	describe('update', () => {
+		it('should update a major', async () => {
+			const dto = { name: 'Software Engineering', code: 'IT' };
+			const result = { id: '1', ...dto };
+			prismaMock.major.update.mockResolvedValue(result);
+
+			expect(await service.update('1', dto as CreateMajorDto)).toEqual(result);
+			expect(prismaMock.major.update).toHaveBeenCalledWith({
+				where: { id: '1' },
+				data: dto,
+			});
+		});
+
+		it('should throw error if update fails', async () => {
+			const dto = { name: 'Software Engineering', code: 'IT' };
+			prismaMock.major.update.mockRejectedValue(new Error('fail'));
+			await expect(service.update('1', dto as CreateMajorDto)).rejects.toThrow(
+				'fail',
+			);
+		});
+	});
+
+	describe('remove', () => {
+		it('should remove a major', async () => {
+			const result = { id: '1', name: 'Software Engineering', code: 'IT' };
+			prismaMock.major.delete.mockResolvedValue(result);
+
+			expect(await service.remove('1')).toEqual(result);
+			expect(prismaMock.major.delete).toHaveBeenCalledWith({
+				where: { id: '1' },
+			});
+		});
+
+		it('should throw error if delete fails', async () => {
+			prismaMock.major.delete.mockRejectedValue(new Error('fail'));
+			await expect(service.remove('1')).rejects.toThrow('fail');
 		});
 	});
 });
