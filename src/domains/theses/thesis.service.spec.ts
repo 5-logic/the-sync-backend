@@ -27,9 +27,7 @@ describe('ThesisService', () => {
 		}).compile();
 
 		service = module.get<ThesisService>(ThesisService);
-	});
 
-	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
@@ -56,12 +54,35 @@ describe('ThesisService', () => {
 		});
 	});
 
+	it('should throw error if create fails', async () => {
+		const dto: CreateThesisDto = {
+			englishName: 'AI Thesis',
+			vietnameseName: 'Luận văn AI',
+			abbreviation: 'AIT',
+			context: 'Research on AI',
+			supportingDocument: 'doc.pdf',
+			status: 'New',
+			expectedOutcome: 'Publication',
+			requiredSkills: 'Python',
+			suggestedTechnologies: 'TensorFlow',
+			domain: 'AI',
+		};
+		const userId = 'user-1';
+		mockPrisma.thesis.create.mockRejectedValue(new Error('fail'));
+		await expect(service.create(dto, userId)).rejects.toThrow('fail');
+	});
+
 	it('should return all theses', async () => {
 		const result = [{ id: '1', englishName: 'AI Thesis' }];
 		mockPrisma.thesis.findMany.mockResolvedValue(result);
 
 		expect(await service.findAll()).toEqual(result);
 		expect(mockPrisma.thesis.findMany).toHaveBeenCalled();
+	});
+
+	it('should throw error if findMany fails', async () => {
+		mockPrisma.thesis.findMany.mockRejectedValue(new Error('fail'));
+		await expect(service.findAll()).rejects.toThrow('fail');
 	});
 
 	it('should return a thesis by id', async () => {
@@ -72,6 +93,11 @@ describe('ThesisService', () => {
 		expect(mockPrisma.thesis.findUnique).toHaveBeenCalledWith({
 			where: { id: '1' },
 		});
+	});
+
+	it('should throw error if findUnique fails', async () => {
+		mockPrisma.thesis.findUnique.mockRejectedValue(new Error('fail'));
+		await expect(service.findOne('1')).rejects.toThrow('fail');
 	});
 
 	it('should update a thesis', async () => {
@@ -87,6 +113,13 @@ describe('ThesisService', () => {
 		});
 	});
 
+	it('should throw error if update fails', async () => {
+		const dto: UpdateThesisDto = { englishName: 'Updated Thesis' };
+		const userId = 'user-1';
+		mockPrisma.thesis.update.mockRejectedValue(new Error('fail'));
+		await expect(service.update('1', dto, userId)).rejects.toThrow('fail');
+	});
+
 	it('should remove a thesis', async () => {
 		const result = { id: '1', englishName: 'AI Thesis' };
 		mockPrisma.thesis.delete.mockResolvedValue(result);
@@ -95,5 +128,10 @@ describe('ThesisService', () => {
 		expect(mockPrisma.thesis.delete).toHaveBeenCalledWith({
 			where: { id: '1' },
 		});
+	});
+
+	it('should throw error if delete fails', async () => {
+		mockPrisma.thesis.delete.mockRejectedValue(new Error('fail'));
+		await expect(service.remove('1')).rejects.toThrow('fail');
 	});
 });
