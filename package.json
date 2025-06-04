@@ -76,7 +76,8 @@
 		"moduleNameMapper": {
 			"^@/majors/(.*)$": "<rootDir>/domains/majors/$1",
 			"^@/theses/(.*)$": "<rootDir>/domains/theses/$1",
-			"^@/(.*)$": "<rootDir>/$1"
+			"^@/(.*)$": "<rootDir>/$1",
+			"^~/(.*)$": "<rootDir>/../$1"
 		},
 		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
