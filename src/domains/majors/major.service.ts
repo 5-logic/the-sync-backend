@@ -1,10 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Major } from '@prisma/client';
 
 import { CreateMajorDto } from '@/majors/dto/create-major.dto';
 import { UpdateMajorDto } from '@/majors/dto/update-major.dto';
 import { PrismaService } from '@/providers/prisma.service';
-
-import { Major } from '~/generated/prisma';
 
 @Injectable()
 export class MajorService {
