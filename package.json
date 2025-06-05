@@ -76,6 +76,9 @@
 		"moduleNameMapper": {
 			"^@/majors/(.*)$": "<rootDir>/domains/majors/$1",
 			"^@/theses/(.*)$": "<rootDir>/domains/theses/$1",
+			"^@/groups/(.*)$": "<rootDir>/domains/groups/$1",
+			"^@/semesters/(.*)$": "<rootDir>/domains/semesters/$1",
+			"^@/milestones/(.*)$": "<rootDir>/domains/milestones/$1",
 			"^@/(.*)$": "<rootDir>/$1",
 			"^~/(.*)$": "<rootDir>/../$1"
 		},

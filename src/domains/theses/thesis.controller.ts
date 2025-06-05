@@ -19,8 +19,11 @@ export class ThesisController {
 	constructor(private readonly thesisService: ThesisService) {}
 
 	@Post()
-	async create(@Body() createThesisDto: CreateThesisDto, userId: string) {
-		return await this.thesisService.create(createThesisDto, userId);
+	async create(@Body() createThesisDto: CreateThesisDto) {
+		return await this.thesisService.create(
+			createThesisDto,
+			'3f333df6-90a4-4fda-8dd3-9485d27cee36',
+		);
 	}
 
 	@Get()
@@ -37,9 +40,12 @@ export class ThesisController {
 	async update(
 		@Param('id') id: string,
 		@Body() updateThesisDto: UpdateThesisDto,
-		userId: string,
 	) {
-		return await this.thesisService.update(id, updateThesisDto, userId);
+		return await this.thesisService.update(
+			id,
+			updateThesisDto,
+			'3f333df6-90a4-4fda-8dd3-9485d27cee36',
+		);
 	}
 
 	@Delete(':id')
