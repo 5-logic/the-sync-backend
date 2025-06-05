@@ -4,47 +4,67 @@ import { PrismaService } from '@/providers/prisma.service';
 import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
 import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
 
-import { Semester } from '~/generated/prisma';
-
 @Injectable()
 export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createSemesterDto: CreateSemesterDto): Promise<Semester> {
+	async create(createSemesterDto: CreateSemesterDto): Promise<any> {
 		try {
 			const newSemester = await this.prisma.semester.create({
 				data: createSemesterDto,
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
 
 			this.logger.log(`Semester created with ID: ${newSemester.id}`);
 			this.logger.debug(`Semester`, newSemester);
 
-			return newSemester;
+			return {
+				...newSemester,
+				milestones: newSemester.milestones.map((m) => m.id),
+				groups: newSemester.groups.map((g) => g.id),
+			};
 		} catch (error) {
 			this.logger.error('Error creating semester', error);
 			throw error;
 		}
 	}
 
-	async findAll(): Promise<Semester[]> {
+	async findAll(): Promise<any[]> {
 		try {
-			const semesters = await this.prisma.semester.findMany();
+			const semesters = await this.prisma.semester.findMany({
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
+				orderBy: { startDate: 'asc' },
+			});
 
 			this.logger.log(`Found ${semesters.length} semesters`);
 
-			return semesters;
+			return semesters.map((s) => ({
+				...s,
+				milestones: s.milestones.map((m) => m.id),
+				groups: s.groups.map((g) => g.id),
+			}));
 		} catch (error) {
 			this.logger.error('Error fetching semesters', error);
 			throw error;
 		}
 	}
 
-	async findOne(id: string): Promise<Semester | null> {
+	async findOne(id: string): Promise<any> {
 		try {
 			const semester = await this.prisma.semester.findUnique({
 				where: { id },
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
 
 			if (!semester) {
@@ -53,39 +73,55 @@ export class SemesterService {
 			}
 
 			this.logger.log(`Semester found with ID: ${semester.id}`);
-			return semester;
+			return {
+				...semester,
+				milestones: semester.milestones.map((m) => m.id),
+				groups: semester.groups.map((g) => g.id),
+			};
 		} catch (error) {
 			this.logger.error('Error fetching semester', error);
 			throw error;
 		}
 	}
 
-	async update(
-		id: string,
-		updateSemesterDto: UpdateSemesterDto,
-	): Promise<Semester> {
+	async update(id: string, updateSemesterDto: UpdateSemesterDto): Promise<any> {
 		try {
 			const updatedSemester = await this.prisma.semester.update({
 				where: { id },
 				data: updateSemesterDto,
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
 
 			this.logger.log(`Semester updated with ID: ${updatedSemester.id}`);
-			return updatedSemester;
+			return {
+				...updatedSemester,
+				milestones: updatedSemester.milestones.map((m) => m.id),
+				groups: updatedSemester.groups.map((g) => g.id),
+			};
 		} catch (error) {
 			this.logger.error('Error updating semester', error);
 			throw error;
 		}
 	}
 
-	async remove(id: string): Promise<Semester> {
+	async remove(id: string): Promise<any> {
 		try {
 			const deletedSemester = await this.prisma.semester.delete({
 				where: { id },
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
 
 			this.logger.log(`Semester deleted with ID: ${deletedSemester.id}`);
-			return deletedSemester;
+			return {
+				status: 'success',
+				message: `Semester with ID ${deletedSemester.id} deleted successfully`,
+			};
 		} catch (error) {
 			this.logger.error('Error deleting semester', error);
 			throw error;

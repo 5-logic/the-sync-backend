@@ -10,9 +10,43 @@ const mockSemester = {
 	startDate: '2024-01-01T00:00:00.000Z',
 	endDate: '2024-06-01T00:00:00.000Z',
 	endRegistrationDate: '2023-12-01T00:00:00.000Z',
+	milestones: [{ id: 'm1' }, { id: 'm2' }],
+	groups: [{ id: 'g1' }, { id: 'g2' }],
 };
 
-const mockSemesters = [mockSemester];
+const mockSemesterReturn = {
+	...mockSemester,
+	milestones: ['m1', 'm2'],
+	groups: ['g1', 'g2'],
+};
+
+const mockSemesters = [
+	{
+		...mockSemester,
+		milestones: [{ id: 'm1' }],
+		groups: [{ id: 'g1' }],
+	},
+	{
+		...mockSemester,
+		id: 'semester-id-2',
+		milestones: [{ id: 'm2' }],
+		groups: [{ id: 'g2' }],
+	},
+];
+
+const mockSemestersReturn = [
+	{
+		...mockSemester,
+		milestones: ['m1'],
+		groups: ['g1'],
+	},
+	{
+		...mockSemester,
+		id: 'semester-id-2',
+		milestones: ['m2'],
+		groups: ['g2'],
+	},
+];
 
 const prismaMock = {
 	semester: {
@@ -41,14 +75,18 @@ describe('SemesterService', () => {
 	});
 
 	describe('create', () => {
-		it('should create a semester', async () => {
+		it('should create a semester and return with milestones/groups as ids', async () => {
 			prismaMock.semester.create.mockResolvedValue(mockSemester);
 			const dto = { ...mockSemester };
 			const result = await service.create(dto);
 			expect(prismaMock.semester.create).toHaveBeenCalledWith({
 				data: dto,
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockSemester);
+			expect(result).toEqual(mockSemesterReturn);
 		});
 
 		it('should throw error if create fails', async () => {
@@ -59,11 +97,17 @@ describe('SemesterService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all semesters', async () => {
+		it('should return all semesters with milestones/groups as ids', async () => {
 			prismaMock.semester.findMany.mockResolvedValue(mockSemesters);
 			const result = await service.findAll();
-			expect(prismaMock.semester.findMany).toHaveBeenCalled();
-			expect(result).toEqual(mockSemesters);
+			expect(prismaMock.semester.findMany).toHaveBeenCalledWith({
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
+				orderBy: { startDate: 'asc' },
+			});
+			expect(result).toEqual(mockSemestersReturn);
 		});
 
 		it('should throw error if findMany fails', async () => {
@@ -73,13 +117,17 @@ describe('SemesterService', () => {
 	});
 
 	describe('findOne', () => {
-		it('should return a semester by id', async () => {
+		it('should return a semester by id with milestones/groups as ids', async () => {
 			prismaMock.semester.findUnique.mockResolvedValue(mockSemester);
 			const result = await service.findOne('semester-id');
 			expect(prismaMock.semester.findUnique).toHaveBeenCalledWith({
 				where: { id: 'semester-id' },
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockSemester);
+			expect(result).toEqual(mockSemesterReturn);
 		});
 
 		it('should return null if semester not found', async () => {
@@ -95,15 +143,19 @@ describe('SemesterService', () => {
 	});
 
 	describe('update', () => {
-		it('should update a semester', async () => {
+		it('should update a semester and return with milestones/groups as ids', async () => {
 			prismaMock.semester.update.mockResolvedValue(mockSemester);
 			const dto = { ...mockSemester };
 			const result = await service.update('semester-id', dto);
 			expect(prismaMock.semester.update).toHaveBeenCalledWith({
 				where: { id: 'semester-id' },
 				data: dto,
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockSemester);
+			expect(result).toEqual(mockSemesterReturn);
 		});
 
 		it('should throw error if update fails', async () => {
@@ -114,13 +166,20 @@ describe('SemesterService', () => {
 	});
 
 	describe('remove', () => {
-		it('should delete a semester', async () => {
+		it('should delete a semester and return status/message', async () => {
 			prismaMock.semester.delete.mockResolvedValue(mockSemester);
 			const result = await service.remove('semester-id');
 			expect(prismaMock.semester.delete).toHaveBeenCalledWith({
 				where: { id: 'semester-id' },
+				include: {
+					milestones: { select: { id: true } },
+					groups: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockSemester);
+			expect(result).toEqual({
+				status: 'success',
+				message: `Semester with ID ${mockSemester.id} deleted successfully`,
+			});
 		});
 
 		it('should throw error if delete fails', async () => {
