@@ -4,8 +4,20 @@ import { CreateMajorDto } from '@/majors/dto/create-major.dto';
 import { MajorService } from '@/majors/major.service';
 import { PrismaService } from '@/providers/prisma.service';
 
-const mockMajor = { id: '1', name: 'Software Engineering', code: 'SE' };
+const mockMajor = {
+	id: '1',
+	name: 'Software Engineering',
+	code: 'SE',
+	students: [{ userId: 'stu1' }, { userId: 'stu2' }],
+};
+const mockMajorWithStudentIds = {
+	id: '1',
+	name: 'Software Engineering',
+	code: 'SE',
+	students: ['stu1', 'stu2'],
+};
 const mockMajors = [mockMajor];
+const mockMajorsWithStudentIds = [mockMajorWithStudentIds];
 
 const prismaMock = {
 	major: {
@@ -34,13 +46,18 @@ describe('MajorService', () => {
 	});
 
 	describe('create', () => {
-		it('should create a major', async () => {
+		it('should create a major and return with students id array', async () => {
 			const dto = { name: 'Software Engineering', code: 'SE' };
-			const result = { id: '1', ...dto };
-			prismaMock.major.create.mockResolvedValue(result);
+			prismaMock.major.create.mockResolvedValue(mockMajor);
 
-			expect(await service.create(dto as CreateMajorDto)).toEqual(result);
-			expect(prismaMock.major.create).toHaveBeenCalledWith({ data: dto });
+			const result = await service.create(dto as CreateMajorDto);
+			expect(result).toEqual(mockMajorWithStudentIds);
+			expect(prismaMock.major.create).toHaveBeenCalledWith({
+				data: dto,
+				include: {
+					students: { select: { userId: true } },
+				},
+			});
 		});
 
 		it('should throw error if create fails', async () => {
@@ -53,11 +70,16 @@ describe('MajorService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all majors', async () => {
+		it('should return all majors with students id array', async () => {
 			prismaMock.major.findMany.mockResolvedValue(mockMajors);
 
-			expect(await service.findAll()).toEqual(mockMajors);
-			expect(prismaMock.major.findMany).toHaveBeenCalled();
+			const result = await service.findAll();
+			expect(result).toEqual(mockMajorsWithStudentIds);
+			expect(prismaMock.major.findMany).toHaveBeenCalledWith({
+				include: {
+					students: { select: { userId: true } },
+				},
+			});
 		});
 
 		it('should throw error if findMany fails', async () => {
@@ -67,12 +89,16 @@ describe('MajorService', () => {
 	});
 
 	describe('findOne', () => {
-		it('should return a major by id', async () => {
+		it('should return a major by id with students id array', async () => {
 			prismaMock.major.findUnique.mockResolvedValue(mockMajor);
 
-			expect(await service.findOne('1')).toEqual(mockMajor);
+			const result = await service.findOne('1');
+			expect(result).toEqual(mockMajorWithStudentIds);
 			expect(prismaMock.major.findUnique).toHaveBeenCalledWith({
 				where: { id: '1' },
+				include: {
+					students: { select: { userId: true } },
+				},
 			});
 		});
 
@@ -90,15 +116,28 @@ describe('MajorService', () => {
 	});
 
 	describe('update', () => {
-		it('should update a major', async () => {
+		it('should update a major and return with students id array', async () => {
 			const dto = { name: 'Software Engineering', code: 'IT' };
-			const result = { id: '1', ...dto };
-			prismaMock.major.update.mockResolvedValue(result);
+			const updatedMajor = {
+				id: '1',
+				...dto,
+				students: [{ userId: 'stu1' }, { userId: 'stu2' }],
+			};
+			const updatedMajorWithStudentIds = {
+				id: '1',
+				...dto,
+				students: ['stu1', 'stu2'],
+			};
+			prismaMock.major.update.mockResolvedValue(updatedMajor);
 
-			expect(await service.update('1', dto as CreateMajorDto)).toEqual(result);
+			const result = await service.update('1', dto as CreateMajorDto);
+			expect(result).toEqual(updatedMajorWithStudentIds);
 			expect(prismaMock.major.update).toHaveBeenCalledWith({
 				where: { id: '1' },
 				data: dto,
+				include: {
+					students: { select: { userId: true } },
+				},
 			});
 		});
 
@@ -116,7 +155,10 @@ describe('MajorService', () => {
 			const result = { id: '1', name: 'Software Engineering', code: 'IT' };
 			prismaMock.major.delete.mockResolvedValue(result);
 
-			expect(await service.remove('1')).toEqual(result);
+			expect(await service.remove('1')).toEqual({
+				status: 'success',
+				message: `Major with ID ${result.id} deleted successfully`,
+			});
 			expect(prismaMock.major.delete).toHaveBeenCalledWith({
 				where: { id: '1' },
 			});
