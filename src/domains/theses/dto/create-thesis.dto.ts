@@ -1,34 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class CreateThesisDto {
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	englishName: string;
 
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	vietnameseName: string;
 
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	abbreviation: string;
 
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	context: string;
 
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	supportingDocument: string;
 
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsIn(['New', 'Pending', 'Rejected', 'Approved'])
 	status: ThesisStatus;
 

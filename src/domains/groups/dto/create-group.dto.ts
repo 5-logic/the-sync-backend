@@ -42,5 +42,9 @@ export class CreateGroupDto {
 
 	@ApiProperty()
 	@IsString()
+	leaderId: string;
+
+	@ApiProperty()
+	@IsString()
 	semesterId: string;
 }
