@@ -199,19 +199,21 @@ describe('ThesisService', () => {
 		);
 	});
 
-	it('should remove a thesis and return with group id', async () => {
+	it('should remove a thesis and return status/message', async () => {
 		const prismaResult = {
 			id: 'thesis-1',
 			englishName: 'AI Thesis',
 			group: { id: 'group-1' },
 		};
-		const expected = { ...prismaResult, group: 'group-1' };
+		const expected = {
+			status: 'success',
+			message: `Thesis with ID thesis-1 deleted successfully`,
+		};
 		mockPrisma.thesis.delete.mockResolvedValue(prismaResult);
 
 		expect(await service.remove('thesis-1')).toEqual(expected);
 		expect(mockPrisma.thesis.delete).toHaveBeenCalledWith({
 			where: { id: 'thesis-1' },
-			include: { group: { select: { id: true } } },
 		});
 	});
 

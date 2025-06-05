@@ -110,7 +110,6 @@ export class ThesisService {
 		try {
 			const deletedThesis = await this.prisma.thesis.delete({
 				where: { id },
-				include: { group: { select: { id: true } } },
 			});
 
 			this.logger.log(`Thesis deleted with ID: ${deletedThesis.id}`);
@@ -124,6 +123,4 @@ export class ThesisService {
 			throw error;
 		}
 	}
-
-	// ...existing code...
 }
