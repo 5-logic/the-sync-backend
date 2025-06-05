@@ -4,50 +4,68 @@ import { CreateGroupDto } from '@/groups/dto/create-group.dto';
 import { UpdateGroupDto } from '@/groups/dto/update-group.dto';
 import { PrismaService } from '@/providers/prisma.service';
 
-import { Group } from '~/generated/prisma';
-
 @Injectable()
 export class GroupService {
 	private readonly logger = new Logger(GroupService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(
-		createGroupDto: CreateGroupDto,
-		leaderId: string,
-	): Promise<Group> {
+	async create(createGroupDto: CreateGroupDto, leaderId: string): Promise<any> {
 		try {
 			const newGroup = await this.prisma.group.create({
 				data: { ...createGroupDto, leaderId },
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
 			});
 
 			this.logger.log(`Group created with ID: ${newGroup.id}`);
 			this.logger.debug(`Group`, newGroup);
 
-			return newGroup;
+			return {
+				...newGroup,
+				lecturers: newGroup.lecturers?.map((l) => l.userId) ?? [],
+				trackingDetails: newGroup.trackingDetails?.map((td) => td.id) ?? [],
+			};
 		} catch (error) {
 			this.logger.error('Error creating group', error);
 			throw error;
 		}
 	}
 
-	async findAll(): Promise<Group[]> {
+	async findAll(): Promise<any> {
 		try {
-			const groups = await this.prisma.group.findMany();
+			const groups = await this.prisma.group.findMany({
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
+			});
 
 			this.logger.log(`Found ${groups.length} groups`);
 
-			return groups;
+			return {
+				groups: groups.map((g) => ({
+					...g,
+					lecturers: g.lecturers?.map((l) => l.userId) ?? [],
+					trackingDetails: g.trackingDetails?.map((td) => td.id) ?? [],
+				})),
+			};
 		} catch (error) {
 			this.logger.error('Error fetching groups', error);
 			throw error;
 		}
 	}
 
-	async findOne(id: string): Promise<Group | null> {
+	async findOne(id: string): Promise<any> {
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id },
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
 			});
 
 			if (!group) {
@@ -56,7 +74,11 @@ export class GroupService {
 			}
 
 			this.logger.log(`Group found with ID: ${group.id}`);
-			return group;
+			return {
+				...group,
+				lecturers: group.lecturers?.map((l) => l.userId) ?? [],
+				trackingDetails: group.trackingDetails?.map((td) => td.id) ?? [],
+			};
 		} catch (error) {
 			this.logger.error('Error fetching group', error);
 			throw error;
@@ -67,31 +89,42 @@ export class GroupService {
 		id: string,
 		updateGroupDto: UpdateGroupDto,
 		leaderId: string,
-	): Promise<Group> {
+	): Promise<any> {
 		try {
 			const updatedGroup = await this.prisma.group.update({
 				where: { id },
 				data: { ...updateGroupDto, leaderId },
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
 			});
 
 			this.logger.log(`Group updated with ID: ${updatedGroup.id}`);
 			this.logger.debug(`Updated Group`, updatedGroup);
 
-			return updatedGroup;
+			return {
+				...updatedGroup,
+				lecturers: updatedGroup.lecturers?.map((l) => l.userId) ?? [],
+				trackingDetails: updatedGroup.trackingDetails?.map((td) => td.id) ?? [],
+			};
 		} catch (error) {
 			this.logger.error('Error updating group', error);
 			throw error;
 		}
 	}
 
-	async remove(id: string): Promise<Group> {
+	async remove(id: string): Promise<any> {
 		try {
 			const deletedGroup = await this.prisma.group.delete({
 				where: { id },
 			});
 
 			this.logger.log(`Group deleted with ID: ${deletedGroup.id}`);
-			return deletedGroup;
+			return {
+				status: 'success',
+				message: `Group with ID ${deletedGroup.id} deleted successfully`,
+			};
 		} catch (error) {
 			this.logger.error('Error deleting group', error);
 			throw error;

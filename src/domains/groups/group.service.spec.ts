@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GroupService } from '@/groups/group.service';
 import { PrismaService } from '@/providers/prisma.service';
 
+// Mock data with lecturers and trackingDetails as arrays of objects
 const mockGroup = {
 	id: 'group-id',
 	code: 'G01',
@@ -15,6 +16,8 @@ const mockGroup = {
 	thesisId: 'thesis-id',
 	leaderId: 'leader-id',
 	semesterId: 'semester-id',
+	lecturers: [{ userId: 'lec1' }, { userId: 'lec2' }],
+	trackingDetails: [{ id: 'td1' }, { id: 'td2' }],
 };
 
 const mockGroups = [mockGroup];
@@ -47,14 +50,22 @@ describe('GroupService', () => {
 	});
 
 	describe('create', () => {
-		it('should create a group', async () => {
+		it('should create a group and return with lecturers and trackingDetails as id arrays', async () => {
 			prismaMock.group.create.mockResolvedValue(mockGroup);
 			const dto = { ...mockGroup };
 			const result = await service.create(dto, mockGroup.leaderId);
 			expect(prismaMock.group.create).toHaveBeenCalledWith({
 				data: { ...dto, leaderId: mockGroup.leaderId },
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockGroup);
+			expect(result).toEqual({
+				...mockGroup,
+				lecturers: ['lec1', 'lec2'],
+				trackingDetails: ['td1', 'td2'],
+			});
 		});
 
 		it('should throw error if create fails', async () => {
@@ -67,11 +78,24 @@ describe('GroupService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all groups', async () => {
+		it('should return all groups with lecturers and trackingDetails as id arrays', async () => {
 			prismaMock.group.findMany.mockResolvedValue(mockGroups);
 			const result = await service.findAll();
-			expect(prismaMock.group.findMany).toHaveBeenCalled();
-			expect(result).toEqual(mockGroups);
+			expect(prismaMock.group.findMany).toHaveBeenCalledWith({
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
+			});
+			expect(result).toEqual({
+				groups: [
+					{
+						...mockGroup,
+						lecturers: ['lec1', 'lec2'],
+						trackingDetails: ['td1', 'td2'],
+					},
+				],
+			});
 		});
 
 		it('should throw error if findMany fails', async () => {
@@ -81,13 +105,21 @@ describe('GroupService', () => {
 	});
 
 	describe('findOne', () => {
-		it('should return a group by id', async () => {
+		it('should return a group by id with lecturers and trackingDetails as id arrays', async () => {
 			prismaMock.group.findUnique.mockResolvedValue(mockGroup);
 			const result = await service.findOne('group-id');
 			expect(prismaMock.group.findUnique).toHaveBeenCalledWith({
 				where: { id: 'group-id' },
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockGroup);
+			expect(result).toEqual({
+				...mockGroup,
+				lecturers: ['lec1', 'lec2'],
+				trackingDetails: ['td1', 'td2'],
+			});
 		});
 
 		it('should return null if group not found', async () => {
@@ -103,15 +135,23 @@ describe('GroupService', () => {
 	});
 
 	describe('update', () => {
-		it('should update a group', async () => {
+		it('should update a group and return with lecturers and trackingDetails as id arrays', async () => {
 			prismaMock.group.update.mockResolvedValue(mockGroup);
 			const dto = { ...mockGroup };
 			const result = await service.update('group-id', dto, mockGroup.leaderId);
 			expect(prismaMock.group.update).toHaveBeenCalledWith({
 				where: { id: 'group-id' },
 				data: { ...dto, leaderId: mockGroup.leaderId },
+				include: {
+					lecturers: { select: { userId: true } },
+					trackingDetails: { select: { id: true } },
+				},
 			});
-			expect(result).toEqual(mockGroup);
+			expect(result).toEqual({
+				...mockGroup,
+				lecturers: ['lec1', 'lec2'],
+				trackingDetails: ['td1', 'td2'],
+			});
 		});
 
 		it('should throw error if update fails', async () => {
@@ -123,13 +163,16 @@ describe('GroupService', () => {
 	});
 
 	describe('remove', () => {
-		it('should delete a group', async () => {
+		it('should delete a group and return success message', async () => {
 			prismaMock.group.delete.mockResolvedValue(mockGroup);
 			const result = await service.remove('group-id');
 			expect(prismaMock.group.delete).toHaveBeenCalledWith({
 				where: { id: 'group-id' },
 			});
-			expect(result).toEqual(mockGroup);
+			expect(result).toEqual({
+				status: 'success',
+				message: `Group with ID ${mockGroup.id} deleted successfully`,
+			});
 		});
 
 		it('should throw error if delete fails', async () => {
