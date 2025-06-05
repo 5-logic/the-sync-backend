@@ -15,22 +15,22 @@ export class CreateGroupDto {
 	@IsString()
 	description?: string;
 
-	@ApiPropertyOptional({ name: 'projectDescription' })
+	@ApiPropertyOptional()
 	@IsOptional()
 	@IsString()
 	projectDescription?: string;
 
-	@ApiPropertyOptional({ name: 'projectDirection' })
+	@ApiPropertyOptional()
 	@IsOptional()
 	@IsString()
 	projectDirection?: string;
 
-	@ApiPropertyOptional({ name: 'requiredSkills' })
+	@ApiPropertyOptional()
 	@IsOptional()
 	@IsString()
 	requiredSkills?: string;
 
-	@ApiPropertyOptional({ name: 'expectedRoles' })
+	@ApiPropertyOptional()
 	@IsOptional()
 	@IsString()
 	expectedRoles?: string;
