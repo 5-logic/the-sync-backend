@@ -171,10 +171,6 @@ describe('SemesterService', () => {
 			const result = await service.remove('semester-id');
 			expect(prismaMock.semester.delete).toHaveBeenCalledWith({
 				where: { id: 'semester-id' },
-				include: {
-					milestones: { select: { id: true } },
-					groups: { select: { id: true } },
-				},
 			});
 			expect(result).toEqual({
 				status: 'success',

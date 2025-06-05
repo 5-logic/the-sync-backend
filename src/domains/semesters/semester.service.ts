@@ -111,10 +111,6 @@ export class SemesterService {
 		try {
 			const deletedSemester = await this.prisma.semester.delete({
 				where: { id },
-				include: {
-					milestones: { select: { id: true } },
-					groups: { select: { id: true } },
-				},
 			});
 
 			this.logger.log(`Semester deleted with ID: ${deletedSemester.id}`);
