@@ -75,6 +75,13 @@ describe('MilestoneService', () => {
 		});
 	});
 
+	function mapMilestoneTrackingDetails(milestone) {
+		return {
+			...milestone,
+			trackingDetails: milestone.trackingDetails.map((td) => td.id),
+		};
+	}
+
 	describe('findAll', () => {
 		it('should return all milestones with trackingDetails as array of ids', async () => {
 			prismaMock.milestone.findMany.mockResolvedValue(mockMilestones);
@@ -82,12 +89,8 @@ describe('MilestoneService', () => {
 			expect(prismaMock.milestone.findMany).toHaveBeenCalledWith({
 				include: { trackingDetails: { select: { id: true } } },
 			});
-			expect(result).toEqual(
-				mockMilestones.map((m) => ({
-					...m,
-					trackingDetails: m.trackingDetails.map((td) => td.id),
-				})),
-			);
+			const expected = mockMilestones.map(mapMilestoneTrackingDetails);
+			expect(result).toEqual(expected);
 		});
 
 		it('should throw error if findMany fails', async () => {
