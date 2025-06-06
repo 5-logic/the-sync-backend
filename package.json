@@ -28,8 +28,10 @@
 		"@nestjs/platform-express": "11.1.2",
 		"@nestjs/swagger": "11.2.0",
 		"@prisma/client": "6.8.2",
+		"argon2": "0.43.0",
 		"class-transformer": "0.5.1",
 		"class-validator": "0.14.2",
+		"generate-password": "^1.7.1",
 		"reflect-metadata": "0.2.2",
 		"rxjs": "7.8.2"
 	},
@@ -76,6 +78,10 @@
 		"moduleNameMapper": {
 			"^@/majors/(.*)$": "<rootDir>/domains/majors/$1",
 			"^@/theses/(.*)$": "<rootDir>/domains/theses/$1",
+			"^@/admins/(.*)$": "<rootDir>/domains/admins/$1",
+			"^@/users/(.*)$": "<rootDir>/domains/users/$1",
+			"^@/lecturers/(.*)$": "<rootDir>/domains/lecturers/$1",
+			"^@/students/(.*)$": "<rootDir>/domains/students/$1",
 			"^@/(.*)$": "<rootDir>/$1",
 			"^~/(.*)$": "<rootDir>/../$1"
 		},

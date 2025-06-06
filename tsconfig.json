@@ -14,7 +14,11 @@
 			"~/*": ["./*"],
 			"@/*": ["src/*"],
 			"@/theses/*": ["src/domains/theses/*"],
-			"@/majors/*": ["src/domains/majors/*"]
+			"@/majors/*": ["src/domains/majors/*"],
+			"@/admins/*": ["src/domains/admins/*"],
+			"@/users/*": ["src/domains/users/*"],
+			"@/lecturers/*": ["src/domains/lecturers/*"],
+			"@/students/*": ["src/domains/students/*"],
 		},
 		"incremental": true,
 		"skipLibCheck": true,
@@ -22,6 +26,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitAny": false,
 		"strictBindCallApply": false,
-		"noFallthroughCasesInSwitch": false
+		"noFallthroughCasesInSwitch": false,
+		"esModuleInterop": true
 	}
 }
