@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { CreateMajorDto } from '@/majors/dto/create-major.dto';
 import { MajorService } from '@/majors/major.service';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 
 const mockMajor = {
 	id: '1',

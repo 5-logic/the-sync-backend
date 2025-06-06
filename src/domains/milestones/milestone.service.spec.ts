@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { MilestoneService } from '@/milestones/milestone.service';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 
 const mockMilestone = {
 	id: 'milestone-id',

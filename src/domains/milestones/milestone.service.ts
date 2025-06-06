@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { CreateMilestoneDto } from '@/milestones/dto/create-milestone.dto';
 import { UpdateMilestoneDto } from '@/milestones/dto/update-milestone.dto';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
 export class MilestoneService {

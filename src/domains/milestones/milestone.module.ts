@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { MilestoneController } from '@/milestones/milestone.controller';
 import { MilestoneService } from '@/milestones/milestone.service';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Module({
 	controllers: [MilestoneController],

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { GroupService } from '@/groups/group.service';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 
 // Mock data with lecturers and trackingDetails as arrays of objects
 const mockGroup = {

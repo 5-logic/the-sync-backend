@@ -8,11 +8,11 @@ import { ThesisModule } from '@/theses/thesis.module';
 
 @Module({
 	imports: [
-		ThesisModule,
-		MajorModule,
 		GroupModule,
-		SemesterModule,
+		MajorModule,
 		MilestoneModule,
+		SemesterModule,
+		ThesisModule,
 	],
 })
 export class DomainModule {}
