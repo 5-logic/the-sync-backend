@@ -1,13 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 export class CreateAdminDto {
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	username: string;
 
-	@ApiProperty()
+	@ApiPropertyOptional()
 	@IsOptional()
 	@IsEmail()
 	email?: string;
