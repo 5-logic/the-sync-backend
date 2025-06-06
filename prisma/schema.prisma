@@ -19,8 +19,8 @@ enum Gender {
 enum ThesisStatus {
   New
   Pending
-  Rejecte
-  Approve
+  Rejected
+  Approved
 }
 
 datasource db {
@@ -153,6 +153,7 @@ model Group {
   name               String
   description        String?
   projectDescription String? @map("project_description")
+  projectDirection   String? @map("project_direction")
   requiredSkills     String? @map("required_skills")
   expectedRoles      String? @map("expected_roles")
   thesisId           String? @unique @map("thesis_id")

@@ -7,12 +7,14 @@
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
+  - [Environment Setup](#environment-setup)
 - [Development Workflow](#-development-workflow)
   - [Required VS Code Extensions](#required-vs-code-extensions)
   - [Available Scripts](#available-scripts)
   - [Tech Stack](#tech-stack)
   - [Commit Conventions](#commit-conventions)
 - [Code Quality](#-code-quality)
+- [Documentation](#-documentation)
 
 ## 🚀 Getting Started
 
@@ -20,6 +22,7 @@
 
 - [Node.js](https://nodejs.org/) (v20.19.2 exactly)
 - [pnpm](https://pnpm.io/) (v10 or later)
+- [PostgreSQL](https://www.postgresql.org/) (v13 or later)
 - [Visual Studio Code](https://code.visualstudio.com/) (recommended IDE)
 
 ### Installation
@@ -37,13 +40,28 @@
    pnpm install --frozen-lockfile
    ```
 
-3. Start the development server:
+3. Setup environment variables:
+
+   Create a `.env` file in the root directory and configure your environment variables following the [Environment Setup Guide](./docs/environment-setup.md).
+
+4. Generate Prisma client and run migrations:
+
+   ```bash
+   pnpm prisma:generate
+   pnpm prisma:dev
+   ```
+
+5. Start the development server:
 
    ```bash
    pnpm start:dev
    ```
 
-4. The API will be available at [http://localhost:4000/swagger](http://localhost:4000/swagger).
+6. The API will be available at [http://localhost:4000/swagger](http://localhost:4000/swagger).
+
+### Environment Setup
+
+For detailed instructions on setting up environment variables and database configuration, please refer to our [Environment Setup Guide](./docs/environment-setup.md).
 
 ## 🧰 Development Workflow
 
@@ -69,6 +87,9 @@ code --install-extension dbaeumer.vscode-eslint
 - `pnpm build` - Build the application for production
 - `pnpm start` - Start the server in development mode
 - `pnpm start:prod` - Start the production server
+- `pnpm prisma:generate` - Generate Prisma client
+- `pnpm prisma:dev` - Run database migrations in development
+- `pnpm prisma:studio` - Open Prisma Studio for database inspection
 - `pnpm lint` - Run ESLint to check code quality
 - `pnpm test` - Run tests
 - `pnpm test:cov` - Run tests with coverage report
@@ -79,6 +100,9 @@ code --install-extension dbaeumer.vscode-eslint
 - **Framework**: [NestJS](https://nestjs.com/)
 - **Runtime**: [Node.js](https://nodejs.org/)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Database**: [PostgreSQL](https://www.postgresql.org/)
+- **ORM**: [Prisma](https://www.prisma.io/)
+- **API Documentation**: [Swagger](https://swagger.io/)
 - **Testing**: [Jest](https://jestjs.io/)
 
 ### Commit Conventions
@@ -135,3 +159,7 @@ We maintain code quality with:
 - **Prettier**: For code formatting
 - **TypeScript**: For type safety
 - **Jest**: For unit and integration testing
+
+## 📚 Documentation
+
+- [Environment Setup Guide](./docs/environment-setup.md) - Complete guide for setting up environment variables and database configuration
