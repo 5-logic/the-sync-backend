@@ -18,7 +18,7 @@ jobs:
       - name: 🎉 Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: TheSync Backend - v$${{ github.ref_name }}
+          name: TheSync Backend - v${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
 
@@ -28,23 +28,23 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read
       packages: write
 
     steps:
-      - name: Checkout repository
+      - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Login ghcr.io
+      - name: 🔐 Login ghcr.io
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish image
+      - name: 🚀 Publish image
         run: |
           docker buildx build . \
-          -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:latest \
-          -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:${{ github.ref_name }} \
-          --platform=linux/amd64,linux/arm64 \
-          --push
+            -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:latest \
+            -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:${{ github.ref_name }} \
+            --push
