@@ -14,7 +14,7 @@ import { UpdateMajorDto } from '@/majors/dto/update-major.dto';
 import { MajorService } from '@/majors/major.service';
 
 @ApiTags('Major')
-@Controller('major')
+@Controller('majors')
 export class MajorController {
 	constructor(private readonly majorService: MajorService) {}
 

@@ -14,7 +14,7 @@ import { UpdateMilestoneDto } from '@/milestones/dto/update-milestone.dto';
 import { MilestoneService } from '@/milestones/milestone.service';
 
 @ApiTags('Milestone')
-@Controller('milestone')
+@Controller('milestones')
 export class MilestoneController {
 	constructor(private readonly milestoneService: MilestoneService) {}
 
