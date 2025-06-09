@@ -7,12 +7,14 @@ import {
 	Post,
 	Put,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 import { CreateMajorDto } from '@/majors/dto/create-major.dto';
 import { UpdateMajorDto } from '@/majors/dto/update-major.dto';
 import { MajorService } from '@/majors/major.service';
 
-@Controller('major')
+@ApiTags('Major')
+@Controller('majors')
 export class MajorController {
 	constructor(private readonly majorService: MajorService) {}
 
