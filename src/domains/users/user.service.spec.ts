@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { hash as hashUtil } from '@/utils/hash.util';
