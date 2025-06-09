@@ -7,7 +7,7 @@ import {
 
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 import { UserService } from '@/users/user.service';
 import { hash } from '@/utils/hash.util';
 

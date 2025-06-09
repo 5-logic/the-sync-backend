@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminService } from '@/admins/admin.service';
 import { CreateAdminDto } from '@/admins/dto/create-admin.dto';
 import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 import { hash as hashUtil } from '@/utils/hash.util';
 
 jest.mock('@/utils/hash.util', () => ({

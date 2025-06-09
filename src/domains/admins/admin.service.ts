@@ -2,7 +2,7 @@ import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import { CreateAdminDto } from '@/admins/dto/create-admin.dto';
 import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 import { hash } from '@/utils/hash.util';
 
 @Injectable()

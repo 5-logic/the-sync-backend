@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '@/providers/prisma.service';
+import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { UserService } from '@/users/user.service';
