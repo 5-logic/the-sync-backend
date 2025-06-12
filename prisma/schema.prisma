@@ -87,4 +87,334 @@ enum EnrollmentStatus {
 
 // --------------------------------------------------------------------------------
 
-// Models
+// Models with single primary key
+
+model Admin {
+  id       String  @id @default(uuid())
+  username String  @unique @map("username")
+  password String  @map("password")
+  email    String? @map("email")
+
+  @@map("admins")
+}
+
+model Semester {
+  id           String         @id @default(uuid())
+  name         String         @unique @map("name")
+  code         String         @unique @map("code")
+  maxGroup     Int?           @map("max_group")
+  status       SemesterStatus @map("status")
+  ongoingPhase OngoingPhase?  @map("ongoing_phase")
+
+  groups      Group[]
+  enrollments Enrollment[]
+  milestones  Milestone[]
+
+  @@map("semesters")
+}
+
+model Major {
+  id   String @id @default(uuid())
+  name String @map("name")
+  code String @unique @map("code")
+
+  students Student[]
+
+  @@map("majors")
+}
+
+model User {
+  id          String  @id @default(uuid())
+  fullName    String  @map("full_name")
+  email       String  @unique @map("email")
+  password    String  @map("password")
+  gender      Gender  @map("gender")
+  phoneNumber String  @map("phone_number")
+  isActive    Boolean @default(true) @map("is_active")
+
+  student  Student?
+  lecturer Lecturer?
+
+  @@map("users")
+}
+
+model Student {
+  userId    String @id @map("user_id")
+  studentId String @unique @map("student_id")
+  majorId   String @map("major_id")
+
+  user                            User                            @relation(fields: [userId], references: [id])
+  major                           Major                           @relation(fields: [majorId], references: [id])
+  studentSkills                   StudentSkill[]
+  enrollments                     Enrollment[]
+  studentExpectedResponsibilities StudentExpectedResponsibility[]
+
+  @@map("students")
+}
+
+model Lecturer {
+  userId      String  @id @map("user_id")
+  isModerator Boolean @default(false) @map("is_moderator")
+
+  user              User               @relation(fields: [userId], references: [id])
+  supervisions      Supervision[]
+  assignmentReviews AssignmentReview[]
+
+  @@map("lecturers")
+}
+
+model Group {
+  id               String  @id @default(uuid())
+  code             String  @unique @map("code")
+  name             String  @map("name")
+  projectDirection String? @map("project_direction")
+  semesterId       String  @map("semester_id")
+  thesisId         String? @unique @map("thesis_id")
+
+  semester                      Semester                      @relation(fields: [semesterId], references: [id])
+  thesis                        Thesis?                       @relation(fields: [thesisId], references: [id])
+  submissions                   Submission[]
+  groupRequiredSkills           GroupRequiredSkill[]
+  groupExpectedResponsibilities GroupExpectedResponsibility[]
+
+  @@map("groups")
+}
+
+model Thesis {
+  id             String       @id @default(uuid())
+  englishName    String       @map("english_name")
+  vietnameseName String       @map("vietnamese_name")
+  abbreviation   String       @map("abbreviation")
+  description    String       @map("description")
+  domain         String?      @map("domain")
+  status         ThesisStatus @map("status")
+  isPublish      Boolean      @default(false) @map("is_publish")
+  groupId        String?      @map("group_id")
+  userId         String       @map("user_id")
+
+  group                Group?
+  supervisions         Supervision[]
+  thesisVersions       ThesisVersion[]
+  thesisRequiredSkills ThesisRequiredSkill[]
+
+  @@map("theses")
+}
+
+model ThesisVersion {
+  id                 String @id @default(uuid())
+  version            Int    @map("version")
+  supportingDocument String @map("supporting_document")
+  thesisId           String @map("thesis_id")
+
+  thesis Thesis @relation(fields: [thesisId], references: [id])
+
+  @@map("thesis_versions")
+}
+
+model Milestone {
+  id         String   @id @default(uuid())
+  name       String   @map("name")
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  semesterId String   @map("semester_id")
+
+  semester    Semester     @relation(fields: [semesterId], references: [id])
+  submissions Submission[]
+
+  @@map("milestones")
+}
+
+model Submission {
+  id          String @id @default(uuid())
+  groupId     String @map("group_id")
+  milestoneId String @map("milestone_id")
+
+  group             Group              @relation(fields: [groupId], references: [id])
+  milestone         Milestone          @relation(fields: [milestoneId], references: [id])
+  assignmentReviews AssignmentReview[]
+
+  @@unique([groupId, milestoneId])
+  @@map("submissions")
+}
+
+model Review {
+  id           String  @id @default(uuid())
+  feedback     String? @map("feedback")
+  lecturerId   String  @map("lecturer_id")
+  checklistId  String  @map("checklist_id")
+  submissionId String  @map("submission_id")
+
+  reviewItems ReviewItem[]
+
+  @@map("reviews")
+}
+
+model Checklist {
+  id          String  @id @default(uuid())
+  name        String  @map("name")
+  description String? @map("description")
+  milestoneId String  @map("milestone_id")
+
+  checklistItems ChecklistItem[]
+
+  @@map("checklists")
+}
+
+model ChecklistItem {
+  id          String  @id @default(uuid())
+  name        String  @map("name")
+  description String? @map("description")
+  isRequired  Boolean @default(false) @map("is_required")
+  checklistId String  @map("checklist_id")
+
+  checklist   Checklist    @relation(fields: [checklistId], references: [id])
+  reviewItems ReviewItem[]
+
+  @@map("checklist_items")
+}
+
+model Skill {
+  id         String @id @default(uuid())
+  name       String @map("name")
+  skillSetId String @map("skill_set_id")
+
+  skillSet             SkillSet              @relation(fields: [skillSetId], references: [id])
+  studentSkills        StudentSkill[]
+  groupRequiredSkills  GroupRequiredSkill[]
+  thesisRequiredSkills ThesisRequiredSkill[]
+
+  @@map("skills")
+}
+
+model SkillSet {
+  id   String @id @default(uuid())
+  name String @map("name")
+
+  skills Skill[]
+
+  @@map("skill_sets")
+}
+
+model Responsibility {
+  id   String @id @default(uuid())
+  name String @map("name")
+
+  studentExpectedResponsibilities StudentExpectedResponsibility[]
+  groupExpectedResponsibilities   GroupExpectedResponsibility[]
+
+  @@map("responsibilities")
+}
+
+model Request {
+  id        String        @id @default(uuid())
+  type      RequestType   @map("type")
+  status    RequestStatus @map("status")
+  studentId String        @map("student_id")
+  groupId   String        @map("group_id")
+
+  @@map("requests")
+}
+
+// Models with composite primary key
+
+model StudentSkill {
+  studentId String     @map("student_id")
+  skillId   String     @map("skill_id")
+  level     SkillLevel @map("level")
+
+  student Student @relation(fields: [studentId], references: [studentId])
+  skill   Skill   @relation(fields: [skillId], references: [id])
+
+  @@id([studentId, skillId])
+  @@map("student_skills")
+}
+
+model GroupRequiredSkill {
+  groupId String @map("group_id")
+  skillId String @map("skill_id")
+
+  group Group @relation(fields: [groupId], references: [id])
+  skill Skill @relation(fields: [skillId], references: [id])
+
+  @@id([groupId, skillId])
+  @@map("group_required_skills")
+}
+
+model ThesisRequiredSkill {
+  thesisId String @map("thesis_id")
+  skillId  String @map("skill_id")
+
+  thesis Thesis @relation(fields: [thesisId], references: [id])
+  skill  Skill  @relation(fields: [skillId], references: [id])
+
+  @@id([thesisId, skillId])
+  @@map("thesis_required_skills")
+}
+
+model StudentExpectedResponsibility {
+  studentId        String @map("student_id")
+  responsibilityId String @map("Responsibility_id")
+
+  student        Student        @relation(fields: [studentId], references: [studentId])
+  responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
+
+  @@id([studentId, responsibilityId])
+  @@map("student_expected_responsibilities")
+}
+
+model GroupExpectedResponsibility {
+  groupId          String @map("group_id")
+  responsibilityId String @map("Responsibility_id")
+
+  group          Group          @relation(fields: [groupId], references: [id])
+  responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
+
+  @@id([groupId, responsibilityId])
+  @@map("group_expected_responsibilities")
+}
+
+model Enrollment {
+  studentId  String           @map("student_id")
+  semesterId String           @map("semester_id")
+  status     EnrollmentStatus @map("status")
+
+  student  Student  @relation(fields: [studentId], references: [studentId])
+  semester Semester @relation(fields: [semesterId], references: [id])
+
+  @@id([studentId, semesterId])
+  @@map("enrollments")
+}
+
+model ReviewItem {
+  reviewId        String  @map("review_id")
+  checklistItemId String  @map("checklistitem_id")
+  note            String? @map("note")
+
+  review        Review        @relation(fields: [reviewId], references: [id])
+  checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id])
+
+  @@id([reviewId, checklistItemId])
+  @@map("review_items")
+}
+
+model Supervision {
+  lecturerId String @map("lecturer_id")
+  thesisId   String @map("thesis_id")
+
+  lecturer Lecturer @relation(fields: [lecturerId], references: [userId])
+  thesis   Thesis   @relation(fields: [thesisId], references: [id])
+
+  @@id([thesisId, lecturerId])
+  @@map("supervisions")
+}
+
+model AssignmentReview {
+  reviewerId   String @map("reviewer_id")
+  submissionId String @map("submission_id")
+
+  reviewer   Lecturer   @relation(fields: [reviewerId], references: [userId])
+  submission Submission @relation(fields: [submissionId], references: [id])
+
+  @@id([submissionId, reviewerId])
+  @@map("assignment_reviews")
+}
