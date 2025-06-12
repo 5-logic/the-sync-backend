@@ -36,7 +36,7 @@ importers:
         specifier: 0.14.2
         version: 0.14.2
       generate-password:
-        specifier: ^1.7.1
+        specifier: 1.7.1
         version: 1.7.1
       morgan:
         specifier: 1.10.0

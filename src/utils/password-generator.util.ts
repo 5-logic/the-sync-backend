@@ -1,6 +1,6 @@
 import generatePassword from 'generate-password';
 
-export function generateStrongPassword(): string {
+export const generateStrongPassword = (): string => {
 	return generatePassword.generate({
 		length: 12,
 		numbers: true,
@@ -9,4 +9,4 @@ export function generateStrongPassword(): string {
 		lowercase: true,
 		strict: true,
 	});
-}
+};
