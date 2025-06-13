@@ -353,7 +353,7 @@ model ThesisRequiredSkill {
 
 model StudentExpectedResponsibility {
   studentId        String @map("student_id")
-  responsibilityId String @map("Responsibility_id")
+  responsibilityId String @map("responsibility_id")
 
   student        Student        @relation(fields: [studentId], references: [studentId])
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
@@ -364,7 +364,7 @@ model StudentExpectedResponsibility {
 
 model GroupExpectedResponsibility {
   groupId          String @map("group_id")
-  responsibilityId String @map("Responsibility_id")
+  responsibilityId String @map("responsibility_id")
 
   group          Group          @relation(fields: [groupId], references: [id])
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
