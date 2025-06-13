@@ -1,9 +1,14 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { CreateAdminDto } from '@/admins/dto/create-admin.dto';
 import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { hash } from '@/utils/hash.util';
+import { hash, verify } from '@/utils/hash.util';
 
 @Injectable()
 export class AdminService {
@@ -13,14 +18,15 @@ export class AdminService {
 
 	async create(createAdminDto: CreateAdminDto) {
 		try {
-			const admin = await this.prisma.admin.findUnique({
+			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { username: createAdminDto.username },
 			});
 
-			if (admin) {
+			if (existingAdmin) {
 				this.logger.warn(
 					`Admin with username ${createAdminDto.username} already exists`,
 				);
+
 				throw new ConflictException('Admin with this username already exists');
 			}
 
@@ -36,26 +42,13 @@ export class AdminService {
 			this.logger.log(`Admin created with ID: ${newAdmin.id}`);
 			this.logger.debug(`Admin`, newAdmin);
 
-			return {
-				id: newAdmin.id,
-				username: newAdmin.username,
-				email: newAdmin.email,
-			};
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { password: _, ...result } = newAdmin;
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error creating admin', error);
-			throw error;
-		}
-	}
 
-	async findAll() {
-		try {
-			const admins = await this.prisma.admin.findMany();
-
-			this.logger.log(`Found ${admins.length} admins`);
-
-			return admins;
-		} catch (error) {
-			this.logger.error('Error fetching admins', error);
 			throw error;
 		}
 	}
@@ -63,50 +56,97 @@ export class AdminService {
 	async findOne(id: string) {
 		try {
 			const admin = await this.prisma.admin.findUnique({
-				where: { id },
+				where: { id: id },
 			});
 
 			if (!admin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
+
 				return null;
 			}
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
-			return admin;
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { password: _, ...result } = admin;
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching admin', error);
+
 			throw error;
 		}
 	}
 
 	async update(id: string, updateAdminDto: UpdateAdminDto) {
 		try {
+			const existingAdmin = await this.prisma.admin.findUnique({
+				where: { id: id },
+			});
+
+			if (!existingAdmin) {
+				this.logger.warn(`Admin with ID ${id} not found`);
+
+				throw new NotFoundException(`Admin with ID ${id} not found`);
+			}
+
+			const { password: newPassword, ...dataToUpdate } = updateAdminDto;
+
 			const updatedAdmin = await this.prisma.admin.update({
-				where: { id },
-				data: updateAdminDto,
+				where: { id: id },
+				data: {
+					...dataToUpdate,
+					password: newPassword
+						? await hash(newPassword)
+						: existingAdmin.password,
+				},
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
-			return updatedAdmin;
+			this.logger.debug(`Updated Admin`, updatedAdmin);
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { password: _, ...result } = updatedAdmin;
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error updating admin', error);
+
 			throw error;
 		}
 	}
 
-	async remove(id: string) {
+	async validateAdmin(username: string, password: string) {
 		try {
-			const deletedAdmin = await this.prisma.admin.delete({
-				where: { id },
+			this.logger.log(`Validating admin with username: ${username}`);
+
+			const admin = await this.prisma.admin.findUnique({
+				where: { username: username },
 			});
 
-			this.logger.log(`Admin deleted with ID: ${deletedAdmin.id}`);
-			return {
-				status: 'success',
-				message: `Admin with ID ${deletedAdmin.id} deleted successfully`,
-			};
+			if (!admin) {
+				this.logger.warn(`Admin with username ${username} not found`);
+
+				return null;
+			}
+
+			const isPasswordValid = await verify(admin.password, password);
+
+			if (!isPasswordValid) {
+				this.logger.warn(
+					`Invalid password for admin with username ${username}`,
+				);
+
+				return null;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { password: _, ...result } = admin;
+
+			return result;
 		} catch (error) {
-			this.logger.error('Error deleting admin', error);
+			this.logger.error('Error validating admin', error);
+
 			throw error;
 		}
 	}
