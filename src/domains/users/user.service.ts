@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
-import { hash } from '@/utils/hash.util';
+import { hash, verify } from '@/utils/hash.util';
 import { generateStrongPassword } from '@/utils/password-generator.util';
 
 @Injectable()
@@ -118,6 +118,39 @@ export class UserService {
 			return result;
 		} catch (error) {
 			this.logger.error('Error updating user', error);
+
+			throw error;
+		}
+	}
+
+	async validateUser(email: string, password: string) {
+		try {
+			this.logger.log(`Validating user with email: ${email}`);
+
+			const user = await this.prisma.user.findUnique({
+				where: { email: email },
+			});
+
+			if (!user) {
+				this.logger.warn(`User with email ${email} not found`);
+
+				return null;
+			}
+
+			const isPasswordValid = await verify(password, user.password);
+
+			if (!isPasswordValid) {
+				this.logger.warn(`Invalid password for user with email ${email}`);
+
+				return null;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { password: _, ...result } = user;
+
+			return result;
+		} catch (error) {
+			this.logger.error('Error validating user', error);
 
 			throw error;
 		}
