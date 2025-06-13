@@ -15,7 +15,11 @@ async function bootstrap() {
 	// Setup Swagger
 	setupSwagger(app);
 
-	await app.listen(process.env.PORT ?? 4000);
+	const port = process.env.PORT || 4000;
+	await app.listen(port);
+
+	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
+	logger.log(`OpenAPI documentation is available at /swagger`, 'Bootstrap');
 }
 
 void bootstrap();
