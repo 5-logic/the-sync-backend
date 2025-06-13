@@ -85,6 +85,14 @@ enum EnrollmentStatus {
   @@map("enrollment_statuses")
 }
 
+enum ChecklistReviewAcceptance {
+  Yes          @map("accepted")
+  No           @map("rejected")
+  NotAvailable @map("not_available")
+
+  @@map("checklist_review_acceptances")
+}
+
 // --------------------------------------------------------------------------------
 
 // Models with single primary key
@@ -220,15 +228,16 @@ model ThesisVersion {
 }
 
 model Milestone {
-  id         String   @id @default(uuid())
-  name       String   @map("name")
-  startDate  DateTime @map("start_date")
-  endDate    DateTime @map("end_date")
-  semesterId String   @map("semester_id")
+  id          String   @id @default(uuid())
+  name        String   @map("name")
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  semesterId  String   @map("semester_id")
+  checklistId String?  @unique @map("checklist_id")
 
   semester    Semester     @relation(fields: [semesterId], references: [id])
+  checklist   Checklist?   @relation(fields: [checklistId], references: [id])
   submissions Submission[]
-  checklists  Checklist[]
 
   @@map("milestones")
 }
@@ -269,7 +278,7 @@ model Checklist {
   description String? @map("description")
   milestoneId String  @map("milestone_id")
 
-  milestone      Milestone       @relation(fields: [milestoneId], references: [id])
+  milestone      Milestone?
   checklistItems ChecklistItem[]
   reviews        Review[]
 
@@ -277,11 +286,12 @@ model Checklist {
 }
 
 model ChecklistItem {
-  id          String  @id @default(uuid())
-  name        String  @map("name")
-  description String? @map("description")
-  isRequired  Boolean @default(false) @map("is_required")
-  checklistId String  @map("checklist_id")
+  id          String                    @id @default(uuid())
+  name        String                    @map("name")
+  acceptance  ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
+  description String?                   @map("description")
+  isRequired  Boolean                   @default(false) @map("is_required")
+  checklistId String                    @map("checklist_id")
 
   checklist   Checklist    @relation(fields: [checklistId], references: [id])
   reviewItems ReviewItem[]
