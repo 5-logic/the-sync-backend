@@ -326,7 +326,7 @@ model StudentSkill {
   skill   Skill   @relation(fields: [skillId], references: [id])
 
   @@id([studentId, skillId])
-  @@map("student_skills")
+  @@map("_student_skills")
 }
 
 model GroupRequiredSkill {
@@ -337,7 +337,7 @@ model GroupRequiredSkill {
   skill Skill @relation(fields: [skillId], references: [id])
 
   @@id([groupId, skillId])
-  @@map("group_required_skills")
+  @@map("_group_required_skills")
 }
 
 model ThesisRequiredSkill {
@@ -348,7 +348,7 @@ model ThesisRequiredSkill {
   skill  Skill  @relation(fields: [skillId], references: [id])
 
   @@id([thesisId, skillId])
-  @@map("thesis_required_skills")
+  @@map("_thesis_required_skills")
 }
 
 model StudentExpectedResponsibility {
@@ -359,7 +359,7 @@ model StudentExpectedResponsibility {
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
 
   @@id([studentId, responsibilityId])
-  @@map("student_expected_responsibilities")
+  @@map("_student_expected_responsibilities")
 }
 
 model GroupExpectedResponsibility {
@@ -370,7 +370,7 @@ model GroupExpectedResponsibility {
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
 
   @@id([groupId, responsibilityId])
-  @@map("group_expected_responsibilities")
+  @@map("_group_expected_responsibilities")
 }
 
 model Enrollment {
@@ -382,7 +382,7 @@ model Enrollment {
   semester Semester @relation(fields: [semesterId], references: [id])
 
   @@id([studentId, semesterId])
-  @@map("enrollments")
+  @@map("_enrollments")
 }
 
 model ReviewItem {
@@ -394,7 +394,7 @@ model ReviewItem {
   checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id])
 
   @@id([reviewId, checklistItemId])
-  @@map("review_items")
+  @@map("_review_items")
 }
 
 model Supervision {
@@ -405,7 +405,7 @@ model Supervision {
   thesis   Thesis   @relation(fields: [thesisId], references: [id])
 
   @@id([thesisId, lecturerId])
-  @@map("supervisions")
+  @@map("_supervisions")
 }
 
 model AssignmentReview {
@@ -416,5 +416,5 @@ model AssignmentReview {
   submission Submission @relation(fields: [submissionId], references: [id])
 
   @@id([submissionId, reviewerId])
-  @@map("assignment_reviews")
+  @@map("_assignment_reviews")
 }
