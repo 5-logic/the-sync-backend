@@ -137,7 +137,7 @@ export class UserService {
 				return null;
 			}
 
-			const isPasswordValid = await verify(password, user.password);
+			const isPasswordValid = await verify(user.password, password);
 
 			if (!isPasswordValid) {
 				this.logger.warn(`Invalid password for user with email ${email}`);
