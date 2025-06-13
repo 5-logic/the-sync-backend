@@ -1,4 +1,4 @@
-import { ConsoleLogger } from '@nestjs/common';
+import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '@/app.module';
@@ -11,6 +11,9 @@ async function bootstrap() {
 	});
 
 	const app = await NestFactory.create(AppModule, { logger: logger });
+
+	// Enable validation globally
+	app.useGlobalPipes(new ValidationPipe());
 
 	// Setup Swagger
 	setupSwagger(app);
