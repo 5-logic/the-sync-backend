@@ -14,10 +14,3 @@ export class AdminLoginDto {
 	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	password: string;
 }
-
-export class AdminRefreshDto {
-	@ApiProperty()
-	@IsString()
-	@IsNotEmpty()
-	refreshToken: string;
-}

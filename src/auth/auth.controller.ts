@@ -1,9 +1,10 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
+import { RefreshDto } from '@/auth//dto/auth.refresh.dto';
 import { AuthService } from '@/auth/auth.service';
-import { AdminLoginDto, AdminRefreshDto } from '@/auth/dto/auth.admin.dto';
-import { UserLoginDto, UserRefreshDto } from '@/auth/dto/auth.user.dto';
+import { AdminLoginDto } from '@/auth/dto/auth.admin.dto';
+import { UserLoginDto } from '@/auth/dto/auth.user.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -16,8 +17,8 @@ export class AuthController {
 	}
 
 	@Post('admin/refresh')
-	async refreshAdmin(@Body() adminRefreshDto: AdminRefreshDto) {
-		return await this.authSerivce.refreshAdmin(adminRefreshDto);
+	async refreshAdmin(@Body() refreshDto: RefreshDto) {
+		return await this.authSerivce.refreshAdmin(refreshDto);
 	}
 
 	@Post('user/login')
@@ -26,7 +27,7 @@ export class AuthController {
 	}
 
 	@Post('user/refresh')
-	async refreshUser(@Body() userRefreshDto: UserRefreshDto) {
-		return await this.authSerivce.refreshUser(userRefreshDto);
+	async refreshUser(@Body() refreshDto: RefreshDto) {
+		return await this.authSerivce.refreshUser(refreshDto);
 	}
 }

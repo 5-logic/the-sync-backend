@@ -8,8 +8,9 @@ import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
 import { AdminService } from '@/admins/admin.service';
-import { AdminLoginDto, AdminRefreshDto } from '@/auth/dto/auth.admin.dto';
-import { UserLoginDto, UserRefreshDto } from '@/auth/dto/auth.user.dto';
+import { AdminLoginDto } from '@/auth/dto/auth.admin.dto';
+import { RefreshDto } from '@/auth/dto/auth.refresh.dto';
+import { UserLoginDto } from '@/auth/dto/auth.user.dto';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtPayload } from '@/auth/interfaces/payload.interface';
 import { jwtAccessConfig } from '@/configs/jwt-access.config';
@@ -63,9 +64,9 @@ export class AuthService {
 		}
 	}
 
-	async refreshAdmin(adminRefreshDto: AdminRefreshDto) {
+	async refreshAdmin(refreshDto: RefreshDto) {
 		try {
-			const { refreshToken } = adminRefreshDto;
+			const { refreshToken } = refreshDto;
 
 			const decoded: JwtPayload = await this.jwtService.verifyAsync(
 				refreshToken,
@@ -139,9 +140,9 @@ export class AuthService {
 		}
 	}
 
-	async refreshUser(userRefreshDto: UserRefreshDto) {
+	async refreshUser(refreshDto: RefreshDto) {
 		try {
-			const { refreshToken } = userRefreshDto;
+			const { refreshToken } = refreshDto;
 
 			const decoded: JwtPayload = await this.jwtService.verifyAsync(
 				refreshToken,
