@@ -51,13 +51,21 @@
    pnpm prisma:dev
    ```
 
-5. Start the development server:
+5. Seed initial data:
+
+   [Seeding Data Guide](./docs/seeding-data.md) - Complete guide for seeding initial data into the database
+
+   ```bash
+   pnpm seed
+   ```
+
+6. Start the development server:
 
    ```bash
    pnpm start:dev
    ```
 
-6. The API will be available at [http://localhost:4000/swagger](http://localhost:4000/swagger).
+7. The API will be available at [http://localhost:4000/swagger](http://localhost:4000/swagger).
 
 ### Environment Setup
 
@@ -90,10 +98,8 @@ code --install-extension dbaeumer.vscode-eslint
 - `pnpm prisma:generate` - Generate Prisma client
 - `pnpm prisma:dev` - Run database migrations in development
 - `pnpm prisma:studio` - Open Prisma Studio for database inspection
+- `pnpm seed` - Seed initial data into the database
 - `pnpm lint` - Run ESLint to check code quality
-- `pnpm test` - Run tests
-- `pnpm test:cov` - Run tests with coverage report
-- `pnpm test:e2e` - Run end-to-end tests
 
 ### Tech Stack
 
@@ -103,7 +109,6 @@ code --install-extension dbaeumer.vscode-eslint
 - **Database**: [PostgreSQL](https://www.postgresql.org/)
 - **ORM**: [Prisma](https://www.prisma.io/)
 - **API Documentation**: [Swagger](https://swagger.io/)
-- **Testing**: [Jest](https://jestjs.io/)
 
 ### Commit Conventions
 
@@ -158,8 +163,8 @@ We maintain code quality with:
 - **ESLint**: For code linting
 - **Prettier**: For code formatting
 - **TypeScript**: For type safety
-- **Jest**: For unit and integration testing
 
 ## 📚 Documentation
 
 - [Environment Setup Guide](./docs/environment-setup.md) - Complete guide for setting up environment variables and database configuration
+- [Seeding Data Guide](./docs/seeding-data.md) - Complete guide for seeding initial data into the database
