@@ -30,6 +30,7 @@ export class SemesterService {
 			};
 		} catch (error) {
 			this.logger.error('Error creating semester', error);
+
 			throw error;
 		}
 	}
@@ -41,7 +42,6 @@ export class SemesterService {
 					milestones: { select: { id: true } },
 					groups: { select: { id: true } },
 				},
-				orderBy: { name: 'asc' },
 			});
 
 			this.logger.log(`Found ${semesters.length} semesters`);
@@ -54,6 +54,7 @@ export class SemesterService {
 			}));
 		} catch (error) {
 			this.logger.error('Error fetching semesters', error);
+
 			throw error;
 		}
 	}
@@ -70,6 +71,7 @@ export class SemesterService {
 
 			if (!semester) {
 				this.logger.warn(`Semester with ID ${id} not found`);
+
 				throw new NotFoundException(`Semester with ID ${id} not found`);
 			}
 
@@ -83,12 +85,23 @@ export class SemesterService {
 			};
 		} catch (error) {
 			this.logger.error('Error fetching semester', error);
+
 			throw error;
 		}
 	}
 
 	async update(id: string, updateSemesterDto: UpdateSemesterDto) {
 		try {
+			const existingSemester = await this.prisma.semester.findUnique({
+				where: { id },
+			});
+
+			if (!existingSemester) {
+				this.logger.warn(`Semester with ID ${id} not found for update`);
+
+				throw new NotFoundException(`Semester with ID ${id} not found`);
+			}
+
 			const updatedSemester = await this.prisma.semester.update({
 				where: { id },
 				data: updateSemesterDto,
@@ -108,6 +121,7 @@ export class SemesterService {
 			};
 		} catch (error) {
 			this.logger.error('Error updating semester', error);
+
 			throw error;
 		}
 	}
@@ -121,12 +135,10 @@ export class SemesterService {
 			this.logger.log(`Semester deleted with ID: ${deletedSemester.id}`);
 			this.logger.debug('Deleted Semester', deletedSemester);
 
-			return {
-				status: 'success',
-				message: `Semester with ID ${deletedSemester.id} deleted successfully`,
-			};
+			return;
 		} catch (error) {
 			this.logger.error('Error deleting semester', error);
+
 			throw error;
 		}
 	}
