@@ -13,6 +13,8 @@
 		"paths": {
 			"~/*": ["./*"],
 			"@/*": ["src/*"],
+			"@/auth/*": ["src/auth/*"],
+			"@/configs/*": ["src/configs/*"],
 			"@/theses/*": ["src/domains/theses/*"],
 			"@/majors/*": ["src/domains/majors/*"],
 			"@/admins/*": ["src/domains/admins/*"],
@@ -21,7 +23,7 @@
 			"@/students/*": ["src/domains/students/*"],
 			"@/groups/*": ["src/domains/groups/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
-			"@/milestones/*": ["src/domains/milestones/*"],
+			"@/milestones/*": ["src/domains/milestones/*"]
 		},
 		"incremental": true,
 		"skipLibCheck": true,
