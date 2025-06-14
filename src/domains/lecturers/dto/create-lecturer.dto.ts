@@ -10,8 +10,8 @@ export class CreateLecturerDto {
 	@Type(() => CreateUserDto)
 	createUserDto: CreateUserDto;
 
-	@ApiPropertyOptional()
+	@ApiPropertyOptional({ default: false })
 	@IsOptional()
 	@IsBoolean()
-	isModerator?: boolean = false;
+	isModerator?: boolean;
 }
