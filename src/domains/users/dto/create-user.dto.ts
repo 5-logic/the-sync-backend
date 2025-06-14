@@ -9,6 +9,8 @@ import {
 	MinLength,
 } from 'class-validator';
 
+import { Gender } from '~/generated/prisma';
+
 export class CreateUserDto {
 	@ApiProperty()
 	@IsEmail()
@@ -20,15 +22,12 @@ export class CreateUserDto {
 
 	@ApiProperty()
 	@IsString()
-	@MinLength(12, { message: 'Password must be at least 12 characters' })
-	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/, {
-		message:
-			'Password must contain at least one uppercase letter, one number, and one special character',
-	})
+	@MinLength(12)
+	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	password: string;
 
 	@ApiProperty()
-	@IsIn(['Male', 'Female'])
+	@IsIn([Gender.Male, Gender.Female])
 	gender: Gender;
 
 	@ApiProperty()
@@ -40,5 +39,3 @@ export class CreateUserDto {
 	@IsBoolean()
 	isActive?: boolean = true;
 }
-
-export type Gender = 'Male' | 'Female';

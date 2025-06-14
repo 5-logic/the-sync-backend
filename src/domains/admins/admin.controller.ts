@@ -1,12 +1,4 @@
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	Post,
-	Put,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { AdminService } from '@/admins/admin.service';
@@ -23,11 +15,6 @@ export class AdminController {
 		return await this.adminService.create(createAdminDto);
 	}
 
-	@Get()
-	async findAll() {
-		return await this.adminService.findAll();
-	}
-
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.adminService.findOne(id);
@@ -39,10 +26,5 @@ export class AdminController {
 		@Body() updateAdminDto: UpdateAdminDto,
 	) {
 		return await this.adminService.update(id, updateAdminDto);
-	}
-
-	@Delete(':id')
-	async remove(@Param('id') id: string) {
-		return await this.adminService.remove(id);
 	}
 }

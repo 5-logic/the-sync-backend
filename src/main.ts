@@ -1,4 +1,4 @@
-import { ConsoleLogger } from '@nestjs/common';
+import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '@/app.module';
@@ -12,10 +12,17 @@ async function bootstrap() {
 
 	const app = await NestFactory.create(AppModule, { logger: logger });
 
+	// Enable validation globally
+	app.useGlobalPipes(new ValidationPipe());
+
 	// Setup Swagger
 	setupSwagger(app);
 
-	await app.listen(process.env.PORT ?? 4000);
+	const port = process.env.PORT ?? 4000;
+	await app.listen(port);
+
+	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
+	logger.log(`OpenAPI documentation is available at /swagger`, 'Bootstrap');
 }
 
 void bootstrap();
