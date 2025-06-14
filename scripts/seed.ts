@@ -319,52 +319,52 @@ const seedSkills = async () => {
 
 		// Fullstack Skills (skillSetId: 9e8d7c6b-5a49-3827-1605-94837261058f)
 		{
-			id: 'fullstack-001',
+			id: 'b1eefdea-2f9a-4c7c-b362-7bca838d4670',
 			name: 'MEAN Stack',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-002',
+			id: '518ea2a9-323b-4493-829c-fb53795f637d',
 			name: 'MERN Stack',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-003',
+			id: '410bf1ca-5343-47d0-88e0-a2db73f540a9',
 			name: 'LAMP Stack',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-004',
+			id: '5741d7f5-169b-4b37-be30-e79629483da8',
 			name: 'T3 Stack',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-005',
+			id: '88888aad-1ca8-439c-952d-d2bd745de4e7',
 			name: 'JAMstack',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-006',
+			id: 'c9cdd246-54bc-46e0-97d7-a8208d6e4c1d',
 			name: 'Serverless',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-007',
+			id: '86e68cbd-afbf-4f74-9438-4d8e5b7d8e22',
 			name: 'API Integration',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-008',
+			id: 'c29c5e97-fac3-4efc-9ecc-6a5dc743cefc',
 			name: 'Database Design',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-009',
+			id: 'aca84fe8-52e2-4696-b575-1db5b57a54f7',
 			name: 'Authentication & Authorization',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
 		{
-			id: 'fullstack-010',
+			id: 'be77bf0c-7f04-45be-8c61-6fffcf1fc300',
 			name: 'State Management',
 			skillSetId: '9e8d7c6b-5a49-3827-1605-94837261058f',
 		},
