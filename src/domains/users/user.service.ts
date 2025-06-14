@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { Role } from '@/auth/enums/role.enum';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
@@ -151,6 +152,44 @@ export class UserService {
 			return result;
 		} catch (error) {
 			this.logger.error('Error validating user', error);
+
+			throw error;
+		}
+	}
+
+	async checkRole(id: string): Promise<Role | null> {
+		try {
+			this.logger.log(`Checking role for user with ID: ${id}`);
+
+			const user = await this.prisma.user.findUnique({
+				where: { id: id },
+				include: {
+					student: true,
+					lecturer: true,
+				},
+			});
+
+			if (!user) {
+				this.logger.warn(`User with ID ${id} not found`);
+
+				return null;
+			}
+
+			if (user.lecturer) {
+				const role = user.lecturer.isModerator ? Role.MODERATOR : Role.LECTURER;
+				this.logger.log(`User with ID ${id} is a ${role}`);
+
+				return role;
+			}
+
+			if (user.student) {
+				this.logger.log(`User with ID ${id} is a ${Role.STUDENT}`);
+				return Role.STUDENT;
+			}
+
+			return null;
+		} catch (error) {
+			this.logger.error('Error checking user role', error);
 
 			throw error;
 		}
