@@ -20,3 +20,10 @@ export class UserLoginDto {
 	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	password: string;
 }
+
+export class UserRefreshDto {
+	@ApiProperty()
+	@IsString()
+	@IsNotEmpty()
+	refreshToken: string;
+}

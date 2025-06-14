@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { AdminService } from '@/admins/admin.service';
 import { AdminLoginDto, AdminRefreshDto } from '@/auth/dto/auth.admin.dto';
+import { UserLoginDto, UserRefreshDto } from '@/auth/dto/auth.user.dto';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtPayload } from '@/auth/interfaces/payload.interface';
 import { jwtAccessConfig } from '@/configs/jwt-access.config';
@@ -97,6 +98,88 @@ export class AuthService {
 			return { accessToken };
 		} catch (error) {
 			this.logger.error('Error during admin refresh', error);
+
+			throw error;
+		}
+	}
+
+	async loginUser(userLoginDto: UserLoginDto) {
+		try {
+			const user = await this.userService.validateUser(
+				userLoginDto.email,
+				userLoginDto.password,
+			);
+
+			if (!user) {
+				throw new UnauthorizedException('Not authorized');
+			}
+
+			const role = await this.userService.checkRole(user.id);
+
+			if (!role) {
+				throw new UnauthorizedException('User role not found');
+			}
+
+			const payload: JwtPayload = {
+				sub: user.id,
+				role: role,
+			};
+
+			const accessToken = await this.generateAccessToken(payload);
+			const refreshToken = await this.generateRefreshToken(payload);
+
+			return {
+				accessToken,
+				refreshToken,
+			};
+		} catch (error) {
+			this.logger.error('Error during user login', error);
+
+			throw error;
+		}
+	}
+
+	async refreshUser(userRefreshDto: UserRefreshDto) {
+		try {
+			const { refreshToken } = userRefreshDto;
+
+			const decoded: JwtPayload = await this.jwtService.verifyAsync(
+				refreshToken,
+				{
+					secret: this.jwtRefreshConfiguration.secret,
+				},
+			);
+
+			if (!decoded || decoded.role === Role.ADMIN) {
+				throw new UnauthorizedException('Invalid refresh token');
+			}
+
+			if (decoded.exp && decoded.exp < Date.now() / 1000) {
+				throw new UnauthorizedException('Refresh token has expired');
+			}
+
+			const user = await this.userService.findOne({ id: decoded.sub });
+
+			if (!user) {
+				throw new UnauthorizedException('User not found');
+			}
+
+			const role = await this.userService.checkRole(user.id);
+
+			if (!role) {
+				throw new UnauthorizedException('User role not found');
+			}
+
+			const payload: JwtPayload = {
+				sub: user.id,
+				role: role,
+			};
+
+			const accessToken = await this.generateAccessToken(payload);
+
+			return { accessToken };
+		} catch (error) {
+			this.logger.error('Error during user refresh', error);
 
 			throw error;
 		}
