@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
@@ -10,7 +10,7 @@ export class SemesterService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createSemesterDto: CreateSemesterDto): Promise<any> {
+	async create(createSemesterDto: CreateSemesterDto) {
 		try {
 			const newSemester = await this.prisma.semester.create({
 				data: createSemesterDto,
@@ -21,7 +21,7 @@ export class SemesterService {
 			});
 
 			this.logger.log(`Semester created with ID: ${newSemester.id}`);
-			this.logger.debug(`Semester`, newSemester);
+			this.logger.debug('Semester detail', newSemester);
 
 			return {
 				...newSemester,
@@ -34,17 +34,18 @@ export class SemesterService {
 		}
 	}
 
-	async findAll(): Promise<any[]> {
+	async findAll() {
 		try {
 			const semesters = await this.prisma.semester.findMany({
 				include: {
 					milestones: { select: { id: true } },
 					groups: { select: { id: true } },
 				},
-				orderBy: { startDate: 'asc' },
+				orderBy: { name: 'asc' },
 			});
 
 			this.logger.log(`Found ${semesters.length} semesters`);
+			this.logger.debug('Semesters detail', semesters);
 
 			return semesters.map((s) => ({
 				...s,
@@ -57,7 +58,7 @@ export class SemesterService {
 		}
 	}
 
-	async findOne(id: string): Promise<any> {
+	async findOne(id: string) {
 		try {
 			const semester = await this.prisma.semester.findUnique({
 				where: { id },
@@ -69,10 +70,12 @@ export class SemesterService {
 
 			if (!semester) {
 				this.logger.warn(`Semester with ID ${id} not found`);
-				return null;
+				throw new NotFoundException(`Semester with ID ${id} not found`);
 			}
 
 			this.logger.log(`Semester found with ID: ${semester.id}`);
+			this.logger.debug('Semester detail', semester);
+
 			return {
 				...semester,
 				milestones: semester.milestones.map((m) => m.id),
@@ -84,7 +87,7 @@ export class SemesterService {
 		}
 	}
 
-	async update(id: string, updateSemesterDto: UpdateSemesterDto): Promise<any> {
+	async update(id: string, updateSemesterDto: UpdateSemesterDto) {
 		try {
 			const updatedSemester = await this.prisma.semester.update({
 				where: { id },
@@ -96,6 +99,8 @@ export class SemesterService {
 			});
 
 			this.logger.log(`Semester updated with ID: ${updatedSemester.id}`);
+			this.logger.debug('Updated Semester', updatedSemester);
+
 			return {
 				...updatedSemester,
 				milestones: updatedSemester.milestones.map((m) => m.id),
@@ -107,13 +112,15 @@ export class SemesterService {
 		}
 	}
 
-	async remove(id: string): Promise<any> {
+	async remove(id: string) {
 		try {
 			const deletedSemester = await this.prisma.semester.delete({
 				where: { id },
 			});
 
 			this.logger.log(`Semester deleted with ID: ${deletedSemester.id}`);
+			this.logger.debug('Deleted Semester', deletedSemester);
+
 			return {
 				status: 'success',
 				message: `Semester with ID ${deletedSemester.id} deleted successfully`,
