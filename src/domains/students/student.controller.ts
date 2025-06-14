@@ -23,6 +23,11 @@ export class StudentController {
 		return await this.studentService.create(createStudentDto);
 	}
 
+	@Post('import')
+	async createMany(@Body() createStudentDtos: CreateStudentDto[]) {
+		return await this.studentService.createMany(createStudentDtos);
+	}
+
 	@Get()
 	async findAll() {
 		return await this.studentService.findAll();
