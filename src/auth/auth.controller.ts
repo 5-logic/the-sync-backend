@@ -9,25 +9,25 @@ import { UserLoginDto } from '@/auth/dto/auth.user.dto';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-	constructor(private readonly authSerivce: AuthService) {}
+	constructor(private readonly authService: AuthService) {}
 
 	@Post('admin/login')
 	async loginAdmin(@Body() adminLoginDto: AdminLoginDto) {
-		return await this.authSerivce.loginAdmin(adminLoginDto);
+		return await this.authService.loginAdmin(adminLoginDto);
 	}
 
 	@Post('admin/refresh')
 	async refreshAdmin(@Body() refreshDto: RefreshDto) {
-		return await this.authSerivce.refreshAdmin(refreshDto);
+		return await this.authService.refreshAdmin(refreshDto);
 	}
 
 	@Post('user/login')
 	async loginUser(@Body() userLoginDto: UserLoginDto) {
-		return await this.authSerivce.loginUser(userLoginDto);
+		return await this.authService.loginUser(userLoginDto);
 	}
 
 	@Post('user/refresh')
 	async refreshUser(@Body() refreshDto: RefreshDto) {
-		return await this.authSerivce.refreshUser(refreshDto);
+		return await this.authService.refreshUser(refreshDto);
 	}
 }
