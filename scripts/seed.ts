@@ -13,7 +13,7 @@ const seedAdmin = async () => {
 		},
 	});
 
-	console.log('Admin seeded successfully');
+	console.log('👤 Admin seeded successfully');
 };
 
 const seedMajor = async () => {
@@ -32,7 +32,7 @@ const seedMajor = async () => {
 
 	await prisma.$transaction(operations);
 
-	console.log('Major seeded successfully');
+	console.log('🎓 Major seeded successfully');
 };
 
 const seedResponsibility = async () => {
@@ -70,7 +70,7 @@ const seedResponsibility = async () => {
 		),
 	);
 
-	console.log('Responsibilities seeded successfully');
+	console.log('📋 Responsibilities seeded successfully');
 };
 
 const seedSkillSets = async () => {
@@ -108,7 +108,7 @@ const seedSkillSets = async () => {
 		),
 	);
 
-	console.log('Skill sets seeded successfully');
+	console.log('📦 Skill sets seeded successfully');
 };
 
 const seedSkills = async () => {
@@ -1410,7 +1410,7 @@ const seedSkills = async () => {
 		),
 	);
 
-	console.log('Skills seeded successfully');
+	console.log('🛠️ Skills seeded successfully');
 };
 
 async function main() {
