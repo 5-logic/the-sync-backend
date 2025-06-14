@@ -1,7 +1,7 @@
-import generatePassword from 'generate-password';
+import { generate } from 'generate-password';
 
 export const generateStrongPassword = (): string => {
-	return generatePassword.generate({
+	return generate({
 		length: 12,
 		numbers: true,
 		symbols: true,
