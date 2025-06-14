@@ -14,6 +14,7 @@
 			"~/*": ["./*"],
 			"@/*": ["src/*"],
 			"@/auth/*": ["src/auth/*"],
+			"@/configs/*": ["src/configs/*"],
 			"@/theses/*": ["src/domains/theses/*"],
 			"@/majors/*": ["src/domains/majors/*"],
 			"@/admins/*": ["src/domains/admins/*"],
