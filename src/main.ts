@@ -2,6 +2,8 @@ import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '@/app.module';
+import { HttpExceptionFilter } from '@/filters/http-exception/http-exception.filter';
+import { TransformInterceptor } from '@/interceptors/transform/transform.interceptor';
 import { setupSwagger } from '@/swagger/setup';
 
 async function bootstrap() {
@@ -14,6 +16,12 @@ async function bootstrap() {
 
 	// Enable validation globally
 	app.useGlobalPipes(new ValidationPipe());
+
+	// Enable global exception filters
+	app.useGlobalFilters(new HttpExceptionFilter());
+
+	// Enable global interceptors
+	app.useGlobalInterceptors(new TransformInterceptor());
 
 	// Setup Swagger
 	setupSwagger(app);
