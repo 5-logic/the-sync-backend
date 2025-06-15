@@ -39,6 +39,7 @@ export class SemesterService {
 					this.logger.warn(
 						`Another semester already has status ${createSemesterDto.status}`,
 					);
+
 					throw new ConflictException(
 						`Another semester already has status ${createSemesterDto.status}. Only one semester can have this status at a time.`,
 					);
@@ -142,6 +143,7 @@ export class SemesterService {
 					this.logger.warn(
 						`Another semester already has status ${updateSemesterDto.status}`,
 					);
+
 					throw new ConflictException(
 						`Another semester already has status ${updateSemesterDto.status}. Only one semester can have this status at a time.`,
 					);

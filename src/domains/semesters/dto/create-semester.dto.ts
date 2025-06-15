@@ -17,11 +17,14 @@ export class CreateSemesterDto {
 	@IsInt()
 	maxGroup?: number;
 
-	@ApiProperty({ enum: SemesterStatus })
+	@ApiProperty({ enum: SemesterStatus, default: SemesterStatus.NotYet })
 	@IsEnum(SemesterStatus)
 	status: SemesterStatus;
 
-	@ApiPropertyOptional({ enum: OngoingPhase })
+	@ApiPropertyOptional({
+		enum: OngoingPhase,
+		default: OngoingPhase.ScopeAdjustable,
+	})
 	@IsOptional()
 	@IsEnum(OngoingPhase)
 	ongoingPhase?: OngoingPhase;
