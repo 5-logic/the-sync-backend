@@ -9,7 +9,6 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { UserService } from '@/users/user.service';
-import { hash } from '@/utils/hash.util';
 
 @Injectable()
 export class StudentService {
@@ -20,44 +19,69 @@ export class StudentService {
 		private readonly userService: UserService,
 	) {}
 
-	async create(createStudentDto: CreateStudentDto): Promise<any> {
+	async create(createStudentDto: CreateStudentDto) {
 		try {
-			const result = await this.prisma.$transaction(async () => {
+			const result = await this.prisma.$transaction(async (prisma) => {
 				const newUser = await this.userService.create(
 					createStudentDto.createUserDto,
+					prisma,
 				);
 				const userId = newUser.id;
 
-				const existingStudent = await this.prisma.student.findUnique({
-					where: { userId },
+				const existingStudentId = await prisma.student.findUnique({
+					where: { studentId: createStudentDto.studentId },
 				});
-				if (existingStudent) {
+				if (existingStudentId) {
 					throw new ConflictException(
-						`Student with userId ${userId} already exists`,
+						`Student with studentId ${createStudentDto.studentId} already exists`,
 					);
 				}
 
-				const newStudent = await this.prisma.student.create({
+				const major = await prisma.major.findUnique({
+					where: { id: createStudentDto.majorId },
+				});
+				if (!major) {
+					throw new NotFoundException(
+						`Major with id ${createStudentDto.majorId} not found`,
+					);
+				}
+
+				const student = await prisma.student.create({
 					data: {
 						userId,
 						studentId: createStudentDto.studentId,
-						roles: createStudentDto.roles,
-						skills: createStudentDto.skills,
-						academicInterests: createStudentDto.academicInterests,
 						majorId: createStudentDto.majorId,
-					},
-					include: {
-						groups: { select: { id: true } },
 					},
 				});
 
-				return {
-					...newStudent,
-					groups: newStudent.groups?.map((g: { id: string }) => g.id) ?? [],
-				};
+				if (createStudentDto.semesterId) {
+					const semester = await prisma.semester.findUnique({
+						where: { id: createStudentDto.semesterId },
+					});
+					if (!semester) {
+						throw new NotFoundException(
+							`Semester with id ${createStudentDto.semesterId} not found`,
+						);
+					}
+
+					await prisma.enrollment.create({
+						data: {
+							studentId: createStudentDto.studentId,
+							semesterId: createStudentDto.semesterId,
+							status: 'Ongoing',
+						},
+					});
+					this.logger.log(
+						`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
+					);
+				}
+
+				return student;
 			});
 
 			this.logger.log(`Student created with userId: ${result.userId}`);
+			this.logger.debug('Student detail', result);
+
 			return result;
 		} catch (error) {
 			this.logger.error('Error creating student', error);
@@ -65,15 +89,13 @@ export class StudentService {
 		}
 	}
 
-	async findAll(): Promise<any[]> {
+	async findAll() {
 		try {
-			const students = await this.prisma.student.findMany({
-				include: {
-					groups: { select: { id: true } },
-				},
-			});
+			const students = await this.prisma.student.findMany();
 
 			this.logger.log(`Found ${students.length} students`);
+			this.logger.debug('Students detail', students);
+
 			return students;
 		} catch (error) {
 			this.logger.error('Error fetching students', error);
@@ -81,96 +103,136 @@ export class StudentService {
 		}
 	}
 
-	async findOne(userId: string): Promise<any> {
+	async findOne(id: string) {
 		try {
-			const student = await this.prisma.student.findUnique({
-				where: { userId },
-				include: {
-					groups: { select: { id: true } },
-				},
+			this.logger.log(`Fetching student with userId: ${id}`);
+
+			const student = await this.prisma.student.findFirst({
+				where: { userId: id },
 			});
 
 			if (!student) {
-				this.logger.warn(`Student with userId ${userId} not found`);
-				throw new NotFoundException(`Student with userId ${userId} not found`);
+				this.logger.warn(`Student with userId ${id} not found`);
+				throw new NotFoundException(`Student with userId ${id} not found`);
 			}
 
-			this.logger.log(`Student found with userId: ${userId}`);
+			this.logger.log(`Student found with userId: ${id}`);
+			this.logger.debug('Student detail', student);
+
 			return student;
 		} catch (error) {
-			this.logger.error(`Error fetching student with userId ${userId}`, error);
+			this.logger.error(`Error fetching student with userId ${id}`, error);
 			throw error;
 		}
 	}
 
-	async update(
-		userId: string,
-		updateStudentDto: UpdateStudentDto,
-	): Promise<any> {
+	async update(id: string, updateStudentDto: UpdateStudentDto) {
 		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				if (updateStudentDto.createUserDto) {
-					const { password, ...userFields } = updateStudentDto.createUserDto;
-					const dataToUpdate: any = { ...userFields };
-
-					if (password) {
-						dataToUpdate.password = await hash(password);
-					}
-
-					await prisma.user.update({
-						where: { id: userId },
-						data: dataToUpdate,
-					});
-				}
-
-				const studentFields = { ...updateStudentDto };
-				delete studentFields.createUserDto;
-
-				const updatedStudent = await prisma.student.update({
-					where: { userId },
-					data: studentFields,
-					include: {
-						groups: { select: { id: true } },
-					},
-				});
-
-				return updatedStudent;
+			const existingStudent = await this.prisma.student.findUnique({
+				where: { userId: id },
 			});
 
-			this.logger.log(`Student updated with userId: ${userId}`);
-			this.logger.debug('Updated Student', result);
+			if (!existingStudent) {
+				this.logger.warn(`Student with userId ${id} not found for update`);
+				throw new NotFoundException(`Student with userId ${id} not found`);
+			}
 
-			return result;
+			const updatedStudent = await this.prisma.student.update({
+				where: { userId: id },
+				data: {
+					studentId: updateStudentDto.studentId,
+					majorId: updateStudentDto.majorId,
+				},
+			});
+
+			this.logger.log(`Student updated with userId: ${updatedStudent.userId}`);
+			this.logger.debug('Updated Student', updatedStudent);
+
+			return updatedStudent;
 		} catch (error) {
-			this.logger.error(`Error updating student with userId ${userId}`, error);
+			this.logger.error(`Error updating student with userId ${id}`, error);
 			throw error;
 		}
 	}
 
-	async remove(userId: string): Promise<any> {
+	async remove(id: string) {
 		try {
-			const deletedStudent = await this.prisma.student.delete({
-				where: { userId },
+			const deleted = await this.prisma.student.delete({
+				where: { userId: id },
 			});
 
-			await this.prisma.user.delete({ where: { id: userId } });
+			await this.prisma.user.delete({ where: { id } });
 
-			this.logger.log(
-				`Student and user deleted with userId: ${deletedStudent.userId}`,
-			);
-			this.logger.debug('Deleted Student', deletedStudent);
+			this.logger.log(`Student and user deleted with userId: ${id}`);
+			this.logger.debug('Deleted Student', deleted);
 
 			return {
 				status: 'success',
-				message: `Student and user with userId ${deletedStudent.userId} deleted successfully`,
+				message: `Student and user with userId ${id} deleted successfully`,
 			};
 		} catch (error) {
-			if (error.code === 'P2025') {
-				this.logger.warn(`Student with userId ${userId} not found`);
-				throw new NotFoundException(`Student with userId ${userId} not found`);
-			}
-			this.logger.error(`Error deleting student with userId ${userId}`, error);
+			this.logger.error(`Error deleting student with userId ${id}`, error);
 			throw error;
 		}
+	}
+
+	async createMany(createStudentDtos: CreateStudentDto[]) {
+		const results: any[] = [];
+		for (const dto of createStudentDtos) {
+			try {
+				const result = await this.prisma.$transaction(async (prisma) => {
+					const newUser = await this.userService.create(
+						dto.createUserDto,
+						prisma,
+					);
+					const userId = newUser.id;
+
+					const existingStudent = await prisma.student.findUnique({
+						where: { userId },
+					});
+
+					if (existingStudent) {
+						throw new ConflictException(
+							`Student with userId ${userId} already exists`,
+						);
+					}
+
+					const student = await prisma.student.create({
+						data: {
+							userId,
+							studentId: dto.studentId,
+							majorId: dto.majorId,
+						},
+					});
+
+					if (dto.semesterId) {
+						await prisma.enrollment.create({
+							data: {
+								studentId: dto.studentId,
+								semesterId: dto.semesterId,
+								status: 'Ongoing',
+							},
+						});
+					}
+
+					return { student };
+				});
+
+				this.logger.log(
+					`Student created with userId: ${result.student.userId}`,
+				);
+				this.logger.debug('Student detail', result.student);
+
+				results.push({ success: true, student: result.student });
+			} catch (error) {
+				this.logger.error('Error creating student', error);
+				results.push({
+					success: false,
+					error: error.message ?? error.toString(),
+					dto,
+				});
+			}
+		}
+		return results;
 	}
 }

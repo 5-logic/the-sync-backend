@@ -23,6 +23,11 @@ export class LecturerController {
 		return await this.lecturerService.create(createLecturerDto);
 	}
 
+	@Post('import')
+	async createMany(@Body() createLecturerDtos: CreateLecturerDto[]) {
+		return await this.lecturerService.createMany(createLecturerDtos);
+	}
+
 	@Get()
 	async findAll() {
 		return await this.lecturerService.findAll();
