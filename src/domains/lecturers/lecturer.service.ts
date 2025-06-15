@@ -175,7 +175,7 @@ export class LecturerService {
 				this.logger.error('Error creating lecturer', error);
 				results.push({
 					success: false,
-					error: error.message || error.toString(),
+					error: error.message ?? error.toString(),
 					dto,
 				});
 			}

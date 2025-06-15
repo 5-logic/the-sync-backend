@@ -13,7 +13,7 @@ export class UserService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(createUserDto: CreateUserDto, prismaClient?: any) {
-		const prisma = prismaClient || this.prisma;
+		const prisma = prismaClient ?? this.prisma;
 		try {
 			const existingUser = await prisma.user.findFirst({
 				where: {

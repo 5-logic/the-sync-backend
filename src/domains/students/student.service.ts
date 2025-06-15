@@ -228,7 +228,7 @@ export class StudentService {
 				this.logger.error('Error creating student', error);
 				results.push({
 					success: false,
-					error: error.message || error.toString(),
+					error: error.message ?? error.toString(),
 					dto,
 				});
 			}
