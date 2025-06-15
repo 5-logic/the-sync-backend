@@ -27,7 +27,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 				exceptionResponse !== null
 			) {
 				const responseObj = exceptionResponse as any;
-				errorMessage = responseObj.message || responseObj.error || responseObj;
+				errorMessage = responseObj.message ?? responseObj.error ?? responseObj;
 			} else {
 				errorMessage = 'An error occurred';
 			}
