@@ -1,5 +1,27 @@
-import { PartialType } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+	IsEmail,
+	IsOptional,
+	IsString,
+	Matches,
+	MinLength,
+} from 'class-validator';
 
-import { CreateAdminDto } from '@/admins/dto/create-admin.dto';
+export class UpdateAdminDto {
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsString()
+	username?: string;
 
-export class UpdateAdminDto extends PartialType(CreateAdminDto) {}
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsEmail()
+	email?: string;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsString()
+	@MinLength(12)
+	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
+	password?: string;
+}
