@@ -18,19 +18,20 @@ export class UserService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createUserDto: CreateUserDto, prismaClient?: any) {
-		const prisma = prismaClient ?? this.prisma;
+	static async create(
+		createUserDto: CreateUserDto,
+		prismaService: PrismaService,
+		logger: Logger,
+	) {
 		try {
-			const existingUser = await prisma.user.findFirst({
+			const existingUser = await prismaService.user.findFirst({
 				where: {
 					email: createUserDto.email,
 				},
 			});
 
 			if (existingUser) {
-				this.logger.warn(
-					`User with email ${createUserDto.email}  already exists`,
-				);
+				logger.warn(`User with email ${createUserDto.email}  already exists`);
 
 				throw new ConflictException('User with this email already exists');
 			}
@@ -39,22 +40,22 @@ export class UserService {
 
 			const hashedPassword = await hash(password);
 
-			const newUser = await prisma.user.create({
+			const newUser = await prismaService.user.create({
 				data: {
 					...createUserDto,
 					password: hashedPassword,
 				},
 			});
 
-			this.logger.log(`User created with ID: ${newUser.id}`);
-			this.logger.debug('User detail', newUser);
+			logger.log(`User created with ID: ${newUser.id}`);
+			logger.debug('User detail', newUser);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { password: _, ...result } = newUser;
 
 			return result;
 		} catch (error) {
-			this.logger.error('Error creating user', error);
+			logger.error('Error creating user', error);
 
 			throw error;
 		}
