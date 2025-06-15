@@ -1,4 +1,4 @@
-FROM node:20.19.2 AS base
+FROM node:20.19.2-alpine AS base
 RUN npm install -g --ignore-scripts pnpm
 
 #--------------------------------------------------
