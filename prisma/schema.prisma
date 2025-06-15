@@ -144,7 +144,6 @@ model User {
 
   student  Student?
   lecturer Lecturer?
-  theses   Thesis[]
 
   @@map("users")
 }
@@ -173,6 +172,7 @@ model Lecturer {
   supervisions      Supervision[]
   assignmentReviews AssignmentReview[]
   reviews           Review[]
+  theses            Thesis[]
 
   @@map("lecturers")
 }
@@ -206,9 +206,9 @@ model Thesis {
   status         ThesisStatus @map("status")
   isPublish      Boolean      @default(false) @map("is_publish")
   groupId        String?      @map("group_id")
-  userId         String       @map("user_id")
+  lecturerId     String       @map("lecturer_id")
 
-  user                 User                  @relation(fields: [userId], references: [id])
+  lecturer             Lecturer              @relation(fields: [lecturerId], references: [userId])
   group                Group?
   supervisions         Supervision[]
   thesisVersions       ThesisVersion[]
