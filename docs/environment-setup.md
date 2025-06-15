@@ -13,6 +13,7 @@ Create a `.env` file in the root directory of the project and configure the foll
 | 3   | `DIRECT_URL`               | Direct connection to the database, primarily used for Prisma migrations   | `postgresql://postgres:postgres@localhost:5432/thesync_db`                |
 | 4   | `JWT_ACCESS_TOKEN_SECRET`  | Your JWT access token secret                                              | `your_jwt_access_secret`                                                  |
 | 5   | `JWT_REFRESH_TOKEN_SECRET` | Your JWT refresh token secret                                             | `your_jwt_refresh_secret`                                                 |
+| 6   | `ALLOWED_ORIGINS`          | The allowed origins for CORS (separated by commas )                       | `http://localhost:3000,http://localhost:3001`                             |
 
 ### Required Variables
 
