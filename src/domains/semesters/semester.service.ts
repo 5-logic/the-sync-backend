@@ -173,21 +173,4 @@ export class SemesterService {
 			throw error;
 		}
 	}
-
-	async remove(id: string) {
-		try {
-			const deletedSemester = await this.prisma.semester.delete({
-				where: { id },
-			});
-
-			this.logger.log(`Semester deleted with ID: ${deletedSemester.id}`);
-			this.logger.debug('Deleted Semester', deletedSemester);
-
-			return;
-		} catch (error) {
-			this.logger.error('Error deleting semester', error);
-
-			throw error;
-		}
-	}
 }

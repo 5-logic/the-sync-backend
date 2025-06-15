@@ -107,15 +107,35 @@ export class StudentService {
 			throw error;
 		}
 	}
-
 	async findAll() {
 		try {
-			const students = await this.prisma.student.findMany();
+			this.logger.log('Fetching all students');
 
-			this.logger.log(`Found ${students.length} students`);
-			this.logger.debug('Students detail', students);
+			const students = await this.prisma.student.findMany({
+				include: {
+					user: {
+						select: {
+							id: true,
+							fullName: true,
+							email: true,
+							gender: true,
+							phoneNumber: true,
+							isActive: true,
+						},
+					},
+				},
+			});
 
-			return students;
+			const formattedStudents = students.map((student) => ({
+				...student.user,
+				studentId: student.studentId,
+				majorId: student.majorId,
+			}));
+
+			this.logger.log(`Found ${formattedStudents.length} students`);
+			this.logger.debug('Students detail', formattedStudents);
+
+			return formattedStudents;
 		} catch (error) {
 			this.logger.error('Error fetching students', error);
 			throw error;
@@ -126,19 +146,36 @@ export class StudentService {
 		try {
 			this.logger.log(`Fetching student with userId: ${id}`);
 
-			const student = await this.prisma.student.findFirst({
+			const student = await this.prisma.student.findUnique({
 				where: { userId: id },
+				include: {
+					user: {
+						select: {
+							id: true,
+							fullName: true,
+							email: true,
+							gender: true,
+							phoneNumber: true,
+							isActive: true,
+						},
+					},
+				},
 			});
 
 			if (!student) {
 				this.logger.warn(`Student with userId ${id} not found`);
+
 				throw new NotFoundException(`Student with userId ${id} not found`);
 			}
 
 			this.logger.log(`Student found with userId: ${id}`);
 			this.logger.debug('Student detail', student);
 
-			return student;
+			return {
+				...student.user,
+				studentId: student.studentId,
+				majorId: student.majorId,
+			};
 		} catch (error) {
 			this.logger.error(`Error fetching student with userId ${id}`, error);
 			throw error;
@@ -196,27 +233,6 @@ export class StudentService {
 		} catch (error) {
 			this.logger.error(`Error updating student with userId ${id}`, error);
 
-			throw error;
-		}
-	}
-
-	async remove(id: string) {
-		try {
-			const deleted = await this.prisma.student.delete({
-				where: { userId: id },
-			});
-
-			await this.prisma.user.delete({ where: { id } });
-
-			this.logger.log(`Student and user deleted with userId: ${id}`);
-			this.logger.debug('Deleted Student', deleted);
-
-			return {
-				status: 'success',
-				message: `Student and user with userId ${id} deleted successfully`,
-			};
-		} catch (error) {
-			this.logger.error(`Error deleting student with userId ${id}`, error);
 			throw error;
 		}
 	}
