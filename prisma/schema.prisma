@@ -78,6 +78,7 @@ enum OngoingPhase {
 }
 
 enum EnrollmentStatus {
+  NotYet  @map("not_yet")
   Failed  @map("failed")
   Ongoing @map("ongoing")
   Passed  @map("passed")
