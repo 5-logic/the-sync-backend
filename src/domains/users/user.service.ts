@@ -12,6 +12,8 @@ import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { hash, verify } from '@/utils/hash.util';
 import { generateStrongPassword } from '@/utils/password-generator.util';
 
+import { PrismaClient } from '~/generated/prisma';
+
 @Injectable()
 export class UserService {
 	private readonly logger = new Logger(UserService.name);
@@ -20,11 +22,11 @@ export class UserService {
 
 	static async create(
 		createUserDto: CreateUserDto,
-		prismaService: PrismaService,
+		prismaClient: PrismaClient,
 		logger: Logger,
 	) {
 		try {
-			const existingUser = await prismaService.user.findFirst({
+			const existingUser = await prismaClient.user.findFirst({
 				where: {
 					email: createUserDto.email,
 				},
@@ -40,7 +42,7 @@ export class UserService {
 
 			const hashedPassword = await hash(password);
 
-			const newUser = await prismaService.user.create({
+			const newUser = await prismaClient.user.create({
 				data: {
 					...createUserDto,
 					password: hashedPassword,
@@ -53,7 +55,10 @@ export class UserService {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { password: _, ...result } = newUser;
 
-			return result;
+			return {
+				...result,
+				plainPassword: password,
+			};
 		} catch (error) {
 			logger.error('Error creating user', error);
 

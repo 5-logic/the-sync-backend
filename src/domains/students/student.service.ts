@@ -8,41 +8,65 @@ import {
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
+import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UserService } from '@/users/user.service';
+
+import { EnrollmentStatus, PrismaClient } from '~/generated/prisma';
 
 @Injectable()
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
 
-	constructor(
-		private readonly prisma: PrismaService,
-		private readonly userService: UserService,
-	) {}
+	constructor(private readonly prisma: PrismaService) {}
 
 	async create(createStudentDto: CreateStudentDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
-				const newUser = await this.userService.create(
-					createStudentDto.createUserDto,
-					prisma,
+				const major = await prisma.major.findUnique({
+					where: { id: createStudentDto.majorId },
+				});
+
+				if (!major) {
+					throw new NotFoundException(
+						`Major with id ${createStudentDto.majorId} not found`,
+					);
+				}
+
+				const semester = await prisma.semester.findUnique({
+					where: { id: createStudentDto.semesterId },
+				});
+
+				if (!semester) {
+					throw new NotFoundException(
+						`Semester with id ${createStudentDto.semesterId} not found`,
+					);
+				}
+
+				const createUserDto: CreateUserDto = {
+					email: createStudentDto.email,
+					fullName: createStudentDto.fullName,
+					password: createStudentDto.password,
+					gender: createStudentDto.gender,
+					phoneNumber: createStudentDto.phoneNumber,
+					isActive: createStudentDto.isActive,
+				};
+
+				// TODO: To send email to student with their credentials
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { plainPassword, ...newUser } = await UserService.create(
+					createUserDto,
+					prisma as PrismaClient,
+					this.logger,
 				);
 				const userId = newUser.id;
 
 				const existingStudentId = await prisma.student.findUnique({
 					where: { studentId: createStudentDto.studentId },
 				});
+
 				if (existingStudentId) {
 					throw new ConflictException(
 						`Student with studentId ${createStudentDto.studentId} already exists`,
-					);
-				}
-
-				const major = await prisma.major.findUnique({
-					where: { id: createStudentDto.majorId },
-				});
-				if (!major) {
-					throw new NotFoundException(
-						`Major with id ${createStudentDto.majorId} not found`,
 					);
 				}
 
@@ -54,37 +78,32 @@ export class StudentService {
 					},
 				});
 
-				if (createStudentDto.semesterId) {
-					const semester = await prisma.semester.findUnique({
-						where: { id: createStudentDto.semesterId },
-					});
-					if (!semester) {
-						throw new NotFoundException(
-							`Semester with id ${createStudentDto.semesterId} not found`,
-						);
-					}
+				await prisma.enrollment.create({
+					data: {
+						studentId: createStudentDto.studentId,
+						semesterId: createStudentDto.semesterId,
+						status: EnrollmentStatus.NotYet,
+					},
+				});
 
-					await prisma.enrollment.create({
-						data: {
-							studentId: createStudentDto.studentId,
-							semesterId: createStudentDto.semesterId,
-							status: 'Ongoing',
-						},
-					});
-					this.logger.log(
-						`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
-					);
-				}
+				this.logger.log(
+					`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
+				);
 
-				return student;
+				return {
+					...newUser,
+					studentId: student.studentId,
+					majorId: student.majorId,
+				};
 			});
 
-			this.logger.log(`Student created with userId: ${result.userId}`);
+			this.logger.log(`Student created with userId: ${result.id}`);
 			this.logger.debug('Student detail', result);
 
 			return result;
 		} catch (error) {
 			this.logger.error('Error creating student', error);
+
 			throw error;
 		}
 	}
@@ -177,62 +196,106 @@ export class StudentService {
 	}
 
 	async createMany(createStudentDtos: CreateStudentDto[]) {
-		const results: any[] = [];
-		for (const dto of createStudentDtos) {
-			try {
-				const result = await this.prisma.$transaction(async (prisma) => {
-					const newUser = await this.userService.create(
-						dto.createUserDto,
-						prisma,
-					);
-					const userId = newUser.id;
+		try {
+			const results = await this.prisma.$transaction(async (prisma) => {
+				const createdStudents: any[] = [];
 
-					const existingStudent = await prisma.student.findUnique({
-						where: { userId },
+				for (const createStudentDto of createStudentDtos) {
+					// Validate major exists
+					const major = await prisma.major.findUnique({
+						where: { id: createStudentDto.majorId },
 					});
 
-					if (existingStudent) {
-						throw new ConflictException(
-							`Student with userId ${userId} already exists`,
+					if (!major) {
+						throw new NotFoundException(
+							`Major with id ${createStudentDto.majorId} not found`,
 						);
 					}
 
+					const semester = await prisma.semester.findUnique({
+						where: { id: createStudentDto.semesterId },
+					});
+
+					if (!semester) {
+						throw new NotFoundException(
+							`Semester with id ${createStudentDto.semesterId} not found`,
+						);
+					}
+
+					// Create user DTO
+					const createUserDto: CreateUserDto = {
+						email: createStudentDto.email,
+						fullName: createStudentDto.fullName,
+						password: createStudentDto.password,
+						gender: createStudentDto.gender,
+						phoneNumber: createStudentDto.phoneNumber,
+						isActive: createStudentDto.isActive,
+					};
+
+					// Create user
+					// TODO: To send email to student with their credentials
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+					const { plainPassword, ...newUser } = await UserService.create(
+						createUserDto,
+						prisma as PrismaClient,
+						this.logger,
+					);
+					const userId = newUser.id;
+
+					// Check if student ID already exists
+					const existingStudentId = await prisma.student.findUnique({
+						where: { studentId: createStudentDto.studentId },
+					});
+
+					if (existingStudentId) {
+						throw new ConflictException(
+							`Student with studentId ${createStudentDto.studentId} already exists`,
+						);
+					}
+
+					// Create student
 					const student = await prisma.student.create({
 						data: {
 							userId,
-							studentId: dto.studentId,
-							majorId: dto.majorId,
+							studentId: createStudentDto.studentId,
+							majorId: createStudentDto.majorId,
 						},
 					});
 
-					if (dto.semesterId) {
-						await prisma.enrollment.create({
-							data: {
-								studentId: dto.studentId,
-								semesterId: dto.semesterId,
-								status: 'Ongoing',
-							},
-						});
-					}
+					await prisma.enrollment.create({
+						data: {
+							studentId: createStudentDto.studentId,
+							semesterId: createStudentDto.semesterId,
+							status: EnrollmentStatus.NotYet,
+						},
+					});
 
-					return { student };
-				});
+					this.logger.log(
+						`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
+					);
 
-				this.logger.log(
-					`Student created with userId: ${result.student.userId}`,
-				);
-				this.logger.debug('Student detail', result.student);
+					const result = {
+						...newUser,
+						studentId: student.studentId,
+						majorId: student.majorId,
+					};
 
-				results.push({ success: true, student: result.student });
-			} catch (error) {
-				this.logger.error('Error creating student', error);
-				results.push({
-					success: false,
-					error: error.message ?? error.toString(),
-					dto,
-				});
-			}
+					createdStudents.push(result);
+
+					this.logger.log(`Student created with userId: ${result.id}`);
+					this.logger.debug('Student detail', result);
+				}
+
+				return createdStudents;
+			});
+
+			this.logger.log(`Successfully created ${results.length} students`);
+
+			return results;
+		} catch (error) {
+			this.logger.error('Error creating students in batch', error);
+
+			throw error;
 		}
-		return results;
 	}
 }

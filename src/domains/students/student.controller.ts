@@ -7,7 +7,7 @@ import {
 	Post,
 	Put,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiTags } from '@nestjs/swagger';
 
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
@@ -23,6 +23,7 @@ export class StudentController {
 		return await this.studentService.create(createStudentDto);
 	}
 
+	@ApiBody({ type: [CreateStudentDto] })
 	@Post('import')
 	async createMany(@Body() createStudentDtos: CreateStudentDto[]) {
 		return await this.studentService.createMany(createStudentDtos);
