@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
@@ -19,6 +24,26 @@ export class SemesterService {
 					groups: { select: { id: true } },
 				},
 			});
+
+			if (
+				typeof createSemesterDto.status === 'string' &&
+				['Preparing', 'Picking', 'Ongoing'].includes(createSemesterDto.status)
+			) {
+				const conflictingSemester = await this.prisma.semester.findFirst({
+					where: {
+						status: createSemesterDto.status,
+					},
+				});
+
+				if (conflictingSemester) {
+					this.logger.warn(
+						`Another semester already has status ${createSemesterDto.status}`,
+					);
+					throw new ConflictException(
+						`Another semester already has status ${createSemesterDto.status}. Only one semester can have this status at a time.`,
+					);
+				}
+			}
 
 			this.logger.log(`Semester created with ID: ${newSemester.id}`);
 			this.logger.debug('Semester detail', newSemester);
@@ -100,6 +125,27 @@ export class SemesterService {
 				this.logger.warn(`Semester with ID ${id} not found for update`);
 
 				throw new NotFoundException(`Semester with ID ${id} not found`);
+			}
+
+			if (
+				typeof updateSemesterDto.status === 'string' &&
+				['Preparing', 'Picking', 'Ongoing'].includes(updateSemesterDto.status)
+			) {
+				const conflictingSemester = await this.prisma.semester.findFirst({
+					where: {
+						status: updateSemesterDto.status,
+						id: { not: id },
+					},
+				});
+
+				if (conflictingSemester) {
+					this.logger.warn(
+						`Another semester already has status ${updateSemesterDto.status}`,
+					);
+					throw new ConflictException(
+						`Another semester already has status ${updateSemesterDto.status}. Only one semester can have this status at a time.`,
+					);
+				}
 			}
 
 			const updatedSemester = await this.prisma.semester.update({
