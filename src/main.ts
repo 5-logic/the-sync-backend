@@ -1,4 +1,5 @@
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from '@/app.module';
@@ -13,6 +14,12 @@ async function bootstrap() {
 	});
 
 	const app = await NestFactory.create(AppModule, { logger: logger });
+	const configService = app.get<ConfigService>(ConfigService);
+	const corsConfig = configService.get('cors-config');
+	const isProduction = configService.get('NODE_ENV') == 'production' || false;
+
+	// Enable CORS
+	app.enableCors(isProduction ? corsConfig : { origin: '*' });
 
 	// Enable validation globally
 	app.useGlobalPipes(new ValidationPipe());

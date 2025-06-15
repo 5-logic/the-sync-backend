@@ -45,6 +45,6 @@ jobs:
       - name: 🚀 Publish image
         run: |
           docker buildx build . \
-            -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:latest \
-            -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:${{ github.ref_name }} \
+            --tag ghcr.io/${{ github.repository_owner }}/the-sync-backend:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/the-sync-backend:${{ github.ref_name }} \
             --push
