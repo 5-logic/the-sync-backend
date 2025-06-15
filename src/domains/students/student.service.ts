@@ -147,29 +147,55 @@ export class StudentService {
 
 	async update(id: string, updateStudentDto: UpdateStudentDto) {
 		try {
-			const existingStudent = await this.prisma.student.findUnique({
-				where: { userId: id },
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingStudent = await prisma.student.findUnique({
+					where: { userId: id },
+				});
+
+				if (!existingStudent) {
+					this.logger.warn(`Student with userId ${id} not found for update`);
+
+					throw new NotFoundException(`Student with userId ${id} not found`);
+				}
+
+				const updateUserDto: UpdateStudentDto = {
+					email: updateStudentDto.email,
+					fullName: updateStudentDto.fullName,
+					password: updateStudentDto.password,
+					gender: updateStudentDto.gender,
+					phoneNumber: updateStudentDto.phoneNumber,
+					isActive: updateStudentDto.isActive,
+				};
+
+				const updatedUser = await UserService.update(
+					id,
+					updateUserDto,
+					prisma as PrismaClient,
+					this.logger,
+				);
+
+				const updatedStudent = await prisma.student.update({
+					where: { userId: id },
+					data: {
+						studentId: updateStudentDto.studentId,
+						majorId: updateStudentDto.majorId,
+					},
+				});
+
+				return {
+					...updatedUser,
+					studentId: updatedStudent.studentId,
+					majorId: updatedStudent.majorId,
+				};
 			});
 
-			if (!existingStudent) {
-				this.logger.warn(`Student with userId ${id} not found for update`);
-				throw new NotFoundException(`Student with userId ${id} not found`);
-			}
+			this.logger.log(`Student updated with userId: ${result.id}`);
+			this.logger.debug('Updated Student', result);
 
-			const updatedStudent = await this.prisma.student.update({
-				where: { userId: id },
-				data: {
-					studentId: updateStudentDto.studentId,
-					majorId: updateStudentDto.majorId,
-				},
-			});
-
-			this.logger.log(`Student updated with userId: ${updatedStudent.userId}`);
-			this.logger.debug('Updated Student', updatedStudent);
-
-			return updatedStudent;
+			return result;
 		} catch (error) {
 			this.logger.error(`Error updating student with userId ${id}`, error);
+
 			throw error;
 		}
 	}

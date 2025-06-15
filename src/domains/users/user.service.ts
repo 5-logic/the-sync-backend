@@ -93,21 +93,26 @@ export class UserService {
 		}
 	}
 
-	async update(id: string, updateUserDto: UpdateUserDto) {
+	static async update(
+		id: string,
+		updateUserDto: UpdateUserDto,
+		prismaClient: PrismaClient,
+		logger: Logger,
+	) {
 		try {
-			const existingUser = await this.prisma.user.findUnique({
+			const existingUser = await prismaClient.user.findUnique({
 				where: { id },
 			});
 
 			if (!existingUser) {
-				this.logger.warn(`User with ID ${id} not found for update`);
+				logger.warn(`User with ID ${id} not found for update`);
 
 				throw new NotFoundException(`User with ID ${id} not found`);
 			}
 
 			const { password: newPassword, ...dataToUpdate } = updateUserDto;
 
-			const updatedUser = await this.prisma.user.update({
+			const updatedUser = await prismaClient.user.update({
 				where: { id },
 				data: {
 					...dataToUpdate,
@@ -117,15 +122,15 @@ export class UserService {
 				},
 			});
 
-			this.logger.log(`User updated with ID: ${updatedUser.id}`);
-			this.logger.debug('Updated User', updatedUser);
+			logger.log(`User updated with ID: ${updatedUser.id}`);
+			logger.debug('Updated User', updatedUser);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { password: _, ...result } = updatedUser;
 
 			return result;
 		} catch (error) {
-			this.logger.error('Error updating user', error);
+			logger.error('Error updating user', error);
 
 			throw error;
 		}
