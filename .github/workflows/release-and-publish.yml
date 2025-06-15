@@ -23,13 +23,18 @@ jobs:
           generate_release_notes: true
 
   publish:
-    name: Publish TheSync Backend
+    name: Publish TheSync Backend for ${{ matrix.platform }}
 
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
       packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
 
     steps:
       - name: 📦 Checkout repository
@@ -45,6 +50,7 @@ jobs:
       - name: 🚀 Publish image
         run: |
           docker buildx build . \
-            -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:latest \
-            -t ghcr.io/${{ github.repository_owner }}/the-sync-backend:${{ github.ref_name }} \
+            --tag ghcr.io/${{ github.repository_owner }}/the-sync-backend:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/the-sync-backend:${{ github.ref_name }} \
+            --platform ${{ matrix.platform }} \
             --push
