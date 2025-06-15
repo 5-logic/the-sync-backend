@@ -2,7 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export const corsConfig = registerAs('cors-config', () => {
 	const allowedOrigins =
-		process.env.ALLOWED_ORIGINS?.split(',').map((origin) => origin.trim()) ||
+		process.env.ALLOWED_ORIGINS?.split(',').map((origin) => origin.trim()) ??
 		[];
 
 	return {
