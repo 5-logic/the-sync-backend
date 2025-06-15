@@ -1,5 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+
+import { OngoingPhase, SemesterStatus } from '~/generated/prisma';
 
 export class CreateSemesterDto {
 	@ApiProperty()
@@ -10,15 +12,17 @@ export class CreateSemesterDto {
 	@IsString()
 	name: string;
 
-	@ApiProperty({ type: String, format: 'date-time' })
-	@IsDateString()
-	startDate: string;
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsInt()
+	maxGroup?: number;
 
-	@ApiProperty({ type: String, format: 'date-time' })
-	@IsDateString()
-	endDate: string;
+	@ApiProperty({ enum: SemesterStatus })
+	@IsEnum(SemesterStatus)
+	status: SemesterStatus;
 
-	@ApiProperty({ type: String, format: 'date-time' })
-	@IsDateString()
-	endRegistrationDate: string;
+	@ApiPropertyOptional({ enum: OngoingPhase })
+	@IsOptional()
+	@IsEnum(OngoingPhase)
+	ongoingPhase?: OngoingPhase;
 }
