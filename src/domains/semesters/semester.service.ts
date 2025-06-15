@@ -39,6 +39,7 @@ export class SemesterService {
 					this.logger.warn(
 						`Another semester already has status ${createSemesterDto.status}`,
 					);
+
 					throw new ConflictException(
 						`Another semester already has status ${createSemesterDto.status}. Only one semester can have this status at a time.`,
 					);
@@ -142,6 +143,7 @@ export class SemesterService {
 					this.logger.warn(
 						`Another semester already has status ${updateSemesterDto.status}`,
 					);
+
 					throw new ConflictException(
 						`Another semester already has status ${updateSemesterDto.status}. Only one semester can have this status at a time.`,
 					);
@@ -167,23 +169,6 @@ export class SemesterService {
 			};
 		} catch (error) {
 			this.logger.error('Error updating semester', error);
-
-			throw error;
-		}
-	}
-
-	async remove(id: string) {
-		try {
-			const deletedSemester = await this.prisma.semester.delete({
-				where: { id },
-			});
-
-			this.logger.log(`Semester deleted with ID: ${deletedSemester.id}`);
-			this.logger.debug('Deleted Semester', deletedSemester);
-
-			return;
-		} catch (error) {
-			this.logger.error('Error deleting semester', error);
 
 			throw error;
 		}

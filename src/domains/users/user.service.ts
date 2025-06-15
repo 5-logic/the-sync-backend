@@ -12,25 +12,28 @@ import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { hash, verify } from '@/utils/hash.util';
 import { generateStrongPassword } from '@/utils/password-generator.util';
 
+import { PrismaClient } from '~/generated/prisma';
+
 @Injectable()
 export class UserService {
 	private readonly logger = new Logger(UserService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createUserDto: CreateUserDto, prismaClient?: any) {
-		const prisma = prismaClient ?? this.prisma;
+	static async create(
+		createUserDto: CreateUserDto,
+		prismaClient: PrismaClient,
+		logger: Logger,
+	) {
 		try {
-			const existingUser = await prisma.user.findFirst({
+			const existingUser = await prismaClient.user.findFirst({
 				where: {
 					email: createUserDto.email,
 				},
 			});
 
 			if (existingUser) {
-				this.logger.warn(
-					`User with email ${createUserDto.email}  already exists`,
-				);
+				logger.warn(`User with email ${createUserDto.email}  already exists`);
 
 				throw new ConflictException('User with this email already exists');
 			}
@@ -39,22 +42,25 @@ export class UserService {
 
 			const hashedPassword = await hash(password);
 
-			const newUser = await prisma.user.create({
+			const newUser = await prismaClient.user.create({
 				data: {
 					...createUserDto,
 					password: hashedPassword,
 				},
 			});
 
-			this.logger.log(`User created with ID: ${newUser.id}`);
-			this.logger.debug('User detail', newUser);
+			logger.log(`User created with ID: ${newUser.id}`);
+			logger.debug('User detail', newUser);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { password: _, ...result } = newUser;
 
-			return result;
+			return {
+				...result,
+				plainPassword: password,
+			};
 		} catch (error) {
-			this.logger.error('Error creating user', error);
+			logger.error('Error creating user', error);
 
 			throw error;
 		}
@@ -87,21 +93,26 @@ export class UserService {
 		}
 	}
 
-	async update(id: string, updateUserDto: UpdateUserDto) {
+	static async update(
+		id: string,
+		updateUserDto: UpdateUserDto,
+		prismaClient: PrismaClient,
+		logger: Logger,
+	) {
 		try {
-			const existingUser = await this.prisma.user.findUnique({
+			const existingUser = await prismaClient.user.findUnique({
 				where: { id },
 			});
 
 			if (!existingUser) {
-				this.logger.warn(`User with ID ${id} not found for update`);
+				logger.warn(`User with ID ${id} not found for update`);
 
 				throw new NotFoundException(`User with ID ${id} not found`);
 			}
 
 			const { password: newPassword, ...dataToUpdate } = updateUserDto;
 
-			const updatedUser = await this.prisma.user.update({
+			const updatedUser = await prismaClient.user.update({
 				where: { id },
 				data: {
 					...dataToUpdate,
@@ -111,15 +122,15 @@ export class UserService {
 				},
 			});
 
-			this.logger.log(`User updated with ID: ${updatedUser.id}`);
-			this.logger.debug('Updated User', updatedUser);
+			logger.log(`User updated with ID: ${updatedUser.id}`);
+			logger.debug('Updated User', updatedUser);
 
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { password: _, ...result } = updatedUser;
 
 			return result;
 		} catch (error) {
-			this.logger.error('Error updating user', error);
+			logger.error('Error updating user', error);
 
 			throw error;
 		}

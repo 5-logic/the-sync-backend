@@ -1,11 +1,5 @@
-import {
-	ConflictException,
-	Injectable,
-	Logger,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CreateAdminDto } from '@/admins/dto/create-admin.dto';
 import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { hash, verify } from '@/utils/hash.util';
@@ -15,43 +9,6 @@ export class AdminService {
 	private readonly logger = new Logger(AdminService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
-
-	async create(createAdminDto: CreateAdminDto) {
-		try {
-			const existingAdmin = await this.prisma.admin.findUnique({
-				where: { username: createAdminDto.username },
-			});
-
-			if (existingAdmin) {
-				this.logger.warn(
-					`Admin with username ${createAdminDto.username} already exists`,
-				);
-
-				throw new ConflictException('Admin with this username already exists');
-			}
-
-			const hashedPassword = await hash(createAdminDto.password);
-			const newAdmin = await this.prisma.admin.create({
-				data: {
-					username: createAdminDto.username,
-					email: createAdminDto.email,
-					password: hashedPassword,
-				},
-			});
-
-			this.logger.log(`Admin created with ID: ${newAdmin.id}`);
-			this.logger.debug(`Admin`, newAdmin);
-
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = newAdmin;
-
-			return result;
-		} catch (error) {
-			this.logger.error('Error creating admin', error);
-
-			throw error;
-		}
-	}
 
 	async findOne(id: string) {
 		try {

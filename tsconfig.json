@@ -15,15 +15,11 @@
 			"@/*": ["src/*"],
 			"@/auth/*": ["src/auth/*"],
 			"@/configs/*": ["src/configs/*"],
-			"@/theses/*": ["src/domains/theses/*"],
-			"@/majors/*": ["src/domains/majors/*"],
 			"@/admins/*": ["src/domains/admins/*"],
-			"@/users/*": ["src/domains/users/*"],
 			"@/lecturers/*": ["src/domains/lecturers/*"],
-			"@/students/*": ["src/domains/students/*"],
-			"@/groups/*": ["src/domains/groups/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
-			"@/milestones/*": ["src/domains/milestones/*"]
+			"@/students/*": ["src/domains/students/*"],
+			"@/users/*": ["src/domains/users/*"]
 		},
 		"incremental": true,
 		"skipLibCheck": true,

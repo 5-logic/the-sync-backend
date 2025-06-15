@@ -1,13 +1,5 @@
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	Post,
-	Put,
-} from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { ApiBody, ApiTags } from '@nestjs/swagger';
 
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
@@ -23,6 +15,7 @@ export class LecturerController {
 		return await this.lecturerService.create(createLecturerDto);
 	}
 
+	@ApiBody({ type: [CreateLecturerDto] })
 	@Post('import')
 	async createMany(@Body() createLecturerDtos: CreateLecturerDto[]) {
 		return await this.lecturerService.createMany(createLecturerDtos);
@@ -44,10 +37,5 @@ export class LecturerController {
 		@Body() updateLecturerDto: UpdateLecturerDto,
 	) {
 		return await this.lecturerService.update(id, updateLecturerDto);
-	}
-
-	@Delete(':id')
-	async remove(@Param('id') id: string) {
-		return await this.lecturerService.remove(id);
 	}
 }

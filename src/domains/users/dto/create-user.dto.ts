@@ -3,7 +3,6 @@ import {
 	IsBoolean,
 	IsEmail,
 	IsIn,
-	IsOptional,
 	IsString,
 	Matches,
 	MinLength,
@@ -35,7 +34,6 @@ export class CreateUserDto {
 	phoneNumber: string;
 
 	@ApiPropertyOptional()
-	@IsOptional()
 	@IsBoolean()
-	isActive?: boolean = true;
+	isActive: boolean;
 }
