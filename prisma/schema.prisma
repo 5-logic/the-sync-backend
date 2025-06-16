@@ -408,7 +408,7 @@ model Enrollment {
   semesterId String           @map("semester_id")
   status     EnrollmentStatus @map("status")
 
-  student  Student  @relation(fields: [studentId], references: [studentId])
+  student  Student  @relation(fields: [studentId], references: [userId])
   semester Semester @relation(fields: [semesterId], references: [id])
 
   @@id([studentId, semesterId])
