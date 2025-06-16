@@ -80,7 +80,7 @@ export class StudentService {
 
 				await prisma.enrollment.create({
 					data: {
-						studentId: createStudentDto.studentId,
+						studentId: student.userId,
 						semesterId: createStudentDto.semesterId,
 						status: EnrollmentStatus.NotYet,
 					},

@@ -3,6 +3,7 @@ import {
 	IsBoolean,
 	IsEmail,
 	IsIn,
+	IsOptional,
 	IsString,
 	Matches,
 	MinLength,
@@ -19,11 +20,12 @@ export class CreateUserDto {
 	@IsString()
 	fullName: string;
 
-	@ApiProperty()
+	@ApiPropertyOptional()
+	@IsOptional()
 	@IsString()
 	@MinLength(12)
 	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
-	password: string;
+	password?: string;
 
 	@ApiProperty()
 	@IsIn([Gender.Male, Gender.Female])
@@ -34,6 +36,7 @@ export class CreateUserDto {
 	phoneNumber: string;
 
 	@ApiPropertyOptional()
+	@IsOptional()
 	@IsBoolean()
-	isActive: boolean;
+	isActive?: boolean;
 }
