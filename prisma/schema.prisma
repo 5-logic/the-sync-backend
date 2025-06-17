@@ -224,7 +224,7 @@ model Thesis {
   abbreviation   String       @map("abbreviation")
   description    String       @map("description")
   domain         String?      @map("domain")
-  status         ThesisStatus @map("status")
+  status         ThesisStatus @default(New) @map("status")
   isPublish      Boolean      @default(false) @map("is_publish")
   groupId        String?      @map("group_id")
   lecturerId     String       @map("lecturer_id")
