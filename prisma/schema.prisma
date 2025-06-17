@@ -104,6 +104,9 @@ model Admin {
   password String  @map("password")
   email    String? @map("email")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@map("admins")
 }
 
@@ -114,6 +117,9 @@ model Semester {
   maxGroup     Int?           @map("max_group")
   status       SemesterStatus @default(NotYet) @map("status")
   ongoingPhase OngoingPhase?  @map("ongoing_phase")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   groups                     Group[]
   enrollments                Enrollment[]
@@ -127,6 +133,9 @@ model Major {
   id   String @id @default(uuid())
   name String @map("name")
   code String @unique @map("code")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   students Student[]
 
@@ -142,6 +151,9 @@ model User {
   phoneNumber String  @map("phone_number")
   isActive    Boolean @default(true) @map("is_active")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   student  Student?
   lecturer Lecturer?
 
@@ -152,6 +164,9 @@ model Student {
   userId    String @id @map("user_id")
   studentId String @unique @map("student_id")
   majorId   String @map("major_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user                            User                            @relation(fields: [userId], references: [id])
   major                           Major                           @relation(fields: [majorId], references: [id])
@@ -167,6 +182,9 @@ model Student {
 model Lecturer {
   userId      String  @id @map("user_id")
   isModerator Boolean @default(false) @map("is_moderator")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user              User               @relation(fields: [userId], references: [id])
   supervisions      Supervision[]
@@ -184,6 +202,9 @@ model Group {
   projectDirection String? @map("project_direction")
   semesterId       String  @map("semester_id")
   thesisId         String? @unique @map("thesis_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   semester                      Semester                      @relation(fields: [semesterId], references: [id])
   thesis                        Thesis?                       @relation(fields: [thesisId], references: [id])
@@ -208,6 +229,9 @@ model Thesis {
   groupId        String?      @map("group_id")
   lecturerId     String       @map("lecturer_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   lecturer             Lecturer              @relation(fields: [lecturerId], references: [userId])
   group                Group?
   supervisions         Supervision[]
@@ -223,6 +247,9 @@ model ThesisVersion {
   supportingDocument String @map("supporting_document")
   thesisId           String @map("thesis_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   thesis Thesis @relation(fields: [thesisId], references: [id])
 
   @@map("thesis_versions")
@@ -236,6 +263,9 @@ model Milestone {
   semesterId  String   @map("semester_id")
   checklistId String?  @unique @map("checklist_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   semester    Semester     @relation(fields: [semesterId], references: [id])
   checklist   Checklist?   @relation(fields: [checklistId], references: [id])
   submissions Submission[]
@@ -247,6 +277,9 @@ model Submission {
   id          String @id @default(uuid())
   groupId     String @map("group_id")
   milestoneId String @map("milestone_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   group             Group              @relation(fields: [groupId], references: [id])
   milestone         Milestone          @relation(fields: [milestoneId], references: [id])
@@ -264,6 +297,9 @@ model Review {
   checklistId  String  @map("checklist_id")
   submissionId String  @map("submission_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   lecturer   Lecturer   @relation(fields: [lecturerId], references: [userId])
   submission Submission @relation(fields: [submissionId], references: [id])
   checklist  Checklist  @relation(fields: [checklistId], references: [id])
@@ -278,6 +314,9 @@ model Checklist {
   name        String  @map("name")
   description String? @map("description")
   milestoneId String  @map("milestone_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   milestone      Milestone?
   checklistItems ChecklistItem[]
@@ -294,6 +333,9 @@ model ChecklistItem {
   isRequired  Boolean                   @default(false) @map("is_required")
   checklistId String                    @map("checklist_id")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   checklist   Checklist    @relation(fields: [checklistId], references: [id])
   reviewItems ReviewItem[]
 
@@ -304,6 +346,9 @@ model Skill {
   id         String @id @default(uuid())
   name       String @map("name")
   skillSetId String @map("skill_set_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   skillSet             SkillSet              @relation(fields: [skillSetId], references: [id])
   studentSkills        StudentSkill[]
@@ -317,6 +362,9 @@ model SkillSet {
   id   String @id @default(uuid())
   name String @map("name")
 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   skills Skill[]
 
   @@map("skill_sets")
@@ -325,6 +373,9 @@ model SkillSet {
 model Responsibility {
   id   String @id @default(uuid())
   name String @map("name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   studentExpectedResponsibilities StudentExpectedResponsibility[]
   groupExpectedResponsibilities   GroupExpectedResponsibility[]
@@ -338,6 +389,9 @@ model Request {
   status    RequestStatus @map("status")
   studentId String        @map("student_id")
   groupId   String        @map("group_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   student Student @relation(fields: [studentId], references: [studentId])
   group   Group   @relation(fields: [groupId], references: [id])
