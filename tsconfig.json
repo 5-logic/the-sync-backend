@@ -19,8 +19,8 @@
 			"@/lecturers/*": ["src/domains/lecturers/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
 			"@/students/*": ["src/domains/students/*"],
-			"@/users/*": ["src/domains/users/*"],
-			"@/theses/*": ["src/domains/theses/*"]
+			"@/theses/*": ["src/domains/theses/*"],
+			"@/users/*": ["src/domains/users/*"]
 		},
 		"incremental": true,
 		"skipLibCheck": true,

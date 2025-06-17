@@ -1,12 +1,34 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
+import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 
 @Injectable()
 export class ThesisService {
 	private readonly logger = new Logger(ThesisService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
+
+	async create(createThesisDto: CreateThesisDto) {
+		try {
+			const newThesis = await this.prisma.thesis.create({
+				data: createThesisDto,
+				include: {
+					thesisVersions: { select: { id: true } },
+				},
+			});
+
+			this.logger.log(`Thesis created with ID: ${newThesis.id}`);
+			this.logger.debug('Thesis detail', newThesis);
+
+			return newThesis;
+		} catch (error) {
+			this.logger.error('Error creating thesis', error);
+
+			throw error;
+		}
+	}
 
 	async findAll() {
 		try {
@@ -113,6 +135,39 @@ export class ThesisService {
 			return thesis;
 		} catch (error) {
 			this.logger.error(`Error fetching thesis with id ${id}`, error);
+			throw error;
+		}
+	}
+
+	async update(id: string, updateThesisDto: UpdateThesisDto) {
+		try {
+			this.logger.log(`Updating thesis with id: ${id}`);
+
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with id ${id} not found for update`);
+
+				throw new NotFoundException(`Thesis with id ${id} not found`);
+			}
+
+			const updatedThesis = await this.prisma.thesis.update({
+				where: { id },
+				data: updateThesisDto,
+				include: {
+					thesisVersions: { select: { id: true } },
+				},
+			});
+
+			this.logger.log(`Thesis updated with ID: ${updatedThesis.id}`);
+			this.logger.debug('Updated thesis detail', updatedThesis);
+
+			return updatedThesis;
+		} catch (error) {
+			this.logger.error(`Error updating thesis with id ${id}`, error);
+
 			throw error;
 		}
 	}

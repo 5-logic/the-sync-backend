@@ -27,7 +27,7 @@ export class CreateThesisDto {
 	@ApiPropertyOptional({ enum: ThesisStatus, default: ThesisStatus.New })
 	@IsOptional()
 	@IsEnum(ThesisStatus)
-	status: ThesisStatus;
+	status?: ThesisStatus;
 
 	@ApiPropertyOptional({ default: false })
 	@IsOptional()
