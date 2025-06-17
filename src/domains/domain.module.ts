@@ -4,6 +4,7 @@ import { AdminModule } from '@/admins/admin.module';
 import { LecturerModule } from '@/lecturers/lecturer.module';
 import { SemesterModule } from '@/semesters/semester.module';
 import { StudentModule } from '@/students/student.module';
+import { ThesisModule } from '@/theses/thesis.module';
 import { UserModule } from '@/users/user.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { UserModule } from '@/users/user.module';
 		LecturerModule,
 		StudentModule,
 		SemesterModule,
+		ThesisModule,
 	],
 })
 export class DomainModule {}
