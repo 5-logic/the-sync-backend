@@ -32,7 +32,7 @@ export class CreateThesisDto {
 	@ApiPropertyOptional({ default: false })
 	@IsOptional()
 	@IsBoolean()
-	isPublish: boolean;
+	isPublish?: boolean;
 
 	@ApiPropertyOptional()
 	@IsOptional()
@@ -41,8 +41,4 @@ export class CreateThesisDto {
 	@ApiProperty()
 	@IsString()
 	lecturerId: string;
-
-	@ApiPropertyOptional({ type: [String] })
-	@IsOptional()
-	thesisRequiredSkillIds?: string[];
 }
