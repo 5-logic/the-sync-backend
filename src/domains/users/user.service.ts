@@ -47,16 +47,16 @@ export class UserService {
 					...createUserDto,
 					password: hashedPassword,
 				},
+				omit: {
+					password: true,
+				},
 			});
 
 			logger.log(`User created with ID: ${newUser.id}`);
 			logger.debug('User detail', newUser);
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = newUser;
-
 			return {
-				...result,
+				...newUser,
 				plainPassword: password,
 			};
 		} catch (error) {
@@ -74,6 +74,9 @@ export class UserService {
 				where: {
 					OR: [{ id: params.id }, { email: params.email }],
 				},
+				omit: {
+					password: true,
+				},
 			});
 
 			if (!user) {
@@ -82,10 +85,7 @@ export class UserService {
 				return null;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = user;
-
-			return result;
+			return user;
 		} catch (error) {
 			this.logger.error('Error fetching user', error);
 
@@ -113,15 +113,15 @@ export class UserService {
 			const updatedUser = await prismaClient.user.update({
 				where: { id },
 				data: updateUserDto,
+				omit: {
+					password: true,
+				},
 			});
 
 			logger.log(`User updated with ID: ${updatedUser.id}`);
 			logger.debug('Updated User', updatedUser);
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = updatedUser;
-
-			return result;
+			return updatedUser;
 		} catch (error) {
 			logger.error('Error updating user', error);
 
