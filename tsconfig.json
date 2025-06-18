@@ -19,7 +19,8 @@
 			"@/lecturers/*": ["src/domains/lecturers/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
 			"@/students/*": ["src/domains/students/*"],
-			"@/users/*": ["src/domains/users/*"]
+			"@/users/*": ["src/domains/users/*"],
+			"@/milestones/*": ["src/domains/milestones/*"],
 		},
 		"incremental": true,
 		"skipLibCheck": true,
