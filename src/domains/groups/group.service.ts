@@ -66,7 +66,6 @@ export class GroupService {
 		try {
 			const groups = await this.prisma.group.findMany({
 				include: {
-					semester: true,
 					thesis: true,
 					studentGroupParticipations: {
 						include: {
@@ -92,7 +91,6 @@ export class GroupService {
 			const group = await this.prisma.group.findUnique({
 				where: { id },
 				include: {
-					semester: true,
 					thesis: true,
 					studentGroupParticipations: {
 						include: {
