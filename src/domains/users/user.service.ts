@@ -141,7 +141,7 @@ export class UserService {
 			this.logger.log(`Validating user with email: ${email}`);
 
 			const user = await this.prisma.user.findUnique({
-				where: { email: email },
+				where: { email: email, isActive: true },
 			});
 
 			if (!user) {
