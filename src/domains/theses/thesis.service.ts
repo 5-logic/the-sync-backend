@@ -36,38 +36,7 @@ export class ThesisService {
 
 			const theses = await this.prisma.thesis.findMany({
 				include: {
-					lecturer: {
-						include: {
-							user: { select: { id: true } },
-						},
-					},
-					group: true,
-					supervisions: {
-						include: {
-							lecturer: {
-								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-											email: true,
-											phoneNumber: true,
-										},
-									},
-								},
-							},
-						},
-					},
-					thesisVersions: true,
-					thesisRequiredSkills: {
-						include: {
-							skill: {
-								include: {
-									skillSet: { select: { id: true, name: true } },
-								},
-							},
-						},
-					},
+					thesisVersions: { select: { id: true } },
 				},
 			});
 
@@ -88,38 +57,7 @@ export class ThesisService {
 			const thesis = await this.prisma.thesis.findUnique({
 				where: { id },
 				include: {
-					lecturer: {
-						include: {
-							user: { select: { id: true } },
-						},
-					},
-					group: true,
-					supervisions: {
-						include: {
-							lecturer: {
-								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-											email: true,
-											phoneNumber: true,
-										},
-									},
-								},
-							},
-						},
-					},
-					thesisVersions: true,
-					thesisRequiredSkills: {
-						include: {
-							skill: {
-								include: {
-									skillSet: { select: { id: true, name: true } },
-								},
-							},
-						},
-					},
+					thesisVersions: { select: { id: true } },
 				},
 			});
 
