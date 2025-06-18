@@ -9,6 +9,7 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { UserService } from '@/users/user.service';
 
 import { EnrollmentStatus, PrismaClient } from '~/generated/prisma';
@@ -195,10 +196,9 @@ export class StudentService {
 					throw new NotFoundException(`Student with userId ${id} not found`);
 				}
 
-				const updateUserDto: UpdateStudentDto = {
+				const updateUserDto: UpdateUserDto = {
 					email: updateStudentDto.email,
 					fullName: updateStudentDto.fullName,
-					password: updateStudentDto.password,
 					gender: updateStudentDto.gender,
 					phoneNumber: updateStudentDto.phoneNumber,
 					isActive: updateStudentDto.isActive,

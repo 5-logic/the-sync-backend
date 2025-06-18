@@ -110,16 +110,9 @@ export class UserService {
 				throw new NotFoundException(`User with ID ${id} not found`);
 			}
 
-			const { password: newPassword, ...dataToUpdate } = updateUserDto;
-
 			const updatedUser = await prismaClient.user.update({
 				where: { id },
-				data: {
-					...dataToUpdate,
-					password: newPassword
-						? await hash(newPassword)
-						: existingUser.password,
-				},
+				data: updateUserDto,
 			});
 
 			logger.log(`User updated with ID: ${updatedUser.id}`);
