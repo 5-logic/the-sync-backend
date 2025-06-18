@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { hash, verify } from '@/utils/hash.util';
+import { verify } from '@/utils/hash.util';
 
 @Injectable()
 export class AdminService {
@@ -47,16 +47,9 @@ export class AdminService {
 				throw new NotFoundException(`Admin with ID ${id} not found`);
 			}
 
-			const { password: newPassword, ...dataToUpdate } = updateAdminDto;
-
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id: id },
-				data: {
-					...dataToUpdate,
-					password: newPassword
-						? await hash(newPassword)
-						: existingAdmin.password,
-				},
+				data: updateAdminDto,
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);

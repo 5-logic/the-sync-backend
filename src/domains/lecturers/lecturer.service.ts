@@ -4,6 +4,7 @@ import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { UserService } from '@/users/user.service';
 
 import { PrismaClient } from '~/generated/prisma';
@@ -148,10 +149,9 @@ export class LecturerService {
 					throw new NotFoundException(`Lecturer with userId ${id} not found`);
 				}
 
-				const updateUserDto: UpdateLecturerDto = {
+				const updateUserDto: UpdateUserDto = {
 					email: updateLecturerDto.email,
 					fullName: updateLecturerDto.fullName,
-					password: updateLecturerDto.password,
 					gender: updateLecturerDto.gender,
 					phoneNumber: updateLecturerDto.phoneNumber,
 					isActive: updateLecturerDto.isActive,
