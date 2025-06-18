@@ -1,5 +1,7 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 
-export class UpdateLecturerDto extends PartialType(CreateLecturerDto) {}
+export class UpdateLecturerDto extends PartialType(
+	OmitType(CreateLecturerDto, ['password'] as const),
+) {}

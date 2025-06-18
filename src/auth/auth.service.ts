@@ -161,7 +161,7 @@ export class AuthService {
 
 			const user = await this.userService.findOne({ id: decoded.sub });
 
-			if (!user) {
+			if (!user || !user.isActive) {
 				throw new UnauthorizedException('User not found');
 			}
 
