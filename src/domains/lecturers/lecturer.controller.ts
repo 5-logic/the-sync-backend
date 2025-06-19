@@ -38,13 +38,11 @@ export class LecturerController {
 		return await this.lecturerService.createMany(createLecturerDtos);
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR, Role.STUDENT)
 	@Get()
 	async findAll() {
 		return await this.lecturerService.findAll();
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR, Role.STUDENT)
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.lecturerService.findOne(id);
