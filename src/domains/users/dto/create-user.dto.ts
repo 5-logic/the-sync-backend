@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsBoolean,
 	IsEmail,
-	IsIn,
+	IsEnum,
 	IsOptional,
 	IsString,
 	Matches,
@@ -27,8 +27,8 @@ export class CreateUserDto {
 	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	password?: string;
 
-	@ApiProperty()
-	@IsIn([Gender.Male, Gender.Female])
+	@ApiProperty({ enum: Gender, default: Gender.Male })
+	@IsEnum(Gender)
 	gender: Gender;
 
 	@ApiProperty()

@@ -9,6 +9,7 @@ export const setupSwagger = (app: INestApplication<any>) => {
 		.setTitle('TheSync Backend API doumentation')
 		.setDescription('Backend for TheSync')
 		.setVersion(version as string)
+		.addBearerAuth()
 		.build();
 
 	const document = SwaggerModule.createDocument(app, config);
