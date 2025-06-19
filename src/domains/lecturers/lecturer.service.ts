@@ -4,6 +4,7 @@ import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { UserService } from '@/users/user.service';
 
 import { PrismaClient } from '~/generated/prisma';
@@ -68,13 +69,8 @@ export class LecturerService {
 			const lecturers = await this.prisma.lecturer.findMany({
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -104,13 +100,8 @@ export class LecturerService {
 				where: { userId: id },
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -148,13 +139,10 @@ export class LecturerService {
 					throw new NotFoundException(`Lecturer with userId ${id} not found`);
 				}
 
-				const updateUserDto: UpdateLecturerDto = {
-					email: updateLecturerDto.email,
+				const updateUserDto: UpdateUserDto = {
 					fullName: updateLecturerDto.fullName,
-					password: updateLecturerDto.password,
 					gender: updateLecturerDto.gender,
 					phoneNumber: updateLecturerDto.phoneNumber,
-					isActive: updateLecturerDto.isActive,
 				};
 
 				const updatedUser = await UserService.update(
@@ -164,16 +152,13 @@ export class LecturerService {
 					this.logger,
 				);
 
-				const updatedLecturer = await prisma.lecturer.update({
+				const updatedLecturer = await prisma.lecturer.findUnique({
 					where: { userId: id },
-					data: {
-						isModerator: updateLecturerDto.isModerator,
-					},
 				});
 
 				return {
 					...updatedUser,
-					isModerator: updatedLecturer.isModerator,
+					isModerator: updatedLecturer!.isModerator,
 				};
 			});
 

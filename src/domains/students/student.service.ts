@@ -9,6 +9,7 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { UserService } from '@/users/user.service';
 
 import { EnrollmentStatus, PrismaClient } from '~/generated/prisma';
@@ -114,13 +115,8 @@ export class StudentService {
 			const students = await this.prisma.student.findMany({
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -150,13 +146,8 @@ export class StudentService {
 				where: { userId: id },
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -195,13 +186,10 @@ export class StudentService {
 					throw new NotFoundException(`Student with userId ${id} not found`);
 				}
 
-				const updateUserDto: UpdateStudentDto = {
-					email: updateStudentDto.email,
+				const updateUserDto: UpdateUserDto = {
 					fullName: updateStudentDto.fullName,
-					password: updateStudentDto.password,
 					gender: updateStudentDto.gender,
 					phoneNumber: updateStudentDto.phoneNumber,
-					isActive: updateStudentDto.isActive,
 				};
 
 				const updatedUser = await UserService.update(
@@ -211,18 +199,14 @@ export class StudentService {
 					this.logger,
 				);
 
-				const updatedStudent = await prisma.student.update({
+				const updatedStudent = await prisma.student.findUnique({
 					where: { userId: id },
-					data: {
-						studentId: updateStudentDto.studentId,
-						majorId: updateStudentDto.majorId,
-					},
 				});
 
 				return {
 					...updatedUser,
-					studentId: updatedStudent.studentId,
-					majorId: updatedStudent.majorId,
+					studentId: updatedStudent!.studentId,
+					majorId: updatedStudent!.majorId,
 				};
 			});
 
