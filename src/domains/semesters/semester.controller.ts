@@ -1,15 +1,31 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Post,
+	Put,
+	UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+import { Roles } from '@/auth/decorators/roles.decorator';
+import { Role } from '@/auth/enums/role.enum';
+import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
 import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
 import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
 import { SemesterService } from '@/semesters/semester.service';
 
+@UseGuards(RoleGuard)
+@UseGuards(JwtAccessAuthGuard)
+@ApiBearerAuth()
 @ApiTags('Semester')
 @Controller('semesters')
 export class SemesterController {
 	constructor(private readonly semesterService: SemesterService) {}
 
+	@Roles(Role.ADMIN)
 	@Post()
 	async create(@Body() createSemesterDto: CreateSemesterDto) {
 		return await this.semesterService.create(createSemesterDto);
@@ -25,6 +41,7 @@ export class SemesterController {
 		return await this.semesterService.findOne(id);
 	}
 
+	@Roles(Role.ADMIN)
 	@Put(':id')
 	async update(
 		@Param('id') id: string,

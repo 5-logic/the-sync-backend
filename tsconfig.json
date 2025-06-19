@@ -16,9 +16,12 @@
 			"@/auth/*": ["src/auth/*"],
 			"@/configs/*": ["src/configs/*"],
 			"@/admins/*": ["src/domains/admins/*"],
+			"@/groups/*": ["src/domains/groups/*"],
 			"@/lecturers/*": ["src/domains/lecturers/*"],
+			"@/milestones/*": ["src/domains/milestones/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
 			"@/students/*": ["src/domains/students/*"],
+			"@/theses/*": ["src/domains/theses/*"],
 			"@/users/*": ["src/domains/users/*"]
 		},
 		"incremental": true,

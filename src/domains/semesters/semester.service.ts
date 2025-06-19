@@ -73,11 +73,7 @@ export class SemesterService {
 			this.logger.log(`Found ${semesters.length} semesters`);
 			this.logger.debug('Semesters detail', semesters);
 
-			return semesters.map((s) => ({
-				...s,
-				milestones: s.milestones.map((m) => m.id),
-				groups: s.groups.map((g) => g.id),
-			}));
+			return semesters;
 		} catch (error) {
 			this.logger.error('Error fetching semesters', error);
 
@@ -104,11 +100,7 @@ export class SemesterService {
 			this.logger.log(`Semester found with ID: ${semester.id}`);
 			this.logger.debug('Semester detail', semester);
 
-			return {
-				...semester,
-				milestones: semester.milestones.map((m) => m.id),
-				groups: semester.groups.map((g) => g.id),
-			};
+			return semester;
 		} catch (error) {
 			this.logger.error('Error fetching semester', error);
 
@@ -162,11 +154,7 @@ export class SemesterService {
 			this.logger.log(`Semester updated with ID: ${updatedSemester.id}`);
 			this.logger.debug('Updated Semester', updatedSemester);
 
-			return {
-				...updatedSemester,
-				milestones: updatedSemester.milestones.map((m) => m.id),
-				groups: updatedSemester.groups.map((g) => g.id),
-			};
+			return updatedSemester;
 		} catch (error) {
 			this.logger.error('Error updating semester', error);
 

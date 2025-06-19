@@ -14,6 +14,9 @@ export class AdminService {
 		try {
 			const admin = await this.prisma.admin.findUnique({
 				where: { id: id },
+				omit: {
+					password: true,
+				},
 			});
 
 			if (!admin) {
@@ -24,10 +27,7 @@ export class AdminService {
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = admin;
-
-			return result;
+			return admin;
 		} catch (error) {
 			this.logger.error('Error fetching admin', error);
 
@@ -50,15 +50,15 @@ export class AdminService {
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id: id },
 				data: updateAdminDto,
+				omit: {
+					password: true,
+				},
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
 			this.logger.debug(`Updated Admin`, updatedAdmin);
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = updatedAdmin;
-
-			return result;
+			return updatedAdmin;
 		} catch (error) {
 			this.logger.error('Error updating admin', error);
 
@@ -80,7 +80,9 @@ export class AdminService {
 				return null;
 			}
 
-			const isPasswordValid = await verify(admin.password, password);
+			const { password: adminPassword, ...result } = admin;
+
+			const isPasswordValid = await verify(adminPassword, password);
 
 			if (!isPasswordValid) {
 				this.logger.warn(
@@ -89,9 +91,6 @@ export class AdminService {
 
 				return null;
 			}
-
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { password: _, ...result } = admin;
 
 			return result;
 		} catch (error) {

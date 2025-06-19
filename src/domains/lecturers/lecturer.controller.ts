@@ -1,20 +1,40 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiBody, ApiTags } from '@nestjs/swagger';
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Post,
+	Put,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 
+import { Roles } from '@/auth/decorators/roles.decorator';
+import { Role } from '@/auth/enums/role.enum';
+import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
+import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
 
+@UseGuards(RoleGuard)
+@UseGuards(JwtAccessAuthGuard)
+@ApiBearerAuth()
 @ApiTags('Lecturer')
 @Controller('lecturers')
 export class LecturerController {
 	constructor(private readonly lecturerService: LecturerService) {}
 
+	@Roles(Role.ADMIN)
 	@Post()
 	async create(@Body() createLecturerDto: CreateLecturerDto) {
 		return await this.lecturerService.create(createLecturerDto);
 	}
 
+	@Roles(Role.ADMIN)
 	@ApiBody({ type: [CreateLecturerDto] })
 	@Post('import')
 	async createMany(@Body() createLecturerDtos: CreateLecturerDto[]) {
@@ -31,11 +51,14 @@ export class LecturerController {
 		return await this.lecturerService.findOne(id);
 	}
 
-	@Put(':id')
+	@Roles(Role.LECTURER, Role.MODERATOR)
+	@Put()
 	async update(
-		@Param('id') id: string,
+		@Req() request: Request,
 		@Body() updateLecturerDto: UpdateLecturerDto,
 	) {
-		return await this.lecturerService.update(id, updateLecturerDto);
+		const user = request.user as UserPayload;
+
+		return await this.lecturerService.update(user.id, updateLecturerDto);
 	}
 }

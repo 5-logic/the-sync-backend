@@ -69,13 +69,8 @@ export class LecturerService {
 			const lecturers = await this.prisma.lecturer.findMany({
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -105,13 +100,8 @@ export class LecturerService {
 				where: { userId: id },
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -150,11 +140,9 @@ export class LecturerService {
 				}
 
 				const updateUserDto: UpdateUserDto = {
-					email: updateLecturerDto.email,
 					fullName: updateLecturerDto.fullName,
 					gender: updateLecturerDto.gender,
 					phoneNumber: updateLecturerDto.phoneNumber,
-					isActive: updateLecturerDto.isActive,
 				};
 
 				const updatedUser = await UserService.update(
@@ -164,16 +152,13 @@ export class LecturerService {
 					this.logger,
 				);
 
-				const updatedLecturer = await prisma.lecturer.update({
+				const updatedLecturer = await prisma.lecturer.findUnique({
 					where: { userId: id },
-					data: {
-						isModerator: updateLecturerDto.isModerator,
-					},
 				});
 
 				return {
 					...updatedUser,
-					isModerator: updatedLecturer.isModerator,
+					isModerator: updatedLecturer!.isModerator,
 				};
 			});
 
