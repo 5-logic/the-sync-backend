@@ -31,13 +31,11 @@ export class SemesterController {
 		return await this.semesterService.create(createSemesterDto);
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR, Role.STUDENT)
 	@Get()
 	async findAll() {
 		return await this.semesterService.findAll();
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR, Role.STUDENT)
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.semesterService.findOne(id);

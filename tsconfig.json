@@ -21,6 +21,8 @@
 			"@/students/*": ["src/domains/students/*"],
 			"@/users/*": ["src/domains/users/*"],
 			"@/milestones/*": ["src/domains/milestones/*"],
+			"@/theses/*": ["src/domains/theses/*"],
+			"@/groups/*": ["src/domains/groups/*"],
 		},
 		"incremental": true,
 		"skipLibCheck": true,
