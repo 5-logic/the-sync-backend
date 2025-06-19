@@ -115,13 +115,8 @@ export class StudentService {
 			const students = await this.prisma.student.findMany({
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -151,13 +146,8 @@ export class StudentService {
 				where: { userId: id },
 				include: {
 					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-							gender: true,
-							phoneNumber: true,
-							isActive: true,
+						omit: {
+							password: true,
 						},
 					},
 				},
@@ -197,11 +187,9 @@ export class StudentService {
 				}
 
 				const updateUserDto: UpdateUserDto = {
-					email: updateStudentDto.email,
 					fullName: updateStudentDto.fullName,
 					gender: updateStudentDto.gender,
 					phoneNumber: updateStudentDto.phoneNumber,
-					isActive: updateStudentDto.isActive,
 				};
 
 				const updatedUser = await UserService.update(
@@ -211,18 +199,14 @@ export class StudentService {
 					this.logger,
 				);
 
-				const updatedStudent = await prisma.student.update({
+				const updatedStudent = await prisma.student.findUnique({
 					where: { userId: id },
-					data: {
-						studentId: updateStudentDto.studentId,
-						majorId: updateStudentDto.majorId,
-					},
 				});
 
 				return {
 					...updatedUser,
-					studentId: updatedStudent.studentId,
-					majorId: updatedStudent.majorId,
+					studentId: updatedStudent!.studentId,
+					majorId: updatedStudent!.majorId,
 				};
 			});
 

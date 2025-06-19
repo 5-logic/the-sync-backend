@@ -5,14 +5,17 @@ import {
 	Param,
 	Post,
 	Put,
+	Req,
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
+import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
@@ -38,24 +41,24 @@ export class LecturerController {
 		return await this.lecturerService.createMany(createLecturerDtos);
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR, Role.STUDENT)
 	@Get()
 	async findAll() {
 		return await this.lecturerService.findAll();
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR, Role.STUDENT)
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.lecturerService.findOne(id);
 	}
 
-	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR)
-	@Put(':id')
+	@Roles(Role.LECTURER, Role.MODERATOR)
+	@Put()
 	async update(
-		@Param('id') id: string,
+		@Req() request: Request,
 		@Body() updateLecturerDto: UpdateLecturerDto,
 	) {
-		return await this.lecturerService.update(id, updateLecturerDto);
+		const user = request.user as UserPayload;
+
+		return await this.lecturerService.update(user.id, updateLecturerDto);
 	}
 }
