@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	ForbiddenException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
@@ -10,10 +15,10 @@ export class ThesisService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createThesisDto: CreateThesisDto) {
+	async create(lecturerId: string, createThesisDto: CreateThesisDto) {
 		try {
 			const newThesis = await this.prisma.thesis.create({
-				data: createThesisDto,
+				data: { ...createThesisDto, lecturerId },
 				include: {
 					thesisVersions: { select: { id: true } },
 				},
@@ -77,9 +82,15 @@ export class ThesisService {
 		}
 	}
 
-	async update(id: string, updateThesisDto: UpdateThesisDto) {
+	async update(
+		lecturerId: string,
+		id: string,
+		updateThesisDto: UpdateThesisDto,
+	) {
 		try {
-			this.logger.log(`Updating thesis with id: ${id}`);
+			this.logger.log(
+				`Updating thesis with id: ${id} by lecturer with id: ${lecturerId}`,
+			);
 
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
@@ -89,6 +100,16 @@ export class ThesisService {
 				this.logger.warn(`Thesis with id ${id} not found for update`);
 
 				throw new NotFoundException(`Thesis with id ${id} not found`);
+			}
+
+			if (existingThesis.lecturerId !== lecturerId) {
+				this.logger.warn(
+					`Lecturer with id ${lecturerId} is not authorized to update thesis with id ${id}`,
+				);
+
+				throw new ForbiddenException(
+					`You do not have permission to update this thesis`,
+				);
 			}
 
 			const updatedThesis = await this.prisma.thesis.update({

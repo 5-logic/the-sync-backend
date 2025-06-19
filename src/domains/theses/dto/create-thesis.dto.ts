@@ -1,7 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
-
-import { ThesisStatus } from '~/generated/prisma';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreateThesisDto {
 	@ApiProperty()
@@ -23,22 +21,4 @@ export class CreateThesisDto {
 	@ApiPropertyOptional()
 	@IsOptional()
 	domain?: string;
-
-	@ApiPropertyOptional({ enum: ThesisStatus, default: ThesisStatus.New })
-	@IsOptional()
-	@IsEnum(ThesisStatus)
-	status?: ThesisStatus;
-
-	@ApiPropertyOptional({ default: false })
-	@IsOptional()
-	@IsBoolean()
-	isPublish?: boolean;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	groupId?: string;
-
-	@ApiProperty()
-	@IsString()
-	lecturerId: string;
 }
