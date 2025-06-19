@@ -7,17 +7,15 @@ import { MilestoneModule } from '@/milestones/milestone.module';
 import { SemesterModule } from '@/semesters/semester.module';
 import { StudentModule } from '@/students/student.module';
 import { ThesisModule } from '@/theses/thesis.module';
-import { UserModule } from '@/users/user.module';
 
 @Module({
 	imports: [
 		AdminModule,
-		UserModule,
-		LecturerModule,
-		StudentModule,
-		SemesterModule,
-		MilestoneModule,
 		GroupModule,
+		LecturerModule,
+		MilestoneModule,
+		SemesterModule,
+		StudentModule,
 		ThesisModule,
 	],
 })
