@@ -6,7 +6,6 @@ export class UpdateStudentDto extends PartialType(
 	OmitType(CreateStudentDto, [
 		'email',
 		'password',
-		'isActive',
 		'studentId',
 		'majorId',
 		'semesterId',
