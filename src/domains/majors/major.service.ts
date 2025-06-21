@@ -42,7 +42,7 @@ export class MajorService {
 
 			return major;
 		} catch (error) {
-			this.logger.error('Error fetching majors', error);
+			this.logger.error('Error fetching major', error);
 
 			throw error;
 		}
