@@ -183,9 +183,6 @@ model Lecturer {
   userId      String  @id @map("user_id")
   isModerator Boolean @default(false) @map("is_moderator")
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
   user              User               @relation(fields: [userId], references: [id])
   supervisions      Supervision[]
   assignmentReviews AssignmentReview[]
