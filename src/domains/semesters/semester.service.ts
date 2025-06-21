@@ -118,101 +118,19 @@ export class SemesterService {
 			throw error;
 		}
 	}
-
 	async update(id: string, updateSemesterDto: UpdateSemesterDto) {
 		try {
 			this.logger.log(`Starting semester update process for ID: ${id}`);
 
-			const existingSemester = await this.prisma.semester.findUnique({
-				where: { id },
-			});
+			const existingSemester = await this.findExistingSemester(id);
 
-			if (!existingSemester) {
-				this.logger.warn(`Semester with ID ${id} not found for update`);
+			this.validateSemesterUpdatePermissions(existingSemester);
+			this.performUpdateValidations(existingSemester, updateSemesterDto);
 
-				throw new NotFoundException(`Semester with ID ${id} not found`);
-			}
-
-			this.logger.debug('Existing semester found', existingSemester);
-
-			if (existingSemester.status === SemesterStatus.End) {
-				this.logger.warn(
-					`Cannot update semester with ID ${id}: semester has already ended`,
-				);
-
-				throw new ConflictException(
-					'Cannot update semester. This semester has already ended',
-				);
-			}
-
-			if (
-				updateSemesterDto.status &&
-				updateSemesterDto.status !== existingSemester.status
-			) {
-				this.validateStatusTransition(
-					existingSemester.status,
-					updateSemesterDto.status,
-				);
-			}
-
-			if (updateSemesterDto.maxGroup !== undefined) {
-				this.validateMaxGroupUpdate(
-					existingSemester.status,
-					updateSemesterDto.status,
-				);
-			}
-
-			if (
-				existingSemester.status === SemesterStatus.Picking &&
-				updateSemesterDto.status === SemesterStatus.Ongoing
-			) {
-				this.validatePickingToOngoingTransition(
-					existingSemester.maxGroup,
-					updateSemesterDto,
-				);
-
-				if (updateSemesterDto.ongoingPhase === OngoingPhase.ScopeLocked) {
-					this.logger.warn(
-						`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} with ongoingPhase set to ${OngoingPhase.ScopeLocked}`,
-					);
-
-					throw new ConflictException(
-						`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} with ongoingPhase set to ${OngoingPhase.ScopeLocked}. ongoingPhase will be automatically set to ${OngoingPhase.ScopeAdjustable}`,
-					);
-				}
-			}
-
-			if (updateSemesterDto.ongoingPhase !== undefined) {
-				this.validateOngoingPhaseUpdate(
-					existingSemester.status,
-					updateSemesterDto.status,
-				);
-
-				if (existingSemester.ongoingPhase !== updateSemesterDto.ongoingPhase) {
-					this.validateOngoingPhaseTransition(
-						existingSemester.ongoingPhase,
-						updateSemesterDto.ongoingPhase,
-					);
-				}
-			}
-
-			if (
-				existingSemester.status === SemesterStatus.Ongoing &&
-				updateSemesterDto.status === SemesterStatus.End
-			) {
-				this.validateOngoingToEndTransition(existingSemester.ongoingPhase);
-			}
-
-			const updateData = { ...updateSemesterDto };
-
-			if (
-				existingSemester.status === SemesterStatus.Picking &&
-				updateSemesterDto.status === SemesterStatus.Ongoing
-			) {
-				updateData.ongoingPhase = OngoingPhase.ScopeAdjustable;
-
-				this.logger.debug('Auto-setting ongoingPhase to ScopeAdjustable');
-			}
+			const updateData = this.prepareUpdateData(
+				existingSemester,
+				updateSemesterDto,
+			);
 
 			const updatedSemester = await this.prisma.semester.update({
 				where: { id },
@@ -429,5 +347,137 @@ export class SemesterService {
 		this.logger.debug(
 			`${SemesterStatus.Ongoing} to ${SemesterStatus.End} transition validation passed`,
 		);
+	}
+
+	private async findExistingSemester(id: string) {
+		const existingSemester = await this.prisma.semester.findUnique({
+			where: { id },
+		});
+
+		if (!existingSemester) {
+			this.logger.warn(`Semester with ID ${id} not found for update`);
+			throw new NotFoundException(`Semester with ID ${id} not found`);
+		}
+
+		this.logger.debug('Existing semester found', existingSemester);
+		return existingSemester;
+	}
+
+	private validateSemesterUpdatePermissions(existingSemester: {
+		id: string;
+		status: SemesterStatus;
+	}) {
+		if (existingSemester.status === SemesterStatus.End) {
+			this.logger.warn(
+				`Cannot update semester with ID ${existingSemester.id}: semester has already ended`,
+			);
+
+			throw new ConflictException(
+				'Cannot update semester. This semester has already ended',
+			);
+		}
+	}
+
+	private performUpdateValidations(
+		existingSemester: {
+			status: SemesterStatus;
+			maxGroup: number | null;
+			ongoingPhase: OngoingPhase | null;
+		},
+		updateSemesterDto: UpdateSemesterDto,
+	) {
+		if (
+			updateSemesterDto.status &&
+			updateSemesterDto.status !== existingSemester.status
+		) {
+			this.validateStatusTransition(
+				existingSemester.status,
+				updateSemesterDto.status,
+			);
+		}
+
+		if (updateSemesterDto.maxGroup !== undefined) {
+			this.validateMaxGroupUpdate(
+				existingSemester.status,
+				updateSemesterDto.status,
+			);
+		}
+
+		this.validatePickingToOngoingFlow(existingSemester, updateSemesterDto);
+		this.validateOngoingPhaseFlow(existingSemester, updateSemesterDto);
+
+		if (
+			existingSemester.status === SemesterStatus.Ongoing &&
+			updateSemesterDto.status === SemesterStatus.End
+		) {
+			this.validateOngoingToEndTransition(existingSemester.ongoingPhase);
+		}
+	}
+
+	private validatePickingToOngoingFlow(
+		existingSemester: {
+			status: SemesterStatus;
+			maxGroup: number | null;
+		},
+		updateSemesterDto: UpdateSemesterDto,
+	) {
+		if (
+			existingSemester.status === SemesterStatus.Picking &&
+			updateSemesterDto.status === SemesterStatus.Ongoing
+		) {
+			this.validatePickingToOngoingTransition(
+				existingSemester.maxGroup,
+				updateSemesterDto,
+			);
+
+			if (updateSemesterDto.ongoingPhase === OngoingPhase.ScopeLocked) {
+				this.logger.warn(
+					`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} with ongoingPhase set to ${OngoingPhase.ScopeLocked}`,
+				);
+
+				throw new ConflictException(
+					`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} with ongoingPhase set to ${OngoingPhase.ScopeLocked}. ongoingPhase will be automatically set to ${OngoingPhase.ScopeAdjustable}`,
+				);
+			}
+		}
+	}
+
+	private validateOngoingPhaseFlow(
+		existingSemester: {
+			status: SemesterStatus;
+			ongoingPhase: OngoingPhase | null;
+		},
+		updateSemesterDto: UpdateSemesterDto,
+	) {
+		if (updateSemesterDto.ongoingPhase !== undefined) {
+			this.validateOngoingPhaseUpdate(
+				existingSemester.status,
+				updateSemesterDto.status,
+			);
+
+			if (existingSemester.ongoingPhase !== updateSemesterDto.ongoingPhase) {
+				this.validateOngoingPhaseTransition(
+					existingSemester.ongoingPhase,
+					updateSemesterDto.ongoingPhase,
+				);
+			}
+		}
+	}
+
+	private prepareUpdateData(
+		existingSemester: { status: SemesterStatus },
+		updateSemesterDto: UpdateSemesterDto,
+	) {
+		const updateData = { ...updateSemesterDto };
+
+		if (
+			existingSemester.status === SemesterStatus.Picking &&
+			updateSemesterDto.status === SemesterStatus.Ongoing
+		) {
+			updateData.ongoingPhase = OngoingPhase.ScopeAdjustable;
+			this.logger.debug('Auto-setting ongoingPhase to ScopeAdjustable');
+		}
+
+		return updateData;
 	}
 }
