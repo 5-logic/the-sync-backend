@@ -34,9 +34,4 @@ export class CreateUserDto {
 	@ApiProperty()
 	@IsString()
 	phoneNumber: string;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsBoolean()
-	isActive?: boolean;
 }

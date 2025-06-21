@@ -24,7 +24,6 @@ export class LecturerService {
 					password: createLecturerDto.password,
 					gender: createLecturerDto.gender,
 					phoneNumber: createLecturerDto.phoneNumber,
-					isActive: createLecturerDto.isActive,
 				};
 
 				// TODO: To send email to lecturer with their credentials
@@ -72,6 +71,11 @@ export class LecturerService {
 						omit: {
 							password: true,
 						},
+					},
+				},
+				orderBy: {
+					user: {
+						createdAt: 'desc',
 					},
 				},
 			});
@@ -186,7 +190,6 @@ export class LecturerService {
 						password: createLecturerDto.password,
 						gender: createLecturerDto.gender,
 						phoneNumber: createLecturerDto.phoneNumber,
-						isActive: createLecturerDto.isActive,
 					};
 
 					// Create user
