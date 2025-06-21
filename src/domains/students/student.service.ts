@@ -7,6 +7,7 @@ import {
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
+import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
@@ -49,7 +50,6 @@ export class StudentService {
 					password: createStudentDto.password,
 					gender: createStudentDto.gender,
 					phoneNumber: createStudentDto.phoneNumber,
-					isActive: createStudentDto.isActive,
 				};
 
 				// TODO: To send email to student with their credentials
@@ -88,6 +88,10 @@ export class StudentService {
 				});
 
 				this.logger.log(
+					`Student created with studentId: ${createStudentDto.studentId}`,
+				);
+
+				this.logger.log(
 					`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
 				);
 
@@ -108,6 +112,7 @@ export class StudentService {
 			throw error;
 		}
 	}
+
 	async findAll() {
 		try {
 			this.logger.log('Fetching all students');
@@ -120,8 +125,14 @@ export class StudentService {
 						},
 					},
 				},
+				orderBy: {
+					user: {
+						createdAt: 'desc',
+					},
+				},
 			});
 
+			// Reuse the same data transformation logic from findOne
 			const formattedStudents = students.map((student) => ({
 				...student.user,
 				studentId: student.studentId,
@@ -255,7 +266,6 @@ export class StudentService {
 						password: createStudentDto.password,
 						gender: createStudentDto.gender,
 						phoneNumber: createStudentDto.phoneNumber,
-						isActive: createStudentDto.isActive,
 					};
 
 					// Create user
@@ -290,11 +300,15 @@ export class StudentService {
 
 					await prisma.enrollment.create({
 						data: {
-							studentId: createStudentDto.studentId,
+							studentId: student.userId,
 							semesterId: createStudentDto.semesterId,
 							status: EnrollmentStatus.NotYet,
 						},
 					});
+
+					this.logger.log(
+						`Student ${createStudentDto.studentId} created successfully`,
+					);
 
 					this.logger.log(
 						`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
@@ -320,6 +334,122 @@ export class StudentService {
 			return results;
 		} catch (error) {
 			this.logger.error('Error creating students in batch', error);
+
+			throw error;
+		}
+	}
+
+	async toggleStatus(id: string, toggleDto: ToggleStudentStatusDto) {
+		try {
+			const { isActive } = toggleDto;
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingStudent = await prisma.student.findUnique({
+					where: { userId: id },
+					include: {
+						user: true,
+					},
+				});
+
+				if (!existingStudent) {
+					this.logger.warn(
+						`Student with userId ${id} not found for status toggle`,
+					);
+
+					throw new NotFoundException(`Student with userId ${id} not found`);
+				}
+
+				const updatedUser = await prisma.user.update({
+					where: { id },
+					data: { isActive },
+					omit: {
+						password: true,
+					},
+				});
+
+				return {
+					...updatedUser,
+					studentId: existingStudent.studentId,
+					majorId: existingStudent.majorId,
+				};
+			});
+
+			this.logger.log(
+				`Student status updated - userId: ${id}, isActive: ${isActive}`,
+			);
+
+			this.logger.debug('Updated student status', result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(
+				`Error toggling student status with userId ${id}`,
+				error,
+			);
+
+			throw error;
+		}
+	}
+
+	async remove(id: string) {
+		try {
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingStudent = await prisma.student.findUnique({
+					where: { userId: id },
+					include: {
+						user: {
+							omit: {
+								password: true,
+							},
+						},
+						enrollments: true,
+						studentGroupParticipations: true,
+					},
+				});
+
+				if (!existingStudent) {
+					this.logger.warn(`Student with ID ${id} not found for deletion`);
+
+					throw new NotFoundException(`Student with ID ${id} not found`);
+				}
+
+				const hasRelationships =
+					existingStudent.enrollments.length > 1 ||
+					existingStudent.studentGroupParticipations.length > 0;
+
+				if (hasRelationships) {
+					const errorMessage = `Cannot delete student. Student with ID ${id} has existing relationships`;
+					this.logger.warn(errorMessage);
+
+					throw new ConflictException(errorMessage);
+				}
+
+				const deletedStudent = await prisma.student.delete({
+					where: { userId: id },
+				});
+
+				const deletedUser = await prisma.user.delete({
+					where: { id },
+					omit: {
+						password: true,
+					},
+				});
+
+				const deletedData = {
+					...deletedUser,
+					studentId: deletedStudent.studentId,
+					majorId: deletedStudent.majorId,
+				};
+
+				this.logger.log(`Student and associated user deleted with ID: ${id}`);
+				this.logger.debug('Deleted student data', deletedData);
+
+				return deletedData;
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error deleting student with userId ${id}`, error);
 
 			throw error;
 		}
