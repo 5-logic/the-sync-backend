@@ -81,7 +81,9 @@ export class SemesterService {
 
 	async findAll() {
 		try {
-			const semesters = await this.prisma.semester.findMany();
+			const semesters = await this.prisma.semester.findMany({
+				orderBy: { createdAt: 'desc' },
+			});
 
 			this.logger.log(`Found ${semesters.length} semesters`);
 			this.logger.debug('Semesters detail', semesters);
