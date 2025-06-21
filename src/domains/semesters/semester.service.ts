@@ -9,6 +9,8 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
 import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
 
+import { SemesterStatus } from '~/generated/prisma';
+
 @Injectable()
 export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
@@ -17,43 +19,59 @@ export class SemesterService {
 
 	async create(createSemesterDto: CreateSemesterDto) {
 		try {
-			const newSemester = await this.prisma.semester.create({
-				data: createSemesterDto,
-				include: {
-					milestones: { select: { id: true } },
-					groups: { select: { id: true } },
+			this.logger.log('Starting semester creation process');
+
+			const conflictSemester = await this.prisma.semester.findFirst({
+				where: {
+					OR: [
+						{ name: createSemesterDto.name },
+						{ code: createSemesterDto.code },
+					],
 				},
 			});
 
-			if (
-				typeof createSemesterDto.status === 'string' &&
-				['Preparing', 'Picking', 'Ongoing'].includes(createSemesterDto.status)
-			) {
-				const conflictingSemester = await this.prisma.semester.findFirst({
-					where: {
-						status: createSemesterDto.status,
-					},
-				});
+			if (conflictSemester) {
+				const field =
+					conflictSemester.name === createSemesterDto.name ? 'name' : 'code';
+				this.logger.warn(`Duplicate ${field}: ${createSemesterDto[field]}`);
 
-				if (conflictingSemester) {
-					this.logger.warn(
-						`Another semester already has status ${createSemesterDto.status}`,
-					);
-
-					throw new ConflictException(
-						`Another semester already has status ${createSemesterDto.status}. Only one semester can have this status at a time.`,
-					);
-				}
+				throw new ConflictException(
+					`Semester with this ${field} already exists`,
+				);
 			}
 
-			this.logger.log(`Semester created with ID: ${newSemester.id}`);
-			this.logger.debug('Semester detail', newSemester);
+			this.logger.debug('Name and code validation passed');
 
-			return {
-				...newSemester,
-				milestones: newSemester.milestones.map((m) => m.id),
-				groups: newSemester.groups.map((g) => g.id),
-			};
+			const activeSemester = await this.prisma.semester.findFirst({
+				where: {
+					status: {
+						notIn: [SemesterStatus.NotYet, SemesterStatus.End],
+					},
+				},
+			});
+
+			if (activeSemester) {
+				this.logger.warn(
+					`Cannot create semester. Active semester found with ID: ${activeSemester.id}, status: ${activeSemester.status}`,
+				);
+
+				throw new ConflictException(
+					`Cannot create new semester. There is already an active semester (${activeSemester.name}) with status: ${activeSemester.status}`,
+				);
+			}
+
+			this.logger.debug('Active semester validation passed');
+
+			const newSemester = await this.prisma.semester.create({
+				data: createSemesterDto,
+			});
+
+			this.logger.log(
+				`Semester created successfully with ID: ${newSemester.id}`,
+			);
+			this.logger.debug('New semester details', newSemester);
+
+			return newSemester;
 		} catch (error) {
 			this.logger.error('Error creating semester', error);
 
