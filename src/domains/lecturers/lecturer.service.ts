@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
+import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
@@ -229,6 +230,63 @@ export class LecturerService {
 			return results;
 		} catch (error) {
 			this.logger.error('Error creating lecturers in batch', error);
+
+			throw error;
+		}
+	}
+	async toggleStatus(id: string, toggleDto: ToggleLecturerStatusDto) {
+		try {
+			const { isActive, isModerator } = toggleDto;
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingLecturer = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					include: {
+						user: true,
+					},
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(
+						`Lecturer with userId ${id} not found for status toggle`,
+					);
+
+					throw new NotFoundException(`Lecturer with userId ${id} not found`);
+				}
+
+				const updatedUser = await prisma.user.update({
+					where: { id },
+					data: { isActive },
+					omit: {
+						password: true,
+					},
+				});
+
+				const updatedLecturer = await prisma.lecturer.update({
+					where: { userId: id },
+					data: {
+						isModerator,
+					},
+				});
+
+				return {
+					...updatedUser,
+					isModerator: updatedLecturer.isModerator,
+				};
+			});
+
+			this.logger.log(
+				`Lecturer status updated - userId: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
+			);
+
+			this.logger.debug('Updated lecturer status', result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(
+				`Error toggling lecturer status with userId ${id}`,
+				error,
+			);
 
 			throw error;
 		}
