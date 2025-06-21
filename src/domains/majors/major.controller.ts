@@ -8,7 +8,7 @@ import { MajorService } from '@/domains/majors/major.service';
 @UseGuards(RoleGuard)
 @UseGuards(JwtAccessAuthGuard)
 @ApiBearerAuth()
-@ApiTags('Majors')
+@ApiTags('Major')
 @Controller('majors')
 export class MajorController {
 	constructor(private readonly majorService: MajorService) {}
