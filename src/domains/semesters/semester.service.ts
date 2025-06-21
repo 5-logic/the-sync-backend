@@ -63,12 +63,7 @@ export class SemesterService {
 
 	async findAll() {
 		try {
-			const semesters = await this.prisma.semester.findMany({
-				include: {
-					milestones: { select: { id: true } },
-					groups: { select: { id: true } },
-				},
-			});
+			const semesters = await this.prisma.semester.findMany();
 
 			this.logger.log(`Found ${semesters.length} semesters`);
 			this.logger.debug('Semesters detail', semesters);
@@ -85,10 +80,6 @@ export class SemesterService {
 		try {
 			const semester = await this.prisma.semester.findUnique({
 				where: { id },
-				include: {
-					milestones: { select: { id: true } },
-					groups: { select: { id: true } },
-				},
 			});
 
 			if (!semester) {
