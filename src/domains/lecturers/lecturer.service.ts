@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
@@ -287,6 +292,73 @@ export class LecturerService {
 				`Error toggling lecturer status with userId ${id}`,
 				error,
 			);
+
+			throw error;
+		}
+	}
+
+	async remove(id: string) {
+		try {
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingLecturer = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					include: {
+						user: {
+							omit: {
+								password: true,
+							},
+						},
+						supervisions: true,
+						assignmentReviews: true,
+						reviews: true,
+						theses: true,
+					},
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
+
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				}
+
+				const hasRelationships =
+					existingLecturer.supervisions.length > 0 ||
+					existingLecturer.assignmentReviews.length > 0 ||
+					existingLecturer.reviews.length > 0 ||
+					existingLecturer.theses.length > 0;
+
+				if (hasRelationships) {
+					const errorMessage = `Cannot delete lecturer. Lecturer with ID ${id} has existing relationships`;
+					this.logger.warn(errorMessage);
+
+					throw new ConflictException(errorMessage);
+				}
+
+				const deletedLecturer = await prisma.lecturer.delete({
+					where: { userId: id },
+				});
+
+				const deletedUser = await prisma.user.delete({
+					where: { id },
+					omit: {
+						password: true,
+					},
+				});
+
+				const deletedData = {
+					...deletedUser,
+					isModerator: deletedLecturer.isModerator,
+				};
+
+				this.logger.log(`Lecturer and associated user deleted with ID: ${id}`);
+				this.logger.debug('Deleted lecturer data', deletedData);
+
+				return deletedData;
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error deleting lecturer with userId ${id}`, error);
 
 			throw error;
 		}
