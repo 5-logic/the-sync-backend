@@ -319,7 +319,7 @@ export class SemesterService {
 			);
 
 			throw new ConflictException(
-				`Invalid status transition. Can only move from ${currentStatus} to ${statusOrder[currentIndex + 1] || 'nowhere'}`,
+				`Invalid status transition. Can only move from ${currentStatus} to ${statusOrder[currentIndex + 1] ?? 'nowhere'}`,
 			);
 		}
 
@@ -337,7 +337,7 @@ export class SemesterService {
 			SemesterStatus.Ongoing,
 		];
 
-		const statusToCheck = newStatus || currentStatus;
+		const statusToCheck = newStatus ?? currentStatus;
 
 		if (!allowedStatuses.includes(statusToCheck)) {
 			this.logger.warn(
@@ -358,8 +358,7 @@ export class SemesterService {
 	) {
 		const newMaxGroup = updateDto.maxGroup;
 
-		const effectiveMaxGroup =
-			newMaxGroup !== undefined ? newMaxGroup : currentMaxGroup;
+		const effectiveMaxGroup = newMaxGroup ?? currentMaxGroup;
 
 		if (!effectiveMaxGroup) {
 			this.logger.warn(
@@ -379,7 +378,7 @@ export class SemesterService {
 		currentStatus: SemesterStatus,
 		newStatus?: SemesterStatus,
 	) {
-		const statusToCheck = newStatus || currentStatus;
+		const statusToCheck = newStatus ?? currentStatus;
 
 		if (statusToCheck !== SemesterStatus.Ongoing) {
 			this.logger.warn(
