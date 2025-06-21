@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -17,6 +18,7 @@ import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
+import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { StudentService } from '@/students/student.service';
 
@@ -60,5 +62,20 @@ export class StudentController {
 		const user = request.user as UserPayload;
 
 		return await this.studentService.update(user.id, updateStudentDto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Post(':id/toggle-status')
+	async toggleStatus(
+		@Param('id') id: string,
+		@Body() toggleStudentStatusDto: ToggleStudentStatusDto,
+	) {
+		return await this.studentService.toggleStatus(id, toggleStudentStatusDto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Delete(':id')
+	async remove(@Param('id') id: string) {
+		return await this.studentService.remove(id);
 	}
 }

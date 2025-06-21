@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -17,6 +18,7 @@ import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
+import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
 
@@ -60,5 +62,20 @@ export class LecturerController {
 		const user = request.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, updateLecturerDto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Post(':id/toggle-status')
+	async toggleStatus(
+		@Param('id') id: string,
+		@Body() toggleLecturerStatusDto: ToggleLecturerStatusDto,
+	) {
+		return await this.lecturerService.toggleStatus(id, toggleLecturerStatusDto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Delete(':id')
+	async remove(@Param('id') id: string) {
+		return await this.lecturerService.remove(id);
 	}
 }

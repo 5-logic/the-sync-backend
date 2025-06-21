@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -48,5 +49,11 @@ export class SemesterController {
 		@Body() updateSemesterDto: UpdateSemesterDto,
 	) {
 		return await this.semesterService.update(id, updateSemesterDto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Delete(':id')
+	async remove(@Param('id') id: string) {
+		return await this.semesterService.remove(id);
 	}
 }
