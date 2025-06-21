@@ -231,6 +231,73 @@ export class SemesterService {
 		}
 	}
 
+	async remove(id: string) {
+		try {
+			this.logger.log(`Starting semester removal process for ID: ${id}`);
+
+			const existingSemester = await this.prisma.semester.findUnique({
+				where: { id },
+				include: {
+					groups: true,
+					enrollments: true,
+					milestones: true,
+					studentGroupParticipations: true,
+				},
+			});
+
+			if (!existingSemester) {
+				this.logger.warn(`Semester with ID ${id} not found for removal`);
+
+				throw new NotFoundException(`Semester with ID ${id} not found`);
+			}
+
+			this.logger.debug('Existing semester found', existingSemester);
+
+			if (existingSemester.status !== SemesterStatus.NotYet) {
+				this.logger.warn(
+					`Cannot delete semester with ID ${id}: status is ${existingSemester.status}, must be ${SemesterStatus.NotYet}`,
+				);
+
+				throw new ConflictException(
+					`Cannot delete semester: status must be ${SemesterStatus.NotYet}`,
+				);
+			}
+
+			const hasRelationships =
+				existingSemester.groups.length > 0 ||
+				existingSemester.enrollments.length > 0 ||
+				existingSemester.milestones.length > 0 ||
+				existingSemester.studentGroupParticipations.length > 0;
+
+			if (hasRelationships) {
+				this.logger.warn(
+					`Cannot delete semester with ID ${id}: semester has existing relationships`,
+				);
+
+				throw new ConflictException(
+					`Cannot delete semester with ID ${id}: semester has existing relationships`,
+				);
+			}
+
+			this.logger.debug('All validation checks passed for semester removal');
+
+			const deletedSemester = await this.prisma.semester.delete({
+				where: { id },
+			});
+
+			this.logger.log(
+				`Semester deleted successfully with ID: ${deletedSemester.id}`,
+			);
+			this.logger.debug('Deleted semester details', deletedSemester);
+
+			return deletedSemester;
+		} catch (error) {
+			this.logger.error('Error removing semester', error);
+
+			throw error;
+		}
+	}
+
 	private validateStatusTransition(
 		currentStatus: SemesterStatus,
 		newStatus: SemesterStatus,
