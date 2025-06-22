@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -70,5 +71,13 @@ export class ThesisController {
 	@Post(':id/review')
 	async reviewThesis(@Param('id') id: string, @Body() dto: ReviewThesisDto) {
 		return await this.thesisService.reviewThesis(id, dto);
+	}
+
+	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Delete(':id')
+	async remove(@Req() request: Request, @Param('id') id: string) {
+		const user = request.user as UserPayload;
+
+		return await this.thesisService.remove(user.id, id);
 	}
 }

@@ -376,4 +376,57 @@ export class ThesisService {
 			throw error;
 		}
 	}
+
+	async remove(lecturerId: string, id: string) {
+		try {
+			this.logger.log(
+				`Attempting to delete thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
+			);
+
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with ID ${id} not found for deletion`);
+
+				throw new NotFoundException(`Thesis with ID ${id} not found`);
+			}
+
+			// Check ownership - only the lecturer who created the thesis can delete it
+			if (existingThesis.lecturerId !== lecturerId) {
+				this.logger.warn(
+					`Lecturer with ID ${lecturerId} is not authorized to delete thesis with ID ${id}`,
+				);
+
+				throw new ForbiddenException(
+					`You do not have permission to delete this thesis`,
+				);
+			}
+
+			// Only allow deletion of New or Rejected theses
+			if (
+				existingThesis.status !== ThesisStatus.New &&
+				existingThesis.status !== ThesisStatus.Rejected
+			) {
+				throw new ConflictException(
+					`Cannot delete thesis with status ${existingThesis.status}. Only ${ThesisStatus.New} or ${ThesisStatus.Rejected} theses can be deleted.`,
+				);
+			}
+
+			// Delete thesis and return the deleted thesis object
+			const deletedThesis = await this.prisma.thesis.delete({
+				where: { id },
+			});
+
+			this.logger.log(`Thesis with ID: ${id} successfully deleted`);
+			this.logger.debug('Deleted thesis detail', deletedThesis);
+
+			return deletedThesis;
+		} catch (error) {
+			this.logger.error(`Error deleting thesis with ID ${id}`, error);
+
+			throw error;
+		}
+	}
 }
