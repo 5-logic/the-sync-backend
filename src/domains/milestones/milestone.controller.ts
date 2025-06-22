@@ -24,11 +24,10 @@ import { MilestoneService } from '@/milestones/milestone.service';
 @Controller('milestones')
 export class MilestoneController {
 	constructor(private readonly milestoneService: MilestoneService) {}
-
 	@Roles(Role.ADMIN)
 	@Post()
-	async create(@Body() createMilestoneDto: CreateMilestoneDto) {
-		return await this.milestoneService.create(createMilestoneDto);
+	async create(@Body() dto: CreateMilestoneDto) {
+		return await this.milestoneService.create(dto);
 	}
 
 	@Get()
@@ -40,14 +39,10 @@ export class MilestoneController {
 	async findOne(@Param('id') id: string) {
 		return await this.milestoneService.findOne(id);
 	}
-
 	@Roles(Role.ADMIN)
 	@Put(':id')
-	async update(
-		@Param('id') id: string,
-		@Body() updateMilestoneDto: UpdateMilestoneDto,
-	) {
-		return await this.milestoneService.update(id, updateMilestoneDto);
+	async update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
+		return await this.milestoneService.update(id, dto);
 	}
 
 	@Roles(Role.ADMIN)

@@ -20,13 +20,9 @@ export class AdminController {
 	async findOne(@Param('id') id: string) {
 		return await this.adminService.findOne(id);
 	}
-
 	@Roles(Role.ADMIN)
 	@Put(':id')
-	async update(
-		@Param('id') id: string,
-		@Body() updateAdminDto: UpdateAdminDto,
-	) {
-		return await this.adminService.update(id, updateAdminDto);
+	async update(@Param('id') id: string, @Body() dto: UpdateAdminDto) {
+		return await this.adminService.update(id, dto);
 	}
 }

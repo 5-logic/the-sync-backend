@@ -74,19 +74,18 @@ export class MilestoneService {
 
 		return milestone;
 	}
-
-	async create(createMilestoneDto: CreateMilestoneDto) {
+	async create(dto: CreateMilestoneDto) {
 		try {
-			await this.validateSemesterForModification(createMilestoneDto.semesterId);
+			await this.validateSemesterForModification(dto.semesterId);
 
-			const startDate = new Date(createMilestoneDto.startDate);
-			const endDate = new Date(createMilestoneDto.endDate);
+			const startDate = new Date(dto.startDate);
+			const endDate = new Date(dto.endDate);
 
 			this.validateDateRange(startDate, endDate);
 
 			const overlappingMilestone = await this.prisma.milestone.findFirst({
 				where: {
-					semesterId: createMilestoneDto.semesterId,
+					semesterId: dto.semesterId,
 					OR: [
 						// Case 1: New milestone starts during an existing milestone
 						{
@@ -119,7 +118,7 @@ export class MilestoneService {
 			}
 
 			const milestone = await this.prisma.milestone.create({
-				data: createMilestoneDto,
+				data: dto,
 			});
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);

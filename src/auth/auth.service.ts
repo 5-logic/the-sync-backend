@@ -32,12 +32,11 @@ export class AuthService {
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
 	) {}
-
-	async loginAdmin(adminLoginDto: AdminLoginDto) {
+	async loginAdmin(dto: AdminLoginDto) {
 		try {
 			const admin = await this.adminService.validateAdmin(
-				adminLoginDto.username,
-				adminLoginDto.password,
+				dto.username,
+				dto.password,
 			);
 
 			if (!admin) {
@@ -63,10 +62,9 @@ export class AuthService {
 			throw error;
 		}
 	}
-
-	async refreshAdmin(refreshDto: RefreshDto) {
+	async refreshAdmin(dto: RefreshDto) {
 		try {
-			const { refreshToken } = refreshDto;
+			const { refreshToken } = dto;
 
 			const decoded: JwtPayload = await this.jwtService.verifyAsync(
 				refreshToken,
@@ -103,13 +101,9 @@ export class AuthService {
 			throw error;
 		}
 	}
-
-	async loginUser(userLoginDto: UserLoginDto) {
+	async loginUser(dto: UserLoginDto) {
 		try {
-			const user = await this.userService.validateUser(
-				userLoginDto.email,
-				userLoginDto.password,
-			);
+			const user = await this.userService.validateUser(dto.email, dto.password);
 
 			if (!user) {
 				throw new UnauthorizedException('Not authorized');
@@ -139,10 +133,9 @@ export class AuthService {
 			throw error;
 		}
 	}
-
-	async refreshUser(refreshDto: RefreshDto) {
+	async refreshUser(dto: RefreshDto) {
 		try {
-			const { refreshToken } = refreshDto;
+			const { refreshToken } = dto;
 
 			const decoded: JwtPayload = await this.jwtService.verifyAsync(
 				refreshToken,

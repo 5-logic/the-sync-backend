@@ -17,23 +17,19 @@ export class SemesterService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async create(createSemesterDto: CreateSemesterDto) {
+	async create(dto: CreateSemesterDto) {
 		try {
 			this.logger.log('Starting semester creation process');
 
 			const conflictSemester = await this.prisma.semester.findFirst({
 				where: {
-					OR: [
-						{ name: createSemesterDto.name },
-						{ code: createSemesterDto.code },
-					],
+					OR: [{ name: dto.name }, { code: dto.code }],
 				},
 			});
 
 			if (conflictSemester) {
-				const field =
-					conflictSemester.name === createSemesterDto.name ? 'name' : 'code';
-				this.logger.warn(`Duplicate ${field}: ${createSemesterDto[field]}`);
+				const field = conflictSemester.name === dto.name ? 'name' : 'code';
+				this.logger.warn(`Duplicate ${field}: ${dto[field]}`);
 
 				throw new ConflictException(
 					`Semester with this ${field} already exists`,
@@ -63,7 +59,7 @@ export class SemesterService {
 			this.logger.debug('Active semester validation passed');
 
 			const newSemester = await this.prisma.semester.create({
-				data: createSemesterDto,
+				data: dto,
 			});
 
 			this.logger.log(
@@ -119,19 +115,16 @@ export class SemesterService {
 		}
 	}
 
-	async update(id: string, updateSemesterDto: UpdateSemesterDto) {
+	async update(id: string, dto: UpdateSemesterDto) {
 		try {
 			this.logger.log(`Starting semester update process for ID: ${id}`);
 
 			const existingSemester = await this.findExistingSemester(id);
 
 			this.validateSemesterUpdatePermissions(existingSemester);
-			this.performUpdateValidations(existingSemester, updateSemesterDto);
+			this.performUpdateValidations(existingSemester, dto);
 
-			const updateData = this.prepareUpdateData(
-				existingSemester,
-				updateSemesterDto,
-			);
+			const updateData = this.prepareUpdateData(existingSemester, dto);
 
 			const updatedSemester = await this.prisma.semester.update({
 				where: { id },
@@ -394,6 +387,7 @@ export class SemesterService {
 		) {
 			this.validateStatusTransition(
 				existingSemester.status,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				updateSemesterDto.status,
 			);
 		}
@@ -401,6 +395,7 @@ export class SemesterService {
 		if (updateSemesterDto.maxGroup !== undefined) {
 			this.validateMaxGroupUpdate(
 				existingSemester.status,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				updateSemesterDto.status,
 			);
 		}
@@ -454,12 +449,14 @@ export class SemesterService {
 		if (updateSemesterDto.ongoingPhase !== undefined) {
 			this.validateOngoingPhaseUpdate(
 				existingSemester.status,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				updateSemesterDto.status,
 			);
 
 			if (existingSemester.ongoingPhase !== updateSemesterDto.ongoingPhase) {
 				this.validateOngoingPhaseTransition(
 					existingSemester.ongoingPhase,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					updateSemesterDto.ongoingPhase,
 				);
 			}

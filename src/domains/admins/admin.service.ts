@@ -35,7 +35,7 @@ export class AdminService {
 		}
 	}
 
-	async update(id: string, updateAdminDto: UpdateAdminDto) {
+	async update(id: string, dto: UpdateAdminDto) {
 		try {
 			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { id: id },
@@ -49,7 +49,7 @@ export class AdminService {
 
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id: id },
-				data: updateAdminDto,
+				data: dto,
 				omit: {
 					password: true,
 				},
