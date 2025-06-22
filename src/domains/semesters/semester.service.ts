@@ -118,6 +118,7 @@ export class SemesterService {
 			throw error;
 		}
 	}
+
 	async update(id: string, updateSemesterDto: UpdateSemesterDto) {
 		try {
 			this.logger.log(`Starting semester update process for ID: ${id}`);
@@ -251,6 +252,7 @@ export class SemesterService {
 		newStatus?: SemesterStatus,
 	) {
 		const allowedStatuses: SemesterStatus[] = [
+			SemesterStatus.Preparing,
 			SemesterStatus.Picking,
 			SemesterStatus.Ongoing,
 		];
@@ -263,7 +265,7 @@ export class SemesterService {
 			);
 
 			throw new ConflictException(
-				`maxGroup can only be updated when status is ${SemesterStatus.Picking} or ${SemesterStatus.Ongoing}`,
+				`maxGroup can only be updated when status is ${SemesterStatus.Preparing}, ${SemesterStatus.Picking} or ${SemesterStatus.Ongoing}`,
 			);
 		}
 
@@ -475,7 +477,9 @@ export class SemesterService {
 			updateSemesterDto.status === SemesterStatus.Ongoing
 		) {
 			updateData.ongoingPhase = OngoingPhase.ScopeAdjustable;
-			this.logger.debug('Auto-setting ongoingPhase to ScopeAdjustable');
+			this.logger.debug(
+				`Auto-setting ongoingPhase to ${OngoingPhase.ScopeAdjustable}`,
+			);
 		}
 
 		return updateData;
