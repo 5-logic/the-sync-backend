@@ -14,16 +14,30 @@ import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 export class ThesisService {
 	private readonly logger = new Logger(ThesisService.name);
 	private readonly INITIAL_VERSION = 1;
-
 	constructor(private readonly prisma: PrismaService) {}
+
 	async create(lecturerId: string, dto: CreateThesisDto) {
 		try {
-			const { supportingDocument, ...thesisData } = dto;
+			const {
+				supportingDocument,
+				englishName,
+				vietnameseName,
+				abbreviation,
+				description,
+				domain,
+			} = dto;
 
 			const newThesis = await this.prisma.$transaction(async (prisma) => {
 				// Create thesis
 				const thesis = await prisma.thesis.create({
-					data: { ...thesisData, lecturerId },
+					data: {
+						englishName,
+						vietnameseName,
+						abbreviation,
+						description,
+						domain,
+						lecturerId,
+					},
 				});
 
 				// Create the first thesis version
@@ -150,13 +164,26 @@ export class ThesisService {
 				);
 			}
 
-			const { supportingDocument, ...thesisData } = dto;
+			const {
+				supportingDocument,
+				englishName,
+				vietnameseName,
+				abbreviation,
+				description,
+				domain,
+			} = dto;
 
 			const updatedThesis = await this.prisma.$transaction(async (prisma) => {
 				// Update thesis data (excluding supportingDocument)
 				await prisma.thesis.update({
 					where: { id },
-					data: thesisData,
+					data: {
+						englishName,
+						vietnameseName,
+						abbreviation,
+						description,
+						domain,
+					},
 				});
 
 				// If supportingDocument is provided, create a new version
