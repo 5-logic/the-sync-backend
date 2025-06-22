@@ -30,7 +30,7 @@ export class StudentService {
 
 				if (!major) {
 					throw new NotFoundException(
-						`Major with id ${createStudentDto.majorId} not found`,
+						`Major with ID ${createStudentDto.majorId} not found`,
 					);
 				}
 
@@ -40,7 +40,7 @@ export class StudentService {
 
 				if (!semester) {
 					throw new NotFoundException(
-						`Semester with id ${createStudentDto.semesterId} not found`,
+						`Semester with ID ${createStudentDto.semesterId} not found`,
 					);
 				}
 
@@ -151,7 +151,7 @@ export class StudentService {
 
 	async findOne(id: string) {
 		try {
-			this.logger.log(`Fetching student with userId: ${id}`);
+			this.logger.log(`Fetching student with ID: ${id}`);
 
 			const student = await this.prisma.student.findUnique({
 				where: { userId: id },
@@ -165,12 +165,12 @@ export class StudentService {
 			});
 
 			if (!student) {
-				this.logger.warn(`Student with userId ${id} not found`);
+				this.logger.warn(`Student with ID ${id} not found`);
 
-				throw new NotFoundException(`Student with userId ${id} not found`);
+				throw new NotFoundException(`Student with ID ${id} not found`);
 			}
 
-			this.logger.log(`Student found with userId: ${id}`);
+			this.logger.log(`Student found with ID: ${id}`);
 			this.logger.debug('Student detail', student);
 
 			return {
@@ -179,7 +179,7 @@ export class StudentService {
 				majorId: student.majorId,
 			};
 		} catch (error) {
-			this.logger.error(`Error fetching student with userId ${id}`, error);
+			this.logger.error(`Error fetching student with ID ${id}`, error);
 			throw error;
 		}
 	}
@@ -192,9 +192,9 @@ export class StudentService {
 				});
 
 				if (!existingStudent) {
-					this.logger.warn(`Student with userId ${id} not found for update`);
+					this.logger.warn(`Student with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Student with userId ${id} not found`);
+					throw new NotFoundException(`Student with ID ${id} not found`);
 				}
 
 				const updateUserDto: UpdateUserDto = {
@@ -221,12 +221,12 @@ export class StudentService {
 				};
 			});
 
-			this.logger.log(`Student updated with userId: ${result.id}`);
+			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', result);
 
 			return result;
 		} catch (error) {
-			this.logger.error(`Error updating student with userId ${id}`, error);
+			this.logger.error(`Error updating student with ID ${id}`, error);
 
 			throw error;
 		}
@@ -245,7 +245,7 @@ export class StudentService {
 
 					if (!major) {
 						throw new NotFoundException(
-							`Major with id ${createStudentDto.majorId} not found`,
+							`Major with ID ${createStudentDto.majorId} not found`,
 						);
 					}
 
@@ -255,7 +255,7 @@ export class StudentService {
 
 					if (!semester) {
 						throw new NotFoundException(
-							`Semester with id ${createStudentDto.semesterId} not found`,
+							`Semester with ID ${createStudentDto.semesterId} not found`,
 						);
 					}
 
@@ -352,11 +352,9 @@ export class StudentService {
 				});
 
 				if (!existingStudent) {
-					this.logger.warn(
-						`Student with userId ${id} not found for status toggle`,
-					);
+					this.logger.warn(`Student with ID ${id} not found for status toggle`);
 
-					throw new NotFoundException(`Student with userId ${id} not found`);
+					throw new NotFoundException(`Student with ID ${id} not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -375,17 +373,14 @@ export class StudentService {
 			});
 
 			this.logger.log(
-				`Student status updated - userId: ${id}, isActive: ${isActive}`,
+				`Student status updated - ID: ${id}, isActive: ${isActive}`,
 			);
 
 			this.logger.debug('Updated student status', result);
 
 			return result;
 		} catch (error) {
-			this.logger.error(
-				`Error toggling student status with userId ${id}`,
-				error,
-			);
+			this.logger.error(`Error toggling student status with ID ${id}`, error);
 
 			throw error;
 		}

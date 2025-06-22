@@ -22,7 +22,7 @@ export class AdminService {
 			if (!admin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
 
-				return null;
+				throw new NotFoundException(`Admin with ID ${id} not found`);
 			}
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);

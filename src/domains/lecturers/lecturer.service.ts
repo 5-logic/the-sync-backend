@@ -43,7 +43,7 @@ export class LecturerService {
 					},
 				});
 
-				this.logger.log(`Lecturer created with userId: ${newUser.id}`);
+				this.logger.log(`Lecturer created with ID: ${newUser.id}`);
 
 				return {
 					...newUser,
@@ -51,7 +51,7 @@ export class LecturerService {
 				};
 			});
 
-			this.logger.log(`Lecturer created with userId: ${result.id}`);
+			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
 
 			return result;
@@ -99,7 +99,7 @@ export class LecturerService {
 
 	async findOne(id: string) {
 		try {
-			this.logger.log(`Fetching lecturer with userId: ${id}`);
+			this.logger.log(`Fetching lecturer with ID: ${id}`);
 
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: id },
@@ -113,12 +113,12 @@ export class LecturerService {
 			});
 
 			if (!lecturer) {
-				this.logger.warn(`Lecturer with userId ${id} not found`);
+				this.logger.warn(`Lecturer with ID ${id} not found`);
 
-				throw new NotFoundException(`Lecturer with userId ${id} not found`);
+				throw new NotFoundException(`Lecturer with ID ${id} not found`);
 			}
 
-			this.logger.log(`Lecturer found with userId: ${id}`);
+			this.logger.log(`Lecturer found with ID: ${id}`);
 			this.logger.debug('Lecturer detail', lecturer);
 
 			return {
@@ -126,7 +126,8 @@ export class LecturerService {
 				isModerator: lecturer.isModerator,
 			};
 		} catch (error) {
-			this.logger.error(`Error fetching lecturer with userId ${id}`, error);
+			this.logger.error(`Error fetching lecturer with ID ${id}`, error);
+
 			throw error;
 		}
 	}
@@ -139,9 +140,9 @@ export class LecturerService {
 				});
 
 				if (!existingLecturer) {
-					this.logger.warn(`Lecturer with userId ${id} not found for update`);
+					this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer with userId ${id} not found`);
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
 				}
 
 				const updateUserDto: UpdateUserDto = {
@@ -167,12 +168,12 @@ export class LecturerService {
 				};
 			});
 
-			this.logger.log(`Lecturer updated with userId: ${result.id}`);
+			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
 
 			return result;
 		} catch (error) {
-			this.logger.error(`Error updating lecturer with userId ${id}`, error);
+			this.logger.error(`Error updating lecturer with ID ${id}`, error);
 
 			throw error;
 		}
@@ -218,7 +219,7 @@ export class LecturerService {
 
 					createdLecturers.push(result);
 
-					this.logger.log(`Lecturer created with userId: ${result.id}`);
+					this.logger.log(`Lecturer created with ID: ${result.id}`);
 					this.logger.debug('Lecturer detail', result);
 				}
 
@@ -248,10 +249,10 @@ export class LecturerService {
 
 				if (!existingLecturer) {
 					this.logger.warn(
-						`Lecturer with userId ${id} not found for status toggle`,
+						`Lecturer with ID ${id} not found for status toggle`,
 					);
 
-					throw new NotFoundException(`Lecturer with userId ${id} not found`);
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -276,17 +277,14 @@ export class LecturerService {
 			});
 
 			this.logger.log(
-				`Lecturer status updated - userId: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
+				`Lecturer status updated - ID: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
 			);
 
 			this.logger.debug('Updated lecturer status', result);
 
 			return result;
 		} catch (error) {
-			this.logger.error(
-				`Error toggling lecturer status with userId ${id}`,
-				error,
-			);
+			this.logger.error(`Error toggling lecturer status with ID ${id}`, error);
 
 			throw error;
 		}
