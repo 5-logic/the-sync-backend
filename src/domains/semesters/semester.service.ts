@@ -390,7 +390,6 @@ export class SemesterService {
 		) {
 			this.validateStatusTransition(
 				existingSemester.status,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				updateSemesterDto.status,
 			);
 		}
@@ -398,7 +397,6 @@ export class SemesterService {
 		if (updateSemesterDto.maxGroup !== undefined) {
 			this.validateMaxGroupUpdate(
 				existingSemester.status,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				updateSemesterDto.status,
 			);
 		}
@@ -452,14 +450,12 @@ export class SemesterService {
 		if (updateSemesterDto.ongoingPhase !== undefined) {
 			this.validateOngoingPhaseUpdate(
 				existingSemester.status,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				updateSemesterDto.status,
 			);
 
 			if (existingSemester.ongoingPhase !== updateSemesterDto.ongoingPhase) {
 				this.validateOngoingPhaseTransition(
 					existingSemester.ongoingPhase,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					updateSemesterDto.ongoingPhase,
 				);
 			}
