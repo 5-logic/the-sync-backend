@@ -255,7 +255,7 @@ export class MilestoneService {
 
 			await this.validateSemesterForModification(existing.semesterId);
 
-			// Rule: Milestone chỉ được delete vào trước start date của Milestone đó (date-only comparison)
+			// Rule: Milestone can only be deleted before its start date (date-only comparison)
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 

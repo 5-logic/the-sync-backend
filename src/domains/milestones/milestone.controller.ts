@@ -18,8 +18,7 @@ import { CreateMilestoneDto } from '@/milestones/dto/create-milestone.dto';
 import { UpdateMilestoneDto } from '@/milestones/dto/update-milestone.dto';
 import { MilestoneService } from '@/milestones/milestone.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Milestone')
 @Controller('milestones')
