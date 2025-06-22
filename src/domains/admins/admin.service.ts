@@ -49,7 +49,9 @@ export class AdminService {
 
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id: id },
-				data: dto,
+				data: {
+					email: dto.email,
+				},
 				omit: {
 					password: true,
 				},

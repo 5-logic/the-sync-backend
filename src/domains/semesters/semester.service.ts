@@ -59,7 +59,10 @@ export class SemesterService {
 			this.logger.debug('Active semester validation passed');
 
 			const newSemester = await this.prisma.semester.create({
-				data: dto,
+				data: {
+					code: dto.code,
+					name: dto.name,
+				},
 			});
 
 			this.logger.log(
@@ -462,12 +465,28 @@ export class SemesterService {
 			}
 		}
 	}
-
 	private prepareUpdateData(
 		existingSemester: { status: SemesterStatus },
 		updateSemesterDto: UpdateSemesterDto,
 	) {
-		const updateData = { ...updateSemesterDto };
+		const updateData: any = {};
+
+		// Explicitly define which fields can be updated
+		if (updateSemesterDto.code !== undefined) {
+			updateData.code = updateSemesterDto.code;
+		}
+		if (updateSemesterDto.name !== undefined) {
+			updateData.name = updateSemesterDto.name;
+		}
+		if (updateSemesterDto.maxGroup !== undefined) {
+			updateData.maxGroup = updateSemesterDto.maxGroup;
+		}
+		if (updateSemesterDto.status !== undefined) {
+			updateData.status = updateSemesterDto.status;
+		}
+		if (updateSemesterDto.ongoingPhase !== undefined) {
+			updateData.ongoingPhase = updateSemesterDto.ongoingPhase;
+		}
 
 		if (
 			existingSemester.status === SemesterStatus.Picking &&

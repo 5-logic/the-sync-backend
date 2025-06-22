@@ -118,7 +118,12 @@ export class MilestoneService {
 			}
 
 			const milestone = await this.prisma.milestone.create({
-				data: dto,
+				data: {
+					name: dto.name,
+					startDate: startDate,
+					endDate: endDate,
+					semesterId: dto.semesterId,
+				},
 			});
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
@@ -234,7 +239,11 @@ export class MilestoneService {
 
 			const updated = await this.prisma.milestone.update({
 				where: { id },
-				data: dto,
+				data: {
+					name: dto.name,
+					startDate: dto.startDate,
+					endDate: dto.endDate,
+				},
 			});
 
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);

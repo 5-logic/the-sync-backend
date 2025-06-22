@@ -256,7 +256,9 @@ export class LecturerService {
 
 				const updatedUser = await prisma.user.update({
 					where: { id },
-					data: { isActive },
+					data: {
+						isActive: isActive,
+					},
 					omit: {
 						password: true,
 					},
@@ -265,7 +267,7 @@ export class LecturerService {
 				const updatedLecturer = await prisma.lecturer.update({
 					where: { userId: id },
 					data: {
-						isModerator,
+						isModerator: isModerator,
 					},
 				});
 

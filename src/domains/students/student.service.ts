@@ -124,7 +124,7 @@ export class StudentService {
 
 				const student = await prisma.student.create({
 					data: {
-						userId,
+						userId: userId,
 						studentId: createStudentDto.studentId,
 						majorId: createStudentDto.majorId,
 					},
@@ -392,7 +392,7 @@ export class StudentService {
 						// Create student
 						const student = await prisma.student.create({
 							data: {
-								userId,
+								userId: userId,
 								studentId: createStudentDto.studentId,
 								majorId: createStudentDto.majorId,
 							},
@@ -462,7 +462,9 @@ export class StudentService {
 
 				const updatedUser = await prisma.user.update({
 					where: { id },
-					data: { isActive },
+					data: {
+						isActive: isActive,
+					},
 					omit: {
 						password: true,
 					},
