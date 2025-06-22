@@ -188,7 +188,8 @@ export class ThesisService {
 
 				// If supportingDocument is provided, create a new version
 				if (supportingDocument) {
-					const latestVersion = existingThesis.thesisVersions[0]?.version || 0;
+					const latestVersion =
+						existingThesis.thesisVersions[0]?.version ?? this.INITIAL_VERSION;
 					const newVersion = latestVersion + 1;
 
 					await prisma.thesisVersion.create({
