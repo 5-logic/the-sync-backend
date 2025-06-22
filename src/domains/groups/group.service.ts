@@ -56,6 +56,7 @@ export class GroupService {
 			);
 		}
 	}
+
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({
 			where: { id: semesterId },
