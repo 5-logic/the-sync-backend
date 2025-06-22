@@ -9,6 +9,8 @@ import { CreateMilestoneDto } from '@/milestones/dto/create-milestone.dto';
 import { UpdateMilestoneDto } from '@/milestones/dto/update-milestone.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
+import { SemesterStatus } from '~/generated/prisma';
+
 @Injectable()
 export class MilestoneService {
 	private readonly logger = new Logger(MilestoneService.name);
@@ -19,50 +21,105 @@ export class MilestoneService {
 		const semester = await this.prisma.semester.findUnique({
 			where: { id: semesterId },
 		});
+
 		if (!semester) {
-			throw new NotFoundException(`Semester with id ${semesterId} not found`);
+			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+		}
+
+		return semester;
+	}
+
+	private async validateSemesterForModification(
+		semesterId: string,
+	): Promise<void> {
+		const semester = await this.validateSemester(semesterId);
+
+		if (semester.status !== SemesterStatus.Ongoing) {
+			throw new ConflictException(
+				`Milestone can only be created/modified in a semester with status ${SemesterStatus.Ongoing}. Current status: ${semester.status}`,
+			);
+		}
+	}
+
+	private validateDateRange(startDate: Date, endDate: Date) {
+		// Reset time to 00:00:00 for date-only comparison
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		const startDateOnly = new Date(startDate);
+		startDateOnly.setHours(0, 0, 0, 0);
+
+		const endDateOnly = new Date(endDate);
+		endDateOnly.setHours(0, 0, 0, 0);
+
+		if (startDateOnly < today) {
+			throw new ConflictException('Milestone start date cannot be in the past');
+		}
+
+		if (startDateOnly >= endDateOnly) {
+			throw new ConflictException(
+				'Milestone start date must be before end date',
+			);
 		}
 	}
 
 	private async validateMilestone(id: string) {
 		const milestone = await this.prisma.milestone.findUnique({
 			where: { id },
-			include: {
-				semester: { select: { id: true, name: true } },
-			},
 		});
+
 		if (!milestone) {
-			throw new NotFoundException(`Milestone with id ${id} not found`);
+			throw new NotFoundException(`Milestone with ID ${id} not found`);
 		}
+
 		return milestone;
 	}
 
 	async create(createMilestoneDto: CreateMilestoneDto) {
 		try {
-			await this.validateSemester(createMilestoneDto.semesterId);
+			await this.validateSemesterForModification(createMilestoneDto.semesterId);
+
+			const startDate = new Date(createMilestoneDto.startDate);
+			const endDate = new Date(createMilestoneDto.endDate);
+
+			this.validateDateRange(startDate, endDate);
 
 			const overlappingMilestone = await this.prisma.milestone.findFirst({
 				where: {
 					semesterId: createMilestoneDto.semesterId,
-					startDate: { lt: new Date(createMilestoneDto.endDate) },
-					endDate: { gt: new Date(createMilestoneDto.startDate) },
+					OR: [
+						// Case 1: New milestone starts during an existing milestone
+						{
+							startDate: { lte: startDate },
+							endDate: { gt: startDate },
+						},
+						// Case 2: New milestone ends during an existing milestone
+						{
+							startDate: { lt: endDate },
+							endDate: { gte: endDate },
+						},
+						// Case 3: New milestone completely contains an existing milestone
+						{
+							startDate: { gte: startDate },
+							endDate: { lte: endDate },
+						},
+						// Case 4: Existing milestone completely contains the new milestone
+						{
+							startDate: { lte: startDate },
+							endDate: { gte: endDate },
+						},
+					],
 				},
 			});
 
 			if (overlappingMilestone) {
 				throw new ConflictException(
-					`Milestone time overlaps with existing milestone: ${overlappingMilestone.name}`,
+					`Milestone time overlaps with existing milestone: ${overlappingMilestone.id}`,
 				);
 			}
 
 			const milestone = await this.prisma.milestone.create({
-				data: {
-					name: createMilestoneDto.name,
-					startDate: new Date(createMilestoneDto.startDate),
-					endDate: new Date(createMilestoneDto.endDate),
-					semesterId: createMilestoneDto.semesterId,
-					checklistId: createMilestoneDto.checklistId,
-				},
+				data: createMilestoneDto,
 			});
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
@@ -71,6 +128,7 @@ export class MilestoneService {
 			return milestone;
 		} catch (error) {
 			this.logger.error('Failed to create milestone', error);
+
 			throw error;
 		}
 	}
@@ -79,11 +137,7 @@ export class MilestoneService {
 		try {
 			this.logger.log('Fetching all milestones');
 
-			const milestones = await this.prisma.milestone.findMany({
-				include: {
-					semester: { select: { id: true, name: true } },
-				},
-			});
+			const milestones = await this.prisma.milestone.findMany();
 
 			this.logger.log(`Found ${milestones.length} milestones`);
 			this.logger.debug('Milestones detail', milestones);
@@ -120,36 +174,68 @@ export class MilestoneService {
 		try {
 			const existing = await this.validateMilestone(id);
 
+			await this.validateSemesterForModification(existing.semesterId);
+
+			// Rule: Milestone chỉ được update vào trước start date của Milestone đó (date-only comparison)
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			const existingStartDateOnly = new Date(existing.startDate);
+			existingStartDateOnly.setHours(0, 0, 0, 0);
+
+			if (today >= existingStartDateOnly) {
+				throw new ConflictException(
+					'Milestone can only be updated before its start date',
+				);
+			}
+
 			const startDate = dto.startDate
 				? new Date(dto.startDate)
 				: existing.startDate;
 			const endDate = dto.endDate ? new Date(dto.endDate) : existing.endDate;
-			const semesterId = dto.semesterId ?? existing.semesterId;
 
+			// Validate date range rules
+			this.validateDateRange(startDate, endDate);
+
+			// Check for overlaps with other milestones (excluding current milestone)
 			const overlap = await this.prisma.milestone.findFirst({
 				where: {
 					id: { not: id },
-					semesterId,
-					startDate: { lt: endDate },
-					endDate: { gt: startDate },
+					semesterId: existing.semesterId,
+					OR: [
+						// Case 1: Updated milestone starts during an existing milestone
+						{
+							startDate: { lte: startDate },
+							endDate: { gt: startDate },
+						},
+						// Case 2: Updated milestone ends during an existing milestone
+						{
+							startDate: { lt: endDate },
+							endDate: { gte: endDate },
+						},
+						// Case 3: Updated milestone completely contains an existing milestone
+						{
+							startDate: { gte: startDate },
+							endDate: { lte: endDate },
+						},
+						// Case 4: Existing milestone completely contains the updated milestone
+						{
+							startDate: { lte: startDate },
+							endDate: { gte: endDate },
+						},
+					],
 				},
 			});
 
 			if (overlap) {
 				throw new ConflictException(
-					`Updated milestone overlaps with: ${overlap.name}`,
+					`Updated milestone overlaps with: ${overlap.id}`,
 				);
 			}
 
 			const updated = await this.prisma.milestone.update({
 				where: { id },
-				data: {
-					name: dto.name,
-					startDate: dto.startDate ? startDate : undefined,
-					endDate: dto.endDate ? endDate : undefined,
-					semesterId: dto.semesterId,
-					checklistId: dto.checklistId,
-				},
+				data: dto,
 			});
 
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);
@@ -158,6 +244,40 @@ export class MilestoneService {
 			return updated;
 		} catch (error) {
 			this.logger.error(`Failed to update milestone ${id}`, error);
+
+			throw error;
+		}
+	}
+
+	async delete(id: string) {
+		try {
+			const existing = await this.validateMilestone(id);
+
+			await this.validateSemesterForModification(existing.semesterId);
+
+			// Rule: Milestone chỉ được delete vào trước start date của Milestone đó (date-only comparison)
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+
+			const existingStartDateOnly = new Date(existing.startDate);
+			existingStartDateOnly.setHours(0, 0, 0, 0);
+
+			if (today >= existingStartDateOnly) {
+				throw new ConflictException(
+					'Milestone can only be deleted before its start date',
+				);
+			}
+
+			const deleted = await this.prisma.milestone.delete({
+				where: { id },
+			});
+
+			this.logger.log(`Milestone deleted with ID: ${deleted.id}`);
+			this.logger.debug('Deleted Milestone', deleted);
+
+			return deleted;
+		} catch (error) {
+			this.logger.error(`Failed to delete milestone ${id}`, error);
 
 			throw error;
 		}

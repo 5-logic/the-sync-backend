@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Post,
+	Put,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { CreateMilestoneDto } from '@/milestones/dto/create-milestone.dto';
@@ -31,5 +39,10 @@ export class MilestoneController {
 		@Body() updateMilestoneDto: UpdateMilestoneDto,
 	) {
 		return await this.milestoneService.update(id, updateMilestoneDto);
+	}
+
+	@Delete(':id')
+	async delete(@Param('id') id: string) {
+		return await this.milestoneService.delete(id);
 	}
 }
