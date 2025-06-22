@@ -99,21 +99,20 @@ export class ThesisService {
 			});
 
 			if (!thesis) {
-				this.logger.warn(`Thesis with id ${id} not found`);
+				this.logger.warn(`Thesis with ID ${id} not found`);
 
-				throw new NotFoundException(`Thesis with id ${id} not found`);
+				throw new NotFoundException(`Thesis with ID ${id} not found`);
 			}
 
-			this.logger.log(`Thesis found with id: ${id}`);
+			this.logger.log(`Thesis found with ID: ${id}`);
 			this.logger.debug('Thesis detail', thesis);
 
 			return thesis;
 		} catch (error) {
-			this.logger.error(`Error fetching thesis with id ${id}`, error);
+			this.logger.error(`Error fetching thesis with ID ${id}`, error);
 			throw error;
 		}
 	}
-
 	async update(
 		lecturerId: string,
 		id: string,
@@ -121,22 +120,29 @@ export class ThesisService {
 	) {
 		try {
 			this.logger.log(
-				`Updating thesis with id: ${id} by lecturer with id: ${lecturerId}`,
+				`Updating thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
 			);
 
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
+				include: {
+					thesisVersions: {
+						select: { version: true },
+						orderBy: { version: 'desc' },
+						take: 1,
+					},
+				},
 			});
 
 			if (!existingThesis) {
-				this.logger.warn(`Thesis with id ${id} not found for update`);
+				this.logger.warn(`Thesis with ID ${id} not found for update`);
 
-				throw new NotFoundException(`Thesis with id ${id} not found`);
+				throw new NotFoundException(`Thesis with ID ${id} not found`);
 			}
 
 			if (existingThesis.lecturerId !== lecturerId) {
 				this.logger.warn(
-					`Lecturer with id ${lecturerId} is not authorized to update thesis with id ${id}`,
+					`Lecturer with ID ${lecturerId} is not authorized to update thesis with ID ${id}`,
 				);
 
 				throw new ForbiddenException(
@@ -144,20 +150,55 @@ export class ThesisService {
 				);
 			}
 
-			const updatedThesis = await this.prisma.thesis.update({
-				where: { id },
-				data: updateThesisDto,
-				include: {
-					thesisVersions: { select: { id: true, version: true } },
-				},
+			const { supportingDocument, ...thesisData } = updateThesisDto;
+
+			const updatedThesis = await this.prisma.$transaction(async (prisma) => {
+				// Update thesis data (excluding supportingDocument)
+				await prisma.thesis.update({
+					where: { id },
+					data: thesisData,
+				});
+
+				// If supportingDocument is provided, create a new version
+				if (supportingDocument) {
+					const latestVersion = existingThesis.thesisVersions[0]?.version || 0;
+					const newVersion = latestVersion + 1;
+
+					await prisma.thesisVersion.create({
+						data: {
+							version: newVersion,
+							supportingDocument,
+							thesisId: id,
+						},
+					});
+
+					this.logger.log(
+						`Created new thesis version ${newVersion} for thesis ID: ${id}`,
+					);
+				}
+
+				// Return updated thesis with all versions
+				return prisma.thesis.findUnique({
+					where: { id },
+					include: {
+						thesisVersions: {
+							select: { id: true, version: true, supportingDocument: true },
+							orderBy: { version: 'desc' },
+						},
+					},
+				});
 			});
+
+			if (!updatedThesis) {
+				throw new ConflictException('Failed to update thesis');
+			}
 
 			this.logger.log(`Thesis updated with ID: ${updatedThesis.id}`);
 			this.logger.debug('Updated thesis detail', updatedThesis);
 
 			return updatedThesis;
 		} catch (error) {
-			this.logger.error(`Error updating thesis with id ${id}`, error);
+			this.logger.error(`Error updating thesis with ID ${id}`, error);
 
 			throw error;
 		}
