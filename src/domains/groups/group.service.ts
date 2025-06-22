@@ -9,6 +9,8 @@ import { CreateGroupDto } from '@/groups/dto/create-group.dto';
 import { UpdateGroupDto } from '@/groups/dto/update-group.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
+import { SemesterStatus } from '~/generated/prisma';
+
 @Injectable()
 export class GroupService {
 	private readonly logger = new Logger(GroupService.name);
@@ -31,7 +33,6 @@ export class GroupService {
 			);
 		}
 	}
-
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({
 			where: { id: semesterId },
@@ -39,6 +40,12 @@ export class GroupService {
 
 		if (!semester) {
 			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+		}
+
+		if (semester.status !== SemesterStatus.Picking) {
+			throw new ConflictException(
+				`Cannot create group. Semester status must be PICKING, current status is ${semester.status}`,
+			);
 		}
 	}
 
