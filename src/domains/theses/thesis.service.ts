@@ -42,6 +42,7 @@ export class ThesisService {
 					include: {
 						thesisVersions: {
 							select: { id: true, version: true, supportingDocument: true },
+							orderBy: { version: 'desc' },
 						},
 					},
 				});
@@ -70,6 +71,7 @@ export class ThesisService {
 				include: {
 					thesisVersions: {
 						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
 					},
 				},
 				orderBy: { createdAt: 'desc' },
