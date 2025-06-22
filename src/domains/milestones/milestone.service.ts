@@ -176,7 +176,7 @@ export class MilestoneService {
 
 			await this.validateSemesterForModification(existing.semesterId);
 
-			// Rule: Milestone chỉ được update vào trước start date của Milestone đó (date-only comparison)
+			// Rule: Milestones can only be updated before their start date (date-only comparison)
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 
