@@ -20,8 +20,7 @@ import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 import { ThesisService } from '@/theses/thesis.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Thesis')
 @Controller('theses')
