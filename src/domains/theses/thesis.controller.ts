@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -17,11 +18,11 @@ import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
+import { ReviewThesisDto } from '@/theses/dto/review-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 import { ThesisService } from '@/theses/thesis.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Thesis')
 @Controller('theses')
@@ -30,13 +31,10 @@ export class ThesisController {
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Post()
-	async create(
-		@Req() request: Request,
-		@Body() createThesisDto: CreateThesisDto,
-	) {
+	async create(@Req() request: Request, @Body() dto: CreateThesisDto) {
 		const user = request.user as UserPayload;
 
-		return await this.thesisService.create(user.id, createThesisDto);
+		return await this.thesisService.create(user.id, dto);
 	}
 
 	@Get()
@@ -54,10 +52,32 @@ export class ThesisController {
 	async update(
 		@Req() request: Request,
 		@Param('id') id: string,
-		@Body() updateThesisDto: UpdateThesisDto,
+		@Body() dto: UpdateThesisDto,
 	) {
 		const user = request.user as UserPayload;
 
-		return await this.thesisService.update(user.id, id, updateThesisDto);
+		return await this.thesisService.update(user.id, id, dto);
+	}
+
+	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Post(':id/submit')
+	async submitForReview(@Req() request: Request, @Param('id') id: string) {
+		const user = request.user as UserPayload;
+
+		return await this.thesisService.submitForReview(user.id, id);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Post(':id/review')
+	async reviewThesis(@Param('id') id: string, @Body() dto: ReviewThesisDto) {
+		return await this.thesisService.reviewThesis(id, dto);
+	}
+
+	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Delete(':id')
+	async remove(@Req() request: Request, @Param('id') id: string) {
+		const user = request.user as UserPayload;
+
+		return await this.thesisService.remove(user.id, id);
 	}
 }

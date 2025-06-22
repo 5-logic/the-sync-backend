@@ -1,7 +1,6 @@
 import {
 	Body,
 	Controller,
-	Delete,
 	Get,
 	Param,
 	Post,
@@ -22,25 +21,23 @@ import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Lecturer')
 @Controller('lecturers')
 export class LecturerController {
 	constructor(private readonly lecturerService: LecturerService) {}
-
 	@Roles(Role.ADMIN)
 	@Post()
-	async create(@Body() createLecturerDto: CreateLecturerDto) {
-		return await this.lecturerService.create(createLecturerDto);
+	async create(@Body() dto: CreateLecturerDto) {
+		return await this.lecturerService.create(dto);
 	}
 
 	@Roles(Role.ADMIN)
 	@ApiBody({ type: [CreateLecturerDto] })
 	@Post('import')
-	async createMany(@Body() createLecturerDtos: CreateLecturerDto[]) {
-		return await this.lecturerService.createMany(createLecturerDtos);
+	async createMany(@Body() dto: CreateLecturerDto[]) {
+		return await this.lecturerService.createMany(dto);
 	}
 
 	@Get()
@@ -52,30 +49,19 @@ export class LecturerController {
 	async findOne(@Param('id') id: string) {
 		return await this.lecturerService.findOne(id);
 	}
-
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	@Put()
-	async update(
-		@Req() request: Request,
-		@Body() updateLecturerDto: UpdateLecturerDto,
-	) {
+	async update(@Req() request: Request, @Body() dto: UpdateLecturerDto) {
 		const user = request.user as UserPayload;
 
-		return await this.lecturerService.update(user.id, updateLecturerDto);
+		return await this.lecturerService.update(user.id, dto);
 	}
-
 	@Roles(Role.ADMIN)
 	@Post(':id/toggle-status')
 	async toggleStatus(
 		@Param('id') id: string,
-		@Body() toggleLecturerStatusDto: ToggleLecturerStatusDto,
+		@Body() dto: ToggleLecturerStatusDto,
 	) {
-		return await this.lecturerService.toggleStatus(id, toggleLecturerStatusDto);
-	}
-
-	@Roles(Role.ADMIN)
-	@Delete(':id')
-	async remove(@Param('id') id: string) {
-		return await this.lecturerService.remove(id);
+		return await this.lecturerService.toggleStatus(id, dto);
 	}
 }
