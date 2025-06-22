@@ -8,6 +8,7 @@ import {
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
+import { ReviewThesisDto } from '@/theses/dto/review-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 
 import { ThesisStatus } from '~/generated/prisma';
@@ -314,6 +315,63 @@ export class ThesisService {
 				`Error submitting thesis with ID ${id} for review`,
 				error,
 			);
+
+			throw error;
+		}
+	}
+
+	async reviewThesis(id: string, dto: ReviewThesisDto) {
+		try {
+			this.logger.log(`Reviewing thesis with ID: ${id}`);
+
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with ID ${id} not found for review`);
+
+				throw new NotFoundException(`Thesis with ID ${id} not found`);
+			}
+
+			// Only allow review of pending theses
+			if (existingThesis.status !== ThesisStatus.Pending) {
+				throw new ConflictException(
+					`Cannot review thesis with status ${existingThesis.status}. Only ${ThesisStatus.Pending} theses can be reviewed.`,
+				);
+			}
+
+			if (
+				dto.status !== ThesisStatus.Approved &&
+				dto.status !== ThesisStatus.Rejected
+			) {
+				throw new ConflictException(
+					`Invalid status ${dto.status}. Only ${ThesisStatus.Approved} or ${ThesisStatus.Rejected} are allowed.`,
+				);
+			}
+
+			const updatedThesis = await this.prisma.thesis.update({
+				where: { id },
+				data: {
+					status: dto.status,
+				},
+				include: {
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
+					},
+				},
+			});
+
+			this.logger.log(
+				`Thesis with ID: ${id} successfully reviewed. Status changed to ${dto.status}`,
+			);
+
+			this.logger.debug('Reviewed thesis detail', updatedThesis);
+
+			return updatedThesis;
+		} catch (error) {
+			this.logger.error(`Error reviewing thesis with ID ${id}`, error);
 
 			throw error;
 		}

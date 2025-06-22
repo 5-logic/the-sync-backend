@@ -17,6 +17,7 @@ import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
+import { ReviewThesisDto } from '@/theses/dto/review-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 import { ThesisService } from '@/theses/thesis.service';
 
@@ -63,5 +64,11 @@ export class ThesisController {
 		const user = request.user as UserPayload;
 
 		return await this.thesisService.submitForReview(user.id, id);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Post(':id/review')
+	async reviewThesis(@Param('id') id: string, @Body() dto: ReviewThesisDto) {
+		return await this.thesisService.reviewThesis(id, dto);
 	}
 }
