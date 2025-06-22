@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-06-23
+
+### Added
+
+- **Thesis Management APIs**:
+  - `POST /theses/:id/submit` - Submit thesis for review (requires `ThesisStatus` enum)
+  - `POST /theses/:id/review` - Review thesis with approval/rejection (requires `ReviewThesisDto` with `status` field)
+  - `DELETE /theses/:id` - Remove thesis functionality
+- **Student Management APIs**:
+  - `POST /students/:id/toggle-status` - Toggle student active status (requires `ToggleStudentStatusDto` with optional `isActive` boolean)
+- **Lecturer Management APIs**:
+  - `POST /lecturers/:id/toggle-status` - Toggle lecturer status and moderator privileges (requires `ToggleLecturerStatusDto` with optional `isActive` and `isModerator` booleans)
+- **Group Management Enhancements**:
+  - Role-based access control for group creation and updates
+  - User context injection for group operations
+- Milestone management with role-based access control and validation
+- Enhanced thesis creation with supporting document and versioning support
+- Student enrollment logic improvements with password reset functionality
+- Semester validation for ongoing phases with enhanced logging
+
+### Changed
+
+- **API Authentication**: Consolidated guard usage across all controllers for better readability
+- **Parameter Naming**: Standardized DTO parameter naming from full names to `dto` across all controllers
+- **Database Schema**:
+  - Removed `created_at` and `updated_at` timestamps from Student and Lecturer models
+  - Updated foreign key constraints for enrollments to enable cascading deletes
+  - Enhanced thesis versioning with ordered results by version number
+- **Group APIs**: Updated group creation and update endpoints to require user authentication and validate semester status
+- **Semester Management**: Enhanced validation methods with nullish coalescing operators
+- **User Management**: Simplified update methods and removed `isActive` field from update DTOs
+
+### Fixed
+
+- Thesis version ordering in `findAll` and `findOne` methods
+- Initial version setting when creating new thesis versions
+- User existence checks and password generation logic improvements
+- Semester update validations for ongoing phase transitions
+- API documentation tags correction from 'Majors' to 'Major'
+- Docker workflow improvements with platform specification
+
+### Removed
+
+- Unused remove functionality from LecturerController and StudentController (replaced with toggle status)
+- Unnecessary ESLint disable comments in semester update validations
+- Unused properties and imports from DTOs
+- `isActive` field from UpdateStudentDto, UpdateLecturerDto, and UpdateUserDto
+
+### Security
+
+- Enhanced role-based access control across milestone, thesis, student, and lecturer endpoints
+- Improved validation for user permissions in group management
+
+### Pull Requests
+
+- [#89](https://github.com/5-logic/the-sync-backend/pull/89) - Merge dev branch for v0.4.0 release
+- [#88](https://github.com/5-logic/the-sync-backend/pull/88) - Group management enhancements with validation
+- [#86](https://github.com/5-logic/the-sync-backend/pull/86) - Thesis review and removal functionality
+- [#85](https://github.com/5-logic/the-sync-backend/pull/85) - Role-based access control consolidation
+- [#84](https://github.com/5-logic/the-sync-backend/pull/84) - Thesis management improvements
+- [#82](https://github.com/5-logic/the-sync-backend/pull/82) - Student status management
+- [#81](https://github.com/5-logic/the-sync-backend/pull/81) - DTO improvements and cleanup
+- [#80](https://github.com/5-logic/the-sync-backend/pull/80) - Semester validation enhancements
+- [#79](https://github.com/5-logic/the-sync-backend/pull/79) - Lecturer management improvements
+
 ## [0.3.0] - 2025-06-21
 
 ### Added
