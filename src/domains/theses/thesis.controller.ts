@@ -29,13 +29,10 @@ export class ThesisController {
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Post()
-	async create(
-		@Req() request: Request,
-		@Body() createThesisDto: CreateThesisDto,
-	) {
+	async create(@Req() request: Request, @Body() dto: CreateThesisDto) {
 		const user = request.user as UserPayload;
 
-		return await this.thesisService.create(user.id, createThesisDto);
+		return await this.thesisService.create(user.id, dto);
 	}
 
 	@Get()
@@ -47,16 +44,15 @@ export class ThesisController {
 	async findOne(@Param('id') id: string) {
 		return await this.thesisService.findOne(id);
 	}
-
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Put(':id')
 	async update(
 		@Req() request: Request,
 		@Param('id') id: string,
-		@Body() updateThesisDto: UpdateThesisDto,
+		@Body() dto: UpdateThesisDto,
 	) {
 		const user = request.user as UserPayload;
 
-		return await this.thesisService.update(user.id, id, updateThesisDto);
+		return await this.thesisService.update(user.id, id, dto);
 	}
 }

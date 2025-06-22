@@ -16,10 +16,9 @@ export class ThesisService {
 	private readonly INITIAL_VERSION = 1;
 
 	constructor(private readonly prisma: PrismaService) {}
-
-	async create(lecturerId: string, createThesisDto: CreateThesisDto) {
+	async create(lecturerId: string, dto: CreateThesisDto) {
 		try {
-			const { supportingDocument, ...thesisData } = createThesisDto;
+			const { supportingDocument, ...thesisData } = dto;
 
 			const newThesis = await this.prisma.$transaction(async (prisma) => {
 				// Create thesis
@@ -83,6 +82,7 @@ export class ThesisService {
 			return theses;
 		} catch (error) {
 			this.logger.error('Error fetching theses', error);
+
 			throw error;
 		}
 	}
@@ -112,14 +112,12 @@ export class ThesisService {
 			return thesis;
 		} catch (error) {
 			this.logger.error(`Error fetching thesis with ID ${id}`, error);
+
 			throw error;
 		}
 	}
-	async update(
-		lecturerId: string,
-		id: string,
-		updateThesisDto: UpdateThesisDto,
-	) {
+
+	async update(lecturerId: string, id: string, dto: UpdateThesisDto) {
 		try {
 			this.logger.log(
 				`Updating thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
@@ -152,7 +150,7 @@ export class ThesisService {
 				);
 			}
 
-			const { supportingDocument, ...thesisData } = updateThesisDto;
+			const { supportingDocument, ...thesisData } = dto;
 
 			const updatedThesis = await this.prisma.$transaction(async (prisma) => {
 				// Update thesis data (excluding supportingDocument)
