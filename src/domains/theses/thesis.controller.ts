@@ -44,6 +44,7 @@ export class ThesisController {
 	async findOne(@Param('id') id: string) {
 		return await this.thesisService.findOne(id);
 	}
+
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Put(':id')
 	async update(
@@ -54,5 +55,13 @@ export class ThesisController {
 		const user = request.user as UserPayload;
 
 		return await this.thesisService.update(user.id, id, dto);
+	}
+
+	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Post(':id/submit')
+	async submitForReview(@Req() request: Request, @Param('id') id: string) {
+		const user = request.user as UserPayload;
+
+		return await this.thesisService.submitForReview(user.id, id);
 	}
 }

@@ -10,6 +10,8 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
 import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 
+import { ThesisStatus } from '~/generated/prisma';
+
 @Injectable()
 export class ThesisService {
 	private readonly logger = new Logger(ThesisService.name);
@@ -228,6 +230,90 @@ export class ThesisService {
 			return updatedThesis;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
+
+			throw error;
+		}
+	}
+
+	async submitForReview(lecturerId: string, id: string) {
+		try {
+			this.logger.log(
+				`Submitting thesis with ID: ${id} for review by lecturer with ID: ${lecturerId}`,
+			);
+
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+				select: {
+					id: true,
+					status: true,
+					lecturerId: true,
+					englishName: true,
+				},
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with ID ${id} not found for submit`);
+
+				throw new NotFoundException(`Thesis with ID ${id} not found`);
+			}
+
+			if (existingThesis.lecturerId !== lecturerId) {
+				this.logger.warn(
+					`Lecturer with ID ${lecturerId} is not authorized to submit thesis with ID ${id}`,
+				);
+
+				throw new ForbiddenException(
+					`You do not have permission to submit this thesis`,
+				);
+			}
+
+			// Check if thesis status allows submission for review
+			if (existingThesis.status === ThesisStatus.Pending) {
+				throw new ConflictException(
+					'This thesis is already pending review and cannot be submitted again',
+				);
+			}
+
+			if (existingThesis.status === ThesisStatus.Approved) {
+				throw new ConflictException(
+					'This thesis has already been approved and cannot be submitted for review again',
+				);
+			}
+
+			// Only allow submission from New or Rejected status
+			if (
+				existingThesis.status !== ThesisStatus.New &&
+				existingThesis.status !== ThesisStatus.Rejected
+			) {
+				throw new ConflictException(
+					`Cannot submit thesis with current status for review`,
+				);
+			}
+
+			const updatedThesis = await this.prisma.thesis.update({
+				where: { id },
+				data: {
+					status: ThesisStatus.Pending,
+				},
+				include: {
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
+					},
+				},
+			});
+
+			this.logger.log(
+				`Thesis with ID: ${id} successfully submitted for review. Status changed to Pending`,
+			);
+			this.logger.debug('Updated thesis detail', updatedThesis);
+
+			return updatedThesis;
+		} catch (error) {
+			this.logger.error(
+				`Error submitting thesis with ID ${id} for review`,
+				error,
+			);
 
 			throw error;
 		}
