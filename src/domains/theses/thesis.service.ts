@@ -1,4 +1,5 @@
 import {
+	ConflictException,
 	ForbiddenException,
 	Injectable,
 	Logger,
@@ -12,17 +13,43 @@ import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
 @Injectable()
 export class ThesisService {
 	private readonly logger = new Logger(ThesisService.name);
+	private readonly INITIAL_VERSION = 1;
 
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(lecturerId: string, createThesisDto: CreateThesisDto) {
 		try {
-			const newThesis = await this.prisma.thesis.create({
-				data: { ...createThesisDto, lecturerId },
-				include: {
-					thesisVersions: { select: { id: true } },
-				},
+			const { supportingDocument, ...thesisData } = createThesisDto;
+
+			const newThesis = await this.prisma.$transaction(async (prisma) => {
+				// Create thesis
+				const thesis = await prisma.thesis.create({
+					data: { ...thesisData, lecturerId },
+				});
+
+				// Create the first thesis version
+				await prisma.thesisVersion.create({
+					data: {
+						version: this.INITIAL_VERSION,
+						supportingDocument,
+						thesisId: thesis.id,
+					},
+				});
+
+				// Return thesis with version information
+				return prisma.thesis.findUnique({
+					where: { id: thesis.id },
+					include: {
+						thesisVersions: {
+							select: { id: true, version: true, supportingDocument: true },
+						},
+					},
+				});
 			});
+
+			if (!newThesis) {
+				throw new ConflictException('Failed to create thesis');
+			}
 
 			this.logger.log(`Thesis created with ID: ${newThesis.id}`);
 			this.logger.debug('Thesis detail', newThesis);
@@ -41,8 +68,11 @@ export class ThesisService {
 
 			const theses = await this.prisma.thesis.findMany({
 				include: {
-					thesisVersions: { select: { id: true } },
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+					},
 				},
+				orderBy: { createdAt: 'desc' },
 			});
 
 			this.logger.log(`Found ${theses.length} theses`);
@@ -62,7 +92,9 @@ export class ThesisService {
 			const thesis = await this.prisma.thesis.findUnique({
 				where: { id },
 				include: {
-					thesisVersions: { select: { id: true } },
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+					},
 				},
 			});
 
@@ -116,7 +148,7 @@ export class ThesisService {
 				where: { id },
 				data: updateThesisDto,
 				include: {
-					thesisVersions: { select: { id: true } },
+					thesisVersions: { select: { id: true, version: true } },
 				},
 			});
 
