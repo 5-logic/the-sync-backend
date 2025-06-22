@@ -67,7 +67,7 @@ export class GroupService {
 
 		if (semester.status !== SemesterStatus.Picking) {
 			throw new ConflictException(
-				`Cannot create group. Semester status must be PICKING, current status is ${semester.status}`,
+				`Cannot create/update group. Semester status must be ${SemesterStatus.Picking}, current status is ${semester.status}`,
 			);
 		}
 	}
@@ -176,6 +176,9 @@ export class GroupService {
 
 			// Check if user is the leader of the group
 			await this.validateStudentIsLeader(userId, id);
+
+			// Validate semester status for update
+			await this.validateSemester(existingGroup.semesterId);
 
 			const group = await this.prisma.group.update({
 				where: { id },
