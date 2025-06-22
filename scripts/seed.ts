@@ -8,6 +8,7 @@ const seedAdmin = async () => {
 		where: { username: 'admin' },
 		update: {},
 		create: {
+			id: '6a9a72cb-c78e-46b9-9a2c-41706b700bdc',
 			username: 'admin',
 			password: await hash('FPTUniversity@2025'),
 		},
@@ -18,8 +19,16 @@ const seedAdmin = async () => {
 
 const seedMajor = async () => {
 	const majors = [
-		{ name: 'Software Engineering', code: 'SE' },
-		{ name: 'Artificial Intelligence', code: 'AI' },
+		{
+			id: '476723ef-1eb2-4a00-944c-1bef7054c44a',
+			name: 'Software Engineering',
+			code: 'SE',
+		},
+		{
+			id: '45395511-36c9-43f1-83ac-9ae65f708dbc',
+			name: 'Artificial Intelligence',
+			code: 'AI',
+		},
 	];
 
 	const operations = majors.map((major) =>

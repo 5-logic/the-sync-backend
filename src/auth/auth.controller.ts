@@ -10,24 +10,20 @@ import { UserLoginDto } from '@/auth/dto/auth.user.dto';
 @Controller('auth')
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
-
 	@Post('admin/login')
-	async loginAdmin(@Body() adminLoginDto: AdminLoginDto) {
-		return await this.authService.loginAdmin(adminLoginDto);
+	async loginAdmin(@Body() dto: AdminLoginDto) {
+		return await this.authService.loginAdmin(dto);
 	}
-
 	@Post('admin/refresh')
-	async refreshAdmin(@Body() refreshDto: RefreshDto) {
-		return await this.authService.refreshAdmin(refreshDto);
+	async refreshAdmin(@Body() dto: RefreshDto) {
+		return await this.authService.refreshAdmin(dto);
 	}
-
 	@Post('user/login')
-	async loginUser(@Body() userLoginDto: UserLoginDto) {
-		return await this.authService.loginUser(userLoginDto);
+	async loginUser(@Body() dto: UserLoginDto) {
+		return await this.authService.loginUser(dto);
 	}
-
 	@Post('user/refresh')
-	async refreshUser(@Body() refreshDto: RefreshDto) {
-		return await this.authService.refreshUser(refreshDto);
+	async refreshUser(@Body() dto: RefreshDto) {
+		return await this.authService.refreshUser(dto);
 	}
 }

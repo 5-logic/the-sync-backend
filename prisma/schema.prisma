@@ -244,7 +244,7 @@ model ThesisVersion {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  thesis Thesis @relation(fields: [thesisId], references: [id])
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
 
   @@map("thesis_versions")
 }
@@ -422,7 +422,7 @@ model ThesisRequiredSkill {
   thesisId String @map("thesis_id")
   skillId  String @map("skill_id")
 
-  thesis Thesis @relation(fields: [thesisId], references: [id])
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
   skill  Skill  @relation(fields: [skillId], references: [id])
 
   @@id([thesisId, skillId])
@@ -480,7 +480,7 @@ model Supervision {
   thesisId   String @map("thesis_id")
 
   lecturer Lecturer @relation(fields: [lecturerId], references: [userId])
-  thesis   Thesis   @relation(fields: [thesisId], references: [id])
+  thesis   Thesis   @relation(fields: [thesisId], references: [id], onDelete: Cascade)
 
   @@id([thesisId, lecturerId])
   @@map("_supervisions")

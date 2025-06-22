@@ -8,25 +8,21 @@ import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 
-@Roles(Role.ADMIN)
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Admin')
 @Controller('admins')
 export class AdminController {
 	constructor(private readonly adminService: AdminService) {}
 
+	@Roles(Role.ADMIN)
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.adminService.findOne(id);
 	}
-
+	@Roles(Role.ADMIN)
 	@Put(':id')
-	async update(
-		@Param('id') id: string,
-		@Body() updateAdminDto: UpdateAdminDto,
-	) {
-		return await this.adminService.update(id, updateAdminDto);
+	async update(@Param('id') id: string, @Body() dto: UpdateAdminDto) {
+		return await this.adminService.update(id, dto);
 	}
 }

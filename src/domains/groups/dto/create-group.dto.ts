@@ -18,9 +18,4 @@ export class CreateGroupDto {
 	@ApiProperty()
 	@IsString()
 	semesterId: string;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsString()
-	thesisId?: string;
 }
