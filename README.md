@@ -15,6 +15,7 @@
   - [Commit Conventions](#commit-conventions)
 - [Code Quality](#-code-quality)
 - [Documentation](#-documentation)
+- [Changelog](#-changelog)
 
 ## 🚀 Getting Started
 
@@ -168,3 +169,7 @@ We maintain code quality with:
 
 - [Environment Setup Guide](./docs/environment-setup.md) - Complete guide for setting up environment variables and database configuration
 - [Seeding Data Guide](./docs/seeding-data.md) - Complete guide for seeding initial data into the database
+
+## 📋 Changelog
+
+For detailed information about changes in each version, please see our [CHANGELOG.md](./CHANGELOG.md).
