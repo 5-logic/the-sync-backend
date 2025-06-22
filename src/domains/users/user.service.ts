@@ -38,7 +38,7 @@ export class UserService {
 				throw new ConflictException('User with this email already exists');
 			}
 
-			const password = createUserDto.password || generateStrongPassword();
+			const password = createUserDto.password ?? generateStrongPassword();
 
 			const hashedPassword = await hash(password);
 
@@ -86,7 +86,7 @@ export class UserService {
 	) {
 		try {
 			// Generate new password if not provided
-			const password = newPassword || generateStrongPassword();
+			const password = newPassword ?? generateStrongPassword();
 			const hashedPassword = await hash(password);
 
 			// Update user password
