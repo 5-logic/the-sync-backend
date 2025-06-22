@@ -21,8 +21,7 @@ import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Lecturer')
 @Controller('lecturers')

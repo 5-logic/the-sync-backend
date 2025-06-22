@@ -21,8 +21,7 @@ import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { StudentService } from '@/students/student.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Student')
 @Controller('students')

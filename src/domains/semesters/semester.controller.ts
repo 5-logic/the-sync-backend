@@ -18,8 +18,7 @@ import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
 import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
 import { SemesterService } from '@/semesters/semester.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Semester')
 @Controller('semesters')
