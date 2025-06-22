@@ -17,6 +17,29 @@ export class GroupService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
+	private async validateStudentIsLeader(userId: string, groupId: string) {
+		const participation = await this.prisma.studentGroupParticipation.findFirst(
+			{
+				where: {
+					studentId: userId,
+					groupId: groupId,
+				},
+			},
+		);
+
+		if (!participation) {
+			throw new NotFoundException(
+				`Student is not a member of group ${groupId}`,
+			);
+		}
+
+		if (!participation.isLeader) {
+			throw new ConflictException(
+				`Only group leader can update group information`,
+			);
+		}
+	}
+
 	private async validateStudentEnrollment(userId: string, semesterId: string) {
 		const enrollment = await this.prisma.enrollment.findUnique({
 			where: {
@@ -138,30 +161,33 @@ export class GroupService {
 			throw error;
 		}
 	}
-	async update(id: string, updateGroupDto: UpdateGroupDto) {
+
+	async update(id: string, userId: string, dto: UpdateGroupDto) {
 		try {
-			this.logger.log(`Updating group with id: ${id}`);
+			this.logger.log(`Updating group with ID: ${id}`);
 
 			const existingGroup = await this.prisma.group.findUnique({
 				where: { id },
 			});
+
 			if (!existingGroup) {
-				throw new NotFoundException(`Group with id ${id} not found`);
+				throw new NotFoundException(`Group with ID ${id} not found`);
 			}
 
-			if (updateGroupDto.semesterId) {
-				await this.validateSemester(updateGroupDto.semesterId);
-			}
+			// Check if user is the leader of the group
+			await this.validateStudentIsLeader(userId, id);
 
 			const group = await this.prisma.group.update({
 				where: { id },
-				data: updateGroupDto,
+				data: dto,
 			});
 
 			this.logger.log(`Group updated with ID: ${group.id}`);
+
 			return group;
 		} catch (error) {
 			this.logger.error('Error updating group', error);
+
 			throw error;
 		}
 	}

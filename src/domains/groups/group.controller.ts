@@ -45,8 +45,15 @@ export class GroupController {
 		return await this.groupService.findOne(id);
 	}
 
+	@Roles(Role.STUDENT)
 	@Put(':id')
-	async update(@Param('id') id: string, @Body() dto: UpdateGroupDto) {
-		return await this.groupService.update(id, dto);
+	async update(
+		@Req() request: Request,
+		@Param('id') id: string,
+		@Body() dto: UpdateGroupDto,
+	) {
+		const user = request.user as UserPayload;
+
+		return await this.groupService.update(id, user.id, dto);
 	}
 }

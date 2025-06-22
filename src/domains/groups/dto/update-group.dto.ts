@@ -1,5 +1,7 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 
 import { CreateGroupDto } from '@/groups/dto/create-group.dto';
 
-export class UpdateGroupDto extends PartialType(CreateGroupDto) {}
+export class UpdateGroupDto extends PartialType(
+	OmitType(CreateGroupDto, ['code', 'semesterId'] as const),
+) {}
