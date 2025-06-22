@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
+import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
 import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
@@ -14,17 +15,15 @@ export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
-
-	async create(createLecturerDto: CreateLecturerDto) {
+	async create(dto: CreateLecturerDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				const createUserDto: CreateUserDto = {
-					email: createLecturerDto.email,
-					fullName: createLecturerDto.fullName,
-					password: createLecturerDto.password,
-					gender: createLecturerDto.gender,
-					phoneNumber: createLecturerDto.phoneNumber,
-					isActive: createLecturerDto.isActive,
+					email: dto.email,
+					fullName: dto.fullName,
+					password: dto.password,
+					gender: dto.gender,
+					phoneNumber: dto.phoneNumber,
 				};
 
 				// TODO: To send email to lecturer with their credentials
@@ -39,11 +38,11 @@ export class LecturerService {
 				const lecturer = await prisma.lecturer.create({
 					data: {
 						userId,
-						isModerator: createLecturerDto.isModerator ?? false,
+						isModerator: dto.isModerator ?? false,
 					},
 				});
 
-				this.logger.log(`Lecturer created with userId: ${newUser.id}`);
+				this.logger.log(`Lecturer created with ID: ${newUser.id}`);
 
 				return {
 					...newUser,
@@ -51,7 +50,7 @@ export class LecturerService {
 				};
 			});
 
-			this.logger.log(`Lecturer created with userId: ${result.id}`);
+			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
 
 			return result;
@@ -74,6 +73,11 @@ export class LecturerService {
 						},
 					},
 				},
+				orderBy: {
+					user: {
+						createdAt: 'desc',
+					},
+				},
 			});
 
 			// Reuse the same data transformation logic from findOne
@@ -94,7 +98,7 @@ export class LecturerService {
 
 	async findOne(id: string) {
 		try {
-			this.logger.log(`Fetching lecturer with userId: ${id}`);
+			this.logger.log(`Fetching lecturer with ID: ${id}`);
 
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: id },
@@ -108,12 +112,12 @@ export class LecturerService {
 			});
 
 			if (!lecturer) {
-				this.logger.warn(`Lecturer with userId ${id} not found`);
+				this.logger.warn(`Lecturer with ID ${id} not found`);
 
-				throw new NotFoundException(`Lecturer with userId ${id} not found`);
+				throw new NotFoundException(`Lecturer with ID ${id} not found`);
 			}
 
-			this.logger.log(`Lecturer found with userId: ${id}`);
+			this.logger.log(`Lecturer found with ID: ${id}`);
 			this.logger.debug('Lecturer detail', lecturer);
 
 			return {
@@ -121,12 +125,13 @@ export class LecturerService {
 				isModerator: lecturer.isModerator,
 			};
 		} catch (error) {
-			this.logger.error(`Error fetching lecturer with userId ${id}`, error);
+			this.logger.error(`Error fetching lecturer with ID ${id}`, error);
+
 			throw error;
 		}
 	}
 
-	async update(id: string, updateLecturerDto: UpdateLecturerDto) {
+	async update(id: string, dto: UpdateLecturerDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				const existingLecturer = await prisma.lecturer.findUnique({
@@ -134,15 +139,15 @@ export class LecturerService {
 				});
 
 				if (!existingLecturer) {
-					this.logger.warn(`Lecturer with userId ${id} not found for update`);
+					this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer with userId ${id} not found`);
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
 				}
 
 				const updateUserDto: UpdateUserDto = {
-					fullName: updateLecturerDto.fullName,
-					gender: updateLecturerDto.gender,
-					phoneNumber: updateLecturerDto.phoneNumber,
+					fullName: dto.fullName,
+					gender: dto.gender,
+					phoneNumber: dto.phoneNumber,
 				};
 
 				const updatedUser = await UserService.update(
@@ -162,23 +167,23 @@ export class LecturerService {
 				};
 			});
 
-			this.logger.log(`Lecturer updated with userId: ${result.id}`);
+			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
 
 			return result;
 		} catch (error) {
-			this.logger.error(`Error updating lecturer with userId ${id}`, error);
+			this.logger.error(`Error updating lecturer with ID ${id}`, error);
 
 			throw error;
 		}
 	}
 
-	async createMany(createLecturerDtos: CreateLecturerDto[]) {
+	async createMany(dto: CreateLecturerDto[]) {
 		try {
 			const results = await this.prisma.$transaction(async (prisma) => {
 				const createdLecturers: any[] = [];
 
-				for (const createLecturerDto of createLecturerDtos) {
+				for (const createLecturerDto of dto) {
 					// Create user DTO
 					const createUserDto: CreateUserDto = {
 						email: createLecturerDto.email,
@@ -186,7 +191,6 @@ export class LecturerService {
 						password: createLecturerDto.password,
 						gender: createLecturerDto.gender,
 						phoneNumber: createLecturerDto.phoneNumber,
-						isActive: createLecturerDto.isActive,
 					};
 
 					// Create user
@@ -214,7 +218,7 @@ export class LecturerService {
 
 					createdLecturers.push(result);
 
-					this.logger.log(`Lecturer created with userId: ${result.id}`);
+					this.logger.log(`Lecturer created with ID: ${result.id}`);
 					this.logger.debug('Lecturer detail', result);
 				}
 
@@ -226,6 +230,62 @@ export class LecturerService {
 			return results;
 		} catch (error) {
 			this.logger.error('Error creating lecturers in batch', error);
+
+			throw error;
+		}
+	}
+	async toggleStatus(id: string, dto: ToggleLecturerStatusDto) {
+		try {
+			const { isActive, isModerator } = dto;
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingLecturer = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					include: {
+						user: true,
+					},
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(
+						`Lecturer with ID ${id} not found for status toggle`,
+					);
+
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				}
+
+				const updatedUser = await prisma.user.update({
+					where: { id },
+					data: {
+						isActive: isActive,
+					},
+					omit: {
+						password: true,
+					},
+				});
+
+				const updatedLecturer = await prisma.lecturer.update({
+					where: { userId: id },
+					data: {
+						isModerator: isModerator,
+					},
+				});
+
+				return {
+					...updatedUser,
+					isModerator: updatedLecturer.isModerator,
+				};
+			});
+
+			this.logger.log(
+				`Lecturer status updated - ID: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
+			);
+
+			this.logger.debug('Updated lecturer status', result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error toggling lecturer status with ID ${id}`, error);
 
 			throw error;
 		}

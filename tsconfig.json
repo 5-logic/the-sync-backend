@@ -18,6 +18,7 @@
 			"@/admins/*": ["src/domains/admins/*"],
 			"@/groups/*": ["src/domains/groups/*"],
 			"@/lecturers/*": ["src/domains/lecturers/*"],
+			"@/majors/*": ["src/domains/majors/*"],
 			"@/milestones/*": ["src/domains/milestones/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
 			"@/students/*": ["src/domains/students/*"],

@@ -22,7 +22,7 @@ export class AdminService {
 			if (!admin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
 
-				return null;
+				throw new NotFoundException(`Admin with ID ${id} not found`);
 			}
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
@@ -35,7 +35,7 @@ export class AdminService {
 		}
 	}
 
-	async update(id: string, updateAdminDto: UpdateAdminDto) {
+	async update(id: string, dto: UpdateAdminDto) {
 		try {
 			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { id: id },
@@ -49,7 +49,9 @@ export class AdminService {
 
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id: id },
-				data: updateAdminDto,
+				data: {
+					email: dto.email,
+				},
 				omit: {
 					password: true,
 				},

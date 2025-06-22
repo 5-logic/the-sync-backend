@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-	IsBoolean,
 	IsEmail,
 	IsEnum,
 	IsOptional,
@@ -34,9 +33,4 @@ export class CreateUserDto {
 	@ApiProperty()
 	@IsString()
 	phoneNumber: string;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsBoolean()
-	isActive?: boolean;
 }

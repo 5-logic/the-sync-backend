@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class CreateThesisDto {
 	@ApiProperty()
@@ -21,4 +21,8 @@ export class CreateThesisDto {
 	@ApiPropertyOptional()
 	@IsOptional()
 	domain?: string;
+
+	@ApiProperty()
+	@IsUrl()
+	supportingDocument: string;
 }

@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -17,18 +18,16 @@ import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
 import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
 import { SemesterService } from '@/semesters/semester.service';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Semester')
 @Controller('semesters')
 export class SemesterController {
 	constructor(private readonly semesterService: SemesterService) {}
-
 	@Roles(Role.ADMIN)
 	@Post()
-	async create(@Body() createSemesterDto: CreateSemesterDto) {
-		return await this.semesterService.create(createSemesterDto);
+	async create(@Body() dto: CreateSemesterDto) {
+		return await this.semesterService.create(dto);
 	}
 
 	@Get()
@@ -40,13 +39,15 @@ export class SemesterController {
 	async findOne(@Param('id') id: string) {
 		return await this.semesterService.findOne(id);
 	}
-
 	@Roles(Role.ADMIN)
 	@Put(':id')
-	async update(
-		@Param('id') id: string,
-		@Body() updateSemesterDto: UpdateSemesterDto,
-	) {
-		return await this.semesterService.update(id, updateSemesterDto);
+	async update(@Param('id') id: string, @Body() dto: UpdateSemesterDto) {
+		return await this.semesterService.update(id, dto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Delete(':id')
+	async remove(@Param('id') id: string) {
+		return await this.semesterService.remove(id);
 	}
 }

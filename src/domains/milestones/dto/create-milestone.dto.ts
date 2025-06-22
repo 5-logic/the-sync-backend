@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsString } from 'class-validator';
 
 export class CreateMilestoneDto {
 	@ApiProperty()
@@ -17,9 +17,4 @@ export class CreateMilestoneDto {
 	@ApiProperty()
 	@IsString()
 	semesterId: string;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsString()
-	checklistId?: string;
 }
