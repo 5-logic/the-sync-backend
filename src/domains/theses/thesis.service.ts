@@ -110,6 +110,7 @@ export class ThesisService {
 				include: {
 					thesisVersions: {
 						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
 					},
 				},
 			});
