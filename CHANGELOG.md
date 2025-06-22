@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2025-06-22
+## [0.3.0] - 2025-06-21
 
 ### Added
 
@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#78](https://github.com/5-logic/the-sync-backend/pull/78) - Merge dev branch
 - [#77](https://github.com/5-logic/the-sync-backend/pull/77) - Add Major module functionality
 
-## [0.2.0] - 2025-06-22
+## [0.2.0] - 2025-06-20
 
 ### Added
 
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#54](https://github.com/5-logic/the-sync-backend/pull/54) - Group management implementation
 - [#53](https://github.com/5-logic/the-sync-backend/pull/53) - Thesis domain implementation
 
-## [0.1.5] - 2025-06-22
+## [0.1.5] - 2025-06-18
 
 ### Changed
 
@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#56](https://github.com/5-logic/the-sync-backend/pull/56) - User validation and DTO improvements
 
-## [0.1.4] - 2025-06-22
+## [0.1.4] - 2025-06-17
 
 ### Added
 
@@ -92,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#52](https://github.com/5-logic/the-sync-backend/pull/52) - Merge dev branch
 - [#51](https://github.com/5-logic/the-sync-backend/pull/51) - Add timestamps to models
 
-## [0.1.3] - 2025-06-22
+## [0.1.3] - 2025-06-16
 
 ### Fixed
 
@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#48](https://github.com/5-logic/the-sync-backend/pull/48) - Fix semester status validation
 - [#47](https://github.com/5-logic/the-sync-backend/pull/47) - Semester status improvements
 
-## [0.1.2] - 2025-06-22
+## [0.1.2] - 2025-06-16
 
 ### Fixed
 
@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#44](https://github.com/5-logic/the-sync-backend/pull/44) - Fix enrollment relationships and documentation
 
-## [0.1.1] - 2025-06-22
+## [0.1.1] - 2025-06-15
 
 ### Added
 
@@ -132,7 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [#42](https://github.com/5-logic/the-sync-backend/pull/42) - CORS configuration and Docker improvements
 
-## [0.1.0] - 2025-06-22
+## [0.1.0] - 2025-06-15
 
 ### Added
 
