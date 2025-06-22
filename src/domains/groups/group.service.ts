@@ -15,49 +15,83 @@ export class GroupService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
+	private async validateStudentEnrollment(userId: string, semesterId: string) {
+		const enrollment = await this.prisma.enrollment.findUnique({
+			where: {
+				studentId_semesterId: {
+					studentId: userId,
+					semesterId: semesterId,
+				},
+			},
+		});
+
+		if (!enrollment) {
+			throw new NotFoundException(
+				`Student is not enrolled in semester ${semesterId}`,
+			);
+		}
+	}
+
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({
 			where: { id: semesterId },
 		});
+
 		if (!semester) {
-			throw new NotFoundException(`Semester with id ${semesterId} not found`);
+			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
 		}
 	}
 
-	private async validateThesis(thesisId: string) {
-		const thesis = await this.prisma.thesis.findUnique({
-			where: { id: thesisId },
-		});
-		if (!thesis) {
-			throw new NotFoundException(`Thesis with id ${thesisId} not found`);
-		}
-	}
-
-	async create(createGroupDto: CreateGroupDto) {
+	async create(userId: string, dto: CreateGroupDto) {
 		try {
-			await this.validateSemester(createGroupDto.semesterId);
+			await this.validateSemester(dto.semesterId);
+
+			// Validate that the user is a student enrolled in the semester
+			await this.validateStudentEnrollment(userId, dto.semesterId);
 
 			const existingGroup = await this.prisma.group.findUnique({
-				where: { code: createGroupDto.code },
+				where: { code: dto.code },
 			});
+
 			if (existingGroup) {
 				throw new ConflictException(
-					`Group with code ${createGroupDto.code} already exists`,
+					`Group with code ${dto.code} already exists`,
 				);
 			}
 
-			if (createGroupDto.thesisId) {
-				await this.validateThesis(createGroupDto.thesisId);
-			}
+			// Create group and add student as leader in a transaction
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Create the group
+				const group = await prisma.group.create({
+					data: {
+						code: dto.code,
+						name: dto.name,
+						projectDirection: dto.projectDirection,
+						semesterId: dto.semesterId,
+					},
+				});
 
-			const group = await this.prisma.group.create({
-				data: createGroupDto,
+				// Add the student to the group as leader
+				await prisma.studentGroupParticipation.create({
+					data: {
+						studentId: userId,
+						groupId: group.id,
+						semesterId: dto.semesterId,
+						isLeader: true,
+					},
+				});
+
+				return group;
 			});
 
-			this.logger.log(`Group "${group.name}" created with id: ${group.id}`);
-			return group;
+			this.logger.log(
+				`Group "${result.name}" created with ID: ${result.id} by student ${userId}`,
+			);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error creating group', error);
+
 			throw error;
 		}
 	}
@@ -65,23 +99,15 @@ export class GroupService {
 	async findAll() {
 		try {
 			const groups = await this.prisma.group.findMany({
-				include: {
-					thesis: true,
-					studentGroupParticipations: {
-						include: {
-							student: {
-								include: {
-									user: true,
-								},
-							},
-						},
-					},
-				},
+				orderBy: { createdAt: 'desc' },
 			});
+
 			this.logger.log(`Found ${groups.length} groups`);
+
 			return groups;
 		} catch (error) {
 			this.logger.error('Error fetching groups', error);
+
 			throw error;
 		}
 	}
@@ -90,18 +116,6 @@ export class GroupService {
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id },
-				include: {
-					thesis: true,
-					studentGroupParticipations: {
-						include: {
-							student: {
-								include: {
-									user: true,
-								},
-							},
-						},
-					},
-				},
 			});
 
 			if (!group) {
@@ -109,13 +123,14 @@ export class GroupService {
 			}
 
 			this.logger.log(`Group found with ID: ${group.id}`);
+
 			return group;
 		} catch (error) {
 			this.logger.error('Error fetching group', error);
+
 			throw error;
 		}
 	}
-
 	async update(id: string, updateGroupDto: UpdateGroupDto) {
 		try {
 			this.logger.log(`Updating group with id: ${id}`);
@@ -129,9 +144,6 @@ export class GroupService {
 
 			if (updateGroupDto.semesterId) {
 				await this.validateSemester(updateGroupDto.semesterId);
-			}
-			if (updateGroupDto.thesisId) {
-				await this.validateThesis(updateGroupDto.thesisId);
 			}
 
 			const group = await this.prisma.group.update({

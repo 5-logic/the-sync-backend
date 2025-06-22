@@ -1,18 +1,38 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Post,
+	Put,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 
+import { Roles } from '@/auth/decorators/roles.decorator';
+import { Role } from '@/auth/enums/role.enum';
+import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
+import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateGroupDto } from '@/groups/dto/create-group.dto';
 import { UpdateGroupDto } from '@/groups/dto/update-group.dto';
 import { GroupService } from '@/groups/group.service';
 
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
+@ApiBearerAuth()
 @ApiTags('Group')
 @Controller('groups')
 export class GroupController {
 	constructor(private readonly groupService: GroupService) {}
 
+	@Roles(Role.STUDENT)
 	@Post()
-	async create(@Body() createGroupDto: CreateGroupDto) {
-		return await this.groupService.create(createGroupDto);
+	async create(@Req() request: Request, @Body() dto: CreateGroupDto) {
+		const user = request.user as UserPayload;
+
+		return await this.groupService.create(user.id, dto);
 	}
 
 	@Get()
@@ -26,10 +46,7 @@ export class GroupController {
 	}
 
 	@Put(':id')
-	async update(
-		@Param('id') id: string,
-		@Body() updateGroupDto: UpdateGroupDto,
-	) {
-		return await this.groupService.update(id, updateGroupDto);
+	async update(@Param('id') id: string, @Body() dto: UpdateGroupDto) {
+		return await this.groupService.update(id, dto);
 	}
 }
