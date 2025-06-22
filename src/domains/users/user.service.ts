@@ -12,7 +12,7 @@ import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { hash, verify } from '@/utils/hash.util';
 import { generateStrongPassword } from '@/utils/password-generator.util';
 
-import { PrismaClient } from '~/generated/prisma';
+import { EnrollmentStatus, PrismaClient } from '~/generated/prisma';
 
 @Injectable()
 export class UserService {
@@ -61,6 +61,62 @@ export class UserService {
 			};
 		} catch (error) {
 			logger.error('Error creating user', error);
+
+			throw error;
+		}
+	}
+
+	/**
+	 * Enroll an existing student in a semester and reset their password.
+	 * This method handles both password reset and enrollment creation.
+	 *
+	 * @param userId - The user ID of the existing student
+	 * @param semesterId - The semester ID to enroll the student in
+	 * @param prismaClient - Prisma client instance for database operations
+	 * @param logger - Logger instance for logging
+	 * @param newPassword - Optional password to set, if not provided a strong password will be generated
+	 * @returns Object containing updated user and plain password
+	 */
+	static async enrollExistingStudent(
+		userId: string,
+		semesterId: string,
+		prismaClient: PrismaClient,
+		logger: Logger,
+		newPassword?: string,
+	) {
+		try {
+			// Generate new password if not provided
+			const password = newPassword || generateStrongPassword();
+			const hashedPassword = await hash(password);
+
+			// Update user password
+			const updatedUser = await prismaClient.user.update({
+				where: { id: userId },
+				data: { password: hashedPassword },
+				omit: {
+					password: true,
+				},
+			});
+
+			// Create enrollment
+			await prismaClient.enrollment.create({
+				data: {
+					studentId: userId,
+					semesterId: semesterId,
+					status: EnrollmentStatus.NotYet,
+				},
+			});
+
+			logger.log(
+				`Student enrolled to semester ${semesterId} with new password`,
+			);
+
+			return {
+				user: updatedUser,
+				plainPassword: password,
+			};
+		} catch (error) {
+			logger.error('Error enrolling existing student', error);
 
 			throw error;
 		}
