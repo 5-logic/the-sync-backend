@@ -76,15 +76,15 @@ export class StudentService {
 	 *
 	 * Note: A student can be enrolled in multiple semesters simultaneously
 	 */
-	async create(createStudentDto: CreateStudentDto) {
+	async create(dto: CreateStudentDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				// Validate major and semester
-				await this.validateMajorForEnrollment(createStudentDto.majorId);
-				await this.validateSemesterForEnrollment(createStudentDto.semesterId);
+				await this.validateMajorForEnrollment(dto.majorId);
+				await this.validateSemesterForEnrollment(dto.semesterId);
 
 				const existingStudent = await prisma.student.findUnique({
-					where: { studentId: createStudentDto.studentId },
+					where: { studentId: dto.studentId },
 					include: {
 						user: {
 							omit: {
@@ -93,7 +93,7 @@ export class StudentService {
 						},
 						enrollments: {
 							where: {
-								semesterId: createStudentDto.semesterId,
+								semesterId: dto.semesterId,
 							},
 						},
 					},
@@ -107,7 +107,7 @@ export class StudentService {
 
 					if (isAlreadyEnrolledInThisSemester) {
 						throw new ConflictException(
-							`Student with studentId ${createStudentDto.studentId} is already enrolled in semester ${createStudentDto.semesterId}`,
+							`Student with studentId ${dto.studentId} is already enrolled in semester ${dto.semesterId}`,
 						);
 					}
 
@@ -117,14 +117,14 @@ export class StudentService {
 					const { user: updatedUser, plainPassword } =
 						await UserService.enrollExistingStudent(
 							existingStudent.userId,
-							createStudentDto.semesterId,
+							dto.semesterId,
 							prisma as PrismaClient,
 							this.logger,
-							createStudentDto.password,
+							dto.password,
 						);
 
 					this.logger.log(
-						`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId} with new password`,
+						`Student ${dto.studentId} enrolled to semester ${dto.semesterId} with new password`,
 					);
 
 					return {
@@ -136,11 +136,11 @@ export class StudentService {
 
 				// Student doesn't exist, create new student
 				const createUserDto: CreateUserDto = {
-					email: createStudentDto.email,
-					fullName: createStudentDto.fullName,
-					password: createStudentDto.password,
-					gender: createStudentDto.gender,
-					phoneNumber: createStudentDto.phoneNumber,
+					email: dto.email,
+					fullName: dto.fullName,
+					password: dto.password,
+					gender: dto.gender,
+					phoneNumber: dto.phoneNumber,
 				};
 
 				// TODO: To send email to student with their credentials
@@ -155,25 +155,23 @@ export class StudentService {
 				const student = await prisma.student.create({
 					data: {
 						userId: userId,
-						studentId: createStudentDto.studentId,
-						majorId: createStudentDto.majorId,
+						studentId: dto.studentId,
+						majorId: dto.majorId,
 					},
 				});
 
 				await prisma.enrollment.create({
 					data: {
 						studentId: student.userId,
-						semesterId: createStudentDto.semesterId,
+						semesterId: dto.semesterId,
 						status: EnrollmentStatus.NotYet,
 					},
 				});
 
-				this.logger.log(
-					`Student created with studentId: ${createStudentDto.studentId}`,
-				);
+				this.logger.log(`Student created with studentId: ${dto.studentId}`);
 
 				this.logger.log(
-					`Student ${createStudentDto.studentId} enrolled to semester ${createStudentDto.semesterId}`,
+					`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
 				);
 
 				return {
@@ -265,7 +263,7 @@ export class StudentService {
 		}
 	}
 
-	async update(id: string, updateStudentDto: UpdateStudentDto) {
+	async update(id: string, dto: UpdateStudentDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				const existingStudent = await prisma.student.findUnique({
@@ -279,9 +277,9 @@ export class StudentService {
 				}
 
 				const updateUserDto: UpdateUserDto = {
-					fullName: updateStudentDto.fullName,
-					gender: updateStudentDto.gender,
-					phoneNumber: updateStudentDto.phoneNumber,
+					fullName: dto.fullName,
+					gender: dto.gender,
+					phoneNumber: dto.phoneNumber,
 				};
 
 				const updatedUser = await UserService.update(
@@ -318,17 +316,17 @@ export class StudentService {
 	 *
 	 * Note: A student can be enrolled in multiple semesters simultaneously
 	 */
-	async createMany(importStudentDto: ImportStudentDto) {
+	async createMany(dto: ImportStudentDto) {
 		try {
 			// Validate semester and major before starting the import process
-			await this.validateSemesterForEnrollment(importStudentDto.semesterId);
-			await this.validateMajorForEnrollment(importStudentDto.majorId);
+			await this.validateSemesterForEnrollment(dto.semesterId);
+			await this.validateMajorForEnrollment(dto.majorId);
 
 			const results = await this.prisma.$transaction(
 				async (prisma) => {
 					const createdStudents: any[] = [];
 
-					for (const studentData of importStudentDto.students) {
+					for (const studentData of dto.students) {
 						// Check if student already exists
 						const existingStudent = await prisma.student.findUnique({
 							where: { studentId: studentData.studentId },
@@ -340,7 +338,7 @@ export class StudentService {
 								},
 								enrollments: {
 									where: {
-										semesterId: importStudentDto.semesterId,
+										semesterId: dto.semesterId,
 									},
 								},
 							},
@@ -356,7 +354,7 @@ export class StudentService {
 
 							if (isAlreadyEnrolledInThisSemester) {
 								throw new ConflictException(
-									`Student with studentId ${studentData.studentId} is already enrolled in semester ${importStudentDto.semesterId}`,
+									`Student with studentId ${studentData.studentId} is already enrolled in semester ${dto.semesterId}`,
 								);
 							}
 
@@ -366,14 +364,14 @@ export class StudentService {
 							const { user: updatedUser, plainPassword } =
 								await UserService.enrollExistingStudent(
 									existingStudent.userId,
-									importStudentDto.semesterId,
+									dto.semesterId,
 									prisma as PrismaClient,
 									this.logger,
 									studentData.password,
 								);
 
 							this.logger.log(
-								`Student ${studentData.studentId} enrolled to semester ${importStudentDto.semesterId} with new password`,
+								`Student ${studentData.studentId} enrolled to semester ${dto.semesterId} with new password`,
 							);
 
 							result = {
@@ -407,14 +405,14 @@ export class StudentService {
 								data: {
 									userId: userId,
 									studentId: studentData.studentId,
-									majorId: importStudentDto.majorId,
+									majorId: dto.majorId,
 								},
 							});
 
 							await prisma.enrollment.create({
 								data: {
 									studentId: student.userId,
-									semesterId: importStudentDto.semesterId,
+									semesterId: dto.semesterId,
 									status: EnrollmentStatus.NotYet,
 								},
 							});
@@ -424,7 +422,7 @@ export class StudentService {
 							);
 
 							this.logger.log(
-								`Student ${studentData.studentId} enrolled to semester ${importStudentDto.semesterId}`,
+								`Student ${studentData.studentId} enrolled to semester ${dto.semesterId}`,
 							);
 
 							result = {
