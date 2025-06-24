@@ -13,12 +13,41 @@ import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { UserService } from '@/users/user.service';
 
-import { EnrollmentStatus, PrismaClient } from '~/generated/prisma';
+import {
+	EnrollmentStatus,
+	PrismaClient,
+	SemesterStatus,
+} from '~/generated/prisma';
 
 @Injectable()
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
+
 	constructor(private readonly prisma: PrismaService) {}
+
+	/**
+	 * Validate that a semester exists and is in the correct status for student enrollment
+	 */
+	private async validateSemesterForEnrollment(semesterId: string) {
+		const semester = await this.prisma.semester.findUnique({
+			where: { id: semesterId },
+		});
+		if (!semester) {
+			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+		}
+
+		// Only allow enrollment when semester is in Preparing or Picking status
+		if (
+			semester.status !== SemesterStatus.Preparing &&
+			semester.status !== SemesterStatus.Picking
+		) {
+			throw new ConflictException(
+				`Cannot add students to semester ${semesterId}. Semester status is ${semester.status}. Only Preparing and Picking semesters allow student enrollment.`,
+			);
+		}
+
+		return semester;
+	}
 
 	/**
 	 * Create a new student or enroll an existing student in a semester.
@@ -43,15 +72,8 @@ export class StudentService {
 					);
 				}
 
-				const semester = await prisma.semester.findUnique({
-					where: { id: createStudentDto.semesterId },
-				});
-
-				if (!semester) {
-					throw new NotFoundException(
-						`Semester with ID ${createStudentDto.semesterId} not found`,
-					);
-				}
+				// Validate semester exists and has correct status for enrollment
+				await this.validateSemesterForEnrollment(createStudentDto.semesterId);
 
 				const existingStudent = await prisma.student.findUnique({
 					where: { studentId: createStudentDto.studentId },
@@ -306,15 +328,8 @@ export class StudentService {
 						);
 					}
 
-					const semester = await prisma.semester.findUnique({
-						where: { id: createStudentDto.semesterId },
-					});
-
-					if (!semester) {
-						throw new NotFoundException(
-							`Semester with ID ${createStudentDto.semesterId} not found`,
-						);
-					}
+					// Validate semester exists and has correct status for enrollment
+					await this.validateSemesterForEnrollment(createStudentDto.semesterId);
 
 					// Check if student already exists
 					const existingStudent = await prisma.student.findUnique({
