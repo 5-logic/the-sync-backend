@@ -50,6 +50,21 @@ export class StudentService {
 	}
 
 	/**
+	 * Validate that a major exists for student enrollment
+	 */
+	private async validateMajorForEnrollment(majorId: string) {
+		const major = await this.prisma.major.findUnique({
+			where: { id: majorId },
+		});
+
+		if (!major) {
+			throw new NotFoundException(`Major with ID ${majorId} not found`);
+		}
+
+		return major;
+	}
+
+	/**
 	 * Create a new student or enroll an existing student in a semester.
 	 *
 	 * Logic:
@@ -62,17 +77,8 @@ export class StudentService {
 	async create(createStudentDto: CreateStudentDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
-				const major = await prisma.major.findUnique({
-					where: { id: createStudentDto.majorId },
-				});
-
-				if (!major) {
-					throw new NotFoundException(
-						`Major with ID ${createStudentDto.majorId} not found`,
-					);
-				}
-
-				// Validate semester exists and has correct status for enrollment
+				// Validate major and semester
+				await this.validateMajorForEnrollment(createStudentDto.majorId);
 				await this.validateSemesterForEnrollment(createStudentDto.semesterId);
 
 				const existingStudent = await prisma.student.findUnique({
