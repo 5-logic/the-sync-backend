@@ -16,10 +16,10 @@ import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
-import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
+import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UpdateUserDto } from '@/users/dto/update-user.dto';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
@@ -30,14 +30,14 @@ export class LecturerController {
 
 	@Roles(Role.ADMIN)
 	@Post()
-	async create(@Body() dto: CreateLecturerDto) {
+	async create(@Body() dto: CreateUserDto) {
 		return await this.lecturerService.create(dto);
 	}
 
 	@Roles(Role.ADMIN)
-	@ApiBody({ type: [CreateLecturerDto] })
+	@ApiBody({ type: [CreateUserDto] })
 	@Post('import')
-	async createMany(@Body() dto: CreateLecturerDto[]) {
+	async createMany(@Body() dto: CreateUserDto[]) {
 		return await this.lecturerService.createMany(dto);
 	}
 
@@ -53,7 +53,7 @@ export class LecturerController {
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	@Put()
-	async update(@Req() request: Request, @Body() dto: UpdateLecturerDto) {
+	async update(@Req() request: Request, @Body() dto: UpdateUserDto) {
 		const user = request.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, dto);
