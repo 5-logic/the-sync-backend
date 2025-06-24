@@ -46,6 +46,11 @@ export class StudentController {
 		return await this.studentService.findAll();
 	}
 
+	@Get('semester/:semesterId')
+	async findAllBySemester(@Param('semesterId') semesterId: string) {
+		return await this.studentService.findAllBySemester(semesterId);
+	}
+
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.studentService.findOne(id);

@@ -507,4 +507,58 @@ export class StudentService {
 			throw error;
 		}
 	}
+
+	async findAllBySemester(semesterId: string) {
+		try {
+			this.logger.log(`Fetching all students for semester: ${semesterId}`);
+
+			// Validate semester exists
+			await this.validateSemesterForEnrollment(semesterId);
+
+			const enrollments = await this.prisma.enrollment.findMany({
+				where: {
+					semesterId: semesterId,
+				},
+				include: {
+					student: {
+						include: {
+							user: {
+								omit: {
+									password: true,
+								},
+							},
+						},
+					},
+				},
+				orderBy: {
+					student: {
+						user: {
+							createdAt: 'desc',
+						},
+					},
+				},
+			});
+
+			// Format the response same as findAll - only basic student info
+			const formattedStudents = enrollments.map((enrollment) => ({
+				...enrollment.student.user,
+				studentId: enrollment.student.studentId,
+				majorId: enrollment.student.majorId,
+			}));
+
+			this.logger.log(
+				`Found ${formattedStudents.length} students for semester ${semesterId}`,
+			);
+			this.logger.debug('Students detail', formattedStudents);
+
+			return formattedStudents;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching students for semester ${semesterId}`,
+				error,
+			);
+
+			throw error;
+		}
+	}
 }
