@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-06-25
+
+### Added
+
+- **Student Management APIs**:
+  - `GET /students/semester/:semesterId` - Fetch students by semester with validation (requires valid UUID for `semesterId`)
+  - `POST /students/import` - Batch student creation and enrollment endpoint (requires `ImportStudentDto` with `semesterId`, `majorId`, and `students` array)
+- **Enhanced Body Size Limit**: Increased request body size limit to 50MB for large import operations
+- **Student Enrollment Validation**:
+  - Semester status validation (only allows enrollment in `Preparing` and `Picking` semesters)
+  - Major existence validation before enrollment
+  - Enhanced error messages for enrollment conflicts
+
+### Changed
+
+- **API Parameter Updates**:
+  - **Student APIs**: `CreateStudentDto` now uses `@IsUUID()` validation for `majorId` and `semesterId` (previously `@IsString()`)
+  - **Lecturer APIs**:
+    - `POST /lecturers` now uses `CreateUserDto` instead of `CreateLecturerDto`
+    - `PUT /lecturers` now uses `UpdateUserDto` instead of `UpdateLecturerDto`
+    - `POST /lecturers/import` now accepts `CreateUserDto[]` instead of `CreateLecturerDto[]`
+- **Batch Import Improvements**:
+  - `POST /students/import` now uses `ImportStudentDto` (with `semesterId`, `majorId`, and `students` array) instead of `CreateStudentDto[]`
+  - Added transaction timeout (10 minutes) for large batch operations
+  - Pre-validation of semester and major before processing students
+- **Service Method Standardization**: Parameter naming standardized to `dto` across student and user service methods
+- **Code Formatting**: Added missing line breaks in lecturer and student controllers for improved readability
+
+### Fixed
+
+- Enhanced error handling for semester enrollment with clearer conflict messages
+- Improved validation flow for batch student operations
+- Better logging for student creation and enrollment processes
+
+### Removed
+
+- **Deprecated DTOs**:
+  - `CreateLecturerDto` (replaced with `CreateUserDto`)
+  - `UpdateLecturerDto` (replaced with `UpdateUserDto`)
+- **Removed Fields**: `isModerator` field from lecturer creation (now handled through separate endpoints)
+
+### Security
+
+- Enhanced UUID validation for semester and major IDs in student operations
+- Improved validation for semester status before allowing student enrollment
+
+### Pull Requests
+
+- [#96](https://github.com/5-logic/the-sync-backend/pull/96) - Merge dev branch for v0.4.1 release
+- [#95](https://github.com/5-logic/the-sync-backend/pull/95) - Standardize parameter naming and DTO usage
+- [#94](https://github.com/5-logic/the-sync-backend/pull/94) - Add endpoint to fetch students by semester
+- [#93](https://github.com/5-logic/the-sync-backend/pull/93) - Implement batch student creation with enhanced validation
+
 ## [0.4.0] - 2025-06-23
 
 ### Added
