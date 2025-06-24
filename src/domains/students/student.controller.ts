@@ -28,6 +28,7 @@ import { StudentService } from '@/students/student.service';
 @Controller('students')
 export class StudentController {
 	constructor(private readonly studentService: StudentService) {}
+
 	@Roles(Role.ADMIN)
 	@Post()
 	async create(@Body() dto: CreateStudentDto) {
@@ -49,6 +50,7 @@ export class StudentController {
 	async findOne(@Param('id') id: string) {
 		return await this.studentService.findOne(id);
 	}
+
 	@Roles(Role.STUDENT)
 	@Put()
 	async update(@Req() request: Request, @Body() dto: UpdateStudentDto) {
@@ -56,6 +58,7 @@ export class StudentController {
 
 		return await this.studentService.update(user.id, dto);
 	}
+
 	@Roles(Role.ADMIN)
 	@Post(':id/toggle-status')
 	async toggleStatus(
