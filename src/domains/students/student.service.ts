@@ -42,7 +42,7 @@ export class StudentService {
 			semester.status !== SemesterStatus.Picking
 		) {
 			throw new ConflictException(
-				`Cannot add students to semester ${semesterId}. Semester status is ${semester.status}. Only Preparing and Picking semesters allow student enrollment.`,
+				`Cannot add students to semester ${semesterId}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} and ${SemesterStatus.Picking} semesters allow student enrollment.`,
 			);
 		}
 
