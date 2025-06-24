@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsString, IsUUID } from 'class-validator';
 
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 
@@ -9,10 +9,10 @@ export class CreateStudentDto extends CreateUserDto {
 	studentId: string;
 
 	@ApiProperty()
-	@IsString()
+	@IsUUID()
 	majorId: string;
 
 	@ApiProperty()
-	@IsString()
+	@IsUUID()
 	semesterId: string;
 }

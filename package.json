@@ -1,10 +1,10 @@
 {
 	"name": "the-sync-backend",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"private": true,
 	"scripts": {
 		"build": "nest build --webpack",
-		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+		"format": "prettier --write \"src/**/*.ts\"",
 		"start": "nest start",
 		"start:dev": "nest start --watch",
 		"start:debug": "nest start --debug --watch",

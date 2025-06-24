@@ -21,30 +21,30 @@ export class UserService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	static async create(
-		createUserDto: CreateUserDto,
+		dto: CreateUserDto,
 		prismaClient: PrismaClient,
 		logger: Logger,
 	) {
 		try {
 			const existingUser = await prismaClient.user.findFirst({
 				where: {
-					email: createUserDto.email,
+					email: dto.email,
 				},
 			});
 
 			if (existingUser) {
-				logger.warn(`User with email ${createUserDto.email}  already exists`);
+				logger.warn(`User with email ${dto.email}  already exists`);
 
 				throw new ConflictException('User with this email already exists');
 			}
 
-			const password = createUserDto.password ?? generateStrongPassword();
+			const password = dto.password ?? generateStrongPassword();
 
 			const hashedPassword = await hash(password);
 
 			const newUser = await prismaClient.user.create({
 				data: {
-					...createUserDto,
+					...dto,
 					password: hashedPassword,
 				},
 				omit: {
@@ -151,7 +151,7 @@ export class UserService {
 
 	static async update(
 		id: string,
-		updateUserDto: UpdateUserDto,
+		dto: UpdateUserDto,
 		prismaClient: PrismaClient,
 		logger: Logger,
 	) {
@@ -168,7 +168,7 @@ export class UserService {
 
 			const updatedUser = await prismaClient.user.update({
 				where: { id },
-				data: updateUserDto,
+				data: dto,
 				omit: {
 					password: true,
 				},

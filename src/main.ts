@@ -1,6 +1,7 @@
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/filters/http-exception/http-exception.filter';
@@ -17,6 +18,10 @@ async function bootstrap() {
 	const configService = app.get<ConfigService>(ConfigService);
 	const corsConfig = configService.get('cors-config');
 	const isProduction = configService.get('NODE_ENV') == 'production' || false;
+
+	// Increase body size limit for large imports (50MB)
+	app.use(json({ limit: '50mb' }));
+	app.use(urlencoded({ extended: true, limit: '50mb' }));
 
 	// Enable CORS
 	app.enableCors(isProduction ? corsConfig : { origin: '*' });
