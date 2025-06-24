@@ -27,6 +27,7 @@ import { LecturerService } from '@/lecturers/lecturer.service';
 @Controller('lecturers')
 export class LecturerController {
 	constructor(private readonly lecturerService: LecturerService) {}
+
 	@Roles(Role.ADMIN)
 	@Post()
 	async create(@Body() dto: CreateLecturerDto) {
@@ -49,6 +50,7 @@ export class LecturerController {
 	async findOne(@Param('id') id: string) {
 		return await this.lecturerService.findOne(id);
 	}
+
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	@Put()
 	async update(@Req() request: Request, @Body() dto: UpdateLecturerDto) {
@@ -56,6 +58,7 @@ export class LecturerController {
 
 		return await this.lecturerService.update(user.id, dto);
 	}
+
 	@Roles(Role.ADMIN)
 	@Post(':id/toggle-status')
 	async toggleStatus(
