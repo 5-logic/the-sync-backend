@@ -8,7 +8,7 @@ import {
 	Req,
 	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { Roles } from '@/auth/decorators/roles.decorator';
@@ -17,6 +17,7 @@ import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
+import { ImportStudentDto } from '@/students/dto/import-student.dto';
 import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
 import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { StudentService } from '@/students/student.service';
@@ -34,9 +35,8 @@ export class StudentController {
 	}
 
 	@Roles(Role.ADMIN)
-	@ApiBody({ type: [CreateStudentDto] })
 	@Post('import')
-	async createMany(@Body() dto: CreateStudentDto[]) {
+	async createMany(@Body() dto: ImportStudentDto) {
 		return await this.studentService.createMany(dto);
 	}
 
