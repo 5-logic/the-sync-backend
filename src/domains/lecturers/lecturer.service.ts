@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CreateLecturerDto } from '@/lecturers/dto/create-lecturer.dto';
 import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
-import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
@@ -15,21 +13,14 @@ export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
-	async create(dto: CreateLecturerDto) {
+
+	async create(dto: CreateUserDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
-				const createUserDto: CreateUserDto = {
-					email: dto.email,
-					fullName: dto.fullName,
-					password: dto.password,
-					gender: dto.gender,
-					phoneNumber: dto.phoneNumber,
-				};
-
 				// TODO: To send email to lecturer with their credentials
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const { plainPassword, ...newUser } = await UserService.create(
-					createUserDto,
+					dto,
 					prisma as PrismaClient,
 					this.logger,
 				);
@@ -38,7 +29,6 @@ export class LecturerService {
 				const lecturer = await prisma.lecturer.create({
 					data: {
 						userId,
-						isModerator: dto.isModerator ?? false,
 					},
 				});
 
@@ -131,7 +121,7 @@ export class LecturerService {
 		}
 	}
 
-	async update(id: string, dto: UpdateLecturerDto) {
+	async update(id: string, dto: UpdateUserDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				const existingLecturer = await prisma.lecturer.findUnique({
@@ -144,15 +134,9 @@ export class LecturerService {
 					throw new NotFoundException(`Lecturer with ID ${id} not found`);
 				}
 
-				const updateUserDto: UpdateUserDto = {
-					fullName: dto.fullName,
-					gender: dto.gender,
-					phoneNumber: dto.phoneNumber,
-				};
-
 				const updatedUser = await UserService.update(
 					id,
-					updateUserDto,
+					dto,
 					prisma as PrismaClient,
 					this.logger,
 				);
@@ -178,26 +162,17 @@ export class LecturerService {
 		}
 	}
 
-	async createMany(dto: CreateLecturerDto[]) {
+	async createMany(dto: CreateUserDto[]) {
 		try {
 			const results = await this.prisma.$transaction(async (prisma) => {
 				const createdLecturers: any[] = [];
 
 				for (const createLecturerDto of dto) {
-					// Create user DTO
-					const createUserDto: CreateUserDto = {
-						email: createLecturerDto.email,
-						fullName: createLecturerDto.fullName,
-						password: createLecturerDto.password,
-						gender: createLecturerDto.gender,
-						phoneNumber: createLecturerDto.phoneNumber,
-					};
-
 					// Create user
 					// TODO: To send email to lecturer with their credentials
 					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					const { plainPassword, ...newUser } = await UserService.create(
-						createUserDto,
+						createLecturerDto,
 						prisma as PrismaClient,
 						this.logger,
 					);
@@ -207,7 +182,6 @@ export class LecturerService {
 					const lecturer = await prisma.lecturer.create({
 						data: {
 							userId,
-							isModerator: createLecturerDto.isModerator ?? false,
 						},
 					});
 
@@ -234,6 +208,7 @@ export class LecturerService {
 			throw error;
 		}
 	}
+
 	async toggleStatus(id: string, dto: ToggleLecturerStatusDto) {
 		try {
 			const { isActive, isModerator } = dto;
