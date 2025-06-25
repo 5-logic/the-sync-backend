@@ -23,6 +23,7 @@ import {
 @Injectable()
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
+
 	private static readonly TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 	constructor(private readonly prisma: PrismaService) {}
