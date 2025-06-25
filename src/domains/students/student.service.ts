@@ -505,13 +505,18 @@ export class StudentService {
 			throw error;
 		}
 	}
-
 	async findAllBySemester(semesterId: string) {
 		try {
 			this.logger.log(`Fetching all students for semester: ${semesterId}`);
 
-			// Validate semester exists
-			await this.validateSemesterForEnrollment(semesterId);
+			// Validate semester exists (without status check)
+			const semester = await this.prisma.semester.findUnique({
+				where: { id: semesterId },
+			});
+
+			if (!semester) {
+				throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+			}
 
 			const enrollments = await this.prisma.enrollment.findMany({
 				where: {
