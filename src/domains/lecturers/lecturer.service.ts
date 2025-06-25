@@ -12,6 +12,8 @@ import { PrismaClient } from '~/generated/prisma';
 export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
 
+	private static readonly TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(dto: CreateUserDto) {
@@ -164,40 +166,43 @@ export class LecturerService {
 
 	async createMany(dto: CreateUserDto[]) {
 		try {
-			const results = await this.prisma.$transaction(async (prisma) => {
-				const createdLecturers: any[] = [];
+			const results = await this.prisma.$transaction(
+				async (prisma) => {
+					const createdLecturers: any[] = [];
 
-				for (const createLecturerDto of dto) {
-					// Create user
-					// TODO: To send email to lecturer with their credentials
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { plainPassword, ...newUser } = await UserService.create(
-						createLecturerDto,
-						prisma as PrismaClient,
-						this.logger,
-					);
-					const userId = newUser.id;
+					for (const createLecturerDto of dto) {
+						// Create user
+						// TODO: To send email to lecturer with their credentials
+						// eslint-disable-next-line @typescript-eslint/no-unused-vars
+						const { plainPassword, ...newUser } = await UserService.create(
+							createLecturerDto,
+							prisma as PrismaClient,
+							this.logger,
+						);
+						const userId = newUser.id;
 
-					// Create lecturer
-					const lecturer = await prisma.lecturer.create({
-						data: {
-							userId,
-						},
-					});
+						// Create lecturer
+						const lecturer = await prisma.lecturer.create({
+							data: {
+								userId,
+							},
+						});
 
-					const result = {
-						...newUser,
-						isModerator: lecturer.isModerator,
-					};
+						const result = {
+							...newUser,
+							isModerator: lecturer.isModerator,
+						};
 
-					createdLecturers.push(result);
+						createdLecturers.push(result);
 
-					this.logger.log(`Lecturer created with ID: ${result.id}`);
-					this.logger.debug('Lecturer detail', result);
-				}
+						this.logger.log(`Lecturer created with ID: ${result.id}`);
+						this.logger.debug('Lecturer detail', result);
+					}
 
-				return createdLecturers;
-			});
+					return createdLecturers;
+				},
+				{ timeout: LecturerService.TIMEOUT },
+			);
 
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
