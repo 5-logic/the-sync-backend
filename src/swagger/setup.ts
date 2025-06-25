@@ -1,6 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import { CONFIG_MOUNTS } from '@/configs';
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { version } = require('../../package.json');
 
@@ -13,7 +15,7 @@ export const setupSwagger = (app: INestApplication<any>) => {
 		.build();
 
 	const document = SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup('swagger', app, document, {
+	SwaggerModule.setup(CONFIG_MOUNTS.SWAGGER, app, document, {
 		swaggerOptions: {
 			tagsSorter: 'alpha',
 			operationsSorter: 'method',

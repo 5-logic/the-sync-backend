@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
-import { CONFIG_TOKENS, CORSConfig } from '@/configs';
+import { CONFIG_MOUNTS, CONFIG_TOKENS, CORSConfig } from '@/configs';
 import { HttpExceptionFilter } from '@/filters/http-exception/http-exception.filter';
 import { TransformInterceptor } from '@/interceptors/transform/transform.interceptor';
 import { setupSwagger } from '@/swagger/setup';
@@ -44,7 +44,10 @@ async function bootstrap() {
 	await app.listen(port);
 
 	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
-	logger.log(`OpenAPI documentation is available at /swagger`, 'Bootstrap');
+	logger.log(
+		`OpenAPI documentation is available at /${CONFIG_MOUNTS.SWAGGER}`,
+		'Bootstrap',
+	);
 }
 
 void bootstrap();
