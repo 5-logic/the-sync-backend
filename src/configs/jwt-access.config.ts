@@ -10,3 +10,5 @@ export const jwtAccessConfig = registerAs(
 		},
 	}),
 );
+
+export type JWTAccessConfig = ReturnType<typeof jwtAccessConfig>;

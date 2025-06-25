@@ -4,7 +4,6 @@ import {
 	Logger,
 	UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
 import { AdminService } from '@/admins/admin.service';
@@ -13,8 +12,11 @@ import { RefreshDto } from '@/auth/dto/auth.refresh.dto';
 import { UserLoginDto } from '@/auth/dto/auth.user.dto';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtPayload } from '@/auth/interfaces/payload.interface';
-import { jwtAccessConfig } from '@/configs/jwt-access.config';
-import { jwtRefreshConfig } from '@/configs/jwt-refresh.config';
+import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';
+import {
+	JWTRefreshConfig,
+	jwtRefreshConfig,
+} from '@/configs/jwt-refresh.config';
 import { UserService } from '@/users/user.service';
 
 @Injectable()
@@ -23,11 +25,9 @@ export class AuthService {
 
 	constructor(
 		@Inject(jwtAccessConfig.KEY)
-		private readonly jwtAccessConfiguration: ConfigType<typeof jwtAccessConfig>,
+		private readonly jwtAccessConfiguration: JWTAccessConfig,
 		@Inject(jwtRefreshConfig.KEY)
-		private readonly jwtRefreshConfiguration: ConfigType<
-			typeof jwtRefreshConfig
-		>,
+		private readonly jwtRefreshConfiguration: JWTRefreshConfig,
 		private readonly adminService: AdminService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,

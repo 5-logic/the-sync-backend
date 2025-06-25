@@ -19,3 +19,5 @@ export const corsConfig = registerAs('cors-config', () => {
 		optionsSuccessStatus: 200,
 	};
 });
+
+export type CORSConfig = ReturnType<typeof corsConfig>;

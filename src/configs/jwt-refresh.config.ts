@@ -10,3 +10,5 @@ export const jwtRefreshConfig = registerAs(
 		},
 	}),
 );
+
+export type JWTRefreshConfig = ReturnType<typeof jwtRefreshConfig>;
