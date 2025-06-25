@@ -4,11 +4,12 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { JwtPayload } from '@/auth/interfaces/payload.interface';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
+import { CONFIG_TOKENS } from '@/configs';
 import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';
 
 export class JwtAccessStrategy extends PassportStrategy(
 	Strategy,
-	'jwt-access',
+	CONFIG_TOKENS.JWT_ACCESS,
 ) {
 	constructor(
 		@Inject(jwtAccessConfig.KEY)

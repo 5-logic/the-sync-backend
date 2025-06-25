@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
-import { CORSConfig } from '@/configs/cors.config';
+import { CONFIG_TOKENS, CORSConfig } from '@/configs';
 import { HttpExceptionFilter } from '@/filters/http-exception/http-exception.filter';
 import { TransformInterceptor } from '@/interceptors/transform/transform.interceptor';
 import { setupSwagger } from '@/swagger/setup';
@@ -17,7 +17,7 @@ async function bootstrap() {
 
 	const app = await NestFactory.create(AppModule, { logger: logger });
 	const configService = app.get<ConfigService>(ConfigService);
-	const corsConfig = configService.get<CORSConfig>('cors-config');
+	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
 	const isProduction =
 		configService.get<string>('NODE_ENV') === 'production' || false;
 
