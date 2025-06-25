@@ -32,7 +32,7 @@ The application uses Redis for queue management and BullMQ for job processing:
 
 ### BullMQ Dashboard
 
-The BullMQ dashboard is available at `/admin/queues` in development mode only. It provides:
+The BullMQ dashboard is available at `/bull-board` in development mode only. It provides:
 
 - Real-time monitoring of job queues
 - Job retry and failure management
