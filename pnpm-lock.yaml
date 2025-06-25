@@ -59,6 +59,9 @@ importers:
       express:
         specifier: 5.1.0
         version: 5.1.0
+      express-basic-auth:
+        specifier: 1.2.1
+        version: 1.2.1
       generate-password:
         specifier: 1.7.1
         version: 1.7.1
@@ -1822,6 +1825,9 @@ packages:
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
     engines: {node: '>=10'}
+
+  express-basic-auth@1.2.1:
+    resolution: {integrity: sha512-L6YQ1wQ/mNjVLAmK3AG1RK6VkokA1BIY6wmiH304Xtt/cLTps40EusZsU1Uop+v9lTDPxdtzbFmdXfFO3KEnwA==}
 
   express@5.1.0:
     resolution: {integrity: sha512-DT9ck5YIRU+8GYzzU5kT3eHGA5iL+1Zd0EutOmTE9Dtk+Tvuzd23VBU+ec7HPNSTxXYO55gPV/hq4pSBJDjFpA==}
@@ -5089,6 +5095,10 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
       strip-final-newline: 2.0.0
+
+  express-basic-auth@1.2.1:
+    dependencies:
+      basic-auth: 2.0.1
 
   express@5.1.0:
     dependencies:

@@ -3,6 +3,7 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { BullModule } from '@nestjs/bullmq';
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import basicAuth from 'express-basic-auth';
 
 import { AuthModule } from '@/auth/auth.module';
 import {
@@ -43,10 +44,30 @@ import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 		AuthModule,
 		DomainModule,
 		BullBoardModule.forRootAsync({
-			useFactory: () => ({
-				route: `/${CONFIG_MOUNTS.BULL_BOARD}`,
-				adapter: ExpressAdapter,
-			}),
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => {
+				const config = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
+
+				if (
+					!config ||
+					!config.bullmq ||
+					!config.bullmq.username ||
+					!config.bullmq.password
+				) {
+					throw new Error(
+						'BullMQ configuration is not set. Please check your environment variables or configuration files.',
+					);
+				}
+
+				return {
+					route: `/${CONFIG_MOUNTS.BULL_BOARD}`,
+					adapter: ExpressAdapter,
+					middleware: basicAuth({
+						challenge: true,
+						users: { [config.bullmq.username]: config.bullmq.password },
+					}),
+				};
+			},
 		}),
 	],
 })
