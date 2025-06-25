@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2025-06-25
+
+### Changed
+
+- **Transaction Management Enhancement**:
+  - **Lecturer Service**: Added explicit timeout configuration (10 minutes) to batch lecturer creation transactions in `POST /lecturers/import` endpoint to prevent timeout issues during large import operations
+  - **Student Service**: Standardized timeout constant definition for consistent transaction management across both student and lecturer batch operations
+
+### Performance
+
+- Improved reliability of batch import operations by implementing consistent transaction timeout handling
+- Enhanced error handling for long-running database transactions during bulk data operations
+
+### Pull Requests
+
+- [#103](https://github.com/5-logic/the-sync-backend/pull/103) - Merge dev branch for v0.4.3 release
+- [#101](https://github.com/5-logic/the-sync-backend/pull/101) - Add TIMEOUT constant to LecturerService and StudentService for transaction management (closes #100)
+
 ## [0.4.2] - 2025-06-25
 
 ### Fixed
