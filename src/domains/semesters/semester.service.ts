@@ -290,6 +290,7 @@ export class SemesterService {
 			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. Effective maxGroup: ${effectiveMaxGroup}`,
 		);
 	}
+
 	private validateOngoingPhaseUpdate(
 		currentStatus: SemesterStatus,
 		newStatus?: SemesterStatus,
@@ -461,6 +462,7 @@ export class SemesterService {
 			}
 		}
 	}
+
 	private prepareUpdateData(
 		existingSemester: { status: SemesterStatus },
 		updateSemesterDto: UpdateSemesterDto,

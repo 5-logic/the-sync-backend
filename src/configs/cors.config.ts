@@ -1,6 +1,8 @@
 import { registerAs } from '@nestjs/config';
 
-export const corsConfig = registerAs('cors-config', () => {
+import { CONFIG_TOKENS } from '@/configs/token.config';
+
+export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 	const allowedOrigins =
 		process.env.ALLOWED_ORIGINS?.split(',').map((origin) => origin.trim()) ??
 		[];
@@ -19,3 +21,5 @@ export const corsConfig = registerAs('cors-config', () => {
 		optionsSuccessStatus: 200,
 	};
 });
+
+export type CORSConfig = ReturnType<typeof corsConfig>;
