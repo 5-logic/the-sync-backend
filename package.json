@@ -19,6 +19,8 @@
 		"seed": "ts-node --transpile-only scripts/seed.ts"
 	},
 	"dependencies": {
+		"@bull-board/api": "6.10.1",
+		"@bull-board/express": "6.10.1",
 		"@nestjs/bullmq": "11.0.2",
 		"@nestjs/common": "11.1.2",
 		"@nestjs/config": "4.0.2",
