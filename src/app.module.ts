@@ -1,9 +1,16 @@
+import { ExpressAdapter } from '@bull-board/express';
+import { BullBoardModule } from '@bull-board/nestjs';
 import { BullModule } from '@nestjs/bullmq';
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { AuthModule } from '@/auth/auth.module';
-import { CONFIG_TOKENS, RedisConfig, redisConfig } from '@/configs';
+import {
+	CONFIG_MOUNTS,
+	CONFIG_TOKENS,
+	RedisConfig,
+	redisConfig,
+} from '@/configs';
 import { corsConfig } from '@/configs/cors.config';
 import { DomainModule } from '@/domains/domain.module';
 import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
@@ -35,6 +42,12 @@ import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 		}),
 		AuthModule,
 		DomainModule,
+		BullBoardModule.forRootAsync({
+			useFactory: () => ({
+				route: `/${CONFIG_MOUNTS.BULL_BOARD}`,
+				adapter: ExpressAdapter,
+			}),
+		}),
 	],
 })
 export class AppModule {

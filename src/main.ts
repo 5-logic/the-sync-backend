@@ -48,6 +48,11 @@ async function bootstrap() {
 		`OpenAPI documentation is available at /${CONFIG_MOUNTS.SWAGGER}`,
 		'Bootstrap',
 	);
+
+	logger.log(
+		`BullMQ Dashboard is available at /${CONFIG_MOUNTS.BULL_BOARD}`,
+		'Bootstrap',
+	);
 }
 
 void bootstrap();
