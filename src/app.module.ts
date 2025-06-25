@@ -23,7 +23,7 @@ import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 			useFactory: (configService: ConfigService) => {
 				const config = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
 
-				if (!config || !config.url) {
+				if (!config?.url) {
 					throw new Error(
 						'Redis configuration is not set. Please check your environment variables or configuration files.',
 					);
@@ -48,12 +48,7 @@ import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 			useFactory: (configService: ConfigService) => {
 				const config = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
 
-				if (
-					!config ||
-					!config.bullmq ||
-					!config.bullmq.username ||
-					!config.bullmq.password
-				) {
+				if (!config?.bullmq?.username || !config?.bullmq?.password) {
 					throw new Error(
 						'BullMQ configuration is not set. Please check your environment variables or configuration files.',
 					);
