@@ -311,6 +311,7 @@ export class StudentService {
 			throw error;
 		}
 	}
+
 	/**
 	 * Create multiple students or enroll existing students in a semester (batch operation).
 	 * Uses the same logic as the single create method for each student, including UserService.enrollExistingStudent.
@@ -506,6 +507,7 @@ export class StudentService {
 			throw error;
 		}
 	}
+
 	async findAllBySemester(semesterId: string) {
 		try {
 			this.logger.log(`Fetching all students for semester: ${semesterId}`);

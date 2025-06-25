@@ -32,6 +32,7 @@ export class AuthService {
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
 	) {}
+
 	async loginAdmin(dto: AdminLoginDto) {
 		try {
 			const admin = await this.adminService.validateAdmin(
@@ -62,6 +63,7 @@ export class AuthService {
 			throw error;
 		}
 	}
+
 	async refreshAdmin(dto: RefreshDto) {
 		try {
 			const { refreshToken } = dto;
@@ -101,6 +103,7 @@ export class AuthService {
 			throw error;
 		}
 	}
+
 	async loginUser(dto: UserLoginDto) {
 		try {
 			const user = await this.userService.validateUser(dto.email, dto.password);
@@ -133,6 +136,7 @@ export class AuthService {
 			throw error;
 		}
 	}
+
 	async refreshUser(dto: RefreshDto) {
 		try {
 			const { refreshToken } = dto;
