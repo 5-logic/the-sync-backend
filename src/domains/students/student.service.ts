@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 
 import { TIMEOUT } from '@/configs';
+import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { ImportStudentDto } from '@/students/dto/import-student.dto';
 import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
@@ -25,7 +28,10 @@ import {
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailQueueService,
+	) {}
 
 	/**
 	 * Validate that a semester exists and is in the correct status for student enrollment
@@ -143,8 +149,6 @@ export class StudentService {
 					phoneNumber: dto.phoneNumber,
 				};
 
-				// TODO: To send email to student with their credentials
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const { plainPassword, ...newUser } = await UserService.create(
 					createUserDto,
 					prisma as PrismaClient,
@@ -167,6 +171,19 @@ export class StudentService {
 						status: EnrollmentStatus.NotYet,
 					},
 				});
+
+				// Send welcome email with credentials
+				const emailDto: EmailJobDto = {
+					to: newUser.email,
+					subject: 'Welcome to TheSync',
+					context: {
+						fullName: newUser.fullName,
+						email: newUser.email,
+						password: plainPassword,
+						studentId: dto.studentId,
+					},
+				};
+				await this.email.sendEmail(EmailJobType.SEND_ACCOUNT, emailDto, 500);
 
 				this.logger.log(`Student created with studentId: ${dto.studentId}`);
 
@@ -326,6 +343,7 @@ export class StudentService {
 			const results = await this.prisma.$transaction(
 				async (prisma) => {
 					const createdStudents: any[] = [];
+					const emailsToSend: EmailJobDto[] = [];
 
 					for (const studentData of dto.students) {
 						// Check if student already exists
@@ -346,6 +364,8 @@ export class StudentService {
 						});
 
 						let result;
+						let shouldSendEmail = false;
+						let passwordForEmail = '';
 
 						if (existingStudent) {
 							// Check if student is already enrolled in this specific semester
@@ -361,7 +381,6 @@ export class StudentService {
 
 							// Student exists but not enrolled in this semester
 							// A student can be enrolled in multiple semesters, so we only enroll them in this semester
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
 							const { user: updatedUser, plainPassword } =
 								await UserService.enrollExistingStudent(
 									existingStudent.userId,
@@ -380,6 +399,10 @@ export class StudentService {
 								studentId: existingStudent.studentId,
 								majorId: existingStudent.majorId,
 							};
+
+							// Send email for re-enrolled student with new password
+							shouldSendEmail = true;
+							passwordForEmail = plainPassword;
 						} else {
 							// Student doesn't exist, create new student
 							// Create user DTO
@@ -392,8 +415,6 @@ export class StudentService {
 							};
 
 							// Create user
-							// TODO: To send email to student with their credentials
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
 							const { plainPassword, ...newUser } = await UserService.create(
 								createUserDto,
 								prisma as PrismaClient,
@@ -431,6 +452,25 @@ export class StudentService {
 								studentId: student.studentId,
 								majorId: student.majorId,
 							};
+
+							// Send email for new student
+							shouldSendEmail = true;
+							passwordForEmail = plainPassword;
+						}
+
+						// Prepare email data for bulk sending
+						if (shouldSendEmail) {
+							const emailDto: EmailJobDto = {
+								to: result.email,
+								subject: 'Welcome to TheSync',
+								context: {
+									fullName: result.fullName,
+									email: result.email,
+									password: passwordForEmail,
+									studentId: result.studentId,
+								},
+							};
+							emailsToSend.push(emailDto);
 						}
 
 						createdStudents.push(result);
@@ -439,6 +479,15 @@ export class StudentService {
 							`Student operation completed with userId: ${result.id}`,
 						);
 						this.logger.debug('Student detail', result);
+					}
+
+					// Send bulk emails after all students are created successfully
+					if (emailsToSend.length > 0) {
+						await this.email.sendBulkEmails(
+							EmailJobType.SEND_ACCOUNT,
+							emailsToSend,
+							500,
+						);
 					}
 
 					return createdStudents;
