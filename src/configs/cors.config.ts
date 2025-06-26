@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { CONFIG_TOKENS } from '@/configs/token.config';
+import { CONFIG_TOKENS } from '@/configs/constant.config';
 
 export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 	const allowedOrigins =

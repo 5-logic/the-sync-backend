@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { JwtModuleOptions } from '@nestjs/jwt';
 
-import { CONFIG_TOKENS } from '@/configs/token.config';
+import { CONFIG_TOKENS } from '@/configs/constant.config';
 
 export const jwtRefreshConfig = registerAs(
 	CONFIG_TOKENS.JWT_REFRESH,

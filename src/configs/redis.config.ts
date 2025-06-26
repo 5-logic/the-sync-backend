@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { CONFIG_TOKENS } from '@/configs/token.config';
+import { CONFIG_TOKENS } from '@/configs/constant.config';
 
 export const redisConfig = registerAs(CONFIG_TOKENS.REDIS, () => ({
 	url: process.env.REDIS_URL,

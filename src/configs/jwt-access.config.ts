@@ -1,7 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { JwtModuleOptions } from '@nestjs/jwt';
 
-import { CONFIG_TOKENS } from '@/configs/token.config';
+import { CONFIG_TOKENS } from '@/configs/constant.config';
 
 export const jwtAccessConfig = registerAs(
 	CONFIG_TOKENS.JWT_ACCESS,
