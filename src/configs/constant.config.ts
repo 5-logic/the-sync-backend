@@ -9,3 +9,7 @@ export const CONFIG_MOUNTS = {
 	BULL_BOARD: 'bull-board',
 	SWAGGER: 'swagger',
 };
+
+export const CONFIG_QUEUES = {
+	EMAIL: 'email',
+};

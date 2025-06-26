@@ -15,6 +15,7 @@ import {
 import { corsConfig } from '@/configs/cors.config';
 import { DomainModule } from '@/domains/domain.module';
 import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
+import { QueueModule } from '@/queue/queue.module';
 
 @Module({
 	imports: [
@@ -43,6 +44,7 @@ import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 		}),
 		AuthModule,
 		DomainModule,
+		QueueModule,
 		BullBoardModule.forRootAsync({
 			inject: [ConfigService],
 			useFactory: (configService: ConfigService) => {
@@ -61,6 +63,16 @@ import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 						challenge: true,
 						users: { [config.bullmq.username]: config.bullmq.password },
 					}),
+					boardOptions: {
+						uiConfig: {
+							boardTitle: 'The Sync Backend Queues',
+							boardLogo: {
+								path: '',
+								width: 0,
+								height: 0,
+							},
+						},
+					},
 				};
 			},
 		}),
