@@ -5,7 +5,7 @@ import { Module } from '@nestjs/common';
 
 import { CONFIG_QUEUES } from '@/configs';
 import { EmailQueueService } from '@/email/email-queue.service';
-import { EmailProcessor } from '@/email/email.processor';
+import { EmailConsumer } from '@/email/email.processor';
 
 @Module({
 	imports: [
@@ -17,7 +17,7 @@ import { EmailProcessor } from '@/email/email.processor';
 			adapter: BullMQAdapter,
 		}),
 	],
-	providers: [EmailQueueService, EmailProcessor],
+	providers: [EmailQueueService, EmailConsumer],
 	exports: [EmailQueueService],
 })
 export class EmailModule {}

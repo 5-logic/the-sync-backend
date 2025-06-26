@@ -3,31 +3,27 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 
 import { CONFIG_QUEUES } from '@/configs';
-import { EmailJobData } from '@/email/email-queue.service';
+import { EmailJobDto } from '@/email/dto/email-job.dto';
 
 @Processor(CONFIG_QUEUES.EMAIL)
-export class EmailProcessor extends WorkerHost {
-	private readonly logger = new Logger(EmailProcessor.name);
+export class EmailConsumer extends WorkerHost {
+	private readonly logger = new Logger(EmailConsumer.name);
 
-	async process(job: Job<EmailJobData>): Promise<void> {
+	async process(job: Job<EmailJobDto>): Promise<void> {
 		this.logger.log(`Processing email job ${job.id}`);
 
 		try {
-			switch (job.name) {
-				case 'send-email':
-					await this.sendEmail(job.data);
-					break;
-				default:
-					this.logger.warn(`Unknown job type: ${job.name}`);
-			}
+			await this.sendEmail(job.name, job.data);
 		} catch (error) {
 			this.logger.error(`Failed to process email job ${job.id}:`, error);
+
 			throw error;
 		}
 	}
 
-	private async sendEmail(data: EmailJobData): Promise<void> {
-		const recipients = Array.isArray(data.to) ? data.to.join(', ') : data.to;
+	private async sendEmail(template: string, data: EmailJobDto): Promise<void> {
+		const recipients = data.to;
+
 		this.logger.log(`Sending email to: ${recipients}`);
 		this.logger.log(`Subject: ${data.subject}`);
 

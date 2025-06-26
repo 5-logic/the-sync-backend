@@ -63,16 +63,6 @@ import { QueueModule } from '@/queue/queue.module';
 						challenge: true,
 						users: { [config.bullmq.username]: config.bullmq.password },
 					}),
-					boardOptions: {
-						uiConfig: {
-							boardTitle: 'The Sync Backend Queues',
-							boardLogo: {
-								path: '',
-								width: 0,
-								height: 0,
-							},
-						},
-					},
 				};
 			},
 		}),

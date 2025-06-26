@@ -3,73 +3,57 @@ import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
 import { CONFIG_QUEUES } from '@/configs';
-
-export interface EmailJobData {
-	to: string | string[];
-	subject: string;
-	template?: string;
-	context?: Record<string, any>;
-	html?: string;
-	text?: string;
-	from?: string;
-	cc?: string | string[];
-	bcc?: string | string[];
-	attachments?: Array<{
-		filename: string;
-		content: string | Buffer;
-		contentType?: string;
-	}>;
-}
+import { EmailJobDto } from '@/email/dto/email-job.dto';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 
 @Injectable()
 export class EmailQueueService {
+	private static readonly BACKOFF_TYPE = 'exponential';
+	private static readonly BACKOFF_DELAY = 2000;
+
 	constructor(
-		@InjectQueue(CONFIG_QUEUES.EMAIL) private emailQueue: Queue<EmailJobData>,
+		@InjectQueue(CONFIG_QUEUES.EMAIL) private queue: Queue<EmailJobDto>,
 	) {}
 
-	async sendEmail(
-		data: EmailJobData,
-		options?: { delay?: number; priority?: number },
-	) {
-		return this.emailQueue.add('send-email', data, {
-			delay: options?.delay,
-			priority: options?.priority || 0,
+	async sendEmail(type: EmailJobType, dto: EmailJobDto, delay?: number) {
+		return await this.queue.add(type, dto, {
+			delay: delay ?? 0,
 			attempts: 3,
 			backoff: {
-				type: 'exponential',
-				delay: 2000,
+				type: EmailQueueService.BACKOFF_TYPE,
+				delay: EmailQueueService.BACKOFF_DELAY,
 			},
 		});
 	}
 
 	async sendBulkEmails(
-		emails: EmailJobData[],
-		options?: { delay?: number; priority?: number },
+		type: EmailJobType,
+		emails: EmailJobDto[],
+		delay?: number,
 	) {
 		const jobs = emails.map((email, index) => ({
-			name: 'send-email',
+			name: type,
 			data: email,
 			opts: {
-				delay: options?.delay ? options.delay + index * 1000 : undefined, // Stagger bulk emails
-				priority: options?.priority || 0,
+				delay: delay ? delay + index * 1000 : 0,
 				attempts: 3,
 				backoff: {
-					type: 'exponential',
-					delay: 2000,
+					type: EmailQueueService.BACKOFF_TYPE,
+					delay: EmailQueueService.BACKOFF_DELAY,
 				},
 			},
 		}));
 
-		return this.emailQueue.addBulk(jobs);
+		return await this.queue.addBulk(jobs);
 	}
 
 	async getQueueStatus() {
 		const [waiting, active, completed, failed, delayed] = await Promise.all([
-			this.emailQueue.getWaiting(),
-			this.emailQueue.getActive(),
-			this.emailQueue.getCompleted(),
-			this.emailQueue.getFailed(),
-			this.emailQueue.getDelayed(),
+			this.queue.getWaiting(),
+			this.queue.getActive(),
+			this.queue.getCompleted(),
+			this.queue.getFailed(),
+			this.queue.getDelayed(),
 		]);
 
 		return {
@@ -82,20 +66,22 @@ export class EmailQueueService {
 	}
 
 	async removeJob(jobId: string) {
-		const job = await this.emailQueue.getJob(jobId);
+		const job = await this.queue.getJob(jobId);
+
 		if (job) {
 			await job.remove();
 		}
 	}
 
 	async retryFailedJobs() {
-		const failedJobs = await this.emailQueue.getFailed();
-		return Promise.all(failedJobs.map((job) => job.retry()));
+		const failedJobs = await this.queue.getFailed();
+
+		return await Promise.all(failedJobs.map((job) => job.retry()));
 	}
 
 	async cleanQueue(olderThan: number = 24 * 60 * 60 * 1000) {
 		// 24 hours default
-		await this.emailQueue.clean(olderThan, 0, 'completed');
-		await this.emailQueue.clean(olderThan, 0, 'failed');
+		await this.queue.clean(olderThan, 0, 'completed');
+		await this.queue.clean(olderThan, 0, 'failed');
 	}
 }
