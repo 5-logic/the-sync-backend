@@ -13,3 +13,5 @@ export const CONFIG_MOUNTS = {
 export const CONFIG_QUEUES = {
 	EMAIL: 'email',
 };
+
+export const TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds

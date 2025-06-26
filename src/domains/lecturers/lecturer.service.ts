@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
+import { TIMEOUT } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
@@ -14,8 +15,6 @@ import { PrismaClient } from '~/generated/prisma';
 @Injectable()
 export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
-
-	private static readonly TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -237,7 +236,7 @@ export class LecturerService {
 
 					return createdLecturers;
 				},
-				{ timeout: LecturerService.TIMEOUT },
+				{ timeout: TIMEOUT },
 			);
 
 			this.logger.log(`Successfully created ${results.length} lecturers`);

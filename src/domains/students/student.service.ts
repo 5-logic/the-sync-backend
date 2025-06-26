@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { TIMEOUT } from '@/configs';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { ImportStudentDto } from '@/students/dto/import-student.dto';
@@ -23,8 +24,6 @@ import {
 @Injectable()
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
-
-	private static readonly TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 	constructor(private readonly prisma: PrismaService) {}
 
@@ -445,7 +444,7 @@ export class StudentService {
 					return createdStudents;
 				},
 				{
-					timeout: StudentService.TIMEOUT,
+					timeout: TIMEOUT,
 				},
 			);
 
