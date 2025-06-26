@@ -1,7 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
+import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
 import { UserService } from '@/users/user.service';
@@ -14,13 +17,14 @@ export class LecturerService {
 
 	private static readonly TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailQueueService,
+	) {}
 
 	async create(dto: CreateUserDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
-				// TODO: To send email to lecturer with their credentials
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				const { plainPassword, ...newUser } = await UserService.create(
 					dto,
 					prisma as PrismaClient,
@@ -33,6 +37,18 @@ export class LecturerService {
 						userId,
 					},
 				});
+
+				// Send welcome email with credentials
+				const emailDto: EmailJobDto = {
+					to: newUser.email,
+					subject: 'Welcome to TheSync',
+					context: {
+						fullName: newUser.fullName,
+						email: newUser.email,
+						password: plainPassword,
+					},
+				};
+				await this.email.sendEmail(EmailJobType.SEND_ACCOUNT, emailDto, 500);
 
 				this.logger.log(`Lecturer created with ID: ${newUser.id}`);
 
@@ -169,11 +185,10 @@ export class LecturerService {
 			const results = await this.prisma.$transaction(
 				async (prisma) => {
 					const createdLecturers: any[] = [];
+					const emailsToSend: EmailJobDto[] = [];
 
 					for (const createLecturerDto of dto) {
 						// Create user
-						// TODO: To send email to lecturer with their credentials
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
 						const { plainPassword, ...newUser } = await UserService.create(
 							createLecturerDto,
 							prisma as PrismaClient,
@@ -195,8 +210,29 @@ export class LecturerService {
 
 						createdLecturers.push(result);
 
+						// Prepare email data for bulk sending
+						const emailDto: EmailJobDto = {
+							to: newUser.email,
+							subject: 'Welcome to TheSync',
+							context: {
+								fullName: newUser.fullName,
+								email: newUser.email,
+								password: plainPassword,
+							},
+						};
+						emailsToSend.push(emailDto);
+
 						this.logger.log(`Lecturer created with ID: ${result.id}`);
 						this.logger.debug('Lecturer detail', result);
+					}
+
+					// Send bulk emails after all lecturers are created successfully
+					if (emailsToSend.length > 0) {
+						await this.email.sendBulkEmails(
+							EmailJobType.SEND_ACCOUNT,
+							emailsToSend,
+							500,
+						);
 					}
 
 					return createdLecturers;
