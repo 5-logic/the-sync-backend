@@ -11,6 +11,6 @@ export class AdminLoginDto {
 	@IsString()
 	@IsNotEmpty()
 	@MinLength(12)
-	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
+	@Matches(/^(?=.*[A-Z])(?=.*\d).+$/)
 	password: string;
 }
