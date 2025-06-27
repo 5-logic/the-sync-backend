@@ -15,6 +15,7 @@ import {
 import { corsConfig } from '@/configs/cors.config';
 import { DomainModule } from '@/domains/domain.module';
 import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
+import { PrismaModule } from '@/providers/prisma/prisma.module';
 import { QueueModule } from '@/queue/queue.module';
 
 @Module({
@@ -42,6 +43,7 @@ import { QueueModule } from '@/queue/queue.module';
 			cache: true,
 			isGlobal: true,
 		}),
+		PrismaModule,
 		AuthModule,
 		DomainModule,
 		QueueModule,
