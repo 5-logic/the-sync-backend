@@ -1,8 +1,17 @@
 FROM node:20.19.2-slim AS base
+RUN \
+	apt-get update && \
+	apt-get --no-install-recommends install -y openssl && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
+
+#--------------------------------------------------
+
+FROM base AS dev
 RUN npm install -g --ignore-scripts pnpm
 
 #--------------------------------------------------
-FROM base AS build
+FROM dev AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.build.json nest-cli.json ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
@@ -14,7 +23,7 @@ RUN \
 
 #--------------------------------------------------
 
-FROM base AS library
+FROM dev AS library
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN \
@@ -23,16 +32,7 @@ RUN \
 
 #--------------------------------------------------
 
-FROM node:20.19.2-slim AS pre-production
-RUN \
-	apt-get update && \
-	apt-get --no-install-recommends install -y openssl && \
-	apt-get clean && \
-	rm -rf /var/lib/apt/lists/*
-
-#--------------------------------------------------
-
-FROM pre-production AS production
+FROM base AS production
 RUN \
 	groupadd -r backend && \
 	useradd -r -g backend backend
