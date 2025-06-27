@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 interface BasicAuthConfig {
 	username: string;
@@ -8,7 +8,7 @@ interface BasicAuthConfig {
 }
 
 export const setupBasicAuthBullBoard = (
-	fastify: any,
+	fastify: FastifyInstance,
 	config: BasicAuthConfig,
 ) => {
 	const {

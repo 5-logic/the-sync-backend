@@ -5,6 +5,7 @@ import {
 	FastifyAdapter,
 	NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import { FastifyInstance } from 'fastify';
 
 import { AppModule } from '@/app.module';
 import {
@@ -43,7 +44,7 @@ async function bootstrap() {
 	const fastify = app.getHttpAdapter().getInstance();
 
 	if (redisConfig?.bullmq?.username && redisConfig?.bullmq?.password) {
-		setupBasicAuthBullBoard(fastify, {
+		setupBasicAuthBullBoard(fastify as FastifyInstance, {
 			username: redisConfig.bullmq.username,
 			password: redisConfig.bullmq.password,
 			protectedRoute: CONFIG_MOUNTS.BULL_BOARD,
