@@ -87,7 +87,9 @@ export class StudentService {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				// Validate major and semester
 				await this.validateMajorForEnrollment(dto.majorId);
-				await this.validateSemesterForEnrollment(dto.semesterId);
+				const semester = await this.validateSemesterForEnrollment(
+					dto.semesterId,
+				);
 
 				const existingStudent = await prisma.student.findUnique({
 					where: { studentId: dto.studentId },
@@ -200,6 +202,7 @@ export class StudentService {
 						email: user.email,
 						password: plainPassword,
 						studentId: studentInfo.studentId,
+						semesterName: semester.name,
 					},
 				};
 				await this.email.sendEmail(EmailJobType.SEND_ACCOUNT, emailDto, 500);
@@ -349,7 +352,7 @@ export class StudentService {
 	async createMany(dto: ImportStudentDto) {
 		try {
 			// Validate semester and major before starting the import process
-			await this.validateSemesterForEnrollment(dto.semesterId);
+			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 			await this.validateMajorForEnrollment(dto.majorId);
 
 			const results = await this.prisma.$transaction(
@@ -378,6 +381,7 @@ export class StudentService {
 						let result;
 						let shouldSendEmail = false;
 						let passwordForEmail = '';
+						let isNewStudent = false;
 
 						if (existingStudent) {
 							// Check if student is already enrolled in this specific semester
@@ -466,18 +470,22 @@ export class StudentService {
 							// Send email for new student
 							shouldSendEmail = true;
 							passwordForEmail = plainPassword;
+							isNewStudent = true;
 						}
 
 						// Prepare email data for bulk sending
 						if (shouldSendEmail) {
 							const emailDto: EmailJobDto = {
 								to: result.email,
-								subject: 'Welcome to TheSync',
+								subject: isNewStudent
+									? 'Welcome to TheSync'
+									: 'Welcome back to TheSync',
 								context: {
 									fullName: result.fullName,
 									email: result.email,
 									password: passwordForEmail,
 									studentId: result.studentId,
+									semesterName: semester.name,
 								},
 							};
 							emailsToSend.push(emailDto);
