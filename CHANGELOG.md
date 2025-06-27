@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-06-28
+
+### Fixed
+
+- **Dockerfile Optimization**:
+  - Moved group and user creation commands to the same RUN command for better layer caching.
+  - Used `--no-install-recommends` for OpenSSL installation to reduce image size.
+  - Renamed pre-production stage to `library` and adjusted dependencies.
+
+### Pull Requests
+
+- [#112](https://github.com/5-logic/the-sync-backend/pull/112) - Hotfix for Dockerfile improvements and task optimization.
+
 ## [0.5.0] - 2025-06-27
 
 ### Added
