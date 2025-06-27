@@ -9,7 +9,7 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/auth/enums/role.enum';
@@ -53,8 +53,8 @@ export class LecturerController {
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	@Put()
-	async update(@Req() request: Request, @Body() dto: UpdateUserDto) {
-		const user = request.user as UserPayload;
+	async update(@Req() req: FastifyRequest, @Body() dto: UpdateUserDto) {
+		const user = req.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, dto);
 	}

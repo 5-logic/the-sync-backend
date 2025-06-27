@@ -9,6 +9,7 @@ export const CONFIG_TOKENS = {
 export const CONFIG_MOUNTS = {
 	BULL_BOARD: 'bull-board',
 	SWAGGER: 'swagger',
+	SWAGGER_RAW: 'swagger/json',
 };
 
 export const CONFIG_QUEUES = {
@@ -16,3 +17,7 @@ export const CONFIG_QUEUES = {
 };
 
 export const TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+export const BODY_LIMIT = 50 * 1024 * 1024; // 50MB
+
+export const PRODUCTION = 'production';

@@ -1,9 +1,8 @@
-import { ExpressAdapter } from '@bull-board/express';
+import { FastifyAdapter } from '@bull-board/fastify';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { BullModule } from '@nestjs/bullmq';
-import { MiddlewareConsumer, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import basicAuth from 'express-basic-auth';
 
 import { AuthModule } from '@/auth/auth.module';
 import {
@@ -14,7 +13,6 @@ import {
 } from '@/configs';
 import { corsConfig } from '@/configs/cors.config';
 import { DomainModule } from '@/domains/domain.module';
-import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 import { PrismaModule } from '@/providers/prisma/prisma.module';
 import { QueueModule } from '@/queue/queue.module';
 
@@ -60,18 +58,10 @@ import { QueueModule } from '@/queue/queue.module';
 
 				return {
 					route: `/${CONFIG_MOUNTS.BULL_BOARD}`,
-					adapter: ExpressAdapter,
-					middleware: basicAuth({
-						challenge: true,
-						users: { [config.bullmq.username]: config.bullmq.password },
-					}),
+					adapter: FastifyAdapter,
 				};
 			},
 		}),
 	],
 })
-export class AppModule {
-	configure(consumer: MiddlewareConsumer) {
-		consumer.apply(MorganMiddleware).forRoutes('*');
-	}
-}
+export class AppModule {}
