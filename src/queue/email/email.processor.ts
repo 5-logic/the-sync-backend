@@ -2,6 +2,8 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { Transporter, createTransport } from 'nodemailer';
+import { join } from 'path';
+import { renderFile } from 'pug';
 
 import { CONFIG_QUEUES, EmailConfig, emailConfig } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
@@ -46,17 +48,25 @@ export class EmailConsumer extends WorkerHost {
 	}
 
 	private async sendEmail(template: string, data: EmailJobDto): Promise<void> {
-		const recipients = data.to;
+		const recipient = data.to;
 
-		this.logger.log(`Sending email to: ${recipients}`);
+		const html = this.render(template, data.context);
+
+		this.logger.log(`Sending email to: ${recipient}`);
 		this.logger.log(`Subject: ${data.subject}`);
 
 		await this.transporter.sendMail({
 			to: data.to,
 			subject: data.subject,
-			text: 'test email',
+			html: html,
 		});
 
-		this.logger.log(`Email sent successfully to: ${recipients}`);
+		this.logger.log(`Email sent successfully to: ${recipient}`);
+	}
+
+	render(name: string, data: Record<string, any>): string {
+		const filePath = join(__dirname, `/templates/${name}.pug`);
+
+		return renderFile(filePath, data);
 	}
 }
