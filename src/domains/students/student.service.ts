@@ -105,6 +105,11 @@ export class StudentService {
 					},
 				});
 
+				let user;
+				let plainPassword: string;
+				let studentInfo;
+				let isNewStudent = false;
+
 				if (existingStudent) {
 					// Check if student is already enrolled in this specific semester
 					// Note: enrollments array is already filtered by semesterId above
@@ -119,80 +124,89 @@ export class StudentService {
 
 					// Student exists but not enrolled in this semester
 					// A student can be enrolled in multiple semesters, so we only enroll them in this semester
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { user: updatedUser, plainPassword } =
-						await UserService.enrollExistingStudent(
-							existingStudent.userId,
-							dto.semesterId,
-							prisma as PrismaClient,
-							this.logger,
-						);
+					const enrollResult = await UserService.enrollExistingStudent(
+						existingStudent.userId,
+						dto.semesterId,
+						prisma as PrismaClient,
+						this.logger,
+					);
+
+					user = enrollResult.user;
+					plainPassword = enrollResult.plainPassword;
+					studentInfo = {
+						studentId: existingStudent.studentId,
+						majorId: existingStudent.majorId,
+					};
 
 					this.logger.log(
 						`Student ${dto.studentId} enrolled to semester ${dto.semesterId} with new password`,
 					);
-
-					return {
-						...updatedUser,
-						studentId: existingStudent.studentId,
-						majorId: existingStudent.majorId,
+				} else {
+					// Student doesn't exist, create new student
+					const createUserDto: CreateUserDto = {
+						email: dto.email,
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
 					};
+
+					const createResult = await UserService.create(
+						createUserDto,
+						prisma as PrismaClient,
+						this.logger,
+					);
+
+					user = createResult;
+					plainPassword = createResult.plainPassword;
+					const userId = user.id;
+
+					const student = await prisma.student.create({
+						data: {
+							userId: userId,
+							studentId: dto.studentId,
+							majorId: dto.majorId,
+						},
+					});
+
+					await prisma.enrollment.create({
+						data: {
+							studentId: student.userId,
+							semesterId: dto.semesterId,
+							status: EnrollmentStatus.NotYet,
+						},
+					});
+
+					studentInfo = {
+						studentId: student.studentId,
+						majorId: student.majorId,
+					};
+
+					isNewStudent = true;
+
+					this.logger.log(`Student created with studentId: ${dto.studentId}`);
+					this.logger.log(
+						`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
+					);
 				}
 
-				// Student doesn't exist, create new student
-				const createUserDto: CreateUserDto = {
-					email: dto.email,
-					fullName: dto.fullName,
-					gender: dto.gender,
-					phoneNumber: dto.phoneNumber,
-				};
-
-				const { plainPassword, ...newUser } = await UserService.create(
-					createUserDto,
-					prisma as PrismaClient,
-					this.logger,
-				);
-				const userId = newUser.id;
-
-				const student = await prisma.student.create({
-					data: {
-						userId: userId,
-						studentId: dto.studentId,
-						majorId: dto.majorId,
-					},
-				});
-
-				await prisma.enrollment.create({
-					data: {
-						studentId: student.userId,
-						semesterId: dto.semesterId,
-						status: EnrollmentStatus.NotYet,
-					},
-				});
-
-				// Send welcome email with credentials
+				// Send welcome email with credentials (unified logic)
 				const emailDto: EmailJobDto = {
-					to: newUser.email,
-					subject: 'Welcome to TheSync',
+					to: user.email,
+					subject: isNewStudent
+						? 'Welcome to TheSync'
+						: 'Welcome back to TheSync',
 					context: {
-						fullName: newUser.fullName,
-						email: newUser.email,
+						fullName: user.fullName,
+						email: user.email,
 						password: plainPassword,
-						studentId: dto.studentId,
+						studentId: studentInfo.studentId,
 					},
 				};
 				await this.email.sendEmail(EmailJobType.SEND_ACCOUNT, emailDto, 500);
 
-				this.logger.log(`Student created with studentId: ${dto.studentId}`);
-
-				this.logger.log(
-					`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
-				);
-
 				return {
-					...newUser,
-					studentId: student.studentId,
-					majorId: student.majorId,
+					...user,
+					...studentInfo,
 				};
 			});
 
