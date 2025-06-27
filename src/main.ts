@@ -12,9 +12,11 @@ import {
 	CONFIG_TOKENS,
 	CORSConfig,
 	PRODUCTION,
+	RedisConfig,
 } from '@/configs';
 import { HttpExceptionFilter } from '@/filters';
 import { LoggingInterceptor, TransformInterceptor } from '@/interceptors';
+import { setupBasicAuthBullBoard } from '@/middlewares';
 import { setupSwagger } from '@/swagger/setup';
 
 async function bootstrap() {
@@ -31,7 +33,20 @@ async function bootstrap() {
 
 	const configService = app.get<ConfigService>(ConfigService);
 	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
+	const redisConfig = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
 	const isProduction = process.env.NODE_ENV === PRODUCTION || false;
+
+	// Get Fastify instance and setup basic auth for BullMQ dashboard
+	const fastify = app.getHttpAdapter().getInstance();
+
+	if (redisConfig?.bullmq?.username && redisConfig?.bullmq?.password) {
+		setupBasicAuthBullBoard(fastify, {
+			username: redisConfig.bullmq.username,
+			password: redisConfig.bullmq.password,
+			protectedRoute: CONFIG_MOUNTS.BULL_BOARD,
+			realm: 'BullMQ Dashboard',
+		});
+	}
 
 	// Increase body size limit for large imports (50MB)
 	// app.use(json({ limit: '50mb' }));
