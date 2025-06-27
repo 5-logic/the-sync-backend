@@ -1,10 +1,10 @@
-FROM node:20.19.2-alpine AS base
+FROM node:20.19.2-slim AS base
 RUN npm install -g --ignore-scripts pnpm
 
 #--------------------------------------------------
 FROM base AS build
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.build.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.build.json nest-cli.json ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY ./src ./src
 COPY ./prisma ./prisma
@@ -23,15 +23,16 @@ RUN \
 
 #--------------------------------------------------
 
-FROM node:20.19.2-alpine AS production
+FROM node:20.19.2-slim AS production
 ARG NODE_ENV=production
 RUN \
-	addgroup -S backend && \
-	adduser -S backend -G backend
+	groupadd -r backend && \
+	useradd -r -g backend backend
 WORKDIR /app
 COPY --from=pre-production /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/generated ./generated
+COPY package.json ./
 USER backend
 ENTRYPOINT ["node", "dist/main.js"]
 EXPOSE 4000
