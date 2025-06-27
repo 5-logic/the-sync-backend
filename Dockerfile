@@ -28,8 +28,7 @@ RUN \
 	apt-get update && \
 	apt-get --no-install-recommends install -y openssl && \
 	apt-get clean && \
-	rm -rf /var/lib/apt/lists/*
-RUN \
+	rm -rf /var/lib/apt/lists/* \
 	groupadd -r backend && \
 	useradd -r -g backend backend
 
