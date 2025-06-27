@@ -38,7 +38,7 @@ export class UserService {
 				throw new ConflictException('User with this email already exists');
 			}
 
-			const password = dto.password ?? generateStrongPassword();
+			const password = generateStrongPassword();
 
 			const hashedPassword = await hash(password);
 
@@ -74,7 +74,6 @@ export class UserService {
 	 * @param semesterId - The semester ID to enroll the student in
 	 * @param prismaClient - Prisma client instance for database operations
 	 * @param logger - Logger instance for logging
-	 * @param newPassword - Optional password to set, if not provided a strong password will be generated
 	 * @returns Object containing updated user and plain password
 	 */
 	static async enrollExistingStudent(
@@ -82,11 +81,10 @@ export class UserService {
 		semesterId: string,
 		prismaClient: PrismaClient,
 		logger: Logger,
-		newPassword?: string,
 	) {
 		try {
 			// Generate new password if not provided
-			const password = newPassword ?? generateStrongPassword();
+			const password = generateStrongPassword();
 			const hashedPassword = await hash(password);
 
 			// Update user password

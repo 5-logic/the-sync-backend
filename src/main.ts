@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
+import { CONFIG_MOUNTS, CONFIG_TOKENS, CORSConfig } from '@/configs';
 import { HttpExceptionFilter } from '@/filters/http-exception/http-exception.filter';
 import { TransformInterceptor } from '@/interceptors/transform/transform.interceptor';
 import { setupSwagger } from '@/swagger/setup';
@@ -16,8 +17,9 @@ async function bootstrap() {
 
 	const app = await NestFactory.create(AppModule, { logger: logger });
 	const configService = app.get<ConfigService>(ConfigService);
-	const corsConfig = configService.get('cors-config');
-	const isProduction = configService.get('NODE_ENV') == 'production' || false;
+	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
+	const isProduction =
+		configService.get<string>('NODE_ENV') === 'production' || false;
 
 	// Increase body size limit for large imports (50MB)
 	app.use(json({ limit: '50mb' }));
@@ -42,7 +44,15 @@ async function bootstrap() {
 	await app.listen(port);
 
 	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
-	logger.log(`OpenAPI documentation is available at /swagger`, 'Bootstrap');
+	logger.log(
+		`OpenAPI documentation is available at /${CONFIG_MOUNTS.SWAGGER}`,
+		'Bootstrap',
+	);
+
+	logger.log(
+		`BullMQ Dashboard is available at /${CONFIG_MOUNTS.BULL_BOARD}`,
+		'Bootstrap',
+	);
 }
 
 void bootstrap();

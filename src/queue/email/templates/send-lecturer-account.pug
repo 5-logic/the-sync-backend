@@ -1,0 +1,34 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= fullName
+    | ,
+
+  p
+    | We are pleased to inform you that your lecturer account has been successfully created on the TheSync.
+
+  .info-box
+    h3 Lecturer Account Information
+    
+    .info-item
+      span.info-label Full Name:
+      span.info-value= fullName
+    
+    .info-item
+      span.info-label Email:
+      span.info-value= email
+    
+    .info-item
+      span.info-label Password:
+      span.info-value.password-highlight= password
+    
+
+  .success-box
+    strong 🎯 Lecturer Privileges:
+    | As a lecturer, you have access to thesis supervision, student management, and evaluation features within the TheSync system.
+
+  .warning-box
+    strong 🔒 Security Notice:
+    | Please change your password immediately after your first login to ensure the security of your account.

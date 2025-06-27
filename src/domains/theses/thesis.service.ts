@@ -16,7 +16,8 @@ import { ThesisStatus } from '~/generated/prisma';
 @Injectable()
 export class ThesisService {
 	private readonly logger = new Logger(ThesisService.name);
-	private readonly INITIAL_VERSION = 1;
+	private static readonly INITIAL_VERSION = 1;
+
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(lecturerId: string, dto: CreateThesisDto) {
@@ -46,7 +47,7 @@ export class ThesisService {
 				// Create the first thesis version
 				await prisma.thesisVersion.create({
 					data: {
-						version: this.INITIAL_VERSION,
+						version: ThesisService.INITIAL_VERSION,
 						supportingDocument,
 						thesisId: thesis.id,
 					},
@@ -193,7 +194,8 @@ export class ThesisService {
 				// If supportingDocument is provided, create a new version
 				if (supportingDocument) {
 					const latestVersion =
-						existingThesis.thesisVersions[0]?.version ?? this.INITIAL_VERSION;
+						existingThesis.thesisVersions[0]?.version ??
+						ThesisService.INITIAL_VERSION;
 					const newVersion = latestVersion + 1;
 
 					await prisma.thesisVersion.create({
