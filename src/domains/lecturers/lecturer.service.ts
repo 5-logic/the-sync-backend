@@ -47,7 +47,11 @@ export class LecturerService {
 						password: plainPassword,
 					},
 				};
-				await this.email.sendEmail(EmailJobType.SEND_ACCOUNT, emailDto, 500);
+				await this.email.sendEmail(
+					EmailJobType.SEND_LECTURER_ACCOUNT,
+					emailDto,
+					500,
+				);
 
 				this.logger.log(`Lecturer created with ID: ${newUser.id}`);
 
@@ -228,7 +232,7 @@ export class LecturerService {
 					// Send bulk emails after all lecturers are created successfully
 					if (emailsToSend.length > 0) {
 						await this.email.sendBulkEmails(
-							EmailJobType.SEND_ACCOUNT,
+							EmailJobType.SEND_LECTURER_ACCOUNT,
 							emailsToSend,
 							500,
 						);

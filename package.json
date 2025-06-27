@@ -3,7 +3,7 @@
 	"version": "0.4.2",
 	"private": true,
 	"scripts": {
-		"build": "nest build --webpack",
+		"build": "nest build",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"start": "nest start",
 		"start:dev": "nest start --watch",

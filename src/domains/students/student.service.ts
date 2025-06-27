@@ -205,7 +205,11 @@ export class StudentService {
 						semesterName: semester.name,
 					},
 				};
-				await this.email.sendEmail(EmailJobType.SEND_ACCOUNT, emailDto, 500);
+				await this.email.sendEmail(
+					EmailJobType.SEND_STUDENT_ACCOUNT,
+					emailDto,
+					500,
+				);
 
 				return {
 					...user,
@@ -502,7 +506,7 @@ export class StudentService {
 					// Send bulk emails after all students are created successfully
 					if (emailsToSend.length > 0) {
 						await this.email.sendBulkEmails(
-							EmailJobType.SEND_ACCOUNT,
+							EmailJobType.SEND_STUDENT_ACCOUNT,
 							emailsToSend,
 							500,
 						);
