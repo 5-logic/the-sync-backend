@@ -5,6 +5,135 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-06-27
+
+### Added
+
+- **Framework Migration to Fastify**:
+  - Migrated from Express to Fastify for improved performance and better TypeScript support
+  - Added `@nestjs/platform-fastify` as the new platform adapter
+  - Implemented Fastify-specific body size limits (50MB) for large import operations
+  - Added custom `FastifyRequest` interface for enhanced type safety
+- **Email System with Queue Management**:
+  - Implemented comprehensive email notification system using `nodemailer`
+  - Added email templates with Pug templating engine for lecturer and student account notifications
+  - Created email queue system with BullMQ for reliable email processing
+  - Added `EmailJobDto` for structured email job data transfer
+  - Added email job types: `SEND_STUDENT_ACCOUNT`, `SEND_LECTURER_ACCOUNT`, `SEND_OTP`, `SEND_NOTIFICATION`
+- **Redis Integration & BullMQ Dashboard**:
+  - Added Redis configuration for queue management and caching
+  - Integrated BullMQ for job processing with dashboard monitoring at `/bull-board`
+  - Added basic authentication middleware for BullMQ dashboard security
+  - Implemented Redis connection pooling and configuration management
+- **Enhanced Configuration Management**:
+  - Created centralized configuration system with `CONFIG_TOKENS`, `CONFIG_MOUNTS`, and `CONFIG_QUEUES`
+  - Added email configuration with SMTP settings
+  - Added Redis configuration for queue management
+  - Implemented environment-based configuration loading
+- **Password Management Improvements**:
+  - Simplified password validation regex for better usability
+  - Removed mandatory password field from `CreateUserDto` (auto-generated)
+  - Enhanced password generation settings for better security
+- **Database & Service Enhancements**:
+  - Added `PrismaModule` and `PrismaService` for improved database connection management
+  - Enhanced student and lecturer creation with automatic email notifications
+  - Implemented unified user creation and email notification flow
+- **Logging & Monitoring**:
+  - Added `LoggingInterceptor` for comprehensive request/response logging
+  - Enhanced bootstrap logging with detailed service URLs
+  - Added logging for BullMQ dashboard availability
+
+### Changed
+
+- **Dependencies Migration**:
+  - **Removed**: `express`, `@types/express`, `morgan`, `@types/morgan`, `@nestjs/platform-express`
+  - **Added**: `fastify`, `@nestjs/platform-fastify`, `bullmq`, `@nestjs/bullmq`, `nodemailer`, `@types/nodemailer`, `pug`
+  - **Added BullMQ Dashboard**: `@bull-board/api`, `@bull-board/fastify`, `@bull-board/nestjs`
+  - **Added Fastify Extensions**: `@fastify/basic-auth`, `@fastify/static`
+  - **Updated**: `@nestjs/common`, `@nestjs/core`, `@prisma/client`, `eslint`, `typescript-eslint`
+- **DTO Standardization**:
+  - Removed `password` field from `CreateUserDto` (now auto-generated)
+  - Simplified `UpdateUserDto` to only omit `email` field instead of both `email` and `password`
+  - Enhanced validation and type safety across all DTOs
+- **API Response & Error Handling**:
+  - Improved global exception handling with Fastify integration
+  - Enhanced response transformation with additional logging
+  - Better error messages and status codes for API operations
+- **Build & Development Configuration**:
+  - Updated build script to use standard `nest build` instead of webpack
+  - Enhanced Dockerfile to use `node:slim` instead of `alpine` for better compatibility
+  - Added `nest-cli.json` to Docker build context
+  - Updated user creation in Dockerfile for Ubuntu-based images
+- **Module Organization**:
+  - Created index files for filters and interceptors to streamline imports
+  - Enhanced module imports and dependency injection
+  - Improved code organization with centralized configuration
+
+### Fixed
+
+- **Docker Configuration**:
+  - Fixed Dockerfile to use `node:slim` base image for better dependency compatibility
+  - Added missing `nest-cli.json` file to Docker build context
+  - Updated user creation commands for Ubuntu-based Docker images
+  - Added `package.json` to production Docker stage
+- **Type Safety & Code Quality**:
+  - Enhanced TypeScript configuration with proper Fastify types
+  - Fixed import paths and module resolution
+  - Improved code formatting with consistent styling
+- **Configuration & Environment**:
+  - Enhanced environment variable validation and defaults
+  - Fixed Redis configuration loading and validation
+  - Improved CORS configuration with better type safety
+
+### Removed
+
+- **Express Dependencies**:
+  - Removed Express framework and all related dependencies
+  - Removed Morgan middleware (replaced with LoggingInterceptor)
+  - Removed Express-specific type definitions
+- **Unused Dependencies**:
+  - Removed `@types/pug` (not needed with current implementation)
+  - Cleaned up unused imports and configurations
+
+### Security
+
+- **BullMQ Dashboard Protection**:
+  - Added basic authentication for BullMQ dashboard access
+  - Implemented username/password protection for queue monitoring
+- **Enhanced Password Security**:
+  - Improved password generation with better entropy
+  - Simplified but secure password validation patterns
+- **Request Size Limits**:
+  - Maintained 50MB body size limit for secure file uploads
+  - Enhanced request validation and sanitization
+
+### Performance
+
+- **Framework Performance**:
+  - Fastify provides significant performance improvements over Express
+  - Better JSON parsing and serialization
+  - Improved request/response handling efficiency
+- **Queue System Optimization**:
+  - Asynchronous email processing prevents blocking operations
+  - Redis-based queue management for reliable job processing
+  - Background job processing for better user experience
+
+### Documentation
+
+- **Environment Setup Guide**:
+  - Added comprehensive Redis and BullMQ configuration documentation
+  - Enhanced SMTP configuration examples and descriptions
+  - Added BullMQ dashboard access and usage information
+  - Provided complete `.env` file example with all required variables
+
+### Pull Requests
+
+- [#110](https://github.com/5-logic/the-sync-backend/pull/110) - Merge dev branch for v0.5.0 release
+- [#109](https://github.com/5-logic/the-sync-backend/pull/109) - Fastify migration and middleware enhancements (closes #108)
+- [#107](https://github.com/5-logic/the-sync-backend/pull/107) - Docker configuration improvements (closes #106)
+- [#105](https://github.com/5-logic/the-sync-backend/pull/105) - Email system implementation with queue management (closes #69)
+- [#104](https://github.com/5-logic/the-sync-backend/pull/104) - Redis integration and BullMQ dashboard setup (closes #102)
+
 ## [0.4.3] - 2025-06-25
 
 ### Changed
