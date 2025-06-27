@@ -39,6 +39,7 @@
 		"express-basic-auth": "1.2.1",
 		"generate-password": "1.7.1",
 		"morgan": "1.10.0",
+		"nodemailer": "6.10.1",
 		"passport-jwt": "4.0.1",
 		"reflect-metadata": "0.2.2",
 		"rxjs": "7.8.2"
@@ -56,6 +57,7 @@
 		"@types/express": "5.0.2",
 		"@types/morgan": "1.9.9",
 		"@types/node": "20.17.50",
+		"@types/nodemailer": "6.4.17",
 		"@types/passport-jwt": "4.0.1",
 		"eslint": "9.27.0",
 		"eslint-config-prettier": "10.1.5",
