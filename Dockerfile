@@ -28,13 +28,14 @@ RUN \
 	apt-get update && \
 	apt-get --no-install-recommends install -y openssl && \
 	apt-get clean && \
-	rm -rf /var/lib/apt/lists/* \
-	groupadd -r backend && \
-	useradd -r -g backend backend
+	rm -rf /var/lib/apt/lists/*
 
 #--------------------------------------------------
 
 FROM pre-production AS production
+RUN \
+	groupadd -r backend && \
+	useradd -r -g backend backend
 WORKDIR /app
 COPY --from=library /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
