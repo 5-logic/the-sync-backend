@@ -126,7 +126,6 @@ export class StudentService {
 							dto.semesterId,
 							prisma as PrismaClient,
 							this.logger,
-							dto.password,
 						);
 
 					this.logger.log(
@@ -144,7 +143,6 @@ export class StudentService {
 				const createUserDto: CreateUserDto = {
 					email: dto.email,
 					fullName: dto.fullName,
-					password: dto.password,
 					gender: dto.gender,
 					phoneNumber: dto.phoneNumber,
 				};
@@ -387,7 +385,6 @@ export class StudentService {
 									dto.semesterId,
 									prisma as PrismaClient,
 									this.logger,
-									studentData.password,
 								);
 
 							this.logger.log(
@@ -409,7 +406,6 @@ export class StudentService {
 							const createUserDto: CreateUserDto = {
 								email: studentData.email,
 								fullName: studentData.fullName,
-								password: studentData.password,
 								gender: studentData.gender,
 								phoneNumber: studentData.phoneNumber,
 							};

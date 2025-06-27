@@ -1,12 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-	IsEmail,
-	IsEnum,
-	IsOptional,
-	IsString,
-	Matches,
-	MinLength,
-} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsString } from 'class-validator';
 
 import { Gender } from '~/generated/prisma';
 
@@ -18,13 +11,6 @@ export class CreateUserDto {
 	@ApiProperty()
 	@IsString()
 	fullName: string;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsString()
-	@MinLength(12)
-	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
-	password?: string;
 
 	@ApiProperty({ enum: Gender, default: Gender.Male })
 	@IsEnum(Gender)

@@ -2,7 +2,7 @@ import { generate } from 'generate-password';
 
 export const generateStrongPassword = (): string => {
 	return generate({
-		length: 12,
+		length: 64,
 		numbers: true,
 		symbols: true,
 		uppercase: true,
