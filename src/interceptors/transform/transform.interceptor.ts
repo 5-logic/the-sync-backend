@@ -4,18 +4,18 @@ import {
 	Injectable,
 	NestInterceptor,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { FastifyReply } from 'fastify';
 import { Observable, map } from 'rxjs';
 
 @Injectable()
 export class TransformInterceptor implements NestInterceptor {
 	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-		const response: Response = context.switchToHttp().getResponse();
+		const res: FastifyReply = context.switchToHttp().getResponse();
 
 		return next.handle().pipe(
 			map((data) => ({
 				success: true,
-				statusCode: response.statusCode,
+				statusCode: res.statusCode,
 				data: data,
 			})),
 		);

@@ -9,7 +9,7 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/auth/enums/role.enum';
@@ -29,7 +29,7 @@ export class GroupController {
 
 	@Roles(Role.STUDENT)
 	@Post()
-	async create(@Req() request: Request, @Body() dto: CreateGroupDto) {
+	async create(@Req() request: FastifyRequest, @Body() dto: CreateGroupDto) {
 		const user = request.user as UserPayload;
 
 		return await this.groupService.create(user.id, dto);
@@ -48,7 +48,7 @@ export class GroupController {
 	@Roles(Role.STUDENT)
 	@Put(':id')
 	async update(
-		@Req() request: Request,
+		@Req() request: FastifyRequest,
 		@Param('id') id: string,
 		@Body() dto: UpdateGroupDto,
 	) {
