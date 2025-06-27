@@ -8,6 +8,7 @@ import {
 
 import { AppModule } from '@/app.module';
 import {
+	BODY_LIMIT,
 	CONFIG_MOUNTS,
 	CONFIG_TOKENS,
 	CORSConfig,
@@ -27,7 +28,9 @@ async function bootstrap() {
 
 	const app = await NestFactory.create<NestFastifyApplication>(
 		AppModule,
-		new FastifyAdapter(),
+		new FastifyAdapter({
+			bodyLimit: BODY_LIMIT,
+		}),
 		{ logger: logger },
 	);
 
@@ -47,10 +50,6 @@ async function bootstrap() {
 			realm: 'BullMQ Dashboard',
 		});
 	}
-
-	// Increase body size limit for large imports (50MB)
-	// app.use(json({ limit: '50mb' }));
-	// app.use(urlencoded({ extended: true, limit: '50mb' }));
 
 	// Enable CORS
 	app.enableCors(isProduction ? corsConfig : { origin: '*' });
