@@ -1,14 +1,17 @@
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { BullModule } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 
-import { CONFIG_QUEUES } from '@/configs';
+import { CONFIG_QUEUES, emailConfig } from '@/configs';
 import { EmailQueueService } from '@/email/email-queue.service';
 import { EmailConsumer } from '@/email/email.processor';
 
+@Global()
 @Module({
 	imports: [
+		ConfigModule.forFeature(emailConfig),
 		BullModule.registerQueue({
 			name: CONFIG_QUEUES.EMAIL,
 		}),

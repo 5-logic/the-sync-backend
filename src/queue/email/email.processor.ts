@@ -1,13 +1,37 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
+import { Transporter, createTransport } from 'nodemailer';
 
-import { CONFIG_QUEUES } from '@/configs';
+import { CONFIG_QUEUES, EmailConfig, emailConfig } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 
 @Processor(CONFIG_QUEUES.EMAIL)
 export class EmailConsumer extends WorkerHost {
 	private readonly logger = new Logger(EmailConsumer.name);
+
+	private transporter: Transporter;
+
+	constructor(
+		@Inject(emailConfig.KEY) private readonly emailConfiguration: EmailConfig,
+	) {
+		super();
+
+		this.transporter = createTransport({
+			host: this.emailConfiguration.host,
+			port: this.emailConfiguration.port,
+			auth: {
+				user: this.emailConfiguration.user,
+				pass: this.emailConfiguration.pass,
+			},
+		});
+
+		this.logger.debug(
+			'EmailConsumer initialized with configuration:',
+			this.emailConfiguration,
+		);
+		this.logger.log('Email transport initialized successfully.');
+	}
 
 	async process(job: Job<EmailJobDto>): Promise<void> {
 		this.logger.log(`Processing email job ${job.id}`);
@@ -27,12 +51,11 @@ export class EmailConsumer extends WorkerHost {
 		this.logger.log(`Sending email to: ${recipients}`);
 		this.logger.log(`Subject: ${data.subject}`);
 
-		// TODO: Implement actual email sending logic
-		// This is where you'll integrate with your email service provider
-		// For example: SendGrid, AWS SES, Nodemailer, etc.
-
-		// Simulate email sending for now
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await this.transporter.sendMail({
+			to: data.to,
+			subject: data.subject,
+			text: 'test email',
+		});
 
 		this.logger.log(`Email sent successfully to: ${recipients}`);
 	}

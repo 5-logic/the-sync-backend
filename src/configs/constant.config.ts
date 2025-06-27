@@ -3,6 +3,7 @@ export const CONFIG_TOKENS = {
 	CORS: 'cors',
 	JWT_ACCESS: 'jwt-access',
 	JWT_REFRESH: 'jwt-refresh',
+	EMAIL: 'email',
 } as const;
 
 export const CONFIG_MOUNTS = {
