@@ -5,7 +5,6 @@ import {
 	FastifyAdapter,
 	NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
 import {
@@ -14,8 +13,8 @@ import {
 	CORSConfig,
 	PRODUCTION,
 } from '@/configs';
-import { HttpExceptionFilter } from '@/filters/http-exception/http-exception.filter';
-import { TransformInterceptor } from '@/interceptors/transform/transform.interceptor';
+import { HttpExceptionFilter } from '@/filters';
+import { LoggingInterceptor, TransformInterceptor } from '@/interceptors';
 import { setupSwagger } from '@/swagger/setup';
 
 async function bootstrap() {
@@ -27,7 +26,7 @@ async function bootstrap() {
 	const app = await NestFactory.create<NestFastifyApplication>(
 		AppModule,
 		new FastifyAdapter(),
-		{ bufferLogs: true },
+		{ logger: logger },
 	);
 
 	const configService = app.get<ConfigService>(ConfigService);
@@ -45,17 +44,19 @@ async function bootstrap() {
 	app.useGlobalPipes(new ValidationPipe());
 
 	// Enable global exception filters
-	// app.useGlobalFilters(new HttpExceptionFilter());
+	app.useGlobalFilters(new HttpExceptionFilter());
 
 	// Enable global interceptors
-	// app.useGlobalInterceptors(new TransformInterceptor());
+	app.useGlobalInterceptors(
+		new TransformInterceptor(),
+		new LoggingInterceptor(),
+	);
 
 	// Setup Swagger
 	setupSwagger(app);
 
 	const port = process.env.PORT ?? 4000;
 	await app.listen(port);
-
 	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
 
 	logger.log(
