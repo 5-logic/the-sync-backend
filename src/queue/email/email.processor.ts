@@ -12,7 +12,7 @@ import { EmailJobDto } from '@/email/dto/email-job.dto';
 export class EmailConsumer extends WorkerHost {
 	private readonly logger = new Logger(EmailConsumer.name);
 
-	private transporter: Transporter;
+	private readonly transporter: Transporter;
 
 	constructor(
 		@Inject(emailConfig.KEY) private readonly emailConfiguration: EmailConfig,

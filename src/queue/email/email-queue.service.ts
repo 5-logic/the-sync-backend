@@ -12,7 +12,8 @@ export class EmailQueueService {
 	private static readonly BACKOFF_DELAY = 2000;
 
 	constructor(
-		@InjectQueue(CONFIG_QUEUES.EMAIL) private queue: Queue<EmailJobDto>,
+		@InjectQueue(CONFIG_QUEUES.EMAIL)
+		private readonly queue: Queue<EmailJobDto>,
 	) {}
 
 	async sendEmail(type: EmailJobType, dto: EmailJobDto, delay?: number) {
