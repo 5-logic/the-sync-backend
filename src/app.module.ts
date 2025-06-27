@@ -14,33 +14,32 @@ import {
 } from '@/configs';
 import { corsConfig } from '@/configs/cors.config';
 import { DomainModule } from '@/domains/domain.module';
-import { MorganMiddleware } from '@/middlewares/morgan/morgan.middleware';
 import { PrismaModule } from '@/providers/prisma/prisma.module';
 import { QueueModule } from '@/queue/queue.module';
 
 @Module({
 	imports: [
-		// BullModule.forRootAsync({
-		// 	inject: [ConfigService],
-		// 	useFactory: (configService: ConfigService) => {
-		// 		const config = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
-		// 		if (!config?.url) {
-		// 			throw new Error(
-		// 				'Redis configuration is not set. Please check your environment variables or configuration files.',
-		// 			);
-		// 		}
-		// 		return {
-		// 			connection: {
-		// 				url: config.url,
-		// 			},
-		// 		};
-		// 	},
-		// }),
-		// ConfigModule.forRoot({
-		// 	load: [corsConfig, redisConfig],
-		// 	cache: true,
-		// 	isGlobal: true,
-		// }),
+		BullModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => {
+				const config = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
+				if (!config?.url) {
+					throw new Error(
+						'Redis configuration is not set. Please check your environment variables or configuration files.',
+					);
+				}
+				return {
+					connection: {
+						url: config.url,
+					},
+				};
+			},
+		}),
+		ConfigModule.forRoot({
+			load: [corsConfig, redisConfig],
+			cache: true,
+			isGlobal: true,
+		}),
 		PrismaModule,
 		AuthModule,
 		// DomainModule,
@@ -66,8 +65,4 @@ import { QueueModule } from '@/queue/queue.module';
 		// }),
 	],
 })
-export class AppModule {
-	// configure(consumer: MiddlewareConsumer) {
-	// 	consumer.apply(MorganMiddleware).forRoutes('*');
-	// }
-}
+export class AppModule {}
