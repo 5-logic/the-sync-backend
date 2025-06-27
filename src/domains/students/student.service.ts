@@ -5,7 +5,11 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { TIMEOUT } from '@/configs';
+import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { ImportStudentDto } from '@/students/dto/import-student.dto';
 import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
@@ -24,9 +28,10 @@ import {
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
 
-	private static readonly TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
-
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailQueueService,
+	) {}
 
 	/**
 	 * Validate that a semester exists and is in the correct status for student enrollment
@@ -82,7 +87,9 @@ export class StudentService {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				// Validate major and semester
 				await this.validateMajorForEnrollment(dto.majorId);
-				await this.validateSemesterForEnrollment(dto.semesterId);
+				const semester = await this.validateSemesterForEnrollment(
+					dto.semesterId,
+				);
 
 				const existingStudent = await prisma.student.findUnique({
 					where: { studentId: dto.studentId },
@@ -100,6 +107,11 @@ export class StudentService {
 					},
 				});
 
+				let user;
+				let plainPassword: string;
+				let studentInfo;
+				let isNewStudent = false;
+
 				if (existingStudent) {
 					// Check if student is already enrolled in this specific semester
 					// Note: enrollments array is already filtered by semesterId above
@@ -114,71 +126,94 @@ export class StudentService {
 
 					// Student exists but not enrolled in this semester
 					// A student can be enrolled in multiple semesters, so we only enroll them in this semester
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { user: updatedUser, plainPassword } =
-						await UserService.enrollExistingStudent(
-							existingStudent.userId,
-							dto.semesterId,
-							prisma as PrismaClient,
-							this.logger,
-							dto.password,
-						);
+					const enrollResult = await UserService.enrollExistingStudent(
+						existingStudent.userId,
+						dto.semesterId,
+						prisma as PrismaClient,
+						this.logger,
+					);
+
+					user = enrollResult.user;
+					plainPassword = enrollResult.plainPassword;
+					studentInfo = {
+						studentId: existingStudent.studentId,
+						majorId: existingStudent.majorId,
+					};
 
 					this.logger.log(
 						`Student ${dto.studentId} enrolled to semester ${dto.semesterId} with new password`,
 					);
-
-					return {
-						...updatedUser,
-						studentId: existingStudent.studentId,
-						majorId: existingStudent.majorId,
+				} else {
+					// Student doesn't exist, create new student
+					const createUserDto: CreateUserDto = {
+						email: dto.email,
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
 					};
+
+					const createResult = await UserService.create(
+						createUserDto,
+						prisma as PrismaClient,
+						this.logger,
+					);
+
+					user = createResult;
+					plainPassword = createResult.plainPassword;
+					const userId = user.id;
+
+					const student = await prisma.student.create({
+						data: {
+							userId: userId,
+							studentId: dto.studentId,
+							majorId: dto.majorId,
+						},
+					});
+
+					await prisma.enrollment.create({
+						data: {
+							studentId: student.userId,
+							semesterId: dto.semesterId,
+							status: EnrollmentStatus.NotYet,
+						},
+					});
+
+					studentInfo = {
+						studentId: student.studentId,
+						majorId: student.majorId,
+					};
+
+					isNewStudent = true;
+
+					this.logger.log(`Student created with studentId: ${dto.studentId}`);
+					this.logger.log(
+						`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
+					);
 				}
 
-				// Student doesn't exist, create new student
-				const createUserDto: CreateUserDto = {
-					email: dto.email,
-					fullName: dto.fullName,
-					password: dto.password,
-					gender: dto.gender,
-					phoneNumber: dto.phoneNumber,
+				// Send welcome email with credentials (unified logic)
+				const emailDto: EmailJobDto = {
+					to: user.email,
+					subject: isNewStudent
+						? 'Welcome to TheSync'
+						: 'Welcome back to TheSync',
+					context: {
+						fullName: user.fullName,
+						email: user.email,
+						password: plainPassword,
+						studentId: studentInfo.studentId,
+						semesterName: semester.name,
+					},
 				};
-
-				// TODO: To send email to student with their credentials
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { plainPassword, ...newUser } = await UserService.create(
-					createUserDto,
-					prisma as PrismaClient,
-					this.logger,
-				);
-				const userId = newUser.id;
-
-				const student = await prisma.student.create({
-					data: {
-						userId: userId,
-						studentId: dto.studentId,
-						majorId: dto.majorId,
-					},
-				});
-
-				await prisma.enrollment.create({
-					data: {
-						studentId: student.userId,
-						semesterId: dto.semesterId,
-						status: EnrollmentStatus.NotYet,
-					},
-				});
-
-				this.logger.log(`Student created with studentId: ${dto.studentId}`);
-
-				this.logger.log(
-					`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
+				await this.email.sendEmail(
+					EmailJobType.SEND_STUDENT_ACCOUNT,
+					emailDto,
+					500,
 				);
 
 				return {
-					...newUser,
-					studentId: student.studentId,
-					majorId: student.majorId,
+					...user,
+					...studentInfo,
 				};
 			});
 
@@ -311,6 +346,7 @@ export class StudentService {
 			throw error;
 		}
 	}
+
 	/**
 	 * Create multiple students or enroll existing students in a semester (batch operation).
 	 * Uses the same logic as the single create method for each student, including UserService.enrollExistingStudent.
@@ -320,12 +356,13 @@ export class StudentService {
 	async createMany(dto: ImportStudentDto) {
 		try {
 			// Validate semester and major before starting the import process
-			await this.validateSemesterForEnrollment(dto.semesterId);
+			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 			await this.validateMajorForEnrollment(dto.majorId);
 
 			const results = await this.prisma.$transaction(
 				async (prisma) => {
 					const createdStudents: any[] = [];
+					const emailsToSend: EmailJobDto[] = [];
 
 					for (const studentData of dto.students) {
 						// Check if student already exists
@@ -346,6 +383,9 @@ export class StudentService {
 						});
 
 						let result;
+						let shouldSendEmail = false;
+						let passwordForEmail = '';
+						let isNewStudent = false;
 
 						if (existingStudent) {
 							// Check if student is already enrolled in this specific semester
@@ -361,14 +401,12 @@ export class StudentService {
 
 							// Student exists but not enrolled in this semester
 							// A student can be enrolled in multiple semesters, so we only enroll them in this semester
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
 							const { user: updatedUser, plainPassword } =
 								await UserService.enrollExistingStudent(
 									existingStudent.userId,
 									dto.semesterId,
 									prisma as PrismaClient,
 									this.logger,
-									studentData.password,
 								);
 
 							this.logger.log(
@@ -380,20 +418,21 @@ export class StudentService {
 								studentId: existingStudent.studentId,
 								majorId: existingStudent.majorId,
 							};
+
+							// Send email for re-enrolled student with new password
+							shouldSendEmail = true;
+							passwordForEmail = plainPassword;
 						} else {
 							// Student doesn't exist, create new student
 							// Create user DTO
 							const createUserDto: CreateUserDto = {
 								email: studentData.email,
 								fullName: studentData.fullName,
-								password: studentData.password,
 								gender: studentData.gender,
 								phoneNumber: studentData.phoneNumber,
 							};
 
 							// Create user
-							// TODO: To send email to student with their credentials
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
 							const { plainPassword, ...newUser } = await UserService.create(
 								createUserDto,
 								prisma as PrismaClient,
@@ -431,6 +470,29 @@ export class StudentService {
 								studentId: student.studentId,
 								majorId: student.majorId,
 							};
+
+							// Send email for new student
+							shouldSendEmail = true;
+							passwordForEmail = plainPassword;
+							isNewStudent = true;
+						}
+
+						// Prepare email data for bulk sending
+						if (shouldSendEmail) {
+							const emailDto: EmailJobDto = {
+								to: result.email,
+								subject: isNewStudent
+									? 'Welcome to TheSync'
+									: 'Welcome back to TheSync',
+								context: {
+									fullName: result.fullName,
+									email: result.email,
+									password: passwordForEmail,
+									studentId: result.studentId,
+									semesterName: semester.name,
+								},
+							};
+							emailsToSend.push(emailDto);
 						}
 
 						createdStudents.push(result);
@@ -441,10 +503,19 @@ export class StudentService {
 						this.logger.debug('Student detail', result);
 					}
 
+					// Send bulk emails after all students are created successfully
+					if (emailsToSend.length > 0) {
+						await this.email.sendBulkEmails(
+							EmailJobType.SEND_STUDENT_ACCOUNT,
+							emailsToSend,
+							500,
+						);
+					}
+
 					return createdStudents;
 				},
 				{
-					timeout: StudentService.TIMEOUT,
+					timeout: TIMEOUT,
 				},
 			);
 
@@ -506,6 +577,7 @@ export class StudentService {
 			throw error;
 		}
 	}
+
 	async findAllBySemester(semesterId: string) {
 		try {
 			this.logger.log(`Fetching all students for semester: ${semesterId}`);

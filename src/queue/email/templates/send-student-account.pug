@@ -1,0 +1,39 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= fullName
+    | ,
+
+  p
+    | We are pleased to inform you that your account has been successfully created on the TheSync system for semester 
+    strong= semesterName
+    | .
+
+  .info-box
+    h3 Student Account Information
+    
+    .info-item
+      span.info-label Full Name:
+      span.info-value= fullName
+    
+    .info-item
+      span.info-label Student ID:
+      span.info-value= studentId
+    
+    .info-item
+      span.info-label Email:
+      span.info-value= email
+    
+    .info-item
+      span.info-label Password:
+      span.info-value.password-highlight= password
+    
+    .info-item
+      span.info-label Semester:
+      span.info-value= semesterName
+
+  .warning-box
+    strong 🔒 Security Notice:
+    | Please change your password immediately after your first login to ensure the security of your account.

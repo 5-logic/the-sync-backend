@@ -24,6 +24,7 @@ import { SemesterService } from '@/semesters/semester.service';
 @Controller('semesters')
 export class SemesterController {
 	constructor(private readonly semesterService: SemesterService) {}
+
 	@Roles(Role.ADMIN)
 	@Post()
 	async create(@Body() dto: CreateSemesterDto) {
@@ -39,6 +40,7 @@ export class SemesterController {
 	async findOne(@Param('id') id: string) {
 		return await this.semesterService.findOne(id);
 	}
+
 	@Roles(Role.ADMIN)
 	@Put(':id')
 	async update(@Param('id') id: string, @Body() dto: UpdateSemesterDto) {

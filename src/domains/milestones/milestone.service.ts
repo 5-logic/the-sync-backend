@@ -74,6 +74,7 @@ export class MilestoneService {
 
 		return milestone;
 	}
+
 	async create(dto: CreateMilestoneDto) {
 		try {
 			await this.validateSemesterForModification(dto.semesterId);
