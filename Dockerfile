@@ -26,7 +26,7 @@ RUN \
 FROM node:20.19.2-slim AS pre-production
 RUN \
 	apt-get update && \
-	apt-get install -y openssl && \
+	apt-get --no-install-recommends install -y openssl && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 RUN \
