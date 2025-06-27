@@ -49,14 +49,19 @@ async function bootstrap() {
 	// app.useGlobalInterceptors(new TransformInterceptor());
 
 	// Setup Swagger
-	// setupSwagger(app);
+	setupSwagger(app);
 
 	const port = process.env.PORT ?? 4000;
 	await app.listen(port);
 
 	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
+
 	logger.log(
 		`OpenAPI documentation is available at /${CONFIG_MOUNTS.SWAGGER}`,
+		'Bootstrap',
+	);
+	logger.log(
+		`OpenAPI raw JSON is available at /${CONFIG_MOUNTS.SWAGGER_RAW}`,
 		'Bootstrap',
 	);
 

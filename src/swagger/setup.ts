@@ -16,6 +16,8 @@ export const setupSwagger = (app: INestApplication<any>) => {
 
 	const document = SwaggerModule.createDocument(app, config);
 	SwaggerModule.setup(CONFIG_MOUNTS.SWAGGER, app, document, {
+		customSiteTitle: 'TheSync API Documentation',
+		jsonDocumentUrl: CONFIG_MOUNTS.SWAGGER_RAW,
 		swaggerOptions: {
 			tagsSorter: 'alpha',
 			operationsSorter: 'method',

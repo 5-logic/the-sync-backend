@@ -9,6 +9,7 @@ export const CONFIG_TOKENS = {
 export const CONFIG_MOUNTS = {
 	BULL_BOARD: 'bull-board',
 	SWAGGER: 'swagger',
+	SWAGGER_RAW: 'swagger/json',
 };
 
 export const CONFIG_QUEUES = {
