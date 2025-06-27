@@ -2,16 +2,16 @@ import {
 	CallHandler,
 	ExecutionContext,
 	Injectable,
+	Logger,
 	NestInterceptor,
 } from '@nestjs/common';
-import { Logger } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-	private logger = new Logger(LoggingInterceptor.name);
+	private readonly logger = new Logger(LoggingInterceptor.name);
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
 		const req: FastifyRequest = context.switchToHttp().getRequest();

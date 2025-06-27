@@ -28,7 +28,7 @@ export const setupBasicAuthBullBoard = (
 
 			const auth = req.headers.authorization;
 
-			if (!auth || !auth.startsWith('Basic ')) {
+			if (!auth?.startsWith('Basic ')) {
 				res.header('WWW-Authenticate', `Basic realm="${realm}"`);
 				res.code(401).send({
 					error: 'Unauthorized',
