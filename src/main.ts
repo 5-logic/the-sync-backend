@@ -1,6 +1,10 @@
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import {
+	FastifyAdapter,
+	NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
@@ -15,30 +19,37 @@ async function bootstrap() {
 		timestamp: true,
 	});
 
-	const app = await NestFactory.create(AppModule, { logger: logger });
-	const configService = app.get<ConfigService>(ConfigService);
-	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
-	const isProduction =
-		configService.get<string>('NODE_ENV') === 'production' || false;
+	const app = await NestFactory.create<NestFastifyApplication>(
+		AppModule,
+		new FastifyAdapter(),
+		{
+			logger: logger,
+		},
+	);
+
+	// const configService = app.get<ConfigService>(ConfigService);
+	// const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
+	// const isProduction =
+	// 	configService.get<string>('NODE_ENV') === 'production' || false;
 
 	// Increase body size limit for large imports (50MB)
-	app.use(json({ limit: '50mb' }));
-	app.use(urlencoded({ extended: true, limit: '50mb' }));
+	// app.use(json({ limit: '50mb' }));
+	// app.use(urlencoded({ extended: true, limit: '50mb' }));
 
 	// Enable CORS
-	app.enableCors(isProduction ? corsConfig : { origin: '*' });
+	// app.enableCors(isProduction ? corsConfig : { origin: '*' });
 
 	// Enable validation globally
 	app.useGlobalPipes(new ValidationPipe());
 
 	// Enable global exception filters
-	app.useGlobalFilters(new HttpExceptionFilter());
+	// app.useGlobalFilters(new HttpExceptionFilter());
 
 	// Enable global interceptors
-	app.useGlobalInterceptors(new TransformInterceptor());
+	// app.useGlobalInterceptors(new TransformInterceptor());
 
 	// Setup Swagger
-	setupSwagger(app);
+	// setupSwagger(app);
 
 	const port = process.env.PORT ?? 4000;
 	await app.listen(port);
