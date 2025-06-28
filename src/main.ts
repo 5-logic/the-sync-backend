@@ -71,7 +71,7 @@ async function bootstrap() {
 	setupSwagger(app);
 
 	const port = process.env.PORT ?? 4000;
-	await app.listen(port);
+	await app.listen(port, '0.0.0.0');
 	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
 
 	logger.log(
