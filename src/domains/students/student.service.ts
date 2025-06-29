@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	ConflictException,
 	Injectable,
 	Logger,
@@ -634,6 +635,113 @@ export class StudentService {
 				error,
 			);
 
+			throw error;
+		}
+	}
+
+	private async validateStudentDeletion(
+		studentUserId: string,
+		prisma: any,
+	): Promise<void> {
+		const [enrollmentExists, studentGroupParticipationExists] =
+			await Promise.all([
+				prisma.enrollment.find({
+					where: {
+						studentId: studentUserId,
+						status: {
+							not: EnrollmentStatus.NotYet,
+						},
+					},
+					select: { studentId: true, semesterId: true, status: true },
+				}),
+
+				prisma.studentGroupParticipation.findFirst({
+					where: { studentId: studentUserId },
+					select: { studentId: true, groupId: true },
+				}),
+			]);
+
+		const constraints = [
+			{
+				condition: enrollmentExists,
+				message: `Student has enrollments with status ${enrollmentExists.status}`,
+				logMessage: `has enrollments with status ${enrollmentExists?.status || 'unknown'} (only NotYet status allowed for deletion)`,
+			},
+			{
+				condition: studentGroupParticipationExists,
+				message: 'Student is participating in groups',
+				logMessage: 'is participating in groups',
+			},
+		];
+
+		for (const constraint of constraints) {
+			if (constraint.condition) {
+				this.logger.warn(
+					`Student with ID ${studentUserId} ${constraint.logMessage}`,
+				);
+				throw new BadRequestException(
+					`Cannot delete student with ID ${studentUserId}. ${constraint.message}`,
+				);
+			}
+		}
+	}
+
+	async delete(id: string) {
+		try {
+			this.logger.log(`Deleting student with ID: ${id}`);
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingStudent = await prisma.student.findUnique({
+					where: { userId: id },
+					include: { user: true },
+				});
+
+				if (!existingStudent) {
+					this.logger.warn(`Student with ID ${id} not found for deletion`);
+					throw new NotFoundException(`Student with ID ${id} not found`);
+				}
+
+				await this.validateStudentDeletion(existingStudent.userId, prisma);
+
+				const studentToDelete = {
+					...existingStudent.user,
+					studentId: existingStudent.studentId,
+					majorId: existingStudent.majorId,
+				};
+
+				await Promise.all([
+					prisma.studentSkill.deleteMany({
+						where: { studentId: existingStudent.studentId },
+					}),
+					prisma.studentExpectedResponsibility.deleteMany({
+						where: { studentId: existingStudent.studentId },
+					}),
+					prisma.request.deleteMany({
+						where: { studentId: existingStudent.studentId },
+					}),
+					prisma.enrollment.deleteMany({
+						where: { studentId: existingStudent.studentId },
+					}),
+				]);
+
+				await prisma.student.delete({ where: { userId: id } });
+				await prisma.user.delete({ where: { id } });
+
+				this.logger.log(`Student successfully deleted with ID: ${id}`);
+				this.logger.debug('Deleted student details:', {
+					id: studentToDelete.id,
+					email: studentToDelete.email,
+					fullName: studentToDelete.fullName,
+					studentId: studentToDelete.studentId,
+					majorId: studentToDelete.majorId,
+				});
+
+				return studentToDelete;
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error deleting student with ID ${id}:`, error.message);
 			throw error;
 		}
 	}
