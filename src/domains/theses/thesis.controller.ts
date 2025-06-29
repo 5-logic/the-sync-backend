@@ -12,14 +12,13 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FastifyRequest } from 'fastify';
 
-import { Roles } from '@/auth/decorators/roles.decorator';
-import { Role } from '@/auth/enums/role.enum';
-import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
-import { RoleGuard } from '@/auth/guards/role.guard';
+import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
-import { ReviewThesisDto } from '@/theses/dto/review-thesis.dto';
-import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
+import {
+	CreateThesisDto,
+	ReviewThesisDto,
+	UpdateThesisDto,
+} from '@/theses/dto';
 import { ThesisService } from '@/theses/thesis.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

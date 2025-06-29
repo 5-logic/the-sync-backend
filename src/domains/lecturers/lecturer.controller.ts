@@ -11,15 +11,11 @@ import {
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { FastifyRequest } from 'fastify';
 
-import { Roles } from '@/auth/decorators/roles.decorator';
-import { Role } from '@/auth/enums/role.enum';
-import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
-import { RoleGuard } from '@/auth/guards/role.guard';
+import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
+import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
@@ -57,6 +53,12 @@ export class LecturerController {
 		const user = req.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, dto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Put(':id')
+	async updateByAdmin(@Param('id') id: string, @Body() dto: UpdateLecturerDto) {
+		return await this.lecturerService.updateByAdmin(id, dto);
 	}
 
 	@Roles(Role.ADMIN)

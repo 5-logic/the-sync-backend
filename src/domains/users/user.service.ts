@@ -7,8 +7,7 @@ import {
 
 import { Role } from '@/auth/enums/role.enum';
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { hash, verify } from '@/utils/hash.util';
 import { generateStrongPassword } from '@/utils/password-generator.util';
 

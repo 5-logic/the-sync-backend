@@ -5,8 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { CreateMilestoneDto } from '@/milestones/dto/create-milestone.dto';
-import { UpdateMilestoneDto } from '@/milestones/dto/update-milestone.dto';
+import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 import { SemesterStatus } from '~/generated/prisma';
