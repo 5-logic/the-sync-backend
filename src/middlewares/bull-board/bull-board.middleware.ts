@@ -40,10 +40,7 @@ export const setupBasicAuthBullBoard = (
 			}
 
 			try {
-				const credentials = Buffer.from(
-					auth.substring(6) as string,
-					'base64',
-				).toString();
+				const credentials = Buffer.from(auth.substring(6), 'base64').toString();
 				const [user, pass] = credentials.split(':');
 
 				if (user !== username || pass !== password) {

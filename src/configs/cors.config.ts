@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { CONFIG_TOKENS } from '@/configs/constant.config';
+import { CONFIG_TOKENS, PRODUCTION } from '@/configs/constant.config';
 
 export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 	const allowedOrigins =
@@ -8,15 +8,16 @@ export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 		[];
 
 	return {
-		origin: (
-			origin: string,
-			callback: (arg0: Error | null, arg1: boolean) => void,
-		) => {
-			if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-				callback(null, true);
-			} else {
-				callback(new Error('Not allowed by CORS'), false);
+		origin: (origin: string): Promise<boolean> => {
+			if (process.env.NODE_ENV !== PRODUCTION) {
+				return Promise.resolve(true);
 			}
+
+			if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+				return Promise.resolve(true);
+			}
+
+			return Promise.resolve(false);
 		},
 		optionsSuccessStatus: 200,
 	};
