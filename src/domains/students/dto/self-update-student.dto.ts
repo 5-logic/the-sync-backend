@@ -5,7 +5,7 @@ import { CreateStudentDto } from '@/students/dto/create-student.dto';
 export class SelfUpdateStudentDto extends PartialType(
 	OmitType(CreateStudentDto, [
 		'email',
-		'studentId',
+		'studentCode',
 		'majorId',
 		'semesterId',
 	] as const),

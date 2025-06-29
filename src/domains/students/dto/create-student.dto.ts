@@ -6,7 +6,7 @@ import { CreateUserDto } from '@/users/dto/create-user.dto';
 export class CreateStudentDto extends CreateUserDto {
 	@ApiProperty()
 	@IsString()
-	studentId: string;
+	studentCode: string;
 
 	@ApiProperty()
 	@IsUUID()

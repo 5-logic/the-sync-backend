@@ -94,7 +94,7 @@ export class StudentService {
 				);
 
 				const existingStudent = await prisma.student.findUnique({
-					where: { studentId: dto.studentId },
+					where: { studentCode: dto.studentCode },
 					include: {
 						user: {
 							omit: {
@@ -122,7 +122,7 @@ export class StudentService {
 
 					if (isAlreadyEnrolledInThisSemester) {
 						throw new ConflictException(
-							`Student with studentId ${dto.studentId} is already enrolled in semester ${dto.semesterId}`,
+							`Student with studentCode ${dto.studentCode} is already enrolled in semester ${dto.semesterId}`,
 						);
 					}
 
@@ -138,12 +138,12 @@ export class StudentService {
 					user = enrollResult.user;
 					plainPassword = enrollResult.plainPassword;
 					studentInfo = {
-						studentId: existingStudent.studentId,
+						studentCode: existingStudent.studentCode,
 						majorId: existingStudent.majorId,
 					};
 
 					this.logger.log(
-						`Student ${dto.studentId} enrolled to semester ${dto.semesterId} with new password`,
+						`Student ${dto.studentCode} enrolled to semester ${dto.semesterId} with new password`,
 					);
 				} else {
 					// Student doesn't exist, create new student
@@ -167,7 +167,7 @@ export class StudentService {
 					const student = await prisma.student.create({
 						data: {
 							userId: userId,
-							studentId: dto.studentId,
+							studentCode: dto.studentCode,
 							majorId: dto.majorId,
 						},
 					});
@@ -181,15 +181,17 @@ export class StudentService {
 					});
 
 					studentInfo = {
-						studentId: student.studentId,
+						studentCode: student.studentCode,
 						majorId: student.majorId,
 					};
 
 					isNewStudent = true;
 
-					this.logger.log(`Student created with studentId: ${dto.studentId}`);
 					this.logger.log(
-						`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
+						`Student created with studentCode: ${dto.studentCode}`,
+					);
+					this.logger.log(
+						`Student ${dto.studentCode} enrolled to semester ${dto.semesterId}`,
 					);
 				}
 
@@ -252,7 +254,7 @@ export class StudentService {
 			// Reuse the same data transformation logic from findOne
 			const formattedStudents = students.map((student) => ({
 				...student.user,
-				studentId: student.studentId,
+				studentCode: student.studentCode,
 				majorId: student.majorId,
 			}));
 
@@ -292,7 +294,7 @@ export class StudentService {
 
 			return {
 				...student.user,
-				studentId: student.studentId,
+				studentCode: student.studentCode,
 				majorId: student.majorId,
 			};
 		} catch (error) {
@@ -333,7 +335,7 @@ export class StudentService {
 
 				return {
 					...updatedUser,
-					studentId: updatedStudent!.studentId,
+					studentCode: updatedStudent!.studentCode,
 					majorId: updatedStudent!.majorId,
 				};
 			});
@@ -375,14 +377,14 @@ export class StudentService {
 				const updatedStudent = await prisma.student.update({
 					where: { userId: id },
 					data: {
-						studentId: dto.studentId,
+						studentCode: dto.studentCode,
 						majorId: dto.majorId,
 					},
 				});
 
 				return {
 					...updatedUser,
-					studentId: updatedStudent.studentId,
+					studentCode: updatedStudent.studentCode,
 					majorId: updatedStudent.majorId,
 				};
 			});
@@ -418,7 +420,7 @@ export class StudentService {
 					for (const studentData of dto.students) {
 						// Check if student already exists
 						const existingStudent = await prisma.student.findUnique({
-							where: { studentId: studentData.studentId },
+							where: { studentCode: studentData.studentCode },
 							include: {
 								user: {
 									omit: {
@@ -446,7 +448,7 @@ export class StudentService {
 
 							if (isAlreadyEnrolledInThisSemester) {
 								throw new ConflictException(
-									`Student with studentId ${studentData.studentId} is already enrolled in semester ${dto.semesterId}`,
+									`Student with studentId ${studentData.studentCode} is already enrolled in semester ${dto.semesterId}`,
 								);
 							}
 
@@ -461,12 +463,12 @@ export class StudentService {
 								);
 
 							this.logger.log(
-								`Student ${studentData.studentId} enrolled to semester ${dto.semesterId} with new password`,
+								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId} with new password`,
 							);
 
 							result = {
 								...updatedUser,
-								studentId: existingStudent.studentId,
+								studentCode: existingStudent.studentCode,
 								majorId: existingStudent.majorId,
 							};
 
@@ -495,7 +497,7 @@ export class StudentService {
 							const student = await prisma.student.create({
 								data: {
 									userId: userId,
-									studentId: studentData.studentId,
+									studentCode: studentData.studentCode,
 									majorId: dto.majorId,
 								},
 							});
@@ -509,16 +511,16 @@ export class StudentService {
 							});
 
 							this.logger.log(
-								`Student ${studentData.studentId} created successfully`,
+								`Student ${studentData.studentCode} created successfully`,
 							);
 
 							this.logger.log(
-								`Student ${studentData.studentId} enrolled to semester ${dto.semesterId}`,
+								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId}`,
 							);
 
 							result = {
 								...newUser,
-								studentId: student.studentId,
+								studentCode: student.studentCode,
 								majorId: student.majorId,
 							};
 
@@ -610,7 +612,7 @@ export class StudentService {
 
 				return {
 					...updatedUser,
-					studentId: existingStudent.studentId,
+					studentCode: existingStudent.studentCode,
 					majorId: existingStudent.majorId,
 				};
 			});
@@ -669,7 +671,7 @@ export class StudentService {
 			// Format the response same as findAll - only basic student info
 			const formattedStudents = enrollments.map((enrollment) => ({
 				...enrollment.student.user,
-				studentId: enrollment.student.studentId,
+				studentCode: enrollment.student.studentCode,
 				majorId: enrollment.student.majorId,
 			}));
 

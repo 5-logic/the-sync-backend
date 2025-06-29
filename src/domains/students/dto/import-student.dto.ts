@@ -7,7 +7,7 @@ import { CreateUserDto } from '@/users/dto/create-user.dto';
 export class ImportStudentItemDto extends CreateUserDto {
 	@ApiProperty()
 	@IsString()
-	studentId: string;
+	studentCode: string;
 }
 
 export class ImportStudentDto {
