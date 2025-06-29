@@ -1,5 +1,4 @@
 import {
-	BadRequestException,
 	ConflictException,
 	Injectable,
 	Logger,
@@ -692,60 +691,6 @@ export class StudentService {
 		}
 	}
 
-	private async validateStudentDeletion(
-		studentUserId: string,
-		semesterId: string,
-		studentCode: string,
-	): Promise<void> {
-		const [enrollmentExists, studentGroupParticipationExists] =
-			await Promise.all([
-				this.prisma.enrollment.findFirst({
-					where: {
-						studentId: studentUserId,
-						semesterId: semesterId,
-						status: {
-							not: EnrollmentStatus.NotYet,
-						},
-					},
-					select: { studentId: true, semesterId: true, status: true },
-				}),
-
-				this.prisma.studentGroupParticipation.findFirst({
-					where: {
-						studentId: studentUserId,
-						group: {
-							semesterId: semesterId,
-						},
-					},
-					select: { studentId: true, groupId: true },
-				}),
-			]);
-
-		const constraints = [
-			{
-				condition: enrollmentExists,
-				message: `Student has enrollments with status ${enrollmentExists?.status} in this semester`,
-				logMessage: `has enrollments with status ${enrollmentExists?.status ?? 'unknown'} in semester ${semesterId} (only NotYet status allowed for deletion)`,
-			},
-			{
-				condition: studentGroupParticipationExists,
-				message: 'Student is participating in groups in this semester',
-				logMessage: `is participating in groups in semester ${semesterId}`,
-			},
-		];
-
-		for (const constraint of constraints) {
-			if (constraint.condition) {
-				this.logger.warn(
-					`Student with ID ${studentCode} ${constraint.logMessage}`,
-				);
-				throw new BadRequestException(
-					`Cannot delete student with ID ${studentCode}. ${constraint.message}`,
-				);
-			}
-		}
-	}
-
 	async delete(id: string, semesterId: string) {
 		try {
 			this.logger.log(
@@ -759,7 +704,9 @@ export class StudentService {
 						where: { userId: id },
 						include: {
 							user: {
-								omit: { password: true },
+								omit: {
+									password: true,
+								},
 							},
 							enrollments: {
 								select: {
@@ -768,14 +715,15 @@ export class StudentService {
 							},
 						},
 					}),
-					prisma.semester.findFirst({
+					prisma.semester.findUnique({
 						where: { id: semesterId },
-						select: { id: true },
+						select: { id: true, status: true },
 					}),
 				]);
 
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for deletion`);
+
 					throw new NotFoundException(`Student not found`);
 				}
 
@@ -783,7 +731,18 @@ export class StudentService {
 					this.logger.warn(
 						`Semester with ID ${semesterId} not found for deletion`,
 					);
+
 					throw new NotFoundException(`Semester not found`);
+				}
+
+				if (existingSemester.status !== SemesterStatus.Preparing) {
+					this.logger.warn(
+						`Cannot delete student in semester ${semesterId} with status ${existingSemester.status}`,
+					);
+
+					throw new ConflictException(
+						`Cannot delete student in semester ${semesterId}. Only ${SemesterStatus.Preparing} semesters allow student deletion.`,
+					);
 				}
 
 				// Check if enrollment exists in the specified semester
@@ -795,91 +754,44 @@ export class StudentService {
 					this.logger.warn(
 						`Student with ID ${id} is not enrolled in semester ${semesterId}`,
 					);
+
 					throw new NotFoundException(
 						`Student is not enrolled in this semester`,
 					);
 				}
 
-				await this.validateStudentDeletion(
-					existingStudent.userId,
-					semesterId,
-					existingStudent.studentId,
-				);
-
-				// Prepare response data early to avoid password field
-				const studentInfo = {
-					...existingStudent.user,
-					studentId: existingStudent.studentId,
-					majorId: existingStudent.majorId,
-				};
-
-				// Check if student has enrollments in other semesters
-				const hasOtherEnrollments = existingStudent.enrollments.some(
-					(enrollment) => enrollment.semesterId !== semesterId,
-				);
-
-				if (hasOtherEnrollments) {
-					// Student has enrollments in other semesters
-					// Only delete the enrollment in the current semester
+				// If the student is enrolled in multiple semesters, only delete the enrollment for the specified semester.
+				// Otherwise, delete the student and associated user completely.
+				if (existingStudent.enrollments.length >= 2) {
 					await prisma.enrollment.delete({
 						where: {
 							studentId_semesterId: {
-								studentId: existingStudent.userId,
+								studentId: id,
 								semesterId: semesterId,
 							},
 						},
 					});
-
-					const remainingEnrollments = existingStudent.enrollments.length - 1;
-
-					this.logger.log(
-						`Student enrollment removed from semester ${semesterId}, student kept with ID: ${id}`,
-					);
-					this.logger.debug('Student enrollment removed, student info:', {
-						id: studentInfo.id,
-						email: studentInfo.email,
-						fullName: studentInfo.fullName,
-						studentId: studentInfo.studentId,
-						majorId: studentInfo.majorId,
-						remainingEnrollments,
-					});
 				} else {
-					// Student only has enrollment in this semester
-					// Delete the entire student record
-					await Promise.all([
-						prisma.studentSkill.deleteMany({
-							where: { studentId: existingStudent.userId },
-						}),
-						prisma.studentExpectedResponsibility.deleteMany({
-							where: { studentId: existingStudent.userId },
-						}),
-						prisma.request.deleteMany({
-							where: { studentId: existingStudent.userId },
-						}),
-						prisma.enrollment.deleteMany({
-							where: { studentId: existingStudent.userId },
-						}),
-					]);
+					await prisma.student.delete({
+						where: { userId: existingStudent.userId },
+					});
 
-					await prisma.student.delete({ where: { userId: id } });
-					await prisma.user.delete({ where: { id } });
-
-					this.logger.log(`Student completely deleted with ID: ${id}`);
-					this.logger.debug('Deleted student details:', {
-						id: studentInfo.id,
-						email: studentInfo.email,
-						fullName: studentInfo.fullName,
-						studentId: studentInfo.studentId,
-						majorId: studentInfo.majorId,
+					await prisma.user.delete({
+						where: { id: existingStudent.userId },
 					});
 				}
 
-				return studentInfo;
+				return {
+					...existingStudent.user,
+					studentCode: existingStudent.studentCode,
+					majorId: existingStudent.majorId,
+				};
 			});
 
 			return result;
 		} catch (error) {
-			this.logger.error(`Error deleting student with ID ${id}:`, error.message);
+			this.logger.error(`Error deleting student with ID ${id}:`, error);
+
 			throw error;
 		}
 	}
