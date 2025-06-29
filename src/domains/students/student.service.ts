@@ -137,7 +137,7 @@ export class StudentService {
 					user = enrollResult.user;
 					plainPassword = enrollResult.plainPassword;
 					studentInfo = {
-						studentId: existingStudent.studentId,
+						studentId: existingStudent.userId,
 						majorId: existingStudent.majorId,
 					};
 
@@ -416,7 +416,7 @@ export class StudentService {
 
 							result = {
 								...updatedUser,
-								studentId: existingStudent.studentId,
+								studentId: existingStudent.userId,
 								majorId: existingStudent.majorId,
 							};
 
@@ -560,7 +560,7 @@ export class StudentService {
 
 				return {
 					...updatedUser,
-					studentId: existingStudent.studentId,
+					studentId: existingStudent.userId,
 					majorId: existingStudent.majorId,
 				};
 			});
@@ -705,22 +705,22 @@ export class StudentService {
 
 				const studentToDelete = {
 					...existingStudent.user,
-					studentId: existingStudent.studentId,
+					studentId: existingStudent.userId,
 					majorId: existingStudent.majorId,
 				};
 
 				await Promise.all([
 					prisma.studentSkill.deleteMany({
-						where: { studentId: existingStudent.studentId },
+						where: { studentId: existingStudent.userId },
 					}),
 					prisma.studentExpectedResponsibility.deleteMany({
-						where: { studentId: existingStudent.studentId },
+						where: { studentId: existingStudent.userId },
 					}),
 					prisma.request.deleteMany({
-						where: { studentId: existingStudent.studentId },
+						where: { studentId: existingStudent.userId },
 					}),
 					prisma.enrollment.deleteMany({
-						where: { studentId: existingStudent.studentId },
+						where: { studentId: existingStudent.userId },
 					}),
 				]);
 
