@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { TIMEOUT } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
@@ -306,6 +311,105 @@ export class LecturerService {
 		} catch (error) {
 			this.logger.error(`Error toggling lecturer status with ID ${id}`, error);
 
+			throw error;
+		}
+	}
+
+	private async validateLecturerDeletion(lecturerId: string): Promise<void> {
+		const [thesisOwner, supervisedThesis, reviewGroup] = await Promise.all([
+			this.prisma.thesis.findFirst({
+				where: { lecturerId },
+				select: { id: true },
+			}),
+			this.prisma.supervision.findFirst({
+				where: { lecturerId },
+				select: { lecturerId: true, thesisId: true },
+			}),
+			this.prisma.review.findFirst({
+				where: { lecturerId },
+				select: { id: true },
+			}),
+		]);
+
+		const constraints = [
+			{
+				condition: thesisOwner,
+				message: 'Lecturer is linked to a thesis',
+				logMessage: 'linked to thesis',
+			},
+			{
+				condition: supervisedThesis,
+				message: 'Lecturer is supervising group/thesis',
+				logMessage: 'linked to group or thesis supervision',
+			},
+			{
+				condition: reviewGroup,
+				message: 'Lecturer is linked to a review group',
+				logMessage: 'linked to review group',
+			},
+		];
+
+		for (const constraint of constraints) {
+			if (constraint.condition) {
+				this.logger.warn(
+					`Lecturer with ID ${lecturerId} is ${constraint.logMessage}, cannot delete`,
+				);
+				throw new BadRequestException(
+					`${constraint.message}. Deletion not allowed. Please deactivate this account instead.`,
+				);
+			}
+		}
+	}
+
+	async delete(id: string) {
+		try {
+			this.logger.log(`Deleting lecturer with ID: ${id}`);
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingLecturer = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					select: { userId: true, isModerator: true },
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				}
+
+				if (existingLecturer.isModerator) {
+					this.logger.warn(
+						`Lecturer with ID ${id} is a moderator, cannot delete`,
+					);
+					throw new BadRequestException(
+						'Lecturer is a moderator. Deletion not allowed. Please deactivate this account instead.',
+					);
+				}
+
+				await this.validateLecturerDeletion(existingLecturer.userId);
+
+				const deletedLecturer = await prisma.lecturer.delete({
+					where: { userId: id },
+				});
+
+				const deletedUser = await prisma.user.delete({
+					where: { id },
+					omit: {
+						password: true,
+					},
+				});
+
+				this.logger.log(`Lecturer successfully deleted with ID: ${id}`);
+				this.logger.debug('Deleted lecturer details:', deletedLecturer);
+
+				return { ...deletedUser, isModerator: deletedLecturer.isModerator };
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(
+				`Error deleting lecturer with ID ${id}:`,
+				error.message,
+			);
 			throw error;
 		}
 	}

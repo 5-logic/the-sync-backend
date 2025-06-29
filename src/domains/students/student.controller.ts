@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -71,5 +72,14 @@ export class StudentController {
 		@Body() dto: ToggleStudentStatusDto,
 	) {
 		return await this.studentService.toggleStatus(id, dto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Delete(':id/semester/:semesterId')
+	async delete(
+		@Param('id') id: string,
+		@Param('semesterId') semesterId: string,
+	) {
+		return await this.studentService.delete(id, semesterId);
 	}
 }
