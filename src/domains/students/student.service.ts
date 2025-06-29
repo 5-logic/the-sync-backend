@@ -10,12 +10,14 @@ import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { CreateStudentDto } from '@/students/dto/create-student.dto';
-import { ImportStudentDto } from '@/students/dto/import-student.dto';
-import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
-import { UpdateStudentDto } from '@/students/dto/update-student.dto';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
+import {
+	CreateStudentDto,
+	ImportStudentDto,
+	SelfUpdateStudentDto,
+	ToggleStudentStatusDto,
+	UpdateStudentDto,
+} from '@/students/dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { UserService } from '@/users/user.service';
 
 import {
@@ -299,7 +301,7 @@ export class StudentService {
 		}
 	}
 
-	async update(id: string, dto: UpdateStudentDto) {
+	async update(id: string, dto: SelfUpdateStudentDto) {
 		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				const existingStudent = await prisma.student.findUnique({
@@ -333,6 +335,55 @@ export class StudentService {
 					...updatedUser,
 					studentId: updatedStudent!.studentId,
 					majorId: updatedStudent!.majorId,
+				};
+			});
+
+			this.logger.log(`Student updated with ID: ${result.id}`);
+			this.logger.debug('Updated Student', result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error updating student with ID ${id}`, error);
+
+			throw error;
+		}
+	}
+
+	async updateByAdmin(id: string, dto: UpdateStudentDto) {
+		try {
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingStudent = await prisma.user.findUnique({
+					where: { id: id },
+				});
+
+				if (!existingStudent) {
+					this.logger.warn(`Student with ID ${id} not found for update`);
+
+					throw new NotFoundException(`Student with ID ${id} not found`);
+				}
+
+				const updatedUser = await prisma.user.update({
+					where: { id: id },
+					data: {
+						email: dto.email,
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
+					},
+				});
+
+				const updatedStudent = await prisma.student.update({
+					where: { userId: id },
+					data: {
+						studentId: dto.studentId,
+						majorId: dto.majorId,
+					},
+				});
+
+				return {
+					...updatedUser,
+					studentId: updatedStudent.studentId,
+					majorId: updatedStudent.majorId,
 				};
 			});
 

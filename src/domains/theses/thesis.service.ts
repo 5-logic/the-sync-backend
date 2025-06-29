@@ -7,9 +7,11 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
-import { ReviewThesisDto } from '@/theses/dto/review-thesis.dto';
-import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
+import {
+	CreateThesisDto,
+	ReviewThesisDto,
+	UpdateThesisDto,
+} from '@/theses/dto';
 
 import { ThesisStatus } from '~/generated/prisma';
 
