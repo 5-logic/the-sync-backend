@@ -315,20 +315,17 @@ export class LecturerService {
 		}
 	}
 
-	private async validateLecturerDeletion(
-		lecturerId: string,
-		prisma: any,
-	): Promise<void> {
+	private async validateLecturerDeletion(lecturerId: string): Promise<void> {
 		const [thesisOwner, supervisedThesis, reviewGroup] = await Promise.all([
-			prisma.thesis.findFirst({
+			this.prisma.thesis.findFirst({
 				where: { lecturerId },
 				select: { id: true },
 			}),
-			prisma.supervision.findFirst({
+			this.prisma.supervision.findFirst({
 				where: { lecturerId },
 				select: { lecturerId: true, thesisId: true },
 			}),
-			prisma.review.findFirst({
+			this.prisma.review.findFirst({
 				where: { lecturerId },
 				select: { id: true },
 			}),
@@ -388,41 +385,23 @@ export class LecturerService {
 					);
 				}
 
-				await this.validateLecturerDeletion(existingLecturer.userId, prisma);
+				await this.validateLecturerDeletion(existingLecturer.userId);
 
-				const lecturerToDelete = await prisma.lecturer.findUnique({
+				const deletedLecturer = await prisma.lecturer.delete({
 					where: { userId: id },
-					include: {
-						user: {
-							omit: {
-								password: true,
-							},
-						},
+				});
+
+				const deletedUser = await prisma.user.delete({
+					where: { id },
+					omit: {
+						password: true,
 					},
 				});
 
-				await prisma.lecturer.delete({
-					where: { userId: id },
-				});
-
-				await prisma.user.delete({
-					where: { id },
-				});
-
-				const deletedLecturerData = {
-					...lecturerToDelete!.user,
-					isModerator: lecturerToDelete!.isModerator,
-				};
-
 				this.logger.log(`Lecturer successfully deleted with ID: ${id}`);
-				this.logger.debug('Deleted lecturer details:', {
-					id: deletedLecturerData.id,
-					email: deletedLecturerData.email,
-					fullName: deletedLecturerData.fullName,
-					isModerator: deletedLecturerData.isModerator,
-				});
+				this.logger.debug('Deleted lecturer details:', deletedLecturer);
 
-				return deletedLecturerData;
+				return { ...deletedUser, isModerator: deletedLecturer.isModerator };
 			});
 
 			return result;
