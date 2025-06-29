@@ -205,7 +205,7 @@ export class StudentService {
 						fullName: user.fullName,
 						email: user.email,
 						password: plainPassword,
-						studentId: studentInfo.studentId,
+						studentCode: studentInfo.studentCode,
 						semesterName: semester.name,
 					},
 				};
@@ -541,7 +541,7 @@ export class StudentService {
 									fullName: result.fullName,
 									email: result.email,
 									password: passwordForEmail,
-									studentId: result.studentId,
+									studentCode: result.studentCode,
 									semesterName: semester.name,
 								},
 							};
