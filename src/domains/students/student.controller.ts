@@ -20,6 +20,7 @@ import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { ImportStudentDto } from '@/students/dto/import-student.dto';
 import { SelfUpdateStudentDto } from '@/students/dto/self-update-student.dto';
 import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
+import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { StudentService } from '@/students/student.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -62,6 +63,12 @@ export class StudentController {
 		const user = req.user as UserPayload;
 
 		return await this.studentService.update(user.id, dto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Put(':id')
+	async updateByAdmin(@Param('id') id: string, @Body() dto: UpdateStudentDto) {
+		return await this.studentService.updateByAdmin(id, dto);
 	}
 
 	@Roles(Role.ADMIN)
