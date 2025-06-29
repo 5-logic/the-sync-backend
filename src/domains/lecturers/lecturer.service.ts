@@ -315,14 +315,10 @@ export class LecturerService {
 		}
 	}
 
-	/**
-	 * Validates if a lecturer can be deleted by checking various constraints
-	 */
 	private async validateLecturerDeletion(
 		lecturerId: string,
 		prisma: any,
 	): Promise<void> {
-		// Run all validation queries in parallel for better performance
 		const [thesisOwner, supervisedThesis, reviewGroup] = await Promise.all([
 			prisma.thesis.findFirst({
 				where: { lecturerId },
@@ -373,7 +369,6 @@ export class LecturerService {
 			this.logger.log(`Deleting lecturer with ID: ${id}`);
 
 			const result = await this.prisma.$transaction(async (prisma) => {
-				// Check if lecturer exists
 				const existingLecturer = await prisma.lecturer.findUnique({
 					where: { userId: id },
 					select: { userId: true, isModerator: true },
@@ -384,7 +379,6 @@ export class LecturerService {
 					throw new NotFoundException(`Lecturer with ID ${id} not found`);
 				}
 
-				// Check if lecturer is a moderator
 				if (existingLecturer.isModerator) {
 					this.logger.warn(
 						`Lecturer with ID ${id} is a moderator, cannot delete`,
@@ -394,10 +388,8 @@ export class LecturerService {
 					);
 				}
 
-				// Validate deletion constraints
 				await this.validateLecturerDeletion(existingLecturer.userId, prisma);
 
-				// Get full lecturer data before deletion for return value
 				const lecturerToDelete = await prisma.lecturer.findUnique({
 					where: { userId: id },
 					include: {
@@ -409,7 +401,6 @@ export class LecturerService {
 					},
 				});
 
-				// Perform deletion - lecturer first, then user (due to foreign key constraint)
 				await prisma.lecturer.delete({
 					where: { userId: id },
 				});
@@ -418,7 +409,6 @@ export class LecturerService {
 					where: { id },
 				});
 
-				// Format the response to match other methods in this service
 				const deletedLecturerData = {
 					...lecturerToDelete!.user,
 					isModerator: lecturerToDelete!.isModerator,
