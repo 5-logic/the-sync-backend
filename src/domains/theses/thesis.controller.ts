@@ -17,9 +17,11 @@ import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
-import { ReviewThesisDto } from '@/theses/dto/review-thesis.dto';
-import { UpdateThesisDto } from '@/theses/dto/update-thesis.dto';
+import {
+	CreateThesisDto,
+	ReviewThesisDto,
+	UpdateThesisDto,
+} from '@/theses/dto';
 import { ThesisService } from '@/theses/thesis.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

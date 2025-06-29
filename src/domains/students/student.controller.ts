@@ -16,11 +16,13 @@ import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { CreateStudentDto } from '@/students/dto/create-student.dto';
-import { ImportStudentDto } from '@/students/dto/import-student.dto';
-import { SelfUpdateStudentDto } from '@/students/dto/self-update-student.dto';
-import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
-import { UpdateStudentDto } from '@/students/dto/update-student.dto';
+import {
+	CreateStudentDto,
+	ImportStudentDto,
+	SelfUpdateStudentDto,
+	ToggleStudentStatusDto,
+	UpdateStudentDto,
+} from '@/students/dto';
 import { StudentService } from '@/students/student.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

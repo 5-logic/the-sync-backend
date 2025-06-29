@@ -14,8 +14,7 @@ import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
-import { CreateMilestoneDto } from '@/milestones/dto/create-milestone.dto';
-import { UpdateMilestoneDto } from '@/milestones/dto/update-milestone.dto';
+import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dto';
 import { MilestoneService } from '@/milestones/milestone.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

@@ -16,12 +16,9 @@ import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
+import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
-
-import { UpdateLecturerDto } from './dto/update-lecturer.dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()

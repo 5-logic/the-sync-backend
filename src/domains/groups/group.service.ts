@@ -5,8 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { CreateGroupDto } from '@/groups/dto/create-group.dto';
-import { UpdateGroupDto } from '@/groups/dto/update-group.dto';
+import { CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 import { SemesterStatus } from '~/generated/prisma';

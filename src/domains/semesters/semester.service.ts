@@ -6,8 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
-import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
+import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
 
 import { OngoingPhase, SemesterStatus } from '~/generated/prisma';
 

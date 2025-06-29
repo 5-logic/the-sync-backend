@@ -2,13 +2,11 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { TIMEOUT } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
-import { UpdateLecturerDto } from '@/lecturers/dto/update-lecturer.dto';
+import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { UserService } from '@/users/user.service';
 
 import { PrismaClient } from '~/generated/prisma';

@@ -16,8 +16,7 @@ import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { CreateGroupDto } from '@/groups/dto/create-group.dto';
-import { UpdateGroupDto } from '@/groups/dto/update-group.dto';
+import { CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { GroupService } from '@/groups/group.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

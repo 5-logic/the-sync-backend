@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { AdminService } from '@/admins/admin.service';
-import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
+import { UpdateAdminDto } from '@/admins/dto';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';

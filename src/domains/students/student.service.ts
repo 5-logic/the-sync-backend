@@ -10,13 +10,14 @@ import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { CreateStudentDto } from '@/students/dto/create-student.dto';
-import { ImportStudentDto } from '@/students/dto/import-student.dto';
-import { SelfUpdateStudentDto } from '@/students/dto/self-update-student.dto';
-import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
-import { UpdateStudentDto } from '@/students/dto/update-student.dto';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
+import {
+	CreateStudentDto,
+	ImportStudentDto,
+	SelfUpdateStudentDto,
+	ToggleStudentStatusDto,
+	UpdateStudentDto,
+} from '@/students/dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { UserService } from '@/users/user.service';
 
 import {
