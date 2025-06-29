@@ -7,9 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 import { AdminService } from '@/admins/admin.service';
-import { AdminLoginDto } from '@/auth/dto/auth.admin.dto';
-import { RefreshDto } from '@/auth/dto/auth.refresh.dto';
-import { UserLoginDto } from '@/auth/dto/auth.user.dto';
+import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtPayload } from '@/auth/interfaces/payload.interface';
 import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';

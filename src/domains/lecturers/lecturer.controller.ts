@@ -11,10 +11,7 @@ import {
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { FastifyRequest } from 'fastify';
 
-import { Roles } from '@/auth/decorators/roles.decorator';
-import { Role } from '@/auth/enums/role.enum';
-import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
-import { RoleGuard } from '@/auth/guards/role.guard';
+import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
