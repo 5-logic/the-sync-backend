@@ -13,7 +13,6 @@ import {
 	CONFIG_MOUNTS,
 	CONFIG_TOKENS,
 	CORSConfig,
-	PRODUCTION,
 	RedisConfig,
 } from '@/configs';
 import { HttpExceptionFilter } from '@/filters';
@@ -38,7 +37,6 @@ async function bootstrap() {
 	const configService = app.get<ConfigService>(ConfigService);
 	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
 	const redisConfig = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
-	const isProduction = process.env.NODE_ENV === PRODUCTION || false;
 
 	// Get Fastify instance and setup basic auth for BullMQ dashboard
 	const fastify = app.getHttpAdapter().getInstance();
@@ -53,7 +51,7 @@ async function bootstrap() {
 	}
 
 	// Enable CORS
-	app.enableCors(isProduction ? corsConfig : { origin: '*' });
+	app.enableCors(corsConfig);
 
 	// Enable validation globally
 	app.useGlobalPipes(new ValidationPipe());

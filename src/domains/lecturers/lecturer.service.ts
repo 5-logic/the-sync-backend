@@ -7,12 +7,11 @@ import {
 
 import { TIMEOUT } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { ToggleLecturerStatusDto } from '@/lecturers/dto/toggle-lecturer-status.dto';
+import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { UpdateUserDto } from '@/users/dto/update-user.dto';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { UserService } from '@/users/user.service';
 
 import { PrismaClient } from '~/generated/prisma';
@@ -167,13 +166,55 @@ export class LecturerService {
 					this.logger,
 				);
 
-				const updatedLecturer = await prisma.lecturer.findUnique({
-					where: { userId: id },
+				return {
+					...updatedUser,
+					isModerator: existingLecturer.isModerator,
+				};
+			});
+
+			this.logger.log(`Lecturer updated with ID: ${result.id}`);
+			this.logger.debug('Updated Lecturer', result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error updating lecturer with ID ${id}`, error);
+
+			throw error;
+		}
+	}
+
+	async updateByAdmin(id: string, dto: UpdateLecturerDto) {
+		try {
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingLecturer = await prisma.user.findUnique({
+					where: { id: id },
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(`Lecturer with ID ${id} not found for update`);
+
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				}
+
+				const updatedLecturer = await this.prisma.user.update({
+					where: { id: id },
+					data: {
+						email: dto.email,
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
+					},
+					include: {
+						lecturer: true,
+					},
+					omit: {
+						password: true,
+					},
 				});
 
 				return {
-					...updatedUser,
-					isModerator: updatedLecturer!.isModerator,
+					...updatedLecturer,
+					isModerator: updatedLecturer.lecturer!.isModerator,
 				};
 			});
 

@@ -1,8 +1,7 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
-import { RoleGuard } from '@/auth/guards/role.guard';
+import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
 import { MajorService } from '@/domains/majors/major.service';
 
 @UseGuards(RoleGuard)

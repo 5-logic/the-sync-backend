@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2025-06-29
+
+### Changed
+
+- **CORS Configuration Enhancement**:
+  - Streamlined CORS configuration logic by moving environment check inside the origin function
+  - Simplified CORS setup in main.ts by removing conditional configuration
+  - Enhanced type safety by using Promise-based return type instead of callback pattern
+  - Improved development mode handling - now automatically allows all origins in non-production environments
+
+### Fixed
+
+- **Code Quality Improvements**:
+  - Removed unnecessary type casting in basic auth middleware for BullMQ dashboard
+  - Cleaned up unused imports in main.ts (removed PRODUCTION constant import)
+  - Enhanced code readability and maintainability across configuration files
+
+### Pull Requests
+
+- [#120](https://github.com/5-logic/the-sync-backend/pull/120) - Hotfix for CORS configuration and basic auth middleware improvements (closes #119)
+
+## [0.5.2] - 2025-06-29
+
+### Added
+
+- **Enhanced Student Management APIs**:
+  - `PUT /students/:id` - New admin endpoint for updating student information by administrators (requires `UpdateStudentDto` with `email`, `fullName`, `gender`, `phoneNumber`, `studentId`, `majorId`)
+  - `SelfUpdateStudentDto` - New DTO for student self-updates (excludes `email`, `studentId`, `majorId`, `semesterId`)
+- **Enhanced Lecturer Management APIs**:
+  - `PUT /lecturers/:id` - New admin endpoint for updating lecturer information by administrators (requires `UpdateLecturerDto` with `email`, `fullName`, `gender`, `phoneNumber`)
+  - `UpdateLecturerDto` - New DTO for admin lecturer updates
+
+### Changed
+
+- **API Role Segregation**:
+  - **Student APIs**:
+    - `PUT /students` (self-update) now uses `SelfUpdateStudentDto` instead of `UpdateStudentDto` for enhanced security
+    - Students can only update their basic profile information (excluding critical fields like `email`, `studentId`, `majorId`, `semesterId`)
+  - **Lecturer APIs**:
+    - Added role-based update separation between self-updates and admin-managed updates
+- **DTO Structure Improvements**:
+  - `UpdateStudentDto` simplified to only omit `semesterId` (now used for admin updates)
+  - Enhanced import consolidation across all modules for better maintainability
+- **Code Organization**:
+  - Consolidated import statements using barrel exports (`index.ts`) across auth, DTO, and domain modules
+  - Improved readability by grouping related imports from authentication guards and decorators
+  - Standardized import patterns for DTOs across all controllers and services
+
+### Fixed
+
+- **Import Structure**: Streamlined import statements across all controllers and services for better maintainability
+- **Type Safety**: Enhanced TypeScript support with consolidated module exports
+
+### Security
+
+- **Enhanced Access Control**:
+  - Students can no longer modify critical fields (`email`, `studentId`, `majorId`, `semesterId`) through self-update
+  - Only administrators can update all student and lecturer fields through dedicated admin endpoints
+  - Improved separation of concerns between self-managed and admin-managed updates
+
+### Code Quality
+
+- **Import Optimization**: Reduced code complexity by consolidating imports and using barrel exports
+- **Consistency**: Standardized import patterns across all modules for better maintainability
+- **Readability**: Improved code organization with cleaner import statements
+
+### Pull Requests
+
+- [#118](https://github.com/5-logic/the-sync-backend/pull/118) - Merge dev branch for v0.5.2 release
+- [#117](https://github.com/5-logic/the-sync-backend/pull/117) - Enhanced student and lecturer management with role-based updates (closes #116)
+
 ## [0.5.1] - 2025-06-28
 
 ### Fixed

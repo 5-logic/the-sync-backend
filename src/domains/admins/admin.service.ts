@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { UpdateAdminDto } from '@/admins/dto/update-admin.dto';
+import { UpdateAdminDto } from '@/admins/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { verify } from '@/utils/hash.util';
 

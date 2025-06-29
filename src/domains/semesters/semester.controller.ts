@@ -10,12 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-import { Roles } from '@/auth/decorators/roles.decorator';
-import { Role } from '@/auth/enums/role.enum';
-import { JwtAccessAuthGuard } from '@/auth/guards/jwt-access.guard';
-import { RoleGuard } from '@/auth/guards/role.guard';
-import { CreateSemesterDto } from '@/semesters/dto/create-semester.dto';
-import { UpdateSemesterDto } from '@/semesters/dto/update-semester.dto';
+import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
+import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
 import { SemesterService } from '@/semesters/semester.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

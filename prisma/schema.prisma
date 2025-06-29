@@ -161,9 +161,9 @@ model User {
 }
 
 model Student {
-  userId    String @id @map("user_id")
-  studentId String @unique @map("student_id")
-  majorId   String @map("major_id")
+  userId      String @id @map("user_id")
+  studentCode String @unique @map("student_code")
+  majorId     String @map("major_id")
 
   user                            User                            @relation(fields: [userId], references: [id])
   major                           Major                           @relation(fields: [majorId], references: [id])
@@ -387,7 +387,7 @@ model Request {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  student Student @relation(fields: [studentId], references: [studentId])
+  student Student @relation(fields: [studentId], references: [userId])
   group   Group   @relation(fields: [groupId], references: [id])
 
   @@map("requests")
@@ -400,7 +400,7 @@ model StudentSkill {
   skillId   String     @map("skill_id")
   level     SkillLevel @map("level")
 
-  student Student @relation(fields: [studentId], references: [studentId])
+  student Student @relation(fields: [studentId], references: [userId])
   skill   Skill   @relation(fields: [skillId], references: [id])
 
   @@id([studentId, skillId])
@@ -433,7 +433,7 @@ model StudentExpectedResponsibility {
   studentId        String @map("student_id")
   responsibilityId String @map("responsibility_id")
 
-  student        Student        @relation(fields: [studentId], references: [studentId])
+  student        Student        @relation(fields: [studentId], references: [userId])
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
 
   @@id([studentId, responsibilityId])
@@ -503,7 +503,7 @@ model StudentGroupParticipation {
   semesterId String  @map("semester_id")
   isLeader   Boolean @default(false) @map("is_leader")
 
-  student  Student  @relation(fields: [studentId], references: [studentId])
+  student  Student  @relation(fields: [studentId], references: [userId])
   group    Group    @relation(fields: [groupId], references: [id])
   semester Semester @relation(fields: [semesterId], references: [id])
 
