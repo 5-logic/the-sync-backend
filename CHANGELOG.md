@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2025-06-29
+
+### Changed
+
+- **CORS Configuration Enhancement**:
+  - Streamlined CORS configuration logic by moving environment check inside the origin function
+  - Simplified CORS setup in main.ts by removing conditional configuration
+  - Enhanced type safety by using Promise-based return type instead of callback pattern
+  - Improved development mode handling - now automatically allows all origins in non-production environments
+
+### Fixed
+
+- **Code Quality Improvements**:
+  - Removed unnecessary type casting in basic auth middleware for BullMQ dashboard
+  - Cleaned up unused imports in main.ts (removed PRODUCTION constant import)
+  - Enhanced code readability and maintainability across configuration files
+
+### Pull Requests
+
+- [#120](https://github.com/5-logic/the-sync-backend/pull/120) - Hotfix for CORS configuration and basic auth middleware improvements (closes #119)
+
 ## [0.5.2] - 2025-06-29
 
 ### Added
