@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { TIMEOUT } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
@@ -124,7 +129,7 @@ export class LecturerService {
 			if (!lecturer) {
 				this.logger.warn(`Lecturer with ID ${id} not found`);
 
-				throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				throw new NotFoundException(`Lecturer not found`);
 			}
 
 			this.logger.log(`Lecturer found with ID: ${id}`);
@@ -151,7 +156,7 @@ export class LecturerService {
 				if (!existingLecturer) {
 					this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				const updatedUser = await UserService.update(
@@ -188,7 +193,7 @@ export class LecturerService {
 				if (!existingLecturer) {
 					this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				const updatedLecturer = await this.prisma.user.update({
@@ -311,7 +316,7 @@ export class LecturerService {
 						`Lecturer with ID ${id} not found for status toggle`,
 					);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -346,6 +351,92 @@ export class LecturerService {
 			return result;
 		} catch (error) {
 			this.logger.error(`Error toggling lecturer status with ID ${id}`, error);
+
+			throw error;
+		}
+	}
+
+	async delete(id: string) {
+		try {
+			this.logger.log(`Deleting lecturer with ID: ${id}`);
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				const existingLecturer = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					select: {
+						isModerator: true,
+						supervisions: true,
+						reviews: true,
+						theses: true,
+					},
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
+
+					throw new NotFoundException(`Lecturer not found`);
+				}
+
+				if (existingLecturer.isModerator) {
+					this.logger.warn(
+						`Lecturer with ID ${id} is a moderator, cannot delete`,
+					);
+
+					throw new ConflictException(
+						'Lecturer is a moderator. Deletion not allowed. Please deactivate this account instead.',
+					);
+				}
+
+				const constraints = [
+					{
+						condition: existingLecturer.theses.length > 0,
+						message: 'Lecturer is linked to a thesis',
+						logMessage: 'linked to thesis',
+					},
+					{
+						condition: existingLecturer.supervisions.length > 0,
+						message: 'Lecturer is supervising group/thesis',
+						logMessage: 'linked to group or thesis supervision',
+					},
+					{
+						condition: existingLecturer.reviews.length > 0,
+						message: 'Lecturer is linked to a review group',
+						logMessage: 'linked to review group',
+					},
+				];
+
+				for (const constraint of constraints) {
+					if (constraint.condition) {
+						this.logger.warn(
+							`Lecturer with ID ${id} is ${constraint.logMessage}, cannot delete`,
+						);
+
+						throw new ConflictException(
+							`${constraint.message}. Deletion not allowed. Please deactivate this account instead.`,
+						);
+					}
+				}
+
+				const deletedLecturer = await prisma.lecturer.delete({
+					where: { userId: id },
+				});
+
+				const deletedUser = await prisma.user.delete({
+					where: { id },
+					omit: {
+						password: true,
+					},
+				});
+
+				this.logger.log(`Lecturer successfully deleted with ID: ${id}`);
+				this.logger.debug('Deleted lecturer details:', deletedLecturer);
+
+				return { ...deletedUser, isModerator: deletedLecturer.isModerator };
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error deleting lecturer with ID ${id}:`, error);
 
 			throw error;
 		}

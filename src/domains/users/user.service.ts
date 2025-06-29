@@ -160,7 +160,7 @@ export class UserService {
 			if (!existingUser) {
 				logger.warn(`User with ID ${id} not found for update`);
 
-				throw new NotFoundException(`User with ID ${id} not found`);
+				throw new NotFoundException(`User not found`);
 			}
 
 			const updatedUser = await prismaClient.user.update({

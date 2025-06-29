@@ -124,7 +124,7 @@ export class ThesisService {
 			if (!thesis) {
 				this.logger.warn(`Thesis with ID ${id} not found`);
 
-				throw new NotFoundException(`Thesis with ID ${id} not found`);
+				throw new NotFoundException(`Thesis not found`);
 			}
 
 			this.logger.log(`Thesis found with ID: ${id}`);
@@ -158,7 +158,7 @@ export class ThesisService {
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for update`);
 
-				throw new NotFoundException(`Thesis with ID ${id} not found`);
+				throw new NotFoundException(`Thesis not found`);
 			}
 
 			if (existingThesis.lecturerId !== lecturerId) {
@@ -259,7 +259,7 @@ export class ThesisService {
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for submit`);
 
-				throw new NotFoundException(`Thesis with ID ${id} not found`);
+				throw new NotFoundException(`Thesis not found`);
 			}
 
 			if (existingThesis.lecturerId !== lecturerId) {
@@ -335,7 +335,7 @@ export class ThesisService {
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for review`);
 
-				throw new NotFoundException(`Thesis with ID ${id} not found`);
+				throw new NotFoundException(`Thesis not found`);
 			}
 
 			// Only allow review of pending theses
@@ -394,7 +394,7 @@ export class ThesisService {
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for deletion`);
 
-				throw new NotFoundException(`Thesis with ID ${id} not found`);
+				throw new NotFoundException(`Thesis not found`);
 			}
 
 			// Check ownership - only the lecturer who created the thesis can delete it

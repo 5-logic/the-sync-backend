@@ -43,7 +43,7 @@ export class StudentService {
 			where: { id: semesterId },
 		});
 		if (!semester) {
-			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+			throw new NotFoundException(`Semester not found`);
 		}
 
 		// Only allow enrollment when semester is in Preparing or Picking status
@@ -52,7 +52,7 @@ export class StudentService {
 			semester.status !== SemesterStatus.Picking
 		) {
 			throw new ConflictException(
-				`Cannot add students to semester ${semesterId}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} and ${SemesterStatus.Picking} semesters allow student enrollment.`,
+				`Cannot add students to semester ${semester.name}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} and ${SemesterStatus.Picking} semesters allow student enrollment.`,
 			);
 		}
 
@@ -68,7 +68,7 @@ export class StudentService {
 		});
 
 		if (!major) {
-			throw new NotFoundException(`Major with ID ${majorId} not found`);
+			throw new NotFoundException(`Major not found`);
 		}
 
 		return major;
@@ -94,7 +94,7 @@ export class StudentService {
 				);
 
 				const existingStudent = await prisma.student.findUnique({
-					where: { studentId: dto.studentId },
+					where: { studentCode: dto.studentCode },
 					include: {
 						user: {
 							omit: {
@@ -122,7 +122,7 @@ export class StudentService {
 
 					if (isAlreadyEnrolledInThisSemester) {
 						throw new ConflictException(
-							`Student with studentId ${dto.studentId} is already enrolled in semester ${dto.semesterId}`,
+							`Student with studentCode ${dto.studentCode} is already enrolled in semester ${semester.name}}`,
 						);
 					}
 
@@ -138,12 +138,12 @@ export class StudentService {
 					user = enrollResult.user;
 					plainPassword = enrollResult.plainPassword;
 					studentInfo = {
-						studentId: existingStudent.studentId,
+						studentCode: existingStudent.studentCode,
 						majorId: existingStudent.majorId,
 					};
 
 					this.logger.log(
-						`Student ${dto.studentId} enrolled to semester ${dto.semesterId} with new password`,
+						`Student ${dto.studentCode} enrolled to semester ${dto.semesterId} with new password`,
 					);
 				} else {
 					// Student doesn't exist, create new student
@@ -167,7 +167,7 @@ export class StudentService {
 					const student = await prisma.student.create({
 						data: {
 							userId: userId,
-							studentId: dto.studentId,
+							studentCode: dto.studentCode,
 							majorId: dto.majorId,
 						},
 					});
@@ -181,15 +181,17 @@ export class StudentService {
 					});
 
 					studentInfo = {
-						studentId: student.studentId,
+						studentCode: student.studentCode,
 						majorId: student.majorId,
 					};
 
 					isNewStudent = true;
 
-					this.logger.log(`Student created with studentId: ${dto.studentId}`);
 					this.logger.log(
-						`Student ${dto.studentId} enrolled to semester ${dto.semesterId}`,
+						`Student created with studentCode: ${dto.studentCode}`,
+					);
+					this.logger.log(
+						`Student ${dto.studentCode} enrolled to semester ${dto.semesterId}`,
 					);
 				}
 
@@ -203,7 +205,7 @@ export class StudentService {
 						fullName: user.fullName,
 						email: user.email,
 						password: plainPassword,
-						studentId: studentInfo.studentId,
+						studentCode: studentInfo.studentCode,
 						semesterName: semester.name,
 					},
 				};
@@ -252,7 +254,7 @@ export class StudentService {
 			// Reuse the same data transformation logic from findOne
 			const formattedStudents = students.map((student) => ({
 				...student.user,
-				studentId: student.studentId,
+				studentCode: student.studentCode,
 				majorId: student.majorId,
 			}));
 
@@ -284,7 +286,7 @@ export class StudentService {
 			if (!student) {
 				this.logger.warn(`Student with ID ${id} not found`);
 
-				throw new NotFoundException(`Student with ID ${id} not found`);
+				throw new NotFoundException(`Student not found`);
 			}
 
 			this.logger.log(`Student found with ID: ${id}`);
@@ -292,7 +294,7 @@ export class StudentService {
 
 			return {
 				...student.user,
-				studentId: student.studentId,
+				studentCode: student.studentCode,
 				majorId: student.majorId,
 			};
 		} catch (error) {
@@ -311,7 +313,7 @@ export class StudentService {
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Student with ID ${id} not found`);
+					throw new NotFoundException(`Student not found`);
 				}
 
 				const updateUserDto: UpdateUserDto = {
@@ -333,7 +335,7 @@ export class StudentService {
 
 				return {
 					...updatedUser,
-					studentId: updatedStudent!.studentId,
+					studentCode: updatedStudent!.studentCode,
 					majorId: updatedStudent!.majorId,
 				};
 			});
@@ -359,7 +361,7 @@ export class StudentService {
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Student with ID ${id} not found`);
+					throw new NotFoundException(`Student not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -375,14 +377,14 @@ export class StudentService {
 				const updatedStudent = await prisma.student.update({
 					where: { userId: id },
 					data: {
-						studentId: dto.studentId,
+						studentCode: dto.studentCode,
 						majorId: dto.majorId,
 					},
 				});
 
 				return {
 					...updatedUser,
-					studentId: updatedStudent.studentId,
+					studentCode: updatedStudent.studentCode,
 					majorId: updatedStudent.majorId,
 				};
 			});
@@ -418,7 +420,7 @@ export class StudentService {
 					for (const studentData of dto.students) {
 						// Check if student already exists
 						const existingStudent = await prisma.student.findUnique({
-							where: { studentId: studentData.studentId },
+							where: { studentCode: studentData.studentCode },
 							include: {
 								user: {
 									omit: {
@@ -446,7 +448,7 @@ export class StudentService {
 
 							if (isAlreadyEnrolledInThisSemester) {
 								throw new ConflictException(
-									`Student with studentId ${studentData.studentId} is already enrolled in semester ${dto.semesterId}`,
+									`Student with studentId ${studentData.studentCode} is already enrolled in semester ${semester.name}}`,
 								);
 							}
 
@@ -461,12 +463,12 @@ export class StudentService {
 								);
 
 							this.logger.log(
-								`Student ${studentData.studentId} enrolled to semester ${dto.semesterId} with new password`,
+								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId} with new password`,
 							);
 
 							result = {
 								...updatedUser,
-								studentId: existingStudent.studentId,
+								studentCode: existingStudent.studentCode,
 								majorId: existingStudent.majorId,
 							};
 
@@ -495,7 +497,7 @@ export class StudentService {
 							const student = await prisma.student.create({
 								data: {
 									userId: userId,
-									studentId: studentData.studentId,
+									studentCode: studentData.studentCode,
 									majorId: dto.majorId,
 								},
 							});
@@ -509,16 +511,16 @@ export class StudentService {
 							});
 
 							this.logger.log(
-								`Student ${studentData.studentId} created successfully`,
+								`Student ${studentData.studentCode} created successfully`,
 							);
 
 							this.logger.log(
-								`Student ${studentData.studentId} enrolled to semester ${dto.semesterId}`,
+								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId}`,
 							);
 
 							result = {
 								...newUser,
-								studentId: student.studentId,
+								studentCode: student.studentCode,
 								majorId: student.majorId,
 							};
 
@@ -539,7 +541,7 @@ export class StudentService {
 									fullName: result.fullName,
 									email: result.email,
 									password: passwordForEmail,
-									studentId: result.studentId,
+									studentCode: result.studentCode,
 									semesterName: semester.name,
 								},
 							};
@@ -595,7 +597,7 @@ export class StudentService {
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for status toggle`);
 
-					throw new NotFoundException(`Student with ID ${id} not found`);
+					throw new NotFoundException(`Student not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -610,7 +612,7 @@ export class StudentService {
 
 				return {
 					...updatedUser,
-					studentId: existingStudent.studentId,
+					studentCode: existingStudent.studentCode,
 					majorId: existingStudent.majorId,
 				};
 			});
@@ -639,7 +641,7 @@ export class StudentService {
 			});
 
 			if (!semester) {
-				throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+				throw new NotFoundException(`Semester not found`);
 			}
 
 			const enrollments = await this.prisma.enrollment.findMany({
@@ -669,7 +671,7 @@ export class StudentService {
 			// Format the response same as findAll - only basic student info
 			const formattedStudents = enrollments.map((enrollment) => ({
 				...enrollment.student.user,
-				studentId: enrollment.student.studentId,
+				studentCode: enrollment.student.studentCode,
 				majorId: enrollment.student.majorId,
 			}));
 
@@ -684,6 +686,111 @@ export class StudentService {
 				`Error fetching students for semester ${semesterId}`,
 				error,
 			);
+
+			throw error;
+		}
+	}
+
+	async delete(id: string, semesterId: string) {
+		try {
+			this.logger.log(
+				`Deleting student with ID: ${id} in Semester ${semesterId}`,
+			);
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Single query to get all required data
+				const [existingStudent, existingSemester] = await Promise.all([
+					prisma.student.findUnique({
+						where: { userId: id },
+						include: {
+							user: {
+								omit: {
+									password: true,
+								},
+							},
+							enrollments: {
+								select: {
+									semesterId: true,
+								},
+							},
+						},
+					}),
+					prisma.semester.findUnique({
+						where: { id: semesterId },
+						select: { id: true, name: true, status: true },
+					}),
+				]);
+
+				if (!existingStudent) {
+					this.logger.warn(`Student with ID ${id} not found for deletion`);
+
+					throw new NotFoundException(`Student not found`);
+				}
+
+				if (!existingSemester) {
+					this.logger.warn(
+						`Semester with ID ${semesterId} not found for deletion`,
+					);
+
+					throw new NotFoundException(`Semester not found`);
+				}
+
+				if (existingSemester.status !== SemesterStatus.Preparing) {
+					this.logger.warn(
+						`Cannot delete student in semester ${semesterId} with status ${existingSemester.status}`,
+					);
+
+					throw new ConflictException(
+						`Cannot delete student in semester ${existingSemester.name}. Only ${SemesterStatus.Preparing} semesters allow student deletion.`,
+					);
+				}
+
+				// Check if enrollment exists in the specified semester
+				const enrollmentInSemester = existingStudent.enrollments.some(
+					(enrollment) => enrollment.semesterId === semesterId,
+				);
+
+				if (!enrollmentInSemester) {
+					this.logger.warn(
+						`Student with ID ${id} is not enrolled in semester ${semesterId}`,
+					);
+
+					throw new NotFoundException(
+						`Student is not enrolled in semester ${existingSemester.name}`,
+					);
+				}
+
+				// If the student is enrolled in multiple semesters, only delete the enrollment for the specified semester.
+				// Otherwise, delete the student and associated user completely.
+				if (existingStudent.enrollments.length >= 2) {
+					await prisma.enrollment.delete({
+						where: {
+							studentId_semesterId: {
+								studentId: id,
+								semesterId: semesterId,
+							},
+						},
+					});
+				} else {
+					await prisma.student.delete({
+						where: { userId: existingStudent.userId },
+					});
+
+					await prisma.user.delete({
+						where: { id: existingStudent.userId },
+					});
+				}
+
+				return {
+					...existingStudent.user,
+					studentCode: existingStudent.studentCode,
+					majorId: existingStudent.majorId,
+				};
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error deleting student with ID ${id}:`, error);
 
 			throw error;
 		}

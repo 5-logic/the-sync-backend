@@ -34,7 +34,7 @@ export class MajorService {
 			if (!major) {
 				this.logger.warn(`Major with id ${id} not found`);
 
-				throw new NotFoundException(`Major with id ${id} not found`);
+				throw new NotFoundException(`Major not found`);
 			}
 
 			this.logger.log(`Major found with id: ${id}`);

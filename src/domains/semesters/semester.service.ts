@@ -103,7 +103,7 @@ export class SemesterService {
 			if (!semester) {
 				this.logger.warn(`Semester with ID ${id} not found`);
 
-				throw new NotFoundException(`Semester with ID ${id} not found`);
+				throw new NotFoundException(`Semester not found`);
 			}
 
 			this.logger.log(`Semester found with ID: ${semester.id}`);
@@ -162,7 +162,7 @@ export class SemesterService {
 			if (!existingSemester) {
 				this.logger.warn(`Semester with ID ${id} not found for removal`);
 
-				throw new NotFoundException(`Semester with ID ${id} not found`);
+				throw new NotFoundException(`Semester not found`);
 			}
 
 			this.logger.debug('Existing semester found', existingSemester);
@@ -189,7 +189,7 @@ export class SemesterService {
 				);
 
 				throw new ConflictException(
-					`Cannot delete semester with ID ${id}: semester has existing relationships`,
+					`Cannot delete semester: semester has existing relationships`,
 				);
 			}
 
@@ -354,7 +354,8 @@ export class SemesterService {
 
 		if (!existingSemester) {
 			this.logger.warn(`Semester with ID ${id} not found for update`);
-			throw new NotFoundException(`Semester with ID ${id} not found`);
+
+			throw new NotFoundException(`Semester not found`);
 		}
 
 		this.logger.debug('Existing semester found', existingSemester);

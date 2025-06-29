@@ -27,9 +27,7 @@ export class GroupService {
 		);
 
 		if (!participation) {
-			throw new NotFoundException(
-				`Student is not a member of group ${groupId}`,
-			);
+			throw new NotFoundException(`Student is not a member of group`);
 		}
 
 		if (!participation.isLeader) {
@@ -50,9 +48,7 @@ export class GroupService {
 		});
 
 		if (!enrollment) {
-			throw new NotFoundException(
-				`Student is not enrolled in semester ${semesterId}`,
-			);
+			throw new NotFoundException(`Student is not enrolled in this semester`);
 		}
 	}
 
@@ -62,7 +58,7 @@ export class GroupService {
 		});
 
 		if (!semester) {
-			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+			throw new NotFoundException(`Semester not found`);
 		}
 
 		if (semester.status !== SemesterStatus.Picking) {
@@ -149,7 +145,7 @@ export class GroupService {
 			});
 
 			if (!group) {
-				throw new NotFoundException(`Group with id ${id} not found`);
+				throw new NotFoundException(`Group not found`);
 			}
 
 			this.logger.log(`Group found with ID: ${group.id}`);
@@ -171,7 +167,7 @@ export class GroupService {
 			});
 
 			if (!existingGroup) {
-				throw new NotFoundException(`Group with ID ${id} not found`);
+				throw new NotFoundException(`Group not found`);
 			}
 
 			// Check if user is the leader of the group
