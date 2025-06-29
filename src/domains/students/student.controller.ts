@@ -18,8 +18,8 @@ import { RoleGuard } from '@/auth/guards/role.guard';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { CreateStudentDto } from '@/students/dto/create-student.dto';
 import { ImportStudentDto } from '@/students/dto/import-student.dto';
+import { SelfUpdateStudentDto } from '@/students/dto/self-update-student.dto';
 import { ToggleStudentStatusDto } from '@/students/dto/toggle-student-status.dto';
-import { UpdateStudentDto } from '@/students/dto/update-student.dto';
 import { StudentService } from '@/students/student.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -58,7 +58,7 @@ export class StudentController {
 
 	@Roles(Role.STUDENT)
 	@Put()
-	async update(@Req() req: FastifyRequest, @Body() dto: UpdateStudentDto) {
+	async update(@Req() req: FastifyRequest, @Body() dto: SelfUpdateStudentDto) {
 		const user = req.user as UserPayload;
 
 		return await this.studentService.update(user.id, dto);
