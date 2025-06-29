@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	Injectable,
 	Logger,
 	NotFoundException,
@@ -356,52 +357,6 @@ export class LecturerService {
 		}
 	}
 
-	private async validateLecturerDeletion(lecturerId: string): Promise<void> {
-		const [thesisOwner, supervisedThesis, reviewGroup] = await Promise.all([
-			this.prisma.thesis.findFirst({
-				where: { lecturerId },
-				select: { id: true },
-			}),
-			this.prisma.supervision.findFirst({
-				where: { lecturerId },
-				select: { lecturerId: true, thesisId: true },
-			}),
-			this.prisma.review.findFirst({
-				where: { lecturerId },
-				select: { id: true },
-			}),
-		]);
-
-		const constraints = [
-			{
-				condition: thesisOwner,
-				message: 'Lecturer is linked to a thesis',
-				logMessage: 'linked to thesis',
-			},
-			{
-				condition: supervisedThesis,
-				message: 'Lecturer is supervising group/thesis',
-				logMessage: 'linked to group or thesis supervision',
-			},
-			{
-				condition: reviewGroup,
-				message: 'Lecturer is linked to a review group',
-				logMessage: 'linked to review group',
-			},
-		];
-
-		for (const constraint of constraints) {
-			if (constraint.condition) {
-				this.logger.warn(
-					`Lecturer with ID ${lecturerId} is ${constraint.logMessage}, cannot delete`,
-				);
-				throw new BadRequestException(
-					`${constraint.message}. Deletion not allowed. Please deactivate this account instead.`,
-				);
-			}
-		}
-	}
-
 	async delete(id: string) {
 		try {
 			this.logger.log(`Deleting lecturer with ID: ${id}`);
@@ -409,11 +364,17 @@ export class LecturerService {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				const existingLecturer = await prisma.lecturer.findUnique({
 					where: { userId: id },
-					select: { userId: true, isModerator: true },
+					select: {
+						isModerator: true,
+						supervisions: true,
+						reviews: true,
+						theses: true,
+					},
 				});
 
 				if (!existingLecturer) {
 					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
+
 					throw new NotFoundException(`Lecturer with ID ${id} not found`);
 				}
 
@@ -421,12 +382,41 @@ export class LecturerService {
 					this.logger.warn(
 						`Lecturer with ID ${id} is a moderator, cannot delete`,
 					);
-					throw new BadRequestException(
+
+					throw new ConflictException(
 						'Lecturer is a moderator. Deletion not allowed. Please deactivate this account instead.',
 					);
 				}
 
-				await this.validateLecturerDeletion(existingLecturer.userId);
+				const constraints = [
+					{
+						condition: existingLecturer.theses.length > 0,
+						message: 'Lecturer is linked to a thesis',
+						logMessage: 'linked to thesis',
+					},
+					{
+						condition: existingLecturer.supervisions.length > 0,
+						message: 'Lecturer is supervising group/thesis',
+						logMessage: 'linked to group or thesis supervision',
+					},
+					{
+						condition: existingLecturer.reviews.length > 0,
+						message: 'Lecturer is linked to a review group',
+						logMessage: 'linked to review group',
+					},
+				];
+
+				for (const constraint of constraints) {
+					if (constraint.condition) {
+						this.logger.warn(
+							`Lecturer with ID ${id} is ${constraint.logMessage}, cannot delete`,
+						);
+
+						throw new ConflictException(
+							`${constraint.message}. Deletion not allowed. Please deactivate this account instead.`,
+						);
+					}
+				}
 
 				const deletedLecturer = await prisma.lecturer.delete({
 					where: { userId: id },
@@ -447,10 +437,8 @@ export class LecturerService {
 
 			return result;
 		} catch (error) {
-			this.logger.error(
-				`Error deleting lecturer with ID ${id}:`,
-				error.message,
-			);
+			this.logger.error(`Error deleting lecturer with ID ${id}:`, error);
+
 			throw error;
 		}
 	}
