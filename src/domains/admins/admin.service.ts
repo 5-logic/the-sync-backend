@@ -22,7 +22,7 @@ export class AdminService {
 			if (!admin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
 
-				throw new NotFoundException(`Admin with ID ${id} not found`);
+				throw new NotFoundException(`Admin not found`);
 			}
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
@@ -44,7 +44,7 @@ export class AdminService {
 			if (!existingAdmin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
 
-				throw new NotFoundException(`Admin with ID ${id} not found`);
+				throw new NotFoundException(`Admin not found`);
 			}
 
 			const updatedAdmin = await this.prisma.admin.update({

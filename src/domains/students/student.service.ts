@@ -43,7 +43,7 @@ export class StudentService {
 			where: { id: semesterId },
 		});
 		if (!semester) {
-			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+			throw new NotFoundException(`Semester not found`);
 		}
 
 		// Only allow enrollment when semester is in Preparing or Picking status
@@ -52,7 +52,7 @@ export class StudentService {
 			semester.status !== SemesterStatus.Picking
 		) {
 			throw new ConflictException(
-				`Cannot add students to semester ${semesterId}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} and ${SemesterStatus.Picking} semesters allow student enrollment.`,
+				`Cannot add students to semester ${semester.name}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} and ${SemesterStatus.Picking} semesters allow student enrollment.`,
 			);
 		}
 
@@ -68,7 +68,7 @@ export class StudentService {
 		});
 
 		if (!major) {
-			throw new NotFoundException(`Major with ID ${majorId} not found`);
+			throw new NotFoundException(`Major not found`);
 		}
 
 		return major;
@@ -122,7 +122,7 @@ export class StudentService {
 
 					if (isAlreadyEnrolledInThisSemester) {
 						throw new ConflictException(
-							`Student with studentCode ${dto.studentCode} is already enrolled in semester ${dto.semesterId}`,
+							`Student with studentCode ${dto.studentCode} is already enrolled in semester ${semester.name}}`,
 						);
 					}
 
@@ -286,7 +286,7 @@ export class StudentService {
 			if (!student) {
 				this.logger.warn(`Student with ID ${id} not found`);
 
-				throw new NotFoundException(`Student with ID ${id} not found`);
+				throw new NotFoundException(`Student not found`);
 			}
 
 			this.logger.log(`Student found with ID: ${id}`);
@@ -313,7 +313,7 @@ export class StudentService {
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Student with ID ${id} not found`);
+					throw new NotFoundException(`Student not found`);
 				}
 
 				const updateUserDto: UpdateUserDto = {
@@ -361,7 +361,7 @@ export class StudentService {
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Student with ID ${id} not found`);
+					throw new NotFoundException(`Student not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -448,7 +448,7 @@ export class StudentService {
 
 							if (isAlreadyEnrolledInThisSemester) {
 								throw new ConflictException(
-									`Student with studentId ${studentData.studentCode} is already enrolled in semester ${dto.semesterId}`,
+									`Student with studentId ${studentData.studentCode} is already enrolled in semester ${semester.name}}`,
 								);
 							}
 
@@ -597,7 +597,7 @@ export class StudentService {
 				if (!existingStudent) {
 					this.logger.warn(`Student with ID ${id} not found for status toggle`);
 
-					throw new NotFoundException(`Student with ID ${id} not found`);
+					throw new NotFoundException(`Student not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -641,7 +641,7 @@ export class StudentService {
 			});
 
 			if (!semester) {
-				throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+				throw new NotFoundException(`Semester not found`);
 			}
 
 			const enrollments = await this.prisma.enrollment.findMany({
@@ -717,7 +717,7 @@ export class StudentService {
 					}),
 					prisma.semester.findUnique({
 						where: { id: semesterId },
-						select: { id: true, status: true },
+						select: { id: true, name: true, status: true },
 					}),
 				]);
 
@@ -741,7 +741,7 @@ export class StudentService {
 					);
 
 					throw new ConflictException(
-						`Cannot delete student in semester ${semesterId}. Only ${SemesterStatus.Preparing} semesters allow student deletion.`,
+						`Cannot delete student in semester ${existingSemester.name}. Only ${SemesterStatus.Preparing} semesters allow student deletion.`,
 					);
 				}
 
@@ -756,7 +756,7 @@ export class StudentService {
 					);
 
 					throw new NotFoundException(
-						`Student is not enrolled in this semester`,
+						`Student is not enrolled in semester ${existingSemester.name}`,
 					);
 				}
 

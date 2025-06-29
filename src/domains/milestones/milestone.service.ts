@@ -22,7 +22,7 @@ export class MilestoneService {
 		});
 
 		if (!semester) {
-			throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+			throw new NotFoundException(`Semester not found`);
 		}
 
 		return semester;
@@ -68,7 +68,7 @@ export class MilestoneService {
 		});
 
 		if (!milestone) {
-			throw new NotFoundException(`Milestone with ID ${id} not found`);
+			throw new NotFoundException(`Milestone not found`);
 		}
 
 		return milestone;
@@ -113,7 +113,7 @@ export class MilestoneService {
 
 			if (overlappingMilestone) {
 				throw new ConflictException(
-					`Milestone time overlaps with existing milestone: ${overlappingMilestone.id}`,
+					`Milestone time overlaps with existing milestone: ${overlappingMilestone.name}`,
 				);
 			}
 
@@ -161,7 +161,7 @@ export class MilestoneService {
 			const milestone = await this.validateMilestone(id);
 
 			if (!milestone) {
-				throw new NotFoundException(`Milestone with ID ${id} not found`);
+				throw new NotFoundException(`Milestone not found`);
 			}
 
 			this.logger.log(`Milestone found with ID: ${id}`);
@@ -233,7 +233,7 @@ export class MilestoneService {
 
 			if (overlap) {
 				throw new ConflictException(
-					`Updated milestone overlaps with: ${overlap.id}`,
+					`Updated milestone overlaps with: ${overlap.name}`,
 				);
 			}
 

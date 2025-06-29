@@ -129,7 +129,7 @@ export class LecturerService {
 			if (!lecturer) {
 				this.logger.warn(`Lecturer with ID ${id} not found`);
 
-				throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				throw new NotFoundException(`Lecturer not found`);
 			}
 
 			this.logger.log(`Lecturer found with ID: ${id}`);
@@ -156,7 +156,7 @@ export class LecturerService {
 				if (!existingLecturer) {
 					this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				const updatedUser = await UserService.update(
@@ -193,7 +193,7 @@ export class LecturerService {
 				if (!existingLecturer) {
 					this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				const updatedLecturer = await this.prisma.user.update({
@@ -316,7 +316,7 @@ export class LecturerService {
 						`Lecturer with ID ${id} not found for status toggle`,
 					);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				const updatedUser = await prisma.user.update({
@@ -374,7 +374,7 @@ export class LecturerService {
 				if (!existingLecturer) {
 					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
 
-					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+					throw new NotFoundException(`Lecturer not found`);
 				}
 
 				if (existingLecturer.isModerator) {
