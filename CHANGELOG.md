@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2025-06-30
+
+### Added
+
+- **Student Management APIs**:
+  - `DELETE /students/:id/semester/:semesterId` - New admin endpoint for deleting students from specific semesters (requires both `id` and `semesterId` as path parameters)
+- **Lecturer Management APIs**:
+  - `DELETE /lecturers/:id` - New admin endpoint for permanently removing lecturers (requires `id` as path parameter)
+
+### Changed
+
+- **Database Schema Improvements**:
+  - **Student Model**: Renamed `studentId` field to `studentCode` for better clarity and consistency
+  - **Foreign Key Relationships**: Enhanced student-related relationships with `onDelete: Cascade` for automatic cleanup when students are deleted
+  - Updated all student-related models (`StudentSkill`, `StudentExpectedResponsibility`, `StudentGroupParticipation`) to reference `userId` instead of `studentCode`
+- **Student DTOs Updates**:
+  - `CreateStudentDto`: Changed `studentId` field to `studentCode`
+  - `ImportStudentItemDto`: Changed `studentId` field to `studentCode`
+  - `SelfUpdateStudentDto`: Updated to exclude `studentCode` instead of `studentId`
+- **CORS Configuration Enhancement**:
+  - Added explicit HTTP methods configuration (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`) for better CORS support
+- **Service Layer Improvements**:
+  - Enhanced student deletion logic with semester validation and conflict checks
+  - Improved lecturer deletion logic with comprehensive validation before removal
+  - Simplified exception messages across all services for better consistency
+  - Updated email templates to use `studentCode` instead of `studentId`
+
+### Fixed
+
+- **Student Service**: Updated service methods to use `studentCode` instead of `studentId` for consistency
+- **Logging Improvements**: Enhanced log messages with better null handling using nullish coalescing operators
+- **Validation Logic**: Streamlined deletion validation methods for both students and lecturers
+
+### Removed
+
+- **Unused Imports**: Cleaned up unused `BadRequestException` imports from lecturer service
+- **Deprecated Validation Methods**: Removed unused validation methods that were replaced by streamlined logic
+
+### Security
+
+- **Enhanced Deletion Safety**: Added comprehensive validation checks before allowing student or lecturer deletion
+- **Semester Validation**: Students can only be deleted from specific semesters with proper validation
+- **Conflict Prevention**: Added checks to prevent deletion when entities have active relationships
+
+### Database Migration
+
+- **Schema Updates**: Added migration to rename `student_id` column to `student_code` and update all related foreign key references
+- **Cascade Deletion**: Enhanced database constraints to automatically clean up related records when students are deleted
+
+### Pull Requests
+
+- [#124](https://github.com/5-logic/the-sync-backend/pull/124) - Merge dev branch for v0.5.4 release
+- [#122](https://github.com/5-logic/the-sync-backend/pull/122) - Enhanced student and lecturer deletion functionality with validation (closes #113)
+- [#121](https://github.com/5-logic/the-sync-backend/pull/121) - Student deletion enhancements with semester parameter support (closes #113)
+
 ## [0.5.3] - 2025-06-29
 
 ### Changed
