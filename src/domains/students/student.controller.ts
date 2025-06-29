@@ -75,10 +75,10 @@ export class StudentController {
 	}
 
 	@Roles(Role.ADMIN)
-	@Delete(':id')
+	@Delete(':id/semester/:semesterId')
 	async delete(
 		@Param('id') id: string,
-		@Body('semesterId') semesterId: string,
+		@Param('semesterId') semesterId: string,
 	) {
 		return await this.studentService.delete(id, semesterId);
 	}

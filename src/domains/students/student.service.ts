@@ -715,7 +715,7 @@ export class StudentService {
 							},
 						},
 					}),
-					prisma.semester.findUnique({
+					prisma.semester.findFirst({
 						where: { id: semesterId },
 						select: { id: true },
 					}),
@@ -748,7 +748,7 @@ export class StudentService {
 				}
 
 				await this.validateStudentDeletion(
-					id,
+					existingStudent.userId,
 					semesterId,
 					existingStudent.studentId,
 				);
@@ -771,7 +771,7 @@ export class StudentService {
 					await prisma.enrollment.delete({
 						where: {
 							studentId_semesterId: {
-								studentId: id,
+								studentId: existingStudent.userId,
 								semesterId: semesterId,
 							},
 						},
@@ -795,16 +795,16 @@ export class StudentService {
 					// Delete the entire student record
 					await Promise.all([
 						prisma.studentSkill.deleteMany({
-							where: { studentId: id },
+							where: { studentId: existingStudent.userId },
 						}),
 						prisma.studentExpectedResponsibility.deleteMany({
-							where: { studentId: id },
+							where: { studentId: existingStudent.userId },
 						}),
 						prisma.request.deleteMany({
-							where: { studentId: id },
+							where: { studentId: existingStudent.userId },
 						}),
 						prisma.enrollment.deleteMany({
-							where: { studentId: id },
+							where: { studentId: existingStudent.userId },
 						}),
 					]);
 
