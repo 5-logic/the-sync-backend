@@ -665,7 +665,7 @@ export class StudentService {
 			{
 				condition: enrollmentExists,
 				message: `Student has enrollments with status ${enrollmentExists.status}`,
-				logMessage: `has enrollments with status ${enrollmentExists?.status || 'unknown'} (only NotYet status allowed for deletion)`,
+				logMessage: `has enrollments with status ${enrollmentExists?.status ?? 'unknown'} (only NotYet status allowed for deletion)`,
 			},
 			{
 				condition: studentGroupParticipationExists,
