@@ -21,6 +21,8 @@ import { LecturerService } from '@/lecturers/lecturer.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
 import { UpdateUserDto } from '@/users/dto/update-user.dto';
 
+import { UpdateLecturerDto } from './dto/update-lecturer.dto';
+
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Lecturer')
@@ -57,6 +59,12 @@ export class LecturerController {
 		const user = req.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, dto);
+	}
+
+	@Roles(Role.ADMIN)
+	@Put(':id')
+	async updateByAdmin(@Param('id') id: string, @Body() dto: UpdateLecturerDto) {
+		return await this.lecturerService.updateByAdmin(id, dto);
 	}
 
 	@Roles(Role.ADMIN)
