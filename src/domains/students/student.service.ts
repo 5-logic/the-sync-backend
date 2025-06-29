@@ -690,4 +690,109 @@ export class StudentService {
 			throw error;
 		}
 	}
+
+	async delete(id: string, semesterId: string) {
+		try {
+			this.logger.log(
+				`Deleting student with ID: ${id} in Semester ${semesterId}`,
+			);
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Single query to get all required data
+				const [existingStudent, existingSemester] = await Promise.all([
+					prisma.student.findUnique({
+						where: { userId: id },
+						include: {
+							user: {
+								omit: {
+									password: true,
+								},
+							},
+							enrollments: {
+								select: {
+									semesterId: true,
+								},
+							},
+						},
+					}),
+					prisma.semester.findUnique({
+						where: { id: semesterId },
+						select: { id: true, status: true },
+					}),
+				]);
+
+				if (!existingStudent) {
+					this.logger.warn(`Student with ID ${id} not found for deletion`);
+
+					throw new NotFoundException(`Student not found`);
+				}
+
+				if (!existingSemester) {
+					this.logger.warn(
+						`Semester with ID ${semesterId} not found for deletion`,
+					);
+
+					throw new NotFoundException(`Semester not found`);
+				}
+
+				if (existingSemester.status !== SemesterStatus.Preparing) {
+					this.logger.warn(
+						`Cannot delete student in semester ${semesterId} with status ${existingSemester.status}`,
+					);
+
+					throw new ConflictException(
+						`Cannot delete student in semester ${semesterId}. Only ${SemesterStatus.Preparing} semesters allow student deletion.`,
+					);
+				}
+
+				// Check if enrollment exists in the specified semester
+				const enrollmentInSemester = existingStudent.enrollments.some(
+					(enrollment) => enrollment.semesterId === semesterId,
+				);
+
+				if (!enrollmentInSemester) {
+					this.logger.warn(
+						`Student with ID ${id} is not enrolled in semester ${semesterId}`,
+					);
+
+					throw new NotFoundException(
+						`Student is not enrolled in this semester`,
+					);
+				}
+
+				// If the student is enrolled in multiple semesters, only delete the enrollment for the specified semester.
+				// Otherwise, delete the student and associated user completely.
+				if (existingStudent.enrollments.length >= 2) {
+					await prisma.enrollment.delete({
+						where: {
+							studentId_semesterId: {
+								studentId: id,
+								semesterId: semesterId,
+							},
+						},
+					});
+				} else {
+					await prisma.student.delete({
+						where: { userId: existingStudent.userId },
+					});
+
+					await prisma.user.delete({
+						where: { id: existingStudent.userId },
+					});
+				}
+
+				return {
+					...existingStudent.user,
+					studentCode: existingStudent.studentCode,
+					majorId: existingStudent.majorId,
+				};
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error deleting student with ID ${id}:`, error);
+
+			throw error;
+		}
+	}
 }
