@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { TIMEOUT } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
@@ -306,6 +311,136 @@ export class LecturerService {
 		} catch (error) {
 			this.logger.error(`Error toggling lecturer status with ID ${id}`, error);
 
+			throw error;
+		}
+	}
+
+	/**
+	 * Validates if a lecturer can be deleted by checking various constraints
+	 */
+	private async validateLecturerDeletion(
+		lecturerId: string,
+		prisma: any,
+	): Promise<void> {
+		// Run all validation queries in parallel for better performance
+		const [thesisOwner, supervisedThesis, reviewGroup] = await Promise.all([
+			prisma.thesis.findFirst({
+				where: { lecturerId },
+				select: { id: true },
+			}),
+			prisma.supervision.findFirst({
+				where: { lecturerId },
+				select: { lecturerId: true, thesisId: true },
+			}),
+			prisma.review.findFirst({
+				where: { lecturerId },
+				select: { id: true },
+			}),
+		]);
+
+		const constraints = [
+			{
+				condition: thesisOwner,
+				message: 'Lecturer is linked to a thesis',
+				logMessage: 'linked to thesis',
+			},
+			{
+				condition: supervisedThesis,
+				message: 'Lecturer is supervising group/thesis',
+				logMessage: 'linked to group or thesis supervision',
+			},
+			{
+				condition: reviewGroup,
+				message: 'Lecturer is linked to a review group',
+				logMessage: 'linked to review group',
+			},
+		];
+
+		for (const constraint of constraints) {
+			if (constraint.condition) {
+				this.logger.warn(
+					`Lecturer with ID ${lecturerId} is ${constraint.logMessage}, cannot delete`,
+				);
+				throw new BadRequestException(
+					`${constraint.message}. Deletion not allowed. Please deactivate this account instead.`,
+				);
+			}
+		}
+	}
+
+	async delete(id: string) {
+		try {
+			this.logger.log(`Deleting lecturer with ID: ${id}`);
+
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Check if lecturer exists
+				const existingLecturer = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					select: { userId: true, isModerator: true },
+				});
+
+				if (!existingLecturer) {
+					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
+					throw new NotFoundException(`Lecturer with ID ${id} not found`);
+				}
+
+				// Check if lecturer is a moderator
+				if (existingLecturer.isModerator) {
+					this.logger.warn(
+						`Lecturer with ID ${id} is a moderator, cannot delete`,
+					);
+					throw new BadRequestException(
+						'Lecturer is a moderator. Deletion not allowed. Please deactivate this account instead.',
+					);
+				}
+
+				// Validate deletion constraints
+				await this.validateLecturerDeletion(existingLecturer.userId, prisma);
+
+				// Get full lecturer data before deletion for return value
+				const lecturerToDelete = await prisma.lecturer.findUnique({
+					where: { userId: id },
+					include: {
+						user: {
+							omit: {
+								password: true,
+							},
+						},
+					},
+				});
+
+				// Perform deletion - lecturer first, then user (due to foreign key constraint)
+				await prisma.lecturer.delete({
+					where: { userId: id },
+				});
+
+				await prisma.user.delete({
+					where: { id },
+				});
+
+				// Format the response to match other methods in this service
+				const deletedLecturerData = {
+					...lecturerToDelete!.user,
+					isModerator: lecturerToDelete!.isModerator,
+				};
+
+				this.logger.log(`Lecturer successfully deleted with ID: ${id}`);
+				this.logger.debug('Deleted lecturer details:', {
+					id: deletedLecturerData.id,
+					email: deletedLecturerData.email,
+					fullName: deletedLecturerData.fullName,
+					isModerator: deletedLecturerData.isModerator,
+				});
+
+				return deletedLecturerData;
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(
+				`Error deleting lecturer with ID ${id}:`,
+				error.message,
+			);
 			throw error;
 		}
 	}
