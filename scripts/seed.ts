@@ -1,9 +1,9 @@
-import { PrismaClient } from '../generated/prisma';
+import { Gender, PrismaClient } from '../generated/prisma';
 import { hash } from '../src/utils/hash.util';
 
 const prisma = new PrismaClient();
 
-const seedAdmin = async () => {
+const seedAdmins = async () => {
 	await prisma.admin.upsert({
 		where: { username: 'admin' },
 		update: {},
@@ -17,7 +17,7 @@ const seedAdmin = async () => {
 	console.log('👤 Admin seeded successfully');
 };
 
-const seedMajor = async () => {
+const seedMajors = async () => {
 	const majors = [
 		{
 			id: '476723ef-1eb2-4a00-944c-1bef7054c44a',
@@ -44,7 +44,7 @@ const seedMajor = async () => {
 	console.log('🎓 Major seeded successfully');
 };
 
-const seedResponsibility = async () => {
+const seedResponsibilities = async () => {
 	const responsibilities = [
 		// Software Engineering
 		{ id: 'a485b1a7-6ce5-4a64-b087-11ef57772897', name: 'Backend' },
@@ -1422,15 +1422,79 @@ const seedSkills = async () => {
 	console.log('🛠️ Skills seeded successfully');
 };
 
+const seedLectuers = async () => {
+	const lecturers = [
+		{
+			id: '11e9f2f2-6054-45dc-a1cb-e798ca82a878',
+			fullName: 'Lê Minh Vương',
+			email: 'hardingadonis@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: 'd9962353-8ce7-4317-ba1f-0bc736453a20',
+			fullName: 'Đinh Quốc Chương',
+			email: 'quocchuong3k@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: '9e82e70a-7d96-4847-af9b-1717422d7237',
+			fullName: 'Nguyễn Thị Thuý',
+			email: 'nguyenthithuy1022003@gmail.com',
+			gender: Gender.Female,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: '8d0e3690-ebac-4970-8bf7-e306670e99d8',
+			fullName: 'Hứa Đức Bình',
+			email: 'binhbobinhbo22@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: 'be5a6ec4-c988-4e9e-adfb-9d252b5fd8d5',
+			fullName: 'Hồ Trọng Nghĩa',
+			email: 'htn10a2@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+	];
+
+	await prisma.$transaction(async (tx) => {
+		for (const lecturer of lecturers) {
+			await tx.user.upsert({
+				where: { id: lecturer.id },
+				update: {},
+				create: {
+					id: lecturer.id,
+					fullName: lecturer.fullName,
+					email: lecturer.email,
+					password: await hash('FPTUniversity@2025'),
+					gender: lecturer.gender,
+					phoneNumber: lecturer.phoneNumber,
+				},
+			});
+
+			await tx.lecturer.upsert({
+				where: { userId: lecturer.id },
+				update: {},
+				create: { userId: lecturer.id },
+			});
+		}
+	});
+};
+
 async function main() {
 	try {
 		await prisma.$connect();
 
-		await seedAdmin();
-		await seedMajor();
-		await seedResponsibility();
+		await seedAdmins();
+		await seedMajors();
+		await seedResponsibilities();
 		await seedSkillSets();
 		await seedSkills();
+		await seedLectuers();
 	} catch (error) {
 		console.error('Seed failed:', error);
 
