@@ -1,4 +1,5 @@
 import { Gender, PrismaClient, SemesterStatus } from '../generated/prisma';
+import { TIMEOUT } from '../src/configs/constant.config';
 import { hash } from '../src/utils/hash.util';
 
 const prisma = new PrismaClient();
@@ -1417,6 +1418,7 @@ const seedSkills = async () => {
 				create: skill,
 			}),
 		),
+		{ timeout: TIMEOUT },
 	);
 
 	console.log('🛠️ Skills seeded successfully');
@@ -1461,28 +1463,31 @@ const seedLectuers = async () => {
 		},
 	];
 
-	await prisma.$transaction(async (tx) => {
-		for (const lecturer of lecturers) {
-			await tx.user.upsert({
-				where: { id: lecturer.id },
-				update: {},
-				create: {
-					id: lecturer.id,
-					fullName: lecturer.fullName,
-					email: lecturer.email,
-					password: await hash('FPTUniversity@2025'),
-					gender: lecturer.gender,
-					phoneNumber: lecturer.phoneNumber,
-				},
-			});
+	await prisma.$transaction(
+		async (tx) => {
+			for (const lecturer of lecturers) {
+				await tx.user.upsert({
+					where: { id: lecturer.id },
+					update: {},
+					create: {
+						id: lecturer.id,
+						fullName: lecturer.fullName,
+						email: lecturer.email,
+						password: await hash('FPTUniversity@2025'),
+						gender: lecturer.gender,
+						phoneNumber: lecturer.phoneNumber,
+					},
+				});
 
-			await tx.lecturer.upsert({
-				where: { userId: lecturer.id },
-				update: {},
-				create: { userId: lecturer.id },
-			});
-		}
-	});
+				await tx.lecturer.upsert({
+					where: { userId: lecturer.id },
+					update: {},
+					create: { userId: lecturer.id },
+				});
+			}
+		},
+		{ timeout: TIMEOUT },
+	);
 
 	console.log('👨‍🏫 Lecturers seeded successfully');
 };
@@ -1551,32 +1556,35 @@ const seedStudents = async () => {
 		},
 	];
 
-	await prisma.$transaction(async (tx) => {
-		for (const student of students) {
-			await tx.user.upsert({
-				where: { id: student.id },
-				update: {},
-				create: {
-					id: student.id,
-					fullName: student.fullName,
-					email: student.email,
-					password: await hash('FPTUniversity@2025'),
-					gender: student.gender,
-					phoneNumber: student.phoneNumber,
-				},
-			});
+	await prisma.$transaction(
+		async (tx) => {
+			for (const student of students) {
+				await tx.user.upsert({
+					where: { id: student.id },
+					update: {},
+					create: {
+						id: student.id,
+						fullName: student.fullName,
+						email: student.email,
+						password: await hash('FPTUniversity@2025'),
+						gender: student.gender,
+						phoneNumber: student.phoneNumber,
+					},
+				});
 
-			await tx.student.upsert({
-				where: { userId: student.id },
-				update: {},
-				create: {
-					userId: student.id,
-					studentCode: student.studentCode,
-					majorId: student.majorId,
-				},
-			});
-		}
-	});
+				await tx.student.upsert({
+					where: { userId: student.id },
+					update: {},
+					create: {
+						userId: student.id,
+						studentCode: student.studentCode,
+						majorId: student.majorId,
+					},
+				});
+			}
+		},
+		{ timeout: TIMEOUT },
+	);
 
 	console.log('👩‍🎓 Students seeded successfully');
 };
