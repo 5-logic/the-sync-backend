@@ -4,7 +4,7 @@ export const generateStrongPassword = (): string => {
 	return generate({
 		length: 32,
 		numbers: true,
-		symbols: false,
+		symbols: true,
 		uppercase: true,
 		lowercase: true,
 		strict: true,

@@ -1,4 +1,4 @@
-import { FastifyAdapter } from '@bull-board/fastify';
+import { ExpressAdapter } from '@bull-board/express';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -58,7 +58,7 @@ import { QueueModule } from '@/queue/queue.module';
 
 				return {
 					route: `/${CONFIG_MOUNTS.BULL_BOARD}`,
-					adapter: FastifyAdapter,
+					adapter: ExpressAdapter,
 				};
 			},
 		}),

@@ -10,7 +10,7 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
-import { FastifyRequest } from 'fastify';
+import { Request } from 'express';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
@@ -50,7 +50,7 @@ export class LecturerController {
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	@Put()
-	async update(@Req() req: FastifyRequest, @Body() dto: UpdateUserDto) {
+	async update(@Req() req: Request, @Body() dto: UpdateUserDto) {
 		const user = req.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, dto);
