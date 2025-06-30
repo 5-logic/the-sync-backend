@@ -23,7 +23,7 @@ export class SkillSetsService {
 				},
 			});
 			this.logger.log(`Found ${skillSets.length} skill sets`);
-			this.logger.debug('SkillSets detail:', skillSets);
+			this.logger.debug('SkillSets detail:', JSON.stringify(skillSets));
 
 			return skillSets;
 		} catch (error) {
