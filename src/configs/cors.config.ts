@@ -8,18 +8,22 @@ export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 		[];
 
 	return {
-		origin: (origin: string): Promise<boolean> => {
+		origin: (
+			requestOrigin: string,
+			callback: (err: Error | null, origin?: boolean) => void,
+		) => {
 			if (process.env.NODE_ENV !== PRODUCTION) {
-				return Promise.resolve(true);
+				callback(null, true);
+				return;
 			}
 
-			if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-				return Promise.resolve(true);
+			if (allowedOrigins.indexOf(requestOrigin) !== -1 || !requestOrigin) {
+				callback(null, true);
+				return;
 			}
 
-			return Promise.resolve(false);
+			return callback(new Error('Not allowed by CORS'), false);
 		},
-		methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 		optionsSuccessStatus: 200,
 	};
 });

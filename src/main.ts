@@ -1,11 +1,8 @@
 import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import {
-	FastifyAdapter,
-	NestFastifyApplication,
-} from '@nestjs/platform-fastify';
-import { FastifyInstance } from 'fastify';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
 import {
@@ -13,11 +10,9 @@ import {
 	CONFIG_MOUNTS,
 	CONFIG_TOKENS,
 	CORSConfig,
-	RedisConfig,
 } from '@/configs';
 import { HttpExceptionFilter } from '@/filters';
 import { LoggingInterceptor, TransformInterceptor } from '@/interceptors';
-import { setupBasicAuthBullBoard } from '@/middlewares';
 import { setupSwagger } from '@/swagger/setup';
 
 async function bootstrap() {
@@ -26,29 +21,16 @@ async function bootstrap() {
 		timestamp: true,
 	});
 
-	const app = await NestFactory.create<NestFastifyApplication>(
-		AppModule,
-		new FastifyAdapter({
-			bodyLimit: BODY_LIMIT,
-		}),
-		{ logger: logger },
-	);
+	const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+		logger: logger,
+	});
 
 	const configService = app.get<ConfigService>(ConfigService);
 	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
-	const redisConfig = configService.get<RedisConfig>(CONFIG_TOKENS.REDIS);
 
-	// Get Fastify instance and setup basic auth for BullMQ dashboard
-	const fastify = app.getHttpAdapter().getInstance();
-
-	if (redisConfig?.bullmq?.username && redisConfig?.bullmq?.password) {
-		setupBasicAuthBullBoard(fastify as FastifyInstance, {
-			username: redisConfig.bullmq.username,
-			password: redisConfig.bullmq.password,
-			protectedRoute: CONFIG_MOUNTS.BULL_BOARD,
-			realm: 'BullMQ Dashboard',
-		});
-	}
+	// Increase body size limit for large imports (50MB)
+	app.use(json({ limit: BODY_LIMIT }));
+	app.use(urlencoded({ extended: true, limit: BODY_LIMIT }));
 
 	// Enable CORS
 	app.enableCors(corsConfig);
@@ -69,7 +51,7 @@ async function bootstrap() {
 	setupSwagger(app);
 
 	const port = process.env.PORT ?? 4000;
-	await app.listen(port, '0.0.0.0');
+	await app.listen(port);
 	logger.log(`TheSync is running on port ${port}`, 'Bootstrap');
 
 	logger.log(
