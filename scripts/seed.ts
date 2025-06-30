@@ -1418,7 +1418,6 @@ const seedSkills = async () => {
 				create: skill,
 			}),
 		),
-		{ timeout: TIMEOUT },
 	);
 
 	console.log('🛠️ Skills seeded successfully');
