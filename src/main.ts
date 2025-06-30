@@ -2,9 +2,15 @@ import { ConsoleLogger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { json, urlencoded } from 'express';
 
 import { AppModule } from '@/app.module';
-import { CONFIG_MOUNTS, CONFIG_TOKENS, CORSConfig } from '@/configs';
+import {
+	BODY_LIMIT,
+	CONFIG_MOUNTS,
+	CONFIG_TOKENS,
+	CORSConfig,
+} from '@/configs';
 import { HttpExceptionFilter } from '@/filters';
 import { LoggingInterceptor, TransformInterceptor } from '@/interceptors';
 import { setupSwagger } from '@/swagger/setup';
@@ -21,6 +27,10 @@ async function bootstrap() {
 
 	const configService = app.get<ConfigService>(ConfigService);
 	const corsConfig = configService.get<CORSConfig>(CONFIG_TOKENS.CORS);
+
+	// Increase body size limit for large imports (50MB)
+	app.use(json({ limit: BODY_LIMIT }));
+	app.use(urlencoded({ extended: true, limit: BODY_LIMIT }));
 
 	// Enable CORS
 	app.enableCors(corsConfig);
