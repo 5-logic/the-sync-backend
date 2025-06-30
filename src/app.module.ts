@@ -3,6 +3,7 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import basicAuth from 'basic-auth-connect';
 
 import { AuthModule } from '@/auth/auth.module';
 import {
@@ -59,6 +60,7 @@ import { QueueModule } from '@/queue/queue.module';
 				return {
 					route: `/${CONFIG_MOUNTS.BULL_BOARD}`,
 					adapter: ExpressAdapter,
+					middleware: basicAuth(config.bullmq.username, config.bullmq.password),
 				};
 			},
 		}),
