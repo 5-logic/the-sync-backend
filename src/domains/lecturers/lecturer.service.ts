@@ -30,6 +30,9 @@ export class LecturerService {
 		try {
 			let emailDto: EmailJobDto | undefined = undefined;
 
+			const plainPassword = generateStrongPassword();
+			const hashedPassword = await hash(plainPassword);
+
 			const result = await this.prisma.$transaction(async (txn) => {
 				const existingUser = await txn.user.findUnique({
 					where: {
@@ -44,9 +47,6 @@ export class LecturerService {
 						`Lecturer with  email ${dto.email} already exists`,
 					);
 				}
-
-				const plainPassword = generateStrongPassword();
-				const hashedPassword = await hash(plainPassword);
 
 				const newUser = await txn.user.create({
 					data: {
