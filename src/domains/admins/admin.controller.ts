@@ -34,7 +34,7 @@ export class AdminController {
 	}
 
 	@Roles(Role.ADMIN)
-	@Put('')
+	@Put()
 	async update(@Req() req: Request, @Body() dto: UpdateAdminDto) {
 		const user = req.user as UserPayload;
 
