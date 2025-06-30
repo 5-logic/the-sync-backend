@@ -290,7 +290,7 @@ export class LecturerService {
 							);
 
 							throw new ConflictException(
-								`Lecturer with  email ${createLecturerDto.email} already exists`,
+								`Lecturer with email ${createLecturerDto.email} already exists`,
 							);
 						}
 
