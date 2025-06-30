@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2025-06-30
+
+### Added
+
+- **Enhanced User Creation Process**:
+  - Implemented password hashing for student creation with automatic email notifications
+  - Enhanced lecturer creation with email validation and password hashing
+  - Added comprehensive user creation logic with proper error handling
+- **Database Schema Improvements**:
+  - Set default status `NotYet` for enrollments to ensure consistent data state
+  - Added migration for enrollment status defaults
+- **Enhanced Seeding System**:
+  - Added comprehensive seeding logic for semesters and students
+  - Enhanced lecturer seeding with proper data relationships
+  - Renamed seed functions for better consistency and maintainability
+
+### Changed
+
+- **Framework Migration - Express.js**:
+  - **Migrated from Fastify back to Express.js** for better ecosystem compatibility and middleware support
+  - Updated from `@nestjs/platform-fastify` to `@nestjs/platform-express`
+  - Replaced Fastify-specific body limits with Express `json()` and `urlencoded()` middleware (50MB limit maintained)
+  - Simplified application bootstrap and removed Fastify-specific configurations
+- **Dependencies Updates**:
+  - **Removed**: `fastify`, `@nestjs/platform-fastify`, `@fastify/basic-auth`, `@fastify/static`, `@bull-board/fastify`
+  - **Added**: `express`, `@nestjs/platform-express`, `basic-auth-connect`, `@bull-board/express`
+  - Updated Bull Board to use `ExpressAdapter` instead of `FastifyAdapter`
+- **BullMQ Dashboard Authentication**:
+  - Replaced custom Fastify basic auth middleware with `basic-auth-connect` middleware
+  - Simplified authentication setup using Express-native middleware approach
+  - Enhanced security configuration with streamlined middleware integration
+- **Password Validation Enhancement**:
+  - **Auth DTOs**: Enhanced password regex validation to require special characters
+  - Updated `AdminLoginDto` and `UserLoginDto` to enforce stronger password requirements
+  - New pattern: `^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$`
+- **Service Layer Improvements**:
+  - Simplified user and student creation logic by removing redundant methods
+  - Enhanced error handling with consistent formatting
+  - Improved lecturer conflict detection with better error messages
+
+### Fixed
+
+- **Error Message Formatting**: Corrected error message formatting for existing lecturer conflicts
+- **User Creation Flow**: Streamlined creation process with proper validation and email integration
+- **Middleware Configuration**: Fixed Bull Board authentication with proper Express middleware setup
+
+### Removed
+
+- **Fastify Dependencies**: Removed all Fastify-related packages and configurations
+- **Custom Basic Auth Middleware**: Removed custom Fastify basic auth implementation
+- **Redundant Service Methods**: Cleaned up duplicate user creation methods across services
+- **Unused Middleware Files**: Removed custom `bull-board.middleware.ts` and related exports
+
+### Security
+
+- **Enhanced Password Requirements**: Added mandatory special character requirement for all user passwords
+- **Improved Authentication Flow**: Better validation and hashing during user creation process
+- **Bull Board Security**: Maintained secure authentication for dashboard access with Express middleware
+
+### Performance
+
+- **Framework Optimization**: Express.js provides better middleware ecosystem and potentially improved performance for certain operations
+- **Simplified Bootstrap**: Reduced application startup complexity by removing Fastify-specific configurations
+- **Memory Usage**: Improved memory efficiency with Express's simpler request/response handling
+
+### Database Migration
+
+- **Enrollment Defaults**: Added migration to set default `NotYet` status for enrollment records
+- **Data Consistency**: Ensured all new enrollments have proper default status values
+
+### Pull Requests
+
+- [#127](https://github.com/5-logic/the-sync-backend/pull/127) - Framework migration and user creation enhancements (closes #125)
+
 ## [0.5.4] - 2025-06-30
 
 ### Added
