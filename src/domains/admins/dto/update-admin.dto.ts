@@ -1,18 +1,18 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, Matches, MinLength } from 'class-validator';
 
 export class UpdateAdminDto {
-	@ApiProperty({ required: false })
+	@ApiPropertyOptional()
 	@IsEmail()
 	@IsOptional()
 	email?: string;
 
-	@ApiProperty({ required: false })
+	@ApiPropertyOptional()
 	@MinLength(12)
 	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	oldPassword?: string;
 
-	@ApiProperty({ required: false })
+	@ApiPropertyOptional()
 	@MinLength(12)
 	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	newPassword?: string;
