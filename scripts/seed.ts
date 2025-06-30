@@ -1580,6 +1580,20 @@ const seedStudents = async () => {
 						majorId: student.majorId,
 					},
 				});
+
+				await tx.enrollment.upsert({
+					where: {
+						studentId_semesterId: {
+							studentId: student.id,
+							semesterId: '6969801d-77b6-48a3-b398-228971c80f40',
+						},
+					},
+					update: {},
+					create: {
+						studentId: student.id,
+						semesterId: '6969801d-77b6-48a3-b398-228971c80f40',
+					},
+				});
 			}
 		},
 		{ timeout: TIMEOUT },
