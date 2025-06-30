@@ -19,6 +19,7 @@ export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 
 			return Promise.resolve(false);
 		},
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 		optionsSuccessStatus: 200,
 	};
 });
