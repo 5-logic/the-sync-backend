@@ -5,6 +5,135 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2025-06-30
+
+### Added
+
+- **Enhanced User Creation Process**:
+  - Implemented password hashing for student creation with automatic email notifications
+  - Enhanced lecturer creation with email validation and password hashing
+  - Added comprehensive user creation logic with proper error handling
+- **Database Schema Improvements**:
+  - Set default status `NotYet` for enrollments to ensure consistent data state
+  - Added migration for enrollment status defaults
+- **Enhanced Seeding System**:
+  - Added comprehensive seeding logic for semesters and students
+  - Enhanced lecturer seeding with proper data relationships
+  - Renamed seed functions for better consistency and maintainability
+
+### Changed
+
+- **Framework Migration - Express.js**:
+  - **Migrated from Fastify back to Express.js** for better ecosystem compatibility and middleware support
+  - Updated from `@nestjs/platform-fastify` to `@nestjs/platform-express`
+  - Replaced Fastify-specific body limits with Express `json()` and `urlencoded()` middleware (50MB limit maintained)
+  - Simplified application bootstrap and removed Fastify-specific configurations
+- **Dependencies Updates**:
+  - **Removed**: `fastify`, `@nestjs/platform-fastify`, `@fastify/basic-auth`, `@fastify/static`, `@bull-board/fastify`
+  - **Added**: `express`, `@nestjs/platform-express`, `basic-auth-connect`, `@bull-board/express`
+  - Updated Bull Board to use `ExpressAdapter` instead of `FastifyAdapter`
+- **BullMQ Dashboard Authentication**:
+  - Replaced custom Fastify basic auth middleware with `basic-auth-connect` middleware
+  - Simplified authentication setup using Express-native middleware approach
+  - Enhanced security configuration with streamlined middleware integration
+- **Password Validation Enhancement**:
+  - **Auth DTOs**: Enhanced password regex validation to require special characters
+  - Updated `AdminLoginDto` and `UserLoginDto` to enforce stronger password requirements
+  - New pattern: `^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$`
+- **Service Layer Improvements**:
+  - Simplified user and student creation logic by removing redundant methods
+  - Enhanced error handling with consistent formatting
+  - Improved lecturer conflict detection with better error messages
+
+### Fixed
+
+- **Error Message Formatting**: Corrected error message formatting for existing lecturer conflicts
+- **User Creation Flow**: Streamlined creation process with proper validation and email integration
+- **Middleware Configuration**: Fixed Bull Board authentication with proper Express middleware setup
+
+### Removed
+
+- **Fastify Dependencies**: Removed all Fastify-related packages and configurations
+- **Custom Basic Auth Middleware**: Removed custom Fastify basic auth implementation
+- **Redundant Service Methods**: Cleaned up duplicate user creation methods across services
+- **Unused Middleware Files**: Removed custom `bull-board.middleware.ts` and related exports
+
+### Security
+
+- **Enhanced Password Requirements**: Added mandatory special character requirement for all user passwords
+- **Improved Authentication Flow**: Better validation and hashing during user creation process
+- **Bull Board Security**: Maintained secure authentication for dashboard access with Express middleware
+
+### Performance
+
+- **Framework Optimization**: Express.js provides better middleware ecosystem and potentially improved performance for certain operations
+- **Simplified Bootstrap**: Reduced application startup complexity by removing Fastify-specific configurations
+- **Memory Usage**: Improved memory efficiency with Express's simpler request/response handling
+
+### Database Migration
+
+- **Enrollment Defaults**: Added migration to set default `NotYet` status for enrollment records
+- **Data Consistency**: Ensured all new enrollments have proper default status values
+
+### Pull Requests
+
+- [#127](https://github.com/5-logic/the-sync-backend/pull/127) - Framework migration and user creation enhancements (closes #125)
+
+## [0.5.4] - 2025-06-30
+
+### Added
+
+- **Student Management APIs**:
+  - `DELETE /students/:id/semester/:semesterId` - New admin endpoint for deleting students from specific semesters (requires both `id` and `semesterId` as path parameters)
+- **Lecturer Management APIs**:
+  - `DELETE /lecturers/:id` - New admin endpoint for permanently removing lecturers (requires `id` as path parameter)
+
+### Changed
+
+- **Database Schema Improvements**:
+  - **Student Model**: Renamed `studentId` field to `studentCode` for better clarity and consistency
+  - **Foreign Key Relationships**: Enhanced student-related relationships with `onDelete: Cascade` for automatic cleanup when students are deleted
+  - Updated all student-related models (`StudentSkill`, `StudentExpectedResponsibility`, `StudentGroupParticipation`) to reference `userId` instead of `studentCode`
+- **Student DTOs Updates**:
+  - `CreateStudentDto`: Changed `studentId` field to `studentCode`
+  - `ImportStudentItemDto`: Changed `studentId` field to `studentCode`
+  - `SelfUpdateStudentDto`: Updated to exclude `studentCode` instead of `studentId`
+- **CORS Configuration Enhancement**:
+  - Added explicit HTTP methods configuration (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`) for better CORS support
+- **Service Layer Improvements**:
+  - Enhanced student deletion logic with semester validation and conflict checks
+  - Improved lecturer deletion logic with comprehensive validation before removal
+  - Simplified exception messages across all services for better consistency
+  - Updated email templates to use `studentCode` instead of `studentId`
+
+### Fixed
+
+- **Student Service**: Updated service methods to use `studentCode` instead of `studentId` for consistency
+- **Logging Improvements**: Enhanced log messages with better null handling using nullish coalescing operators
+- **Validation Logic**: Streamlined deletion validation methods for both students and lecturers
+
+### Removed
+
+- **Unused Imports**: Cleaned up unused `BadRequestException` imports from lecturer service
+- **Deprecated Validation Methods**: Removed unused validation methods that were replaced by streamlined logic
+
+### Security
+
+- **Enhanced Deletion Safety**: Added comprehensive validation checks before allowing student or lecturer deletion
+- **Semester Validation**: Students can only be deleted from specific semesters with proper validation
+- **Conflict Prevention**: Added checks to prevent deletion when entities have active relationships
+
+### Database Migration
+
+- **Schema Updates**: Added migration to rename `student_id` column to `student_code` and update all related foreign key references
+- **Cascade Deletion**: Enhanced database constraints to automatically clean up related records when students are deleted
+
+### Pull Requests
+
+- [#124](https://github.com/5-logic/the-sync-backend/pull/124) - Merge dev branch for v0.5.4 release
+- [#122](https://github.com/5-logic/the-sync-backend/pull/122) - Enhanced student and lecturer deletion functionality with validation (closes #113)
+- [#121](https://github.com/5-logic/the-sync-backend/pull/121) - Student deletion enhancements with semester parameter support (closes #113)
+
 ## [0.5.3] - 2025-06-29
 
 ### Changed

@@ -10,7 +10,7 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { FastifyRequest } from 'fastify';
+import { Request } from 'express';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
@@ -30,7 +30,7 @@ export class ThesisController {
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Post()
-	async create(@Req() req: FastifyRequest, @Body() dto: CreateThesisDto) {
+	async create(@Req() req: Request, @Body() dto: CreateThesisDto) {
 		const user = req.user as UserPayload;
 
 		return await this.thesisService.create(user.id, dto);
@@ -49,7 +49,7 @@ export class ThesisController {
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Put(':id')
 	async update(
-		@Req() req: FastifyRequest,
+		@Req() req: Request,
 		@Param('id') id: string,
 		@Body() dto: UpdateThesisDto,
 	) {
@@ -60,7 +60,7 @@ export class ThesisController {
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Post(':id/submit')
-	async submitForReview(@Req() req: FastifyRequest, @Param('id') id: string) {
+	async submitForReview(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as UserPayload;
 
 		return await this.thesisService.submitForReview(user.id, id);
@@ -74,7 +74,7 @@ export class ThesisController {
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Delete(':id')
-	async remove(@Req() req: FastifyRequest, @Param('id') id: string) {
+	async remove(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as UserPayload;
 
 		return await this.thesisService.remove(user.id, id);

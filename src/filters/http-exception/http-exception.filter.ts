@@ -5,13 +5,13 @@ import {
 	HttpException,
 	HttpStatus,
 } from '@nestjs/common';
-import { FastifyReply } from 'fastify';
+import { Response } from 'express';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
-		const res = ctx.getResponse<FastifyReply>();
+		const res = ctx.getResponse<Response>();
 
 		let status: number;
 		let errorMessage: string | object;

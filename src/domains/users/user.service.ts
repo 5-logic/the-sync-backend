@@ -1,123 +1,14 @@
-import {
-	ConflictException,
-	Injectable,
-	Logger,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { Role } from '@/auth/enums/role.enum';
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { CreateUserDto, UpdateUserDto } from '@/users/dto';
-import { hash, verify } from '@/utils/hash.util';
-import { generateStrongPassword } from '@/utils/password-generator.util';
-
-import { EnrollmentStatus, PrismaClient } from '~/generated/prisma';
+import { verify } from '@/utils/hash.util';
 
 @Injectable()
 export class UserService {
 	private readonly logger = new Logger(UserService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
-
-	static async create(
-		dto: CreateUserDto,
-		prismaClient: PrismaClient,
-		logger: Logger,
-	) {
-		try {
-			const existingUser = await prismaClient.user.findFirst({
-				where: {
-					email: dto.email,
-				},
-			});
-
-			if (existingUser) {
-				logger.warn(`User with email ${dto.email}  already exists`);
-
-				throw new ConflictException('User with this email already exists');
-			}
-
-			const password = generateStrongPassword();
-
-			const hashedPassword = await hash(password);
-
-			const newUser = await prismaClient.user.create({
-				data: {
-					...dto,
-					password: hashedPassword,
-				},
-				omit: {
-					password: true,
-				},
-			});
-
-			logger.log(`User created with ID: ${newUser.id}`);
-			logger.debug('User detail', newUser);
-
-			return {
-				...newUser,
-				plainPassword: password,
-			};
-		} catch (error) {
-			logger.error('Error creating user', error);
-
-			throw error;
-		}
-	}
-
-	/**
-	 * Enroll an existing student in a semester and reset their password.
-	 * This method handles both password reset and enrollment creation.
-	 *
-	 * @param userId - The user ID of the existing student
-	 * @param semesterId - The semester ID to enroll the student in
-	 * @param prismaClient - Prisma client instance for database operations
-	 * @param logger - Logger instance for logging
-	 * @returns Object containing updated user and plain password
-	 */
-	static async enrollExistingStudent(
-		userId: string,
-		semesterId: string,
-		prismaClient: PrismaClient,
-		logger: Logger,
-	) {
-		try {
-			// Generate new password if not provided
-			const password = generateStrongPassword();
-			const hashedPassword = await hash(password);
-
-			// Update user password
-			const updatedUser = await prismaClient.user.update({
-				where: { id: userId },
-				data: { password: hashedPassword },
-				omit: {
-					password: true,
-				},
-			});
-
-			// Create enrollment
-			await prismaClient.enrollment.create({
-				data: {
-					studentId: userId,
-					semesterId: semesterId,
-					status: EnrollmentStatus.NotYet,
-				},
-			});
-
-			logger.log(
-				`Student enrolled to semester ${semesterId} with new password`,
-			);
-
-			return {
-				user: updatedUser,
-				plainPassword: password,
-			};
-		} catch (error) {
-			logger.error('Error enrolling existing student', error);
-
-			throw error;
-		}
-	}
 
 	async findOne(params: { id?: string; email?: string }) {
 		try {
@@ -141,42 +32,6 @@ export class UserService {
 			return user;
 		} catch (error) {
 			this.logger.error('Error fetching user', error);
-
-			throw error;
-		}
-	}
-
-	static async update(
-		id: string,
-		dto: UpdateUserDto,
-		prismaClient: PrismaClient,
-		logger: Logger,
-	) {
-		try {
-			const existingUser = await prismaClient.user.findUnique({
-				where: { id },
-			});
-
-			if (!existingUser) {
-				logger.warn(`User with ID ${id} not found for update`);
-
-				throw new NotFoundException(`User not found`);
-			}
-
-			const updatedUser = await prismaClient.user.update({
-				where: { id },
-				data: dto,
-				omit: {
-					password: true,
-				},
-			});
-
-			logger.log(`User updated with ID: ${updatedUser.id}`);
-			logger.debug('Updated User', updatedUser);
-
-			return updatedUser;
-		} catch (error) {
-			logger.error('Error updating user', error);
 
 			throw error;
 		}

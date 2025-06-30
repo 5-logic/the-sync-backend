@@ -17,6 +17,6 @@ export class UserLoginDto {
 	@IsString()
 	@IsNotEmpty()
 	@MinLength(12)
-	@Matches(/^(?=.*[A-Z])(?=.*\d).+$/)
+	@Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).+$/)
 	password: string;
 }

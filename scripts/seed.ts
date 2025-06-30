@@ -1,9 +1,9 @@
-import { PrismaClient } from '../generated/prisma';
+import { Gender, PrismaClient, SemesterStatus } from '../generated/prisma';
 import { hash } from '../src/utils/hash.util';
 
 const prisma = new PrismaClient();
 
-const seedAdmin = async () => {
+const seedAdmins = async () => {
 	await prisma.admin.upsert({
 		where: { username: 'admin' },
 		update: {},
@@ -17,7 +17,7 @@ const seedAdmin = async () => {
 	console.log('👤 Admin seeded successfully');
 };
 
-const seedMajor = async () => {
+const seedMajors = async () => {
 	const majors = [
 		{
 			id: '476723ef-1eb2-4a00-944c-1bef7054c44a',
@@ -44,7 +44,7 @@ const seedMajor = async () => {
 	console.log('🎓 Major seeded successfully');
 };
 
-const seedResponsibility = async () => {
+const seedResponsibilities = async () => {
 	const responsibilities = [
 		// Software Engineering
 		{ id: 'a485b1a7-6ce5-4a64-b087-11ef57772897', name: 'Backend' },
@@ -1422,15 +1422,177 @@ const seedSkills = async () => {
 	console.log('🛠️ Skills seeded successfully');
 };
 
+const seedLectuers = async () => {
+	const lecturers = [
+		{
+			id: '11e9f2f2-6054-45dc-a1cb-e798ca82a878',
+			fullName: 'Lê Minh Vương',
+			email: 'hardingadonis@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: 'd9962353-8ce7-4317-ba1f-0bc736453a20',
+			fullName: 'Đinh Quốc Chương',
+			email: 'quocchuong3k@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: '9e82e70a-7d96-4847-af9b-1717422d7237',
+			fullName: 'Nguyễn Thị Thuý',
+			email: 'nguyenthithuy1022003@gmail.com',
+			gender: Gender.Female,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: '8d0e3690-ebac-4970-8bf7-e306670e99d8',
+			fullName: 'Hứa Đức Bình',
+			email: 'binhbobinhbo22@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+		{
+			id: 'be5a6ec4-c988-4e9e-adfb-9d252b5fd8d5',
+			fullName: 'Hồ Trọng Nghĩa',
+			email: 'htn10a2@gmail.com',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+		},
+	];
+
+	await prisma.$transaction(async (tx) => {
+		for (const lecturer of lecturers) {
+			await tx.user.upsert({
+				where: { id: lecturer.id },
+				update: {},
+				create: {
+					id: lecturer.id,
+					fullName: lecturer.fullName,
+					email: lecturer.email,
+					password: await hash('FPTUniversity@2025'),
+					gender: lecturer.gender,
+					phoneNumber: lecturer.phoneNumber,
+				},
+			});
+
+			await tx.lecturer.upsert({
+				where: { userId: lecturer.id },
+				update: {},
+				create: { userId: lecturer.id },
+			});
+		}
+	});
+
+	console.log('👨‍🏫 Lecturers seeded successfully');
+};
+
+const seedSemesters = async () => {
+	await prisma.semester.upsert({
+		where: { id: '6969801d-77b6-48a3-b398-228971c80f40' },
+		update: {},
+		create: {
+			id: '6969801d-77b6-48a3-b398-228971c80f40',
+			name: 'Summer 2025',
+			code: 'SU25',
+			status: SemesterStatus.Preparing,
+		},
+	});
+
+	console.log('📅 Semester seeded successfully');
+};
+
+const seedStudents = async () => {
+	const students = [
+		{
+			id: '94116d81-8602-4bca-90f9-9f2092194427',
+			fullName: 'Lê Minh Vương',
+			email: 'vuonglmqe170148@fpt.edu.vn',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+			studentCode: 'QE170148',
+			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
+		},
+		{
+			id: '7f0c713f-54e5-4823-a889-82d34335faf9',
+			fullName: 'Đinh Quốc Chương',
+			email: 'chuongdqqe170092@fpt.edu.vn',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+			studentCode: 'QE170092',
+			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
+		},
+		{
+			id: '00cf05b8-2d30-4707-a339-191e3cf4f054',
+			fullName: 'Nguyễn Thị Thuý',
+			email: 'thuyntqe170033@fpt.edu.vn',
+			gender: Gender.Female,
+			phoneNumber: '0456783457',
+			studentCode: 'QE170033',
+			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
+		},
+		{
+			id: 'f0426864-60e3-449f-a280-bf6fba84df73',
+			fullName: 'Hứa Đức Bình',
+			email: 'binhhdqe170217@fpt.edu.vn',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+			studentCode: 'QE170217',
+			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
+		},
+		{
+			id: '0c1ba461-751a-4369-a035-e94a1c07a1ce',
+			fullName: 'Hồ Trọng Nghĩa',
+			email: 'nghiahtqe170173@fpt.edu.vn',
+			gender: Gender.Male,
+			phoneNumber: '0456783457',
+			studentCode: 'QE170173',
+			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
+		},
+	];
+
+	await prisma.$transaction(async (tx) => {
+		for (const student of students) {
+			await tx.user.upsert({
+				where: { id: student.id },
+				update: {},
+				create: {
+					id: student.id,
+					fullName: student.fullName,
+					email: student.email,
+					password: await hash('FPTUniversity@2025'),
+					gender: student.gender,
+					phoneNumber: student.phoneNumber,
+				},
+			});
+
+			await tx.student.upsert({
+				where: { userId: student.id },
+				update: {},
+				create: {
+					userId: student.id,
+					studentCode: student.studentCode,
+					majorId: student.majorId,
+				},
+			});
+		}
+	});
+
+	console.log('👩‍🎓 Students seeded successfully');
+};
+
 async function main() {
 	try {
 		await prisma.$connect();
 
-		await seedAdmin();
-		await seedMajor();
-		await seedResponsibility();
+		await seedAdmins();
+		await seedMajors();
+		await seedResponsibilities();
 		await seedSkillSets();
 		await seedSkills();
+		await seedLectuers();
+		await seedSemesters();
+		await seedStudents();
 	} catch (error) {
 		console.error('Seed failed:', error);
 

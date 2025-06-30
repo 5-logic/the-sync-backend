@@ -17,14 +17,10 @@ import {
 	ToggleStudentStatusDto,
 	UpdateStudentDto,
 } from '@/students/dto';
-import { CreateUserDto, UpdateUserDto } from '@/users/dto';
-import { UserService } from '@/users/user.service';
+import { hash } from '@/utils/hash.util';
+import { generateStrongPassword } from '@/utils/password-generator.util';
 
-import {
-	EnrollmentStatus,
-	PrismaClient,
-	SemesterStatus,
-} from '~/generated/prisma';
+import { SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
 export class StudentService {
@@ -42,6 +38,7 @@ export class StudentService {
 		const semester = await this.prisma.semester.findUnique({
 			where: { id: semesterId },
 		});
+
 		if (!semester) {
 			throw new NotFoundException(`Semester not found`);
 		}
@@ -85,15 +82,23 @@ export class StudentService {
 	 * Note: A student can be enrolled in multiple semesters simultaneously
 	 */
 	async create(dto: CreateStudentDto) {
-		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				// Validate major and semester
-				await this.validateMajorForEnrollment(dto.majorId);
-				const semester = await this.validateSemesterForEnrollment(
-					dto.semesterId,
-				);
+		this.logger.log(
+			`Creating student with studentCode: ${dto.studentCode}, email: ${dto.email}`,
+		);
 
-				const existingStudent = await prisma.student.findUnique({
+		try {
+			// Validate major and semester
+			await this.validateMajorForEnrollment(dto.majorId);
+			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
+
+			let emailDto: EmailJobDto | undefined = undefined;
+			let isNewStudent = false;
+
+			const plainPassword = generateStrongPassword();
+			const hashedPassword = await hash(plainPassword);
+
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingStudent = await txn.student.findUnique({
 					where: { studentCode: dto.studentCode },
 					include: {
 						user: {
@@ -109,10 +114,8 @@ export class StudentService {
 					},
 				});
 
-				let user;
-				let plainPassword: string;
+				let userInfo;
 				let studentInfo;
-				let isNewStudent = false;
 
 				if (existingStudent) {
 					// Check if student is already enrolled in this specific semester
@@ -128,15 +131,23 @@ export class StudentService {
 
 					// Student exists but not enrolled in this semester
 					// A student can be enrolled in multiple semesters, so we only enroll them in this semester
-					const enrollResult = await UserService.enrollExistingStudent(
-						existingStudent.userId,
-						dto.semesterId,
-						prisma as PrismaClient,
-						this.logger,
-					);
+					userInfo = await txn.user.update({
+						where: { id: existingStudent.userId },
+						data: {
+							password: hashedPassword,
+						},
+						omit: {
+							password: true,
+						},
+					});
 
-					user = enrollResult.user;
-					plainPassword = enrollResult.plainPassword;
+					await txn.enrollment.create({
+						data: {
+							studentId: existingStudent.userId,
+							semesterId: dto.semesterId,
+						},
+					});
+
 					studentInfo = {
 						studentCode: existingStudent.studentCode,
 						majorId: existingStudent.majorId,
@@ -147,43 +158,37 @@ export class StudentService {
 					);
 				} else {
 					// Student doesn't exist, create new student
-					const createUserDto: CreateUserDto = {
-						email: dto.email,
-						fullName: dto.fullName,
-						gender: dto.gender,
-						phoneNumber: dto.phoneNumber,
-					};
-
-					const createResult = await UserService.create(
-						createUserDto,
-						prisma as PrismaClient,
-						this.logger,
-					);
-
-					user = createResult;
-					plainPassword = createResult.plainPassword;
-					const userId = user.id;
-
-					const student = await prisma.student.create({
+					userInfo = await txn.user.create({
 						data: {
-							userId: userId,
+							email: dto.email,
+							fullName: dto.fullName,
+							gender: dto.gender,
+							phoneNumber: dto.phoneNumber,
+							password: hashedPassword,
+						},
+						omit: {
+							password: true,
+						},
+					});
+
+					studentInfo = await txn.student.create({
+						data: {
+							userId: userInfo.id,
 							studentCode: dto.studentCode,
 							majorId: dto.majorId,
 						},
-					});
-
-					await prisma.enrollment.create({
-						data: {
-							studentId: student.userId,
-							semesterId: dto.semesterId,
-							status: EnrollmentStatus.NotYet,
+						select: {
+							studentCode: true,
+							majorId: true,
 						},
 					});
 
-					studentInfo = {
-						studentCode: student.studentCode,
-						majorId: student.majorId,
-					};
+					await txn.enrollment.create({
+						data: {
+							studentId: userInfo.id,
+							semesterId: dto.semesterId,
+						},
+					});
 
 					isNewStudent = true;
 
@@ -195,31 +200,43 @@ export class StudentService {
 					);
 				}
 
-				// Send welcome email with credentials (unified logic)
-				const emailDto: EmailJobDto = {
-					to: user.email,
+				// Prepare email data
+				emailDto = {
+					to: userInfo.email,
 					subject: isNewStudent
 						? 'Welcome to TheSync'
 						: 'Welcome back to TheSync',
 					context: {
-						fullName: user.fullName,
-						email: user.email,
+						fullName: userInfo.fullName,
+						email: userInfo.email,
 						password: plainPassword,
 						studentCode: studentInfo.studentCode,
 						semesterName: semester.name,
 					},
 				};
-				await this.email.sendEmail(
-					EmailJobType.SEND_STUDENT_ACCOUNT,
-					emailDto,
-					500,
-				);
 
 				return {
-					...user,
+					...userInfo,
 					...studentInfo,
 				};
 			});
+
+			// Send email after all operations are successful
+			if (!emailDto) {
+				this.logger.warn(
+					'No email data prepared for sending after student creation',
+				);
+
+				throw Error(
+					'No email data prepared for sending after student creation',
+				);
+			}
+
+			await this.email.sendEmail(
+				EmailJobType.SEND_STUDENT_ACCOUNT,
+				emailDto,
+				500,
+			);
 
 			this.logger.log(`Student operation completed with userId: ${result.id}`);
 			this.logger.debug('Student detail', result);
@@ -233,9 +250,9 @@ export class StudentService {
 	}
 
 	async findAll() {
-		try {
-			this.logger.log('Fetching all students');
+		this.logger.log('Fetching all students');
 
+		try {
 			const students = await this.prisma.student.findMany({
 				include: {
 					user: {
@@ -269,9 +286,9 @@ export class StudentService {
 	}
 
 	async findOne(id: string) {
-		try {
-			this.logger.log(`Fetching student with ID: ${id}`);
+		this.logger.log(`Fetching student with ID: ${id}`);
 
+		try {
 			const student = await this.prisma.student.findUnique({
 				where: { userId: id },
 				include: {
@@ -304,9 +321,11 @@ export class StudentService {
 	}
 
 	async update(id: string, dto: SelfUpdateStudentDto) {
+		this.logger.log(`Updating student with ID: ${id}`);
+
 		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingStudent = await prisma.student.findUnique({
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingStudent = await txn.student.findUnique({
 					where: { userId: id },
 				});
 
@@ -316,27 +335,22 @@ export class StudentService {
 					throw new NotFoundException(`Student not found`);
 				}
 
-				const updateUserDto: UpdateUserDto = {
-					fullName: dto.fullName,
-					gender: dto.gender,
-					phoneNumber: dto.phoneNumber,
-				};
-
-				const updatedUser = await UserService.update(
-					id,
-					updateUserDto,
-					prisma as PrismaClient,
-					this.logger,
-				);
-
-				const updatedStudent = await prisma.student.findUnique({
-					where: { userId: id },
+				const updatedUser = await txn.user.update({
+					where: { id },
+					data: {
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
+					},
+					omit: {
+						password: true,
+					},
 				});
 
 				return {
 					...updatedUser,
-					studentCode: updatedStudent!.studentCode,
-					majorId: updatedStudent!.majorId,
+					studentCode: existingStudent.studentCode,
+					majorId: existingStudent.majorId,
 				};
 			});
 
@@ -352,9 +366,11 @@ export class StudentService {
 	}
 
 	async updateByAdmin(id: string, dto: UpdateStudentDto) {
+		this.logger.log(`Updating student by admin with ID: ${id}`);
+
 		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingStudent = await prisma.user.findUnique({
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingStudent = await txn.user.findUnique({
 					where: { id: id },
 				});
 
@@ -364,7 +380,7 @@ export class StudentService {
 					throw new NotFoundException(`Student not found`);
 				}
 
-				const updatedUser = await prisma.user.update({
+				const updatedUser = await txn.user.update({
 					where: { id: id },
 					data: {
 						email: dto.email,
@@ -374,7 +390,7 @@ export class StudentService {
 					},
 				});
 
-				const updatedStudent = await prisma.student.update({
+				const updatedStudent = await txn.student.update({
 					where: { userId: id },
 					data: {
 						studentCode: dto.studentCode,
@@ -407,19 +423,24 @@ export class StudentService {
 	 * Note: A student can be enrolled in multiple semesters simultaneously
 	 */
 	async createMany(dto: ImportStudentDto) {
+		this.logger.log(
+			`Creating students in batch for semesterId: ${dto.semesterId}, majorId: ${dto.majorId}`,
+		);
+
 		try {
 			// Validate semester and major before starting the import process
 			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 			await this.validateMajorForEnrollment(dto.majorId);
 
+			const emailsToSend: EmailJobDto[] = [];
+
 			const results = await this.prisma.$transaction(
-				async (prisma) => {
+				async (txn) => {
 					const createdStudents: any[] = [];
-					const emailsToSend: EmailJobDto[] = [];
 
 					for (const studentData of dto.students) {
 						// Check if student already exists
-						const existingStudent = await prisma.student.findUnique({
+						const existingStudent = await txn.student.findUnique({
 							where: { studentCode: studentData.studentCode },
 							include: {
 								user: {
@@ -436,8 +457,8 @@ export class StudentService {
 						});
 
 						let result;
-						let shouldSendEmail = false;
-						let passwordForEmail = '';
+						const plainPassword = generateStrongPassword();
+						const hashedPassword = await hash(plainPassword);
 						let isNewStudent = false;
 
 						if (existingStudent) {
@@ -448,19 +469,29 @@ export class StudentService {
 
 							if (isAlreadyEnrolledInThisSemester) {
 								throw new ConflictException(
-									`Student with studentId ${studentData.studentCode} is already enrolled in semester ${semester.name}}`,
+									`Student with studentCode ${studentData.studentCode} is already enrolled in semester ${semester.name}}`,
 								);
 							}
 
 							// Student exists but not enrolled in this semester
 							// A student can be enrolled in multiple semesters, so we only enroll them in this semester
-							const { user: updatedUser, plainPassword } =
-								await UserService.enrollExistingStudent(
-									existingStudent.userId,
-									dto.semesterId,
-									prisma as PrismaClient,
-									this.logger,
-								);
+							const updatedUser = await txn.user.update({
+								where: { id: existingStudent.userId },
+								data: {
+									password: hashedPassword,
+								},
+								omit: {
+									password: true,
+								},
+							});
+
+							// Enroll the existing student in the new semester
+							await txn.enrollment.create({
+								data: {
+									studentId: existingStudent.userId,
+									semesterId: dto.semesterId,
+								},
+							});
 
 							this.logger.log(
 								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId} with new password`,
@@ -471,42 +502,35 @@ export class StudentService {
 								studentCode: existingStudent.studentCode,
 								majorId: existingStudent.majorId,
 							};
-
-							// Send email for re-enrolled student with new password
-							shouldSendEmail = true;
-							passwordForEmail = plainPassword;
 						} else {
 							// Student doesn't exist, create new student
-							// Create user DTO
-							const createUserDto: CreateUserDto = {
-								email: studentData.email,
-								fullName: studentData.fullName,
-								gender: studentData.gender,
-								phoneNumber: studentData.phoneNumber,
-							};
-
-							// Create user
-							const { plainPassword, ...newUser } = await UserService.create(
-								createUserDto,
-								prisma as PrismaClient,
-								this.logger,
-							);
-							const userId = newUser.id;
+							const newUser = await txn.user.create({
+								data: {
+									email: studentData.email,
+									fullName: studentData.fullName,
+									gender: studentData.gender,
+									phoneNumber: studentData.phoneNumber,
+									password: hashedPassword,
+								},
+								omit: {
+									password: true,
+								},
+							});
 
 							// Create student
-							const student = await prisma.student.create({
+							const newStudent = await txn.student.create({
 								data: {
-									userId: userId,
+									userId: newUser.id,
 									studentCode: studentData.studentCode,
 									majorId: dto.majorId,
 								},
 							});
 
-							await prisma.enrollment.create({
+							// Create enrollment for the new student
+							await txn.enrollment.create({
 								data: {
-									studentId: student.userId,
+									studentId: newStudent.userId,
 									semesterId: dto.semesterId,
-									status: EnrollmentStatus.NotYet,
 								},
 							});
 
@@ -520,33 +544,28 @@ export class StudentService {
 
 							result = {
 								...newUser,
-								studentCode: student.studentCode,
-								majorId: student.majorId,
+								studentCode: newStudent.studentCode,
+								majorId: newStudent.majorId,
 							};
 
-							// Send email for new student
-							shouldSendEmail = true;
-							passwordForEmail = plainPassword;
 							isNewStudent = true;
 						}
 
 						// Prepare email data for bulk sending
-						if (shouldSendEmail) {
-							const emailDto: EmailJobDto = {
-								to: result.email,
-								subject: isNewStudent
-									? 'Welcome to TheSync'
-									: 'Welcome back to TheSync',
-								context: {
-									fullName: result.fullName,
-									email: result.email,
-									password: passwordForEmail,
-									studentCode: result.studentCode,
-									semesterName: semester.name,
-								},
-							};
-							emailsToSend.push(emailDto);
-						}
+						const emailDto: EmailJobDto = {
+							to: result.email,
+							subject: isNewStudent
+								? 'Welcome to TheSync'
+								: 'Welcome back to TheSync',
+							context: {
+								fullName: result.fullName,
+								email: result.email,
+								password: plainPassword,
+								studentCode: result.studentCode,
+								semesterName: semester.name,
+							},
+						};
+						emailsToSend.push(emailDto);
 
 						createdStudents.push(result);
 
@@ -556,21 +575,21 @@ export class StudentService {
 						this.logger.debug('Student detail', result);
 					}
 
-					// Send bulk emails after all students are created successfully
-					if (emailsToSend.length > 0) {
-						await this.email.sendBulkEmails(
-							EmailJobType.SEND_STUDENT_ACCOUNT,
-							emailsToSend,
-							500,
-						);
-					}
-
 					return createdStudents;
 				},
 				{
 					timeout: TIMEOUT,
 				},
 			);
+
+			// Send bulk emails after all students are created successfully
+			if (emailsToSend.length > 0) {
+				await this.email.sendBulkEmails(
+					EmailJobType.SEND_STUDENT_ACCOUNT,
+					emailsToSend,
+					500,
+				);
+			}
 
 			this.logger.log(`Successfully processed ${results.length} students`);
 
@@ -583,6 +602,10 @@ export class StudentService {
 	}
 
 	async toggleStatus(id: string, toggleDto: ToggleStudentStatusDto) {
+		this.logger.log(
+			`Toggling status for student with ID: ${id}, isActive: ${toggleDto.isActive}`,
+		);
+
 		try {
 			const { isActive } = toggleDto;
 
@@ -632,9 +655,9 @@ export class StudentService {
 	}
 
 	async findAllBySemester(semesterId: string) {
-		try {
-			this.logger.log(`Fetching all students for semester: ${semesterId}`);
+		this.logger.log(`Fetching all students for semester: ${semesterId}`);
 
+		try {
 			// Validate semester exists (without status check)
 			const semester = await this.prisma.semester.findUnique({
 				where: { id: semesterId },
@@ -692,11 +715,11 @@ export class StudentService {
 	}
 
 	async delete(id: string, semesterId: string) {
-		try {
-			this.logger.log(
-				`Deleting student with ID: ${id} in Semester ${semesterId}`,
-			);
+		this.logger.log(
+			`Deleting student with ID: ${id} in Semester ${semesterId}`,
+		);
 
+		try {
 			const result = await this.prisma.$transaction(async (prisma) => {
 				// Single query to get all required data
 				const [existingStudent, existingSemester] = await Promise.all([

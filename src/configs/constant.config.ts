@@ -18,6 +18,6 @@ export const CONFIG_QUEUES = {
 
 export const TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
 
-export const BODY_LIMIT = 50 * 1024 * 1024; // 50MB
+export const BODY_LIMIT = '50mb'; // 50MB
 
 export const PRODUCTION = 'production';
