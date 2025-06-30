@@ -1,8 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+	BadRequestException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { Role } from '@/auth/enums/role.enum';
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { verify } from '@/utils/hash.util';
+import { UpdateUserPasswordDto } from '@/users/dto/update-user.dto';
+import { hash, verify } from '@/utils/hash.util';
 
 @Injectable()
 export class UserService {
@@ -106,5 +112,87 @@ export class UserService {
 
 			throw error;
 		}
+	}
+
+	async changePassword(userId: string, dto: UpdateUserPasswordDto) {
+		try {
+			this.logger.log(`Changing password for user: ${userId}`);
+
+			const existingUser = await this.prisma.user.findUnique({
+				where: { id: userId },
+				select: { id: true, password: true },
+			});
+
+			if (!existingUser) {
+				this.logger.warn(`User with ID ${userId} not found`);
+				throw new NotFoundException('User not found');
+			}
+
+			if (dto.currentPassword === dto.newPassword) {
+				this.logger.warn(
+					`New password must be different from current password for user: ${userId}`,
+				);
+				throw new BadRequestException(
+					'New password must be different from current password',
+				);
+			}
+
+			const isCurrentPasswordValid = await verify(
+				existingUser.password,
+				dto.currentPassword,
+			);
+
+			if (!isCurrentPasswordValid) {
+				this.logger.warn(`Invalid current password for user: ${userId}`);
+				throw new BadRequestException('Current password is incorrect');
+			}
+
+			const hashedNewPassword = await hash(dto.newPassword);
+
+			const updatedUser = await this.prisma.user.update({
+				where: { id: userId },
+				data: { password: hashedNewPassword },
+				include: {
+					student: {
+						omit: { userId: true },
+					},
+					lecturer: {
+						omit: { userId: true },
+					},
+				},
+				omit: { password: true },
+			});
+
+			const response = this.flattenUserData(updatedUser);
+
+			this.logger.log(`Password changed successfully for user: ${userId}`);
+			return response;
+		} catch (error) {
+			if (
+				error instanceof BadRequestException ||
+				error instanceof NotFoundException
+			) {
+				throw error;
+			}
+
+			this.logger.error(`Error changing password for user ${userId}:`, error);
+			throw new BadRequestException('Failed to change password');
+		}
+	}
+
+	private flattenUserData(user: any) {
+		const { student, lecturer, ...baseUser } = user;
+
+		return {
+			...baseUser,
+			...(student && {
+				studentCode: student.studentCode,
+				majorId: student.majorId,
+				major: student.major,
+			}),
+			...(lecturer && {
+				isModerator: lecturer.isModerator,
+			}),
+		};
 	}
 }

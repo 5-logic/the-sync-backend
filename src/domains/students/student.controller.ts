@@ -1,3 +1,4 @@
+import { UpdateUserPasswordDto } from '../users/dto/update-user.dto';
 import {
 	Body,
 	Controller,
@@ -22,13 +23,17 @@ import {
 	UpdateStudentDto,
 } from '@/students/dto';
 import { StudentService } from '@/students/student.service';
+import { UserService } from '@/users/user.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Student')
 @Controller('students')
 export class StudentController {
-	constructor(private readonly studentService: StudentService) {}
+	constructor(
+		private readonly studentService: StudentService,
+		private readonly userService: UserService,
+	) {}
 
 	@Roles(Role.ADMIN)
 	@Post()
@@ -63,6 +68,16 @@ export class StudentController {
 		const user = req.user as UserPayload;
 
 		return await this.studentService.update(user.id, dto);
+	}
+
+	@Roles(Role.STUDENT)
+	@Put('change-password')
+	async changePassword(
+		@Req() req: Request,
+		@Body() dto: UpdateUserPasswordDto,
+	) {
+		const user = req.user as UserPayload;
+		return await this.userService.changePassword(user.id, dto);
 	}
 
 	@Roles(Role.ADMIN)
