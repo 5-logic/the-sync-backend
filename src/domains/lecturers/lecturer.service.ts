@@ -12,9 +12,8 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateUserDto, UpdateUserDto } from '@/users/dto';
-import { UserService } from '@/users/user.service';
-
-import { PrismaClient } from '~/generated/prisma';
+import { hash } from '@/utils/hash.util';
+import { generateStrongPassword } from '@/utils/password-generator.util';
 
 @Injectable()
 export class LecturerService {
@@ -26,23 +25,48 @@ export class LecturerService {
 	) {}
 
 	async create(dto: CreateUserDto) {
-		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const { plainPassword, ...newUser } = await UserService.create(
-					dto,
-					prisma as PrismaClient,
-					this.logger,
-				);
-				const userId = newUser.id;
+		this.logger.log(`Creating lecturer with email: ${dto.email}`);
 
-				const lecturer = await prisma.lecturer.create({
-					data: {
-						userId,
+		try {
+			let emailDto: EmailJobDto | undefined = undefined;
+
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingUser = await txn.user.findUnique({
+					where: {
+						email: dto.email,
 					},
 				});
 
-				// Send welcome email with credentials
-				const emailDto: EmailJobDto = {
+				if (existingUser) {
+					this.logger.warn(`Lecturer with email ${dto.email} already exists`);
+
+					throw new ConflictException(
+						`Lecturer with  email ${dto.email} already exists`,
+					);
+				}
+
+				const plainPassword = generateStrongPassword();
+				const hashedPassword = await hash(plainPassword);
+
+				const newUser = await txn.user.create({
+					data: {
+						email: dto.email,
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
+						password: hashedPassword,
+					},
+					omit: {
+						password: true,
+					},
+				});
+
+				const newLecturer = await txn.lecturer.create({
+					data: { userId: newUser.id },
+				});
+
+				// Prepare email data
+				emailDto = {
 					to: newUser.email,
 					subject: 'Welcome to TheSync',
 					context: {
@@ -51,19 +75,25 @@ export class LecturerService {
 						password: plainPassword,
 					},
 				};
-				await this.email.sendEmail(
-					EmailJobType.SEND_LECTURER_ACCOUNT,
-					emailDto,
-					500,
-				);
-
-				this.logger.log(`Lecturer created with ID: ${newUser.id}`);
 
 				return {
 					...newUser,
-					isModerator: lecturer.isModerator,
+					isModerator: newLecturer.isModerator,
 				};
 			});
+
+			// Send email after user and lecturer are created
+			if (!emailDto) {
+				this.logger.error('Email DTO is undefined, cannot send email');
+
+				throw new Error('Email DTO is undefined');
+			}
+
+			await this.email.sendEmail(
+				EmailJobType.SEND_LECTURER_ACCOUNT,
+				emailDto,
+				500,
+			);
 
 			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
@@ -77,9 +107,9 @@ export class LecturerService {
 	}
 
 	async findAll() {
-		try {
-			this.logger.log('Fetching all lecturers');
+		this.logger.log('Fetching all lecturers');
 
+		try {
 			const lecturers = await this.prisma.lecturer.findMany({
 				include: {
 					user: {
@@ -112,9 +142,9 @@ export class LecturerService {
 	}
 
 	async findOne(id: string) {
-		try {
-			this.logger.log(`Fetching lecturer with ID: ${id}`);
+		this.logger.log(`Fetching lecturer with ID: ${id}`);
 
+		try {
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: id },
 				include: {
@@ -147,9 +177,11 @@ export class LecturerService {
 	}
 
 	async update(id: string, dto: UpdateUserDto) {
+		this.logger.log(`Updating lecturer with ID: ${id}`);
+
 		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingLecturer = await prisma.lecturer.findUnique({
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingLecturer = await txn.lecturer.findUnique({
 					where: { userId: id },
 				});
 
@@ -159,12 +191,15 @@ export class LecturerService {
 					throw new NotFoundException(`Lecturer not found`);
 				}
 
-				const updatedUser = await UserService.update(
-					id,
-					dto,
-					prisma as PrismaClient,
-					this.logger,
-				);
+				const updatedUser = await txn.user.update({
+					where: { id: id },
+					data: {
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
+					},
+					omit: { password: true },
+				});
 
 				return {
 					...updatedUser,
@@ -184,9 +219,11 @@ export class LecturerService {
 	}
 
 	async updateByAdmin(id: string, dto: UpdateLecturerDto) {
+		this.logger.log(`Admin updating lecturer with ID: ${id}`);
+
 		try {
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingLecturer = await prisma.user.findUnique({
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingLecturer = await txn.user.findUnique({
 					where: { id: id },
 				});
 
@@ -230,31 +267,56 @@ export class LecturerService {
 	}
 
 	async createMany(dto: CreateUserDto[]) {
+		this.logger.log(`Creating lecturers in batch: ${dto.length} records`);
+
 		try {
+			const emailsToSend: EmailJobDto[] = [];
+
 			const results = await this.prisma.$transaction(
-				async (prisma) => {
+				async (txn) => {
 					const createdLecturers: any[] = [];
-					const emailsToSend: EmailJobDto[] = [];
 
 					for (const createLecturerDto of dto) {
 						// Create user
-						const { plainPassword, ...newUser } = await UserService.create(
-							createLecturerDto,
-							prisma as PrismaClient,
-							this.logger,
-						);
-						const userId = newUser.id;
-
-						// Create lecturer
-						const lecturer = await prisma.lecturer.create({
-							data: {
-								userId,
+						const existingUser = await txn.user.findUnique({
+							where: {
+								email: createLecturerDto.email,
 							},
+						});
+
+						if (existingUser) {
+							this.logger.warn(
+								`Lecturer with email ${createLecturerDto.email} already exists`,
+							);
+
+							throw new ConflictException(
+								`Lecturer with  email ${createLecturerDto.email} already exists`,
+							);
+						}
+
+						const plainPassword = generateStrongPassword();
+						const hashedPassword = await hash(plainPassword);
+
+						const newUser = await txn.user.create({
+							data: {
+								email: createLecturerDto.email,
+								fullName: createLecturerDto.fullName,
+								gender: createLecturerDto.gender,
+								phoneNumber: createLecturerDto.phoneNumber,
+								password: hashedPassword,
+							},
+							omit: {
+								password: true,
+							},
+						});
+
+						const newLecturer = await txn.lecturer.create({
+							data: { userId: newUser.id },
 						});
 
 						const result = {
 							...newUser,
-							isModerator: lecturer.isModerator,
+							isModerator: newLecturer.isModerator,
 						};
 
 						createdLecturers.push(result);
@@ -275,19 +337,19 @@ export class LecturerService {
 						this.logger.debug('Lecturer detail', result);
 					}
 
-					// Send bulk emails after all lecturers are created successfully
-					if (emailsToSend.length > 0) {
-						await this.email.sendBulkEmails(
-							EmailJobType.SEND_LECTURER_ACCOUNT,
-							emailsToSend,
-							500,
-						);
-					}
-
 					return createdLecturers;
 				},
 				{ timeout: TIMEOUT },
 			);
+
+			// Send bulk emails after all lecturers are created successfully
+			if (emailsToSend.length > 0) {
+				await this.email.sendBulkEmails(
+					EmailJobType.SEND_LECTURER_ACCOUNT,
+					emailsToSend,
+					500,
+				);
+			}
 
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
@@ -300,11 +362,13 @@ export class LecturerService {
 	}
 
 	async toggleStatus(id: string, dto: ToggleLecturerStatusDto) {
+		this.logger.log(`Toggling status for lecturer with ID: ${id}`);
+
 		try {
 			const { isActive, isModerator } = dto;
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingLecturer = await prisma.lecturer.findUnique({
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingLecturer = await txn.lecturer.findUnique({
 					where: { userId: id },
 					include: {
 						user: true,
@@ -319,7 +383,7 @@ export class LecturerService {
 					throw new NotFoundException(`Lecturer not found`);
 				}
 
-				const updatedUser = await prisma.user.update({
+				const updatedUser = await txn.user.update({
 					where: { id },
 					data: {
 						isActive: isActive,
@@ -329,7 +393,7 @@ export class LecturerService {
 					},
 				});
 
-				const updatedLecturer = await prisma.lecturer.update({
+				const updatedLecturer = await txn.lecturer.update({
 					where: { userId: id },
 					data: {
 						isModerator: isModerator,
@@ -360,8 +424,8 @@ export class LecturerService {
 		try {
 			this.logger.log(`Deleting lecturer with ID: ${id}`);
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingLecturer = await prisma.lecturer.findUnique({
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingLecturer = await txn.lecturer.findUnique({
 					where: { userId: id },
 					select: {
 						isModerator: true,
@@ -417,11 +481,11 @@ export class LecturerService {
 					}
 				}
 
-				const deletedLecturer = await prisma.lecturer.delete({
+				const deletedLecturer = await txn.lecturer.delete({
 					where: { userId: id },
 				});
 
-				const deletedUser = await prisma.user.delete({
+				const deletedUser = await txn.user.delete({
 					where: { id },
 					omit: {
 						password: true,
