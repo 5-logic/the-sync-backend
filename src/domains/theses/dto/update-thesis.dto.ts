@@ -1,5 +1,4 @@
-import { PartialType } from '@nestjs/swagger';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { IsArray, IsBoolean, ValidateNested } from 'class-validator';
 
 import { CreateThesisDto } from '@/theses/dto/create-thesis.dto';
