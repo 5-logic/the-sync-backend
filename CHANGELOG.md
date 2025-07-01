@@ -5,6 +5,109 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2025-07-01
+
+### Added
+
+- **Skill Sets Management APIs**:
+  - `GET /skill-sets` - New endpoint for retrieving all skill sets with their associated skills (requires authentication and role-based access)
+  - `GET /skill-sets/:id` - New endpoint for retrieving a specific skill set by ID (requires `id` as path parameter)
+- **Thesis Management Enhancements**:
+  - `GET /theses/lecturer/:lecturerId` - New endpoint for lecturers and moderators to fetch theses by lecturer ID (requires `lecturerId` as path parameter)
+  - `PublishThesisDto` - New DTO for bulk thesis publishing operations with `thesesIds` array and `isPublish` boolean
+- **Password Management System**:
+  - `PUT /students/change-password` - New endpoint for students to change their passwords (requires `UpdateUserPasswordDto` with `currentPassword` and `newPassword`)
+  - `PUT /lecturers/change-password` - New endpoint for lecturers to change their passwords (requires `UpdateUserPasswordDto` with `currentPassword` and `newPassword`)
+  - `UpdateUserPasswordDto` - New DTO for password change operations with validation for current and new passwords
+- **Enhanced Admin Management**:
+  - Updated admin update functionality with optional password change support
+  - Enhanced admin profile management with email and password updates
+
+### Changed
+
+- **SkillSets Module Integration**:
+  - Added `SkillSetsModule` to `DomainModule` imports for centralized module management
+  - Implemented comprehensive skill sets service with error handling and logging
+  - Added proper ordering for skills (alphabetical by name) in skill sets responses
+- **Thesis Service Improvements**:
+  - Enhanced thesis service with `findAllByLecturerId` method for role-based thesis retrieval
+  - Improved thesis management with lecturer-specific filtering capabilities
+- **Admin DTO Enhancements**:
+  - `UpdateAdminDto` now uses `ApiPropertyOptional` for all optional fields for better API documentation
+  - Enhanced validation with optional email updates and password change functionality
+- **User Service Enhancements**:
+  - Implemented `changePassword` method with comprehensive validation and error handling
+  - Added password verification against current password before allowing updates
+  - Enhanced security with proper password hashing for new passwords
+- **Module Dependencies**:
+  - Added `UserService` to `StudentModule` and `LecturerModule` for password management functionality
+  - Enhanced module imports for better service dependency management
+- **Database Seeding Improvements**:
+  - Enhanced enrollment upsert logic in `seedStudents` function for better data consistency
+  - Added timeout configuration to database transactions in seed scripts for reliable operations
+  - Improved seeding performance and error handling
+
+### Fixed
+
+- **SkillSets Error Handling**:
+  - Enhanced `findOne` method to throw `NotFoundException` when skill set is not found
+  - Improved error messages and logging for better debugging
+- **Admin Controller Improvements**:
+  - Fixed PUT route in `AdminController` to handle empty string values properly
+  - Enhanced request validation and error handling
+- **Logging Enhancements**:
+  - Fixed skill sets detail logging to use `JSON.stringify` for better readability
+  - Improved debug logging across skill sets operations
+- **Import Consolidation**:
+  - Consolidated imports in `update-thesis.dto.ts` for better code organization
+  - Reordered path mappings in `tsconfig.json` for consistency
+- **Seeding Operations**:
+  - Removed timeout configuration from `seedSkills` function to prevent unnecessary delays
+  - Enhanced transaction management in seeding operations
+
+### Security
+
+- **Enhanced Password Validation**:
+  - Enforced strong password requirements with minimum 12 characters, uppercase, digits, and special characters
+  - Added password verification before allowing password changes
+  - Implemented secure password hashing for all password update operations
+- **Role-Based Access Control**:
+  - Enhanced skill sets endpoints with proper authentication and role validation
+  - Improved thesis management with lecturer and moderator role restrictions
+  - Secured password change endpoints with appropriate role-based access
+
+### Performance
+
+- **Database Query Optimization**:
+  - Optimized skill sets queries with proper ordering and efficient includes
+  - Enhanced thesis queries with lecturer-specific filtering
+  - Improved seeding operations with better transaction management
+- **Error Handling Optimization**:
+  - Streamlined error handling across skill sets and user management operations
+  - Enhanced logging performance with structured debug information
+
+### Code Quality
+
+- **Import Organization**:
+  - Consolidated and reordered imports across multiple DTOs and services
+  - Enhanced TypeScript path mapping configuration for better consistency
+- **DTO Structure Improvements**:
+  - Standardized DTO validation patterns across user and admin management
+  - Enhanced API documentation with proper optional field annotations
+- **Service Method Consistency**:
+  - Standardized service method implementations across skill sets and user operations
+  - Improved error handling patterns with consistent logging
+
+### Pull Requests
+
+- [#137](https://github.com/5-logic/the-sync-backend/pull/137) - Merge dev branch for v0.5.6 release
+- [#136](https://github.com/5-logic/the-sync-backend/pull/136) - Import consolidation and thesis management improvements (closes #128)
+- [#135](https://github.com/5-logic/the-sync-backend/pull/135) - Thesis publishing and lecturer thesis retrieval functionality (closes #128)
+- [#134](https://github.com/5-logic/the-sync-backend/pull/134) - SkillSets module implementation with API endpoints (closes #132)
+- [#133](https://github.com/5-logic/the-sync-backend/pull/133) - SkillSets error handling and logging improvements (closes #132)
+- [#130](https://github.com/5-logic/the-sync-backend/pull/130) - Password management system for students and lecturers (closes #126)
+- [#129](https://github.com/5-logic/the-sync-backend/pull/129) - Admin management enhancements and seeding improvements (closes #126)
+
 ## [0.5.5] - 2025-06-30
 
 ### Added
