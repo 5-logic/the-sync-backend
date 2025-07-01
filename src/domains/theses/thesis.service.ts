@@ -6,9 +6,13 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
 	CreateThesisDto,
+	PublishThesisDto,
 	ReviewThesisDto,
 	UpdateThesisDto,
 } from '@/theses/dto';
@@ -20,7 +24,210 @@ export class ThesisService {
 	private readonly logger = new Logger(ThesisService.name);
 	private static readonly INITIAL_VERSION = 1;
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailQueueService,
+	) {}
+
+	/**
+	 * Helper method to send thesis status change email notification
+	 */
+	private async sendThesisStatusChangeEmail(
+		thesisId: string,
+		newStatus: string,
+		isPublicationChange: boolean = false,
+	) {
+		try {
+			// Get thesis with lecturer information
+			const thesis = await this.prisma.thesis.findUnique({
+				where: { id: thesisId },
+				include: {
+					lecturer: {
+						include: {
+							user: {
+								select: {
+									email: true,
+									fullName: true,
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (!thesis) {
+				this.logger.warn(`Thesis with ID ${thesisId} not found for email`);
+				return;
+			}
+
+			// Determine email subject based on the type of change
+			let subject: string;
+			if (isPublicationChange) {
+				subject = `Thesis Publication Update - ${thesis.englishName}`;
+			} else {
+				subject = `Thesis Review Status Update - ${thesis.englishName}`;
+			}
+
+			// Prepare email data
+			const emailDto: EmailJobDto = {
+				to: thesis.lecturer.user.email,
+				subject,
+				context: {
+					lecturerName: thesis.lecturer.user.fullName,
+					englishName: thesis.englishName,
+					vietnameseName: thesis.vietnameseName,
+					abbreviation: thesis.abbreviation,
+					domain: thesis.domain,
+					status: newStatus,
+				},
+			};
+
+			// Send email
+			await this.email.sendEmail(
+				EmailJobType.SEND_THESIS_STATUS_CHANGE,
+				emailDto,
+				500,
+			);
+
+			this.logger.log(
+				`${isPublicationChange ? 'Publication' : 'Review status'} change email sent to ${thesis.lecturer.user.email} for thesis ${thesisId}`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Error sending status change email for thesis ${thesisId}`,
+				error,
+			);
+			// Don't throw error to avoid breaking the main operation
+		}
+	}
+
+	/**
+	 * Helper method to send bulk thesis status change email notification
+	 * Groups theses by lecturer to minimize email count
+	 */
+	private async sendBulkThesisStatusChangeEmail(
+		thesesIds: string[],
+		newStatus: string,
+		isPublicationChange: boolean = false,
+	) {
+		try {
+			// Get all theses with lecturer information
+			const theses = await this.prisma.thesis.findMany({
+				where: { id: { in: thesesIds } },
+				include: {
+					lecturer: {
+						include: {
+							user: {
+								select: {
+									email: true,
+									fullName: true,
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (theses.length === 0) {
+				this.logger.warn('No theses found for bulk email notification');
+				return;
+			}
+
+			// Group theses by lecturer
+			const thesesByLecturer = theses.reduce(
+				(acc, thesis) => {
+					const lecturerEmail = thesis.lecturer.user.email;
+					if (!acc[lecturerEmail]) {
+						acc[lecturerEmail] = {
+							lecturer: thesis.lecturer.user,
+							theses: [],
+						};
+					}
+					acc[lecturerEmail].theses.push({
+						id: thesis.id,
+						englishName: thesis.englishName,
+						vietnameseName: thesis.vietnameseName,
+						abbreviation: thesis.abbreviation,
+						domain: thesis.domain,
+					});
+					return acc;
+				},
+				{} as Record<string, { lecturer: any; theses: any[] }>,
+			);
+
+			// Send emails for each lecturer
+			const emailPromises = Object.entries(thesesByLecturer).map(
+				async ([email, { lecturer, theses: lecturerTheses }]) => {
+					// Determine email subject and type
+					let subject: string;
+					if (isPublicationChange) {
+						subject = `Thesis Publication Update - ${lecturerTheses.length} ${
+							lecturerTheses.length === 1 ? 'thesis' : 'theses'
+						}`;
+					} else {
+						subject = `Thesis Review Status Update - ${lecturerTheses.length} ${
+							lecturerTheses.length === 1 ? 'thesis' : 'theses'
+						}`;
+					}
+
+					// Use unified email template for both single and bulk
+					const emailType = EmailJobType.SEND_THESIS_STATUS_CHANGE;
+
+					// Prepare context for unified template
+					let context: any;
+					if (lecturerTheses.length === 1) {
+						// Single thesis - use single thesis format
+						const thesis = lecturerTheses[0];
+						context = {
+							lecturerName: lecturer.fullName,
+							englishName: thesis.englishName,
+							vietnameseName: thesis.vietnameseName,
+							abbreviation: thesis.abbreviation,
+							domain: thesis.domain,
+							status: newStatus,
+						};
+					} else {
+						// Multiple theses - use bulk format
+						context = {
+							lecturerName: lecturer.fullName,
+							theses: lecturerTheses,
+							actionType: newStatus,
+							isPublicationChange,
+						};
+					}
+
+					const emailDto: EmailJobDto = {
+						to: email,
+						subject,
+						context,
+					};
+
+					// Send email
+					await this.email.sendEmail(emailType, emailDto, 500);
+
+					this.logger.log(
+						`${
+							isPublicationChange ? 'Publication' : 'Review status'
+						} change email sent to ${email} for ${lecturerTheses.length} ${
+							lecturerTheses.length === 1 ? 'thesis' : 'theses'
+						}`,
+					);
+				},
+			);
+
+			// Wait for all emails to be sent
+			await Promise.allSettled(emailPromises);
+
+			this.logger.log(
+				`Bulk status change emails sent for ${thesesIds.length} theses to ${
+					Object.keys(thesesByLecturer).length
+				} lecturers`,
+			);
+		} catch (error) {
+			this.logger.error('Error sending bulk status change emails', error);
+			// Don't throw error to avoid breaking the main operation
+		}
+	}
 
 	async create(lecturerId: string, dto: CreateThesisDto) {
 		try {
@@ -162,6 +369,196 @@ export class ThesisService {
 			);
 			throw error;
 		}
+	}
+
+	async publishTheses(dto: PublishThesisDto) {
+		try {
+			this.logger.log(`Publishing theses with isPublish: ${dto.isPublish}`);
+
+			// Validate input
+			this.validateThesesIds(dto.thesesIds);
+
+			// Fetch theses with required data
+			const theses = await this.fetchThesesForPublishing(dto.thesesIds);
+
+			// Validate theses exist
+			this.validateThesesExist(theses, dto.thesesIds);
+
+			// Validate business rules
+			this.validateThesesForPublishing(theses);
+			this.validatePublicationAction(theses, dto.isPublish);
+
+			// Update theses
+			await this.updateThesesPublicationStatus(dto.thesesIds, dto.isPublish);
+
+			// Send notifications
+			this.sendPublicationNotifications(dto.thesesIds, dto.isPublish);
+
+			// Return updated theses
+			return await this.fetchUpdatedTheses(dto.thesesIds);
+		} catch (error) {
+			this.logger.error('Error publishing theses', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Validate thesis IDs input
+	 */
+	private validateThesesIds(thesesIds: string[]) {
+		if (!thesesIds || thesesIds.length === 0) {
+			this.logger.warn('No thesis IDs provided for publishing');
+			throw new NotFoundException('No thesis IDs provided');
+		}
+	}
+
+	/**
+	 * Fetch theses with publication-related data
+	 */
+	private async fetchThesesForPublishing(thesesIds: string[]) {
+		return await this.prisma.thesis.findMany({
+			where: { id: { in: thesesIds } },
+			select: {
+				id: true,
+				status: true,
+				isPublish: true,
+				group: { select: { id: true } },
+			},
+		});
+	}
+
+	/**
+	 * Validate that all requested theses exist
+	 */
+	private validateThesesExist(theses: any[], thesesIds: string[]) {
+		if (theses.length !== thesesIds.length) {
+			this.logger.warn(`Some theses not found for publishing`);
+			throw new NotFoundException('Some theses not found');
+		}
+	}
+
+	/**
+	 * Validate theses meet publishing requirements
+	 */
+	private validateThesesForPublishing(theses: any[]) {
+		const notApproved = theses.filter(
+			(t) => t.status !== ThesisStatus.Approved,
+		);
+
+		if (notApproved.length > 0) {
+			this.logger.warn('Some theses are not approved and cannot be published');
+			throw new ConflictException(
+				'All theses must be approved before publishing',
+			);
+		}
+	}
+
+	/**
+	 * Validate publication action (publish/unpublish)
+	 */
+	private validatePublicationAction(theses: any[], isPublish: boolean) {
+		if (isPublish) {
+			this.validatePublishAction(theses);
+		} else {
+			this.validateUnpublishAction(theses);
+		}
+	}
+
+	/**
+	 * Validate publish action
+	 */
+	private validatePublishAction(theses: any[]) {
+		const alreadyPublished = theses.filter((t) => t.isPublish);
+
+		if (alreadyPublished.length > 0) {
+			this.logger.warn(
+				'Some theses are already published and cannot be published again',
+			);
+			throw new ConflictException(
+				`${alreadyPublished.length} ${
+					alreadyPublished.length === 1 ? 'thesis is' : 'theses are'
+				} already published and cannot be published again`,
+			);
+		}
+	}
+
+	/**
+	 * Validate unpublish action
+	 */
+	private validateUnpublishAction(theses: any[]) {
+		// Check if already unpublished
+		const alreadyUnpublished = theses.filter((t) => !t.isPublish);
+		if (alreadyUnpublished.length > 0) {
+			this.logger.warn(
+				'Some theses are already unpublished and cannot be unpublished again',
+			);
+			throw new ConflictException(
+				`${alreadyUnpublished.length} ${
+					alreadyUnpublished.length === 1 ? 'thesis is' : 'theses are'
+				} already unpublished and cannot be unpublished again`,
+			);
+		}
+
+		// Check if any thesis has been selected by a group
+		const thesesWithGroups = theses.filter((t) => t.group !== null);
+		if (thesesWithGroups.length > 0) {
+			this.logger.warn(
+				'Some theses have been selected by groups and cannot be unpublished',
+			);
+			throw new ConflictException(
+				`${thesesWithGroups.length} ${
+					thesesWithGroups.length === 1 ? 'thesis has' : 'theses have'
+				} been selected by groups and cannot be unpublished. Only theses without group selections can be unpublished.`,
+			);
+		}
+	}
+
+	/**
+	 * Update theses publication status
+	 */
+	private async updateThesesPublicationStatus(
+		thesesIds: string[],
+		isPublish: boolean,
+	) {
+		await this.prisma.thesis.updateMany({
+			where: { id: { in: thesesIds } },
+			data: { isPublish },
+		});
+
+		this.logger.log(
+			`Successfully ${isPublish ? 'published' : 'unpublished'} ${thesesIds.length} theses`,
+		);
+	}
+
+	/**
+	 * Send publication notification emails
+	 */
+	private sendPublicationNotifications(
+		thesesIds: string[],
+		isPublish: boolean,
+	) {
+		const newStatus = isPublish ? 'Published' : 'Unpublished';
+
+		this.sendBulkThesisStatusChangeEmail(thesesIds, newStatus, true).catch(
+			(error) => {
+				this.logger.error('Error sending bulk publication emails', error);
+			},
+		);
+	}
+
+	/**
+	 * Fetch updated theses with complete data
+	 */
+	private async fetchUpdatedTheses(thesesIds: string[]) {
+		return await this.prisma.thesis.findMany({
+			where: { id: { in: thesesIds } },
+			include: {
+				thesisVersions: {
+					select: { id: true, version: true, supportingDocument: true },
+					orderBy: { version: 'desc' },
+				},
+			},
+		});
 	}
 
 	async update(lecturerId: string, id: string, dto: UpdateThesisDto) {
@@ -339,6 +736,14 @@ export class ThesisService {
 			);
 			this.logger.debug('Updated thesis detail', updatedThesis);
 
+			// Send notification email about submission (review status change)
+			this.sendThesisStatusChangeEmail(id, 'Pending', false).catch((error) => {
+				this.logger.error(
+					`Error sending submission notification email for thesis ${id}`,
+					error,
+				);
+			});
+
 			return updatedThesis;
 		} catch (error) {
 			this.logger.error(
@@ -356,12 +761,26 @@ export class ThesisService {
 
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
+				select: {
+					id: true,
+					status: true,
+					isPublish: true,
+					englishName: true,
+				},
 			});
 
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for review`);
 
 				throw new NotFoundException(`Thesis not found`);
+			}
+
+			// Check if thesis is published
+			if (existingThesis.isPublish) {
+				this.logger.warn(`Cannot review published thesis with ID ${id}`);
+				throw new ConflictException(
+					'Cannot review a published thesis. Published theses cannot have their review status changed.',
+				);
 			}
 
 			// Only allow review of pending theses
@@ -398,6 +817,9 @@ export class ThesisService {
 			);
 
 			this.logger.debug('Reviewed thesis detail', updatedThesis);
+
+			// Send status change email (review status change)
+			await this.sendThesisStatusChangeEmail(id, dto.status, false);
 
 			return updatedThesis;
 		} catch (error) {
