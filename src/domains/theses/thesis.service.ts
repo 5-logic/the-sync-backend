@@ -137,12 +137,10 @@ export class ThesisService {
 			const thesesByLecturer = theses.reduce(
 				(acc, thesis) => {
 					const lecturerEmail = thesis.lecturer.user.email;
-					if (!acc[lecturerEmail]) {
-						acc[lecturerEmail] = {
-							lecturer: thesis.lecturer.user,
-							theses: [],
-						};
-					}
+					acc[lecturerEmail] ??= {
+						lecturer: thesis.lecturer.user,
+						theses: [],
+					};
 					acc[lecturerEmail].theses.push({
 						id: thesis.id,
 						englishName: thesis.englishName,
@@ -386,7 +384,11 @@ export class ThesisService {
 
 			// Validate business rules
 			this.validateThesesForPublishing(theses);
-			this.validatePublicationAction(theses, dto.isPublish);
+			if (dto.isPublish) {
+				this.validateCanPublishTheses(theses);
+			} else {
+				this.validateCanUnpublishTheses(theses);
+			}
 
 			// Update theses
 			await this.updateThesesPublicationStatus(dto.thesesIds, dto.isPublish);
@@ -454,14 +456,17 @@ export class ThesisService {
 	}
 
 	/**
-	 * Validate publication action (publish/unpublish)
+	 * Validate that theses can be published
 	 */
-	private validatePublicationAction(theses: any[], isPublish: boolean) {
-		if (isPublish) {
-			this.validatePublishAction(theses);
-		} else {
-			this.validateUnpublishAction(theses);
-		}
+	private validateCanPublishTheses(theses: any[]) {
+		this.validatePublishAction(theses);
+	}
+
+	/**
+	 * Validate that theses can be unpublished
+	 */
+	private validateCanUnpublishTheses(theses: any[]) {
+		this.validateUnpublishAction(theses);
 	}
 
 	/**
