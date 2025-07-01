@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsString } from 'class-validator';
 
 export class PublishThesisDto {
 	@ApiProperty({ required: true })
 	@IsArray()
-	@ValidateNested({ each: true })
+	@IsString({ each: true })
 	thesesIds: string[];
 
 	@ApiProperty({ required: true })
