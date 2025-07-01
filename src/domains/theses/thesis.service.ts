@@ -138,6 +138,32 @@ export class ThesisService {
 		}
 	}
 
+	async findAllByLecturerId(lecturerId: string) {
+		try {
+			this.logger.log(
+				`Fetching all theses for lecturer with ID: ${lecturerId}`,
+			);
+			const theses = await this.prisma.thesis.findMany({
+				where: { lecturerId },
+				include: {
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
+					},
+				},
+				orderBy: { createdAt: 'desc' },
+			});
+
+			return theses;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching theses for lecturer with ID ${lecturerId}`,
+				error,
+			);
+			throw error;
+		}
+	}
+
 	async update(lecturerId: string, id: string, dto: UpdateThesisDto) {
 		try {
 			this.logger.log(
