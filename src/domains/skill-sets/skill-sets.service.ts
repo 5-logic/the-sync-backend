@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
@@ -46,7 +46,7 @@ export class SkillSetsService {
 			});
 			if (!skillSet) {
 				this.logger.warn(`Skill set with id ${id} not found`);
-				return null;
+				throw new NotFoundException(`SkillSet not found`);
 			}
 			this.logger.log(`Found skill set with id ${id}`);
 			this.logger.debug('SkillSet detail:', skillSet);
