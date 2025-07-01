@@ -46,6 +46,12 @@ export class ThesisController {
 		return await this.thesisService.findOne(id);
 	}
 
+	@Roles(Role.LECTURER, Role.MODERATOR)
+	@Get('lecturer/:lecturerId')
+	async findAllByLecturerId(@Param('lecturerId') lecturerId: string) {
+		return await this.thesisService.findAllByLecturerId(lecturerId);
+	}
+
 	@Roles(Role.MODERATOR, Role.LECTURER)
 	@Put(':id')
 	async update(

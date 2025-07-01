@@ -1,9 +1,24 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	Put,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { AdminService } from '@/admins/admin.service';
 import { UpdateAdminDto } from '@/admins/dto';
-import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
+import {
+	JwtAccessAuthGuard,
+	Role,
+	RoleGuard,
+	Roles,
+	UserPayload,
+} from '@/auth';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
@@ -19,8 +34,10 @@ export class AdminController {
 	}
 
 	@Roles(Role.ADMIN)
-	@Put(':id')
-	async update(@Param('id') id: string, @Body() dto: UpdateAdminDto) {
-		return await this.adminService.update(id, dto);
+	@Put()
+	async update(@Req() req: Request, @Body() dto: UpdateAdminDto) {
+		const user = req.user as UserPayload;
+
+		return await this.adminService.update(user.id, dto);
 	}
 }
