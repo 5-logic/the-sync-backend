@@ -1,6 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
-import { CONFIG_TOKENS, PRODUCTION } from '@/configs/constant.config';
+import { CONFIG_TOKENS, CONSTANTS } from '@/configs/constant.config';
 
 export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 	const allowedOrigins =
@@ -12,7 +12,7 @@ export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 			requestOrigin: string,
 			callback: (err: Error | null, origin?: boolean) => void,
 		) => {
-			if (process.env.NODE_ENV !== PRODUCTION) {
+			if (process.env.NODE_ENV !== CONSTANTS.PRODUCTION) {
 				callback(null, true);
 				return;
 			}

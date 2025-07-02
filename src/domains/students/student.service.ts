@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { TIMEOUT } from '@/configs';
+import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -578,7 +578,7 @@ export class StudentService {
 					return createdStudents;
 				},
 				{
-					timeout: TIMEOUT,
+					timeout: CONSTANTS.TIMEOUT,
 				},
 			);
 

@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { TIMEOUT } from '@/configs';
+import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
@@ -339,7 +339,7 @@ export class LecturerService {
 
 					return createdLecturers;
 				},
-				{ timeout: TIMEOUT },
+				{ timeout: CONSTANTS.TIMEOUT },
 			);
 
 			// Send bulk emails after all lecturers are created successfully
