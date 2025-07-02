@@ -1,3 +1,5 @@
+import { CONSTANTS } from '../configs';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	Inject,
 	Injectable,
@@ -5,11 +7,12 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Cache } from 'cache-manager';
 
 import { AdminService } from '@/admins/admin.service';
 import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
-import { JwtPayload } from '@/auth/interfaces/payload.interface';
+import { CachePayload, JwtPayload } from '@/auth/interfaces';
 import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';
 import {
 	JWTRefreshConfig,
@@ -20,12 +23,14 @@ import { UserService } from '@/users/user.service';
 @Injectable()
 export class AuthService {
 	private readonly logger = new Logger(AuthService.name);
+	private static readonly CACHE_KEY = 'cache:auth';
 
 	constructor(
 		@Inject(jwtAccessConfig.KEY)
 		private readonly jwtAccessConfiguration: JWTAccessConfig,
 		@Inject(jwtRefreshConfig.KEY)
 		private readonly jwtRefreshConfiguration: JWTRefreshConfig,
+		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 		private readonly adminService: AdminService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
@@ -50,6 +55,9 @@ export class AuthService {
 			const accessToken = await this.generateAccessToken(payload);
 
 			const refreshToken = await this.generateRefreshToken(payload);
+
+			const key = `${AuthService.CACHE_KEY}:${admin.id}`;
+			await this.cache.set(key, { accessToken, refreshToken }, CONSTANTS.TTL);
 
 			return {
 				accessToken,
@@ -79,6 +87,13 @@ export class AuthService {
 
 			if (decoded.exp && decoded.exp < Date.now() / 1000) {
 				throw new UnauthorizedException('Refresh token has expired');
+			}
+
+			const key = `${AuthService.CACHE_KEY}:${decoded.sub}`;
+			const cachedTokens = await this.cache.get<CachePayload>(key);
+
+			if (!cachedTokens || cachedTokens.refreshToken !== refreshToken) {
+				throw new UnauthorizedException('Invalid or expired refresh token');
 			}
 
 			const admin = await this.adminService.findOne(decoded.sub);
@@ -124,6 +139,9 @@ export class AuthService {
 			const accessToken = await this.generateAccessToken(payload);
 			const refreshToken = await this.generateRefreshToken(payload);
 
+			const key = `${AuthService.CACHE_KEY}:${user.id}`;
+			await this.cache.set(key, { accessToken, refreshToken }, CONSTANTS.TTL);
+
 			return {
 				accessToken,
 				refreshToken,
@@ -152,6 +170,13 @@ export class AuthService {
 
 			if (decoded.exp && decoded.exp < Date.now() / 1000) {
 				throw new UnauthorizedException('Refresh token has expired');
+			}
+
+			const key = `${AuthService.CACHE_KEY}:${decoded.sub}`;
+			const cachedTokens = await this.cache.get<CachePayload>(key);
+
+			if (!cachedTokens || cachedTokens.refreshToken !== refreshToken) {
+				throw new UnauthorizedException('Invalid or expired refresh token');
 			}
 
 			const user = await this.userService.findOne({ id: decoded.sub });
