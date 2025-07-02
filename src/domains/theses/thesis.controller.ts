@@ -16,6 +16,7 @@ import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import {
 	CreateThesisDto,
+	PublishThesisDto,
 	ReviewThesisDto,
 	UpdateThesisDto,
 } from '@/theses/dto';
@@ -50,6 +51,12 @@ export class ThesisController {
 	@Get('lecturer/:lecturerId')
 	async findAllByLecturerId(@Param('lecturerId') lecturerId: string) {
 		return await this.thesisService.findAllByLecturerId(lecturerId);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Put('publish')
+	async publishTheses(@Body() dto: PublishThesisDto) {
+		return await this.thesisService.publishTheses(dto);
 	}
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
