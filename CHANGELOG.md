@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2025-07-02
+
+### Added
+
+- **Thesis Management APIs**:
+  - `POST /theses` and `PUT /theses/:id` now support `skillIds` array for associating required skills with a thesis. The backend validates all provided skill IDs.
+  - `PUT /theses/:id` now allows updating the list of required skills for a thesis. If `skillIds` is omitted, skills are unchanged; if empty, all skills are removed; if provided, skills are replaced.
+  - `PUT /theses/publish` - Bulk publish/unpublish endpoint for theses, accepts `PublishThesisDto` (`thesesIds: string[]`, `isPublish: boolean`).
+  - Email notifications for thesis status changes and publication events, using new template and job type.
+
+### Changed
+
+- **DTOs**:
+  - `CreateThesisDto` and `UpdateThesisDto` now include optional `skillIds: string[]` property.
+  - Added new `PublishThesisDto` for bulk publishing operations.
+  - All DTOs are re-exported in the DTO index for easier imports.
+- **Thesis Service**:
+  - `create` and `update` methods now handle `skillIds` validation and update the `thesisRequiredSkills` relation accordingly.
+  - `update` method now fully replaces thesis skills if `skillIds` is provided, or removes all if empty.
+  - Email notification logic for thesis status and publication changes.
+- **Thesis Controller**:
+  - Accepts and passes `skillIds` in create and update endpoints.
+  - New endpoint for bulk publishing: `PUT /theses/publish`.
+- **Email System**:
+  - Added new email job type: `SEND_THESIS_STATUS_CHANGE`.
+  - Added new email template: `send-thesis-status-change.pug` for thesis status notifications.
+  - Improved email layout for better status and publication notifications.
+- **Module**:
+  - `EmailModule` is now imported in `ThesisModule` for email notification support.
+
+### Fixed
+
+- Improved validation and error handling for skill IDs in thesis creation and update.
+- Fixed and unified logging for thesis skill updates and email notifications.
+
+### Pull Requests
+
+- [#142](https://github.com/5-logic/the-sync-backend/pull/142) - Merge dev branch for v0.5.7 release
+- [#141](https://github.com/5-logic/the-sync-backend/pull/141) - Add skillIds handling in thesis update process and validation (close #140)
+- [#139](https://github.com/5-logic/the-sync-backend/pull/139) - Thesis publishing and email notification improvements
+- [#138](https://github.com/5-logic/the-sync-backend/pull/138) - Email template and layout improvements for thesis status
+
 ## [0.5.6] - 2025-07-01
 
 ### Added
