@@ -10,3 +10,14 @@ export const generateStrongPassword = (): string => {
 		strict: true,
 	});
 };
+
+export const generateIdentifier = (): string => {
+	return generate({
+		length: 16,
+		numbers: true,
+		symbols: false,
+		uppercase: true,
+		lowercase: true,
+		strict: true,
+	});
+};

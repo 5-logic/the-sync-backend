@@ -1,3 +1,4 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	Inject,
 	Injectable,
@@ -5,27 +6,33 @@ import {
 	UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Cache } from 'cache-manager';
 
 import { AdminService } from '@/admins/admin.service';
 import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
-import { JwtPayload } from '@/auth/interfaces/payload.interface';
-import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';
+import { CachePayload, JwtPayload } from '@/auth/interfaces';
 import {
+	CONSTANTS,
+	JWTAccessConfig,
 	JWTRefreshConfig,
+	jwtAccessConfig,
 	jwtRefreshConfig,
-} from '@/configs/jwt-refresh.config';
+} from '@/configs';
 import { UserService } from '@/users/user.service';
+import { generateIdentifier } from '@/utils';
 
 @Injectable()
 export class AuthService {
 	private readonly logger = new Logger(AuthService.name);
+	static readonly CACHE_KEY = 'cache:auth';
 
 	constructor(
 		@Inject(jwtAccessConfig.KEY)
 		private readonly jwtAccessConfiguration: JWTAccessConfig,
 		@Inject(jwtRefreshConfig.KEY)
 		private readonly jwtRefreshConfiguration: JWTRefreshConfig,
+		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 		private readonly adminService: AdminService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
@@ -42,14 +49,24 @@ export class AuthService {
 				throw new UnauthorizedException('Not authorized');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: admin.id,
 				role: Role.ADMIN,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
 
 			const refreshToken = await this.generateRefreshToken(payload);
+
+			const key = `${AuthService.CACHE_KEY}:${admin.id}`;
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
 
 			return {
 				accessToken,
@@ -81,22 +98,51 @@ export class AuthService {
 				throw new UnauthorizedException('Refresh token has expired');
 			}
 
+			const key = `${AuthService.CACHE_KEY}:${decoded.sub}`;
+			const cachedTokens = await this.cache.get<CachePayload>(key);
+
+			if (!cachedTokens || cachedTokens.refreshToken !== refreshToken) {
+				throw new UnauthorizedException('Invalid or expired refresh token');
+			}
+
 			const admin = await this.adminService.findOne(decoded.sub);
 
 			if (!admin) {
 				throw new UnauthorizedException('Admin not found');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: admin.id,
 				role: Role.ADMIN,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
 
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
+
 			return { accessToken };
 		} catch (error) {
 			this.logger.error('Error during admin refresh', error);
+
+			throw error;
+		}
+	}
+
+	async logoutAdmin(id: string) {
+		try {
+			const key = `${AuthService.CACHE_KEY}:${id}`;
+			await this.cache.del(key);
+
+			return;
+		} catch (error) {
+			this.logger.error('Error during admin logout', error);
 
 			throw error;
 		}
@@ -116,13 +162,23 @@ export class AuthService {
 				throw new UnauthorizedException('User role not found');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: user.id,
 				role: role,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
 			const refreshToken = await this.generateRefreshToken(payload);
+
+			const key = `${AuthService.CACHE_KEY}:${user.id}`;
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
 
 			return {
 				accessToken,
@@ -154,6 +210,13 @@ export class AuthService {
 				throw new UnauthorizedException('Refresh token has expired');
 			}
 
+			const key = `${AuthService.CACHE_KEY}:${decoded.sub}`;
+			const cachedTokens = await this.cache.get<CachePayload>(key);
+
+			if (!cachedTokens || cachedTokens.refreshToken !== refreshToken) {
+				throw new UnauthorizedException('Invalid or expired refresh token');
+			}
+
 			const user = await this.userService.findOne({ id: decoded.sub });
 
 			if (!user?.isActive) {
@@ -166,16 +229,38 @@ export class AuthService {
 				throw new UnauthorizedException('User role not found');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: user.id,
 				role: role,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
 
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
+
 			return { accessToken };
 		} catch (error) {
 			this.logger.error('Error during user refresh', error);
+
+			throw error;
+		}
+	}
+
+	async logoutUser(id: string) {
+		try {
+			const key = `${AuthService.CACHE_KEY}:${id}`;
+			await this.cache.del(key);
+
+			return;
+		} catch (error) {
+			this.logger.error('Error during user logout', error);
 
 			throw error;
 		}

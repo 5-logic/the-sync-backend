@@ -5,15 +5,14 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { TIMEOUT } from '@/configs';
+import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateUserDto, UpdateUserDto } from '@/users/dto';
-import { hash } from '@/utils/hash.util';
-import { generateStrongPassword } from '@/utils/password-generator.util';
+import { generateStrongPassword, hash } from '@/utils';
 
 @Injectable()
 export class LecturerService {
@@ -339,7 +338,7 @@ export class LecturerService {
 
 					return createdLecturers;
 				},
-				{ timeout: TIMEOUT },
+				{ timeout: CONSTANTS.TIMEOUT },
 			);
 
 			// Send bulk emails after all lecturers are created successfully

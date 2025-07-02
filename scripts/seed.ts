@@ -1,5 +1,5 @@
 import { Gender, PrismaClient, SemesterStatus } from '../generated/prisma';
-import { TIMEOUT } from '../src/configs/constant.config';
+import { CONSTANTS } from '../src/configs/constant.config';
 import { hash } from '../src/utils/hash.util';
 
 const prisma = new PrismaClient();
@@ -1485,7 +1485,7 @@ const seedLectuers = async () => {
 				});
 			}
 		},
-		{ timeout: TIMEOUT },
+		{ timeout: CONSTANTS.TIMEOUT },
 	);
 
 	console.log('👨‍🏫 Lecturers seeded successfully');
@@ -1596,7 +1596,7 @@ const seedStudents = async () => {
 				});
 			}
 		},
-		{ timeout: TIMEOUT },
+		{ timeout: CONSTANTS.TIMEOUT },
 	);
 
 	console.log('👩‍🎓 Students seeded successfully');

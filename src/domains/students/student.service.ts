@@ -5,7 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { TIMEOUT } from '@/configs';
+import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -17,8 +17,7 @@ import {
 	ToggleStudentStatusDto,
 	UpdateStudentDto,
 } from '@/students/dto';
-import { hash } from '@/utils/hash.util';
-import { generateStrongPassword } from '@/utils/password-generator.util';
+import { generateStrongPassword, hash } from '@/utils';
 
 import { SemesterStatus } from '~/generated/prisma';
 
@@ -578,7 +577,7 @@ export class StudentService {
 					return createdStudents;
 				},
 				{
-					timeout: TIMEOUT,
+					timeout: CONSTANTS.TIMEOUT,
 				},
 			);
 
