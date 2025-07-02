@@ -135,6 +135,19 @@ export class AuthService {
 		}
 	}
 
+	async logoutAdmin(id: string) {
+		try {
+			const key = `${AuthService.CACHE_KEY}:${id}`;
+			await this.cache.del(key);
+
+			return;
+		} catch (error) {
+			this.logger.error('Error during admin logout', error);
+
+			throw error;
+		}
+	}
+
 	async loginUser(dto: UserLoginDto) {
 		try {
 			const user = await this.userService.validateUser(dto.email, dto.password);
@@ -235,6 +248,19 @@ export class AuthService {
 			return { accessToken };
 		} catch (error) {
 			this.logger.error('Error during user refresh', error);
+
+			throw error;
+		}
+	}
+
+	async logoutUser(id: string) {
+		try {
+			const key = `${AuthService.CACHE_KEY}:${id}`;
+			await this.cache.del(key);
+
+			return;
+		} catch (error) {
+			this.logger.error('Error during user logout', error);
 
 			throw error;
 		}
