@@ -141,7 +141,7 @@ export class SupervisionsService {
 				supervision.thesis.englishName,
 				supervision.thesis.vietnameseName,
 				supervision.thesis.abbreviation,
-				supervision.thesis.domain || undefined,
+				supervision.thesis.domain ?? undefined,
 				'assigned',
 			);
 
@@ -254,7 +254,7 @@ export class SupervisionsService {
 					updatedSupervision.thesis.englishName,
 					updatedSupervision.thesis.vietnameseName,
 					updatedSupervision.thesis.abbreviation,
-					updatedSupervision.thesis.domain || undefined,
+					updatedSupervision.thesis.domain ?? undefined,
 					'removed',
 				);
 			}
@@ -266,7 +266,7 @@ export class SupervisionsService {
 				updatedSupervision.thesis.englishName,
 				updatedSupervision.thesis.vietnameseName,
 				updatedSupervision.thesis.abbreviation,
-				updatedSupervision.thesis.domain || undefined,
+				updatedSupervision.thesis.domain ?? undefined,
 				'assigned',
 			);
 
@@ -352,7 +352,7 @@ export class SupervisionsService {
 					supervisionToDelete.thesis.englishName,
 					supervisionToDelete.thesis.vietnameseName,
 					supervisionToDelete.thesis.abbreviation,
-					supervisionToDelete.thesis.domain || undefined,
+					supervisionToDelete.thesis.domain ?? undefined,
 					'removed',
 				);
 			}
