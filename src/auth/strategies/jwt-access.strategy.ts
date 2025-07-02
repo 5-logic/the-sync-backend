@@ -32,12 +32,7 @@ export class JwtAccessStrategy extends PassportStrategy(
 		const key = `${AuthService.CACHE_KEY}:${payload.sub}`;
 		const cache = await this.cache.get<CachePayload>(key);
 
-		if (
-			!cache ||
-			!cache.accessToken ||
-			!cache.identifier ||
-			cache.identifier !== payload.identifier
-		) {
+		if (!cache?.accessToken || cache?.identifier !== payload.identifier) {
 			throw new UnauthorizedException('Access token is invalid or expired');
 		}
 
