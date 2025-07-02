@@ -12,8 +12,7 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateUserDto, UpdateUserDto } from '@/users/dto';
-import { hash } from '@/utils/hash.util';
-import { generateStrongPassword } from '@/utils/password-generator.util';
+import { generateStrongPassword, hash } from '@/utils';
 
 @Injectable()
 export class LecturerService {
