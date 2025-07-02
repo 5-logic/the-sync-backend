@@ -29,7 +29,7 @@ export class MajorService {
 				orderBy: { createdAt: 'desc' },
 			});
 
-			await this.cache.set(MajorService.CACHE_KEY, majors);
+			await this.cache.set(MajorService.CACHE_KEY, majors, CONSTANTS.TTL);
 
 			this.logger.log(`Fetched ${majors.length} majors`);
 			this.logger.debug('Majors:', majors);
