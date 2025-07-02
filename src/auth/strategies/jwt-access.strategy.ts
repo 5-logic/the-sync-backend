@@ -6,8 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { AuthService } from '@/auth/auth.service';
 import { CachePayload, JwtPayload, UserPayload } from '@/auth/interfaces';
-import { CONFIG_TOKENS } from '@/configs';
-import { JWTAccessConfig, jwtAccessConfig } from '@/configs';
+import { CONFIG_TOKENS, JWTAccessConfig, jwtAccessConfig } from '@/configs';
 
 export class JwtAccessStrategy extends PassportStrategy(
 	Strategy,
