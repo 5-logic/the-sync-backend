@@ -1,0 +1,100 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= lecturerName
+    | ,
+
+  p
+    | We are writing to inform you about a supervision change for one of the theses on the TheSync system.
+
+  .info-box
+    h3 📋 Thesis Information
+    
+    .info-item
+      span.info-label Thesis Title (English):
+      span.info-value= thesisName
+    
+    .info-item
+      span.info-label Thesis Title (Vietnamese):
+      span.info-value= thesisVietnameseName
+    
+    if thesisAbbreviation
+      .info-item
+        span.info-label Abbreviation:
+        span.info-value= thesisAbbreviation
+    
+    if thesisDomain
+      .info-item
+        span.info-label Domain:
+        span.info-value= thesisDomain
+
+  // Supervision action notification
+  if action === 'assigned'
+    .success-box
+      strong 🎉 Supervision Assignment
+      | You have been assigned as a supervisor for this thesis.
+    
+    p
+      | Congratulations! You are now responsible for supervising this thesis project. As a supervisor, you can now:
+    
+    ul
+      li Monitor the progress of student groups working on this thesis
+      li Provide guidance and feedback to students throughout the project
+      li Review submissions and milestone deliverables
+      li Participate in the evaluation and grading process
+      li Collaborate with other supervisors (if any) on this thesis
+    
+    p
+      strong What's Next?
+    ul
+      li Check your TheSync dashboard for thesis details and current status
+      li Review any existing student groups or pending applications
+      li Set up communication channels with assigned students
+      li Familiarize yourself with the thesis requirements and timeline
+
+  else if action === 'removed'
+    .warning-box
+      strong 📝 Supervision Removal
+      | You have been removed as a supervisor for this thesis.
+    
+    p
+      | You are no longer assigned as a supervisor for this thesis. This change means:
+    
+    ul
+      li You will not receive further notifications about this thesis
+      li Students can no longer contact you regarding this specific project
+      li Your access to related supervision materials has been revoked
+      li Any pending reviews or evaluations should be transferred to remaining supervisors
+    
+    p
+      strong If you have concerns:
+    ul
+      li Contact the thesis owner or department administrator for clarification
+      li Review your remaining supervision assignments in your dashboard
+      li Complete any pending tasks related to this thesis before the transition
+      li Update any external documentation or communication channels
+
+  .info-box
+    h3 � Quick Actions
+    
+    if action === 'assigned'
+      p
+        | Ready to start supervising? Access your dashboard to:
+      ul
+        li View complete thesis details and requirements
+        li Check for student applications and group formations
+        li Set your availability and communication preferences
+        li Download any relevant project materials or guidelines
+    else
+      p
+        | Need to wrap up your supervision activities?
+      ul
+        li Complete any pending evaluations or reviews
+        li Transfer important notes or feedback to remaining supervisors
+        li Update your supervision workload and availability
+        li Ensure students are properly informed about the transition
+
+  p
+    | Thank you for your continued dedication to our thesis supervision program. Your expertise and guidance are invaluable to our students' academic success.
