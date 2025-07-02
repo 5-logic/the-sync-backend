@@ -1,5 +1,4 @@
 export interface CachePayload {
-	accessToken: string;
-	refreshToken: string;
-	identifier: string;
+	accessIdentifier: string;
+	refreshIdentifier: string;
 }

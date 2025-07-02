@@ -49,22 +49,29 @@ export class AuthService {
 				throw new UnauthorizedException('Not authorized');
 			}
 
-			const identifier = generateIdentifier();
+			const accessIdentifier = generateIdentifier();
+			const refreshIdentifier = generateIdentifier();
 
-			const payload: JwtPayload = {
+			const accessPayload: JwtPayload = {
 				sub: admin.id,
 				role: Role.ADMIN,
-				identifier: identifier,
+				identifier: accessIdentifier,
 			};
 
-			const accessToken = await this.generateAccessToken(payload);
+			const refreshPayload: JwtPayload = {
+				sub: admin.id,
+				role: Role.ADMIN,
+				identifier: refreshIdentifier,
+			};
 
-			const refreshToken = await this.generateRefreshToken(payload);
+			const accessToken = await this.generateAccessToken(accessPayload);
+
+			const refreshToken = await this.generateRefreshToken(refreshPayload);
 
 			const key = `${AuthService.CACHE_KEY}:${admin.id}`;
 			await this.cache.set(
 				key,
-				{ accessToken, refreshToken, identifier },
+				{ accessIdentifier, refreshIdentifier },
 				CONSTANTS.TTL,
 			);
 
@@ -99,9 +106,9 @@ export class AuthService {
 			}
 
 			const key = `${AuthService.CACHE_KEY}:${decoded.sub}`;
-			const cachedTokens = await this.cache.get<CachePayload>(key);
+			const cached = await this.cache.get<CachePayload>(key);
 
-			if (!cachedTokens || cachedTokens.refreshToken !== refreshToken) {
+			if (!cached || cached.refreshIdentifier !== decoded.identifier) {
 				throw new UnauthorizedException('Invalid or expired refresh token');
 			}
 
@@ -111,19 +118,20 @@ export class AuthService {
 				throw new UnauthorizedException('Admin not found');
 			}
 
-			const identifier = generateIdentifier();
+			const accessIdentifier = generateIdentifier();
+			const refreshIdentifier = cached.refreshIdentifier;
 
-			const payload: JwtPayload = {
+			const accessPayload: JwtPayload = {
 				sub: admin.id,
 				role: Role.ADMIN,
-				identifier: identifier,
+				identifier: accessIdentifier,
 			};
 
-			const accessToken = await this.generateAccessToken(payload);
+			const accessToken = await this.generateAccessToken(accessPayload);
 
 			await this.cache.set(
 				key,
-				{ accessToken, refreshToken, identifier },
+				{ accessIdentifier, refreshIdentifier },
 				CONSTANTS.TTL,
 			);
 
@@ -162,21 +170,28 @@ export class AuthService {
 				throw new UnauthorizedException('User role not found');
 			}
 
-			const identifier = generateIdentifier();
+			const accessIdentifier = generateIdentifier();
+			const refreshIdentifier = generateIdentifier();
 
-			const payload: JwtPayload = {
+			const accessPayload: JwtPayload = {
 				sub: user.id,
 				role: role,
-				identifier: identifier,
+				identifier: accessIdentifier,
 			};
 
-			const accessToken = await this.generateAccessToken(payload);
-			const refreshToken = await this.generateRefreshToken(payload);
+			const refreshPayload: JwtPayload = {
+				sub: user.id,
+				role: role,
+				identifier: refreshIdentifier,
+			};
+
+			const accessToken = await this.generateAccessToken(accessPayload);
+			const refreshToken = await this.generateRefreshToken(refreshPayload);
 
 			const key = `${AuthService.CACHE_KEY}:${user.id}`;
 			await this.cache.set(
 				key,
-				{ accessToken, refreshToken, identifier },
+				{ accessPayload, refreshPayload },
 				CONSTANTS.TTL,
 			);
 
@@ -211,9 +226,9 @@ export class AuthService {
 			}
 
 			const key = `${AuthService.CACHE_KEY}:${decoded.sub}`;
-			const cachedTokens = await this.cache.get<CachePayload>(key);
+			const cached = await this.cache.get<CachePayload>(key);
 
-			if (!cachedTokens || cachedTokens.refreshToken !== refreshToken) {
+			if (!cached || cached.refreshIdentifier !== decoded.identifier) {
 				throw new UnauthorizedException('Invalid or expired refresh token');
 			}
 
@@ -229,19 +244,20 @@ export class AuthService {
 				throw new UnauthorizedException('User role not found');
 			}
 
-			const identifier = generateIdentifier();
+			const accessIdentifier = generateIdentifier();
+			const refreshIdentifier = cached.refreshIdentifier;
 
-			const payload: JwtPayload = {
+			const accessPayload: JwtPayload = {
 				sub: user.id,
 				role: role,
-				identifier: identifier,
+				identifier: accessIdentifier,
 			};
 
-			const accessToken = await this.generateAccessToken(payload);
+			const accessToken = await this.generateAccessToken(accessPayload);
 
 			await this.cache.set(
 				key,
-				{ accessToken, refreshToken, identifier },
+				{ accessIdentifier, refreshIdentifier },
 				CONSTANTS.TTL,
 			);
 
