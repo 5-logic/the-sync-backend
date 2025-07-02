@@ -662,7 +662,13 @@ export class ThesisService {
 				abbreviation,
 				description,
 				domain,
+				skillIds,
 			} = dto;
+
+			// Validate skillIds if provided
+			if (skillIds && skillIds.length > 0) {
+				await this.validateSkillIds(skillIds);
+			}
 
 			const updatedThesis = await this.prisma.$transaction(async (prisma) => {
 				// Update thesis data (excluding supportingDocument)
@@ -697,13 +703,45 @@ export class ThesisService {
 					);
 				}
 
-				// Return updated thesis with all versions
+				// Update thesis required skills if skillIds provided
+				if (skillIds !== undefined) {
+					// Delete existing skills
+					await prisma.thesisRequiredSkill.deleteMany({
+						where: { thesisId: id },
+					});
+
+					// Create new skills if any provided
+					if (skillIds.length > 0) {
+						await prisma.thesisRequiredSkill.createMany({
+							data: skillIds.map((skillId) => ({
+								thesisId: id,
+								skillId,
+							})),
+						});
+					}
+
+					this.logger.log(
+						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${skillIds.length}`,
+					);
+				}
+
+				// Return updated thesis with all versions and skills
 				return prisma.thesis.findUnique({
 					where: { id },
 					include: {
 						thesisVersions: {
 							select: { id: true, version: true, supportingDocument: true },
 							orderBy: { version: 'desc' },
+						},
+						thesisRequiredSkills: {
+							include: {
+								skill: {
+									select: {
+										id: true,
+										name: true,
+									},
+								},
+							},
 						},
 					},
 				});
