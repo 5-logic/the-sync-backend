@@ -20,6 +20,6 @@ export const CONSTANTS = {
 	TIMEOUT: 20 * 60 * 1000, // 20 minutes in milliseconds
 	BODY_LIMIT: '50mb', // 50MB
 	PRODUCTION: 'production',
-	TTL: 6 * 60 * 60 * 1000, // 6 hours in milliseconds
+	TTL: 60 * 60 * 1000, // 1 hours in milliseconds
 	LRU_SIZE: 10000, // 10000 items
 } as const;
