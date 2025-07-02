@@ -1,4 +1,3 @@
-import { CONSTANTS } from '../configs';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	Inject,
@@ -13,17 +12,20 @@ import { AdminService } from '@/admins/admin.service';
 import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
-import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';
 import {
+	CONSTANTS,
+	JWTAccessConfig,
 	JWTRefreshConfig,
+	jwtAccessConfig,
 	jwtRefreshConfig,
-} from '@/configs/jwt-refresh.config';
+} from '@/configs';
 import { UserService } from '@/users/user.service';
+import { generateIdentifier } from '@/utils';
 
 @Injectable()
 export class AuthService {
 	private readonly logger = new Logger(AuthService.name);
-	private static readonly CACHE_KEY = 'cache:auth';
+	static readonly CACHE_KEY = 'cache:auth';
 
 	constructor(
 		@Inject(jwtAccessConfig.KEY)
@@ -47,9 +49,12 @@ export class AuthService {
 				throw new UnauthorizedException('Not authorized');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: admin.id,
 				role: Role.ADMIN,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
@@ -57,7 +62,11 @@ export class AuthService {
 			const refreshToken = await this.generateRefreshToken(payload);
 
 			const key = `${AuthService.CACHE_KEY}:${admin.id}`;
-			await this.cache.set(key, { accessToken, refreshToken }, CONSTANTS.TTL);
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
 
 			return {
 				accessToken,
@@ -102,12 +111,21 @@ export class AuthService {
 				throw new UnauthorizedException('Admin not found');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: admin.id,
 				role: Role.ADMIN,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
+
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
 
 			return { accessToken };
 		} catch (error) {
@@ -131,16 +149,23 @@ export class AuthService {
 				throw new UnauthorizedException('User role not found');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: user.id,
 				role: role,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
 			const refreshToken = await this.generateRefreshToken(payload);
 
 			const key = `${AuthService.CACHE_KEY}:${user.id}`;
-			await this.cache.set(key, { accessToken, refreshToken }, CONSTANTS.TTL);
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
 
 			return {
 				accessToken,
@@ -191,12 +216,21 @@ export class AuthService {
 				throw new UnauthorizedException('User role not found');
 			}
 
+			const identifier = generateIdentifier();
+
 			const payload: JwtPayload = {
 				sub: user.id,
 				role: role,
+				identifier: identifier,
 			};
 
 			const accessToken = await this.generateAccessToken(payload);
+
+			await this.cache.set(
+				key,
+				{ accessToken, refreshToken, identifier },
+				CONSTANTS.TTL,
+			);
 
 			return { accessToken };
 		} catch (error) {

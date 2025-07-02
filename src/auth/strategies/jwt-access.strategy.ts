@@ -1,11 +1,13 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { Cache } from 'cache-manager';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import { JwtPayload } from '@/auth/interfaces/payload.interface';
-import { UserPayload } from '@/auth/interfaces/user-payload.interface';
+import { AuthService } from '@/auth/auth.service';
+import { CachePayload, JwtPayload, UserPayload } from '@/auth/interfaces';
 import { CONFIG_TOKENS } from '@/configs';
-import { JWTAccessConfig, jwtAccessConfig } from '@/configs/jwt-access.config';
+import { JWTAccessConfig, jwtAccessConfig } from '@/configs';
 
 export class JwtAccessStrategy extends PassportStrategy(
 	Strategy,
@@ -14,6 +16,7 @@ export class JwtAccessStrategy extends PassportStrategy(
 	constructor(
 		@Inject(jwtAccessConfig.KEY)
 		private readonly jwtAccessConfiguration: JWTAccessConfig,
+		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -22,9 +25,21 @@ export class JwtAccessStrategy extends PassportStrategy(
 		});
 	}
 
-	validate(payload: JwtPayload): UserPayload {
+	async validate(payload: JwtPayload): Promise<UserPayload> {
 		if (!payload.sub || !payload.role) {
 			throw new UnauthorizedException('Invalid access token payload');
+		}
+
+		const key = `${AuthService.CACHE_KEY}:${payload.sub}`;
+		const cache = await this.cache.get<CachePayload>(key);
+
+		if (
+			!cache ||
+			!cache.accessToken ||
+			!cache.identifier ||
+			cache.identifier !== payload.identifier
+		) {
+			throw new UnauthorizedException('Access token is invalid or expired');
 		}
 
 		const userPayload: UserPayload = {
