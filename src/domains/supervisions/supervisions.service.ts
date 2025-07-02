@@ -435,17 +435,9 @@ export class SupervisionsService {
 				},
 				select: {
 					id: true,
-					englishName: true,
-					vietnameseName: true,
-					abbreviation: true,
-					description: true,
-					domain: true,
-					status: true,
-					lecturer: {
+					group: {
 						select: {
-							user: {
-								select: { email: true, fullName: true, phoneNumber: true },
-							},
+							id: true,
 						},
 					},
 				},
@@ -455,15 +447,11 @@ export class SupervisionsService {
 				const thesis = theses.find((t) => t.id === supervision.thesisId);
 				return {
 					...supervision,
-					englishName: thesis?.englishName,
-					vietnameseName: thesis?.vietnameseName,
-					abbreviation: thesis?.abbreviation,
-					description: thesis?.description,
-					domain: thesis?.domain,
-					status: thesis?.status,
-					email: thesis?.lecturer.user.email,
-					fullName: thesis?.lecturer.user.fullName,
-					phoneNumber: thesis?.lecturer.user.phoneNumber,
+					group: thesis?.group
+						? {
+								id: thesis.group.id,
+							}
+						: null,
 				};
 			});
 
