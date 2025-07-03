@@ -289,7 +289,7 @@ export class AuthService {
 			// Find user by email
 			const user = await this.userService.findOne({ email: dto.email });
 
-			if (user?.isActive) {
+			if (!user?.isActive) {
 				throw new NotFoundException('User not found or inactive');
 			}
 
@@ -329,7 +329,7 @@ export class AuthService {
 			// Find user
 			const user = await this.userService.findOne({ email: dto.email });
 
-			if (user?.isActive) {
+			if (!user?.isActive) {
 				throw new NotFoundException('User not found or inactive');
 			}
 
