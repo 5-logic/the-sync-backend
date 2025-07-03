@@ -1520,7 +1520,7 @@ const seedStudents = async () => {
 		{
 			id: '7f0c713f-54e5-4823-a889-82d34335faf9',
 			fullName: 'Đinh Quốc Chương',
-			email: 'chuongdqqe170092@fpt.edu.vn',
+			email: 'chuongdqqe170097@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
 			studentCode: 'QE170092',
