@@ -51,7 +51,7 @@ export class AuthService {
 		private readonly adminService: AdminService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
-		private readonly emailQueueService: EmailQueueService,
+		private readonly email: EmailQueueService,
 	) {}
 
 	async loginAdmin(dto: AdminLoginDto) {
@@ -297,15 +297,15 @@ export class AuthService {
 			const otpCode = generateOTP();
 
 			// Store OTP in cache with 10 minutes TTL
-			const otpKey = `${AuthService.OTP_CACHE_KEY}:${dto.email}`;
+			const key = `${AuthService.OTP_CACHE_KEY}:${dto.email}`;
 			await this.cache.set(
-				otpKey,
+				key,
 				{ otpCode, userId: user.id },
 				AuthService.OTP_TTL,
 			);
 
 			// Send OTP email
-			await this.emailQueueService.sendEmail(EmailJobType.SEND_OTP, {
+			await this.email.sendEmail(EmailJobType.SEND_OTP, {
 				to: dto.email,
 				subject: 'Password Reset OTP - TheSync',
 				context: {
@@ -326,24 +326,22 @@ export class AuthService {
 
 	async verifyOtpAndResetPassword(dto: VerifyOtpAndResetPasswordDto) {
 		try {
-			const { email, otpCode } = dto;
-
-			// Check OTP in cache
-			const otpKey = `${AuthService.OTP_CACHE_KEY}:${email}`;
-			const cachedOtp = await this.cache.get<{
-				otpCode: string;
-				userId: string;
-			}>(otpKey);
-
-			if (!cachedOtp || cachedOtp.otpCode !== otpCode) {
-				throw new UnauthorizedException('Invalid or expired OTP code');
-			}
-
 			// Find user
-			const user = await this.userService.findOne({ id: cachedOtp.userId });
+			const user = await this.userService.findOne({ email: dto.email });
 
 			if (!user || !user.isActive) {
-				throw new UnauthorizedException('User not found');
+				throw new NotFoundException('User not found or inactive');
+			}
+
+			// Check OTP in cache
+			const key = `${AuthService.OTP_CACHE_KEY}:${dto.email}`;
+			const cached = await this.cache.get<{
+				otpCode: string;
+				userId: string;
+			}>(key);
+
+			if (!cached || cached.otpCode !== dto.otpCode) {
+				throw new UnauthorizedException('Invalid or expired OTP code');
 			}
 
 			// Generate new password
@@ -353,30 +351,28 @@ export class AuthService {
 			await this.userService.updatePassword(user.id, newPassword);
 
 			// Remove OTP from cache
-			await this.cache.del(otpKey);
+			await this.cache.del(key);
 
 			// Send new password email
-			await this.emailQueueService.sendEmail(EmailJobType.SEND_RESET_PASSWORD, {
-				to: email,
+			await this.email.sendEmail(EmailJobType.SEND_RESET_PASSWORD, {
+				to: dto.email,
 				subject: 'Your New Password - TheSync',
 				context: {
 					fullName: user.fullName,
-					email,
+					email: dto.email,
 					newPassword,
 				},
 			});
 
-			this.logger.log(`Password reset completed for user: ${email}`);
+			this.logger.log(`Password reset completed for user: ${dto.email}`);
 
-			return {
-				message:
-					'Password has been reset. Check your email for the new password.',
-			};
+			return;
 		} catch (error) {
 			this.logger.error(
 				'Error during OTP verification and password reset',
 				error,
 			);
+
 			throw error;
 		}
 	}
