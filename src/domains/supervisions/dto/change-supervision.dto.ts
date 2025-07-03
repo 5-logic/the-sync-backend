@@ -4,9 +4,9 @@ import { IsUUID } from 'class-validator';
 export class ChangeSupervisionDto {
 	@ApiProperty()
 	@IsUUID()
-	currentLecturerId: string;
+	currentSupervisorId: string;
 
 	@ApiProperty()
 	@IsUUID()
-	newLecturerId: string;
+	newSupervisorId: string;
 }
