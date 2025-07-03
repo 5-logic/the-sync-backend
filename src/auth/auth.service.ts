@@ -13,7 +13,6 @@ import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
 import {
-	CONSTANTS,
 	JWTAccessConfig,
 	JWTRefreshConfig,
 	jwtAccessConfig,
@@ -25,6 +24,7 @@ import { generateIdentifier } from '@/utils';
 @Injectable()
 export class AuthService {
 	private readonly logger = new Logger(AuthService.name);
+	private static readonly CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 	static readonly CACHE_KEY = 'cache:auth';
 
 	constructor(
@@ -72,7 +72,7 @@ export class AuthService {
 			await this.cache.set(
 				key,
 				{ accessIdentifier, refreshIdentifier },
-				CONSTANTS.TTL,
+				AuthService.CACHE_TTL,
 			);
 
 			return {
@@ -132,7 +132,7 @@ export class AuthService {
 			await this.cache.set(
 				key,
 				{ accessIdentifier, refreshIdentifier },
-				CONSTANTS.TTL,
+				AuthService.CACHE_TTL,
 			);
 
 			return { accessToken };
@@ -192,7 +192,7 @@ export class AuthService {
 			await this.cache.set(
 				key,
 				{ accessPayload, refreshPayload },
-				CONSTANTS.TTL,
+				AuthService.CACHE_TTL,
 			);
 
 			return {
@@ -258,7 +258,7 @@ export class AuthService {
 			await this.cache.set(
 				key,
 				{ accessIdentifier, refreshIdentifier },
-				CONSTANTS.TTL,
+				AuthService.CACHE_TTL,
 			);
 
 			return { accessToken };
