@@ -4,6 +4,7 @@ import {
 	Delete,
 	Get,
 	Param,
+	Post,
 	Put,
 	UseGuards,
 } from '@nestjs/common';
@@ -22,7 +23,7 @@ export class SupervisionsController {
 	constructor(private readonly supervisionsService: SupervisionsService) {}
 
 	@Roles(Role.MODERATOR)
-	@Put('assign/:thesisId')
+	@Post('assign/:thesisId')
 	async assignSupervisor(
 		@Param('thesisId') thesisId: string,
 		@Body() assignSupervisionDto: AssignSupervisionDto,
