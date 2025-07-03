@@ -1,0 +1,28 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= fullName
+    | ,
+
+  p
+    | We received a request to reset your password for your TheSync account. Please use the following OTP code to complete the password reset process.
+
+  .info-box
+    h3 🔐 Password Reset OTP
+    
+    .info-item
+      span.info-label Your OTP Code:
+      span.info-value.password-highlight= otpCode
+    
+    .info-item
+      span.info-label Valid for:
+      span.info-value 10 minutes
+
+  .warning-box
+    strong ⚠️ Security Notice:
+    | This OTP code is valid for 10 minutes only. If you did not request a password reset, please ignore this email and ensure your account is secure.
+
+  p
+    | Enter this OTP code along with your email address in the password reset form to receive your new password.

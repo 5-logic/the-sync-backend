@@ -8,6 +8,7 @@ import { AuthService } from '@/auth/auth.service';
 import { JwtAccessStrategy } from '@/auth/strategies/jwt-access.strategy';
 import { jwtAccessConfig } from '@/configs/jwt-access.config';
 import { jwtRefreshConfig } from '@/configs/jwt-refresh.config';
+import { EmailModule } from '@/queue/email/email.module';
 import { UserModule } from '@/users/user.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { UserModule } from '@/users/user.module';
 		ConfigModule.forFeature(jwtRefreshConfig),
 		AdminModule,
 		UserModule,
+		EmailModule,
 		JwtModule,
 	],
 	controllers: [AuthController],

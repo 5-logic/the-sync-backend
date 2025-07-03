@@ -4,7 +4,13 @@ import { Request } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { Roles } from '@/auth/decorators/roles.decorator';
-import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
+import {
+	AdminLoginDto,
+	RefreshDto,
+	RequestPasswordResetDto,
+	UserLoginDto,
+	VerifyOtpAndResetPasswordDto,
+} from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
@@ -51,5 +57,15 @@ export class AuthController {
 		const user = req.user as UserPayload;
 
 		return await this.authService.logoutUser(user.id);
+	}
+
+	@Post('password-reset/request')
+	async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+		return await this.authService.requestPasswordReset(dto);
+	}
+
+	@Post('password-reset/verify')
+	async verifyOtpAndResetPassword(@Body() dto: VerifyOtpAndResetPasswordDto) {
+		return await this.authService.verifyOtpAndResetPassword(dto);
 	}
 }

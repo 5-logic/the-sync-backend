@@ -180,6 +180,25 @@ export class UserService {
 		}
 	}
 
+	async updatePassword(userId: string, newPassword: string): Promise<void> {
+		this.logger.log(`Updating password for user: ${userId}`);
+
+		try {
+			const hashedPassword = await hash(newPassword);
+
+			await this.prisma.user.update({
+				where: { id: userId },
+				data: { password: hashedPassword },
+			});
+
+			this.logger.log(`Password updated successfully for user: ${userId}`);
+		} catch (error) {
+			this.logger.error('Error updating user password', error);
+
+			throw error;
+		}
+	}
+
 	private flattenUserData(user: any) {
 		const { student, lecturer, ...baseUser } = user;
 

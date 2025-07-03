@@ -3,13 +3,20 @@ import {
 	Inject,
 	Injectable,
 	Logger,
+	NotFoundException,
 	UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Cache } from 'cache-manager';
 
 import { AdminService } from '@/admins/admin.service';
-import { AdminLoginDto, RefreshDto, UserLoginDto } from '@/auth/dto';
+import {
+	AdminLoginDto,
+	RefreshDto,
+	RequestPasswordResetDto,
+	UserLoginDto,
+	VerifyOtpAndResetPasswordDto,
+} from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
 import {
@@ -19,13 +26,21 @@ import {
 	jwtAccessConfig,
 	jwtRefreshConfig,
 } from '@/configs';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { UserService } from '@/users/user.service';
-import { generateIdentifier } from '@/utils';
+import {
+	generateIdentifier,
+	generateOTP,
+	generateStrongPassword,
+} from '@/utils';
 
 @Injectable()
 export class AuthService {
 	private readonly logger = new Logger(AuthService.name);
 	static readonly CACHE_KEY = 'cache:auth';
+	private static readonly OTP_CACHE_KEY = 'cache:otp';
+	private static readonly OTP_TTL = 10 * 60 * 1000; // 10 minutes
 
 	constructor(
 		@Inject(jwtAccessConfig.KEY)
@@ -36,6 +51,7 @@ export class AuthService {
 		private readonly adminService: AdminService,
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
+		private readonly emailQueueService: EmailQueueService,
 	) {}
 
 	async loginAdmin(dto: AdminLoginDto) {
@@ -262,6 +278,105 @@ export class AuthService {
 		} catch (error) {
 			this.logger.error('Error during user logout', error);
 
+			throw error;
+		}
+	}
+
+	async requestPasswordReset(dto: RequestPasswordResetDto) {
+		this.logger.log(`Password reset requested for email: ${dto.email}`);
+
+		try {
+			// Find user by email
+			const user = await this.userService.findOne({ email: dto.email });
+
+			if (!user || !user.isActive) {
+				throw new NotFoundException('User not found or inactive');
+			}
+
+			// Generate OTP
+			const otpCode = generateOTP();
+
+			// Store OTP in cache with 10 minutes TTL
+			const otpKey = `${AuthService.OTP_CACHE_KEY}:${dto.email}`;
+			await this.cache.set(
+				otpKey,
+				{ otpCode, userId: user.id },
+				AuthService.OTP_TTL,
+			);
+
+			// Send OTP email
+			await this.emailQueueService.sendEmail(EmailJobType.SEND_OTP, {
+				to: dto.email,
+				subject: 'Password Reset OTP - TheSync',
+				context: {
+					fullName: user.fullName,
+					otpCode,
+				},
+			});
+
+			this.logger.log(`OTP sent for password reset: ${dto.email}`);
+
+			return;
+		} catch (error) {
+			this.logger.error('Error during password reset request', error);
+
+			throw error;
+		}
+	}
+
+	async verifyOtpAndResetPassword(dto: VerifyOtpAndResetPasswordDto) {
+		try {
+			const { email, otpCode } = dto;
+
+			// Check OTP in cache
+			const otpKey = `${AuthService.OTP_CACHE_KEY}:${email}`;
+			const cachedOtp = await this.cache.get<{
+				otpCode: string;
+				userId: string;
+			}>(otpKey);
+
+			if (!cachedOtp || cachedOtp.otpCode !== otpCode) {
+				throw new UnauthorizedException('Invalid or expired OTP code');
+			}
+
+			// Find user
+			const user = await this.userService.findOne({ id: cachedOtp.userId });
+
+			if (!user || !user.isActive) {
+				throw new UnauthorizedException('User not found');
+			}
+
+			// Generate new password
+			const newPassword = generateStrongPassword();
+
+			// Update user password
+			await this.userService.updatePassword(user.id, newPassword);
+
+			// Remove OTP from cache
+			await this.cache.del(otpKey);
+
+			// Send new password email
+			await this.emailQueueService.sendEmail(EmailJobType.SEND_RESET_PASSWORD, {
+				to: email,
+				subject: 'Your New Password - TheSync',
+				context: {
+					fullName: user.fullName,
+					email,
+					newPassword,
+				},
+			});
+
+			this.logger.log(`Password reset completed for user: ${email}`);
+
+			return {
+				message:
+					'Password has been reset. Check your email for the new password.',
+			};
+		} catch (error) {
+			this.logger.error(
+				'Error during OTP verification and password reset',
+				error,
+			);
 			throw error;
 		}
 	}
