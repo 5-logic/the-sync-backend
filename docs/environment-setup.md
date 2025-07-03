@@ -28,7 +28,7 @@ All variables in the table above are **required** for the application to functio
 
 ### Frontend Configuration
 
-- **FRONTEND_URL**: The URL of the frontend application. This is used for CORS configuration and redirect purposes in authentication flows.
+- **FRONTEND_URL**: The URL of the frontend application. This is used for redirect purposes in authentication flows.
 
 ### Redis & Queue Management
 
