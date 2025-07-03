@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
 	CreateInviteRequestDto,
 	CreateJoinRequestDto,
@@ -24,7 +26,10 @@ import {
 export class RequestsService {
 	private readonly logger = new Logger(RequestsService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly emailQueueService: EmailQueueService,
+	) {}
 
 	// Validation methods
 	private async validateStudentEnrollment(userId: string, semesterId: string) {
@@ -224,6 +229,25 @@ export class RequestsService {
 				`Student ${userId} sent join request to group ${group.code}`,
 			);
 
+			// Send email notification to group leader
+			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
+				{
+					where: {
+						groupId: dto.groupId,
+						isLeader: true,
+					},
+					include: {
+						student: {
+							include: {
+								user: true,
+							},
+						},
+					},
+				},
+			);
+
+			await this.sendJoinRequestNotification(request, group, groupLeader);
+
 			return request;
 		} catch (error) {
 			this.logger.error('Error creating join request', error);
@@ -301,6 +325,25 @@ export class RequestsService {
 			this.logger.log(
 				`Group ${group.code} sent invite request to student ${dto.studentId}`,
 			);
+
+			// Send email notification to invited student
+			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
+				{
+					where: {
+						groupId: groupId,
+						isLeader: true,
+					},
+					include: {
+						student: {
+							include: {
+								user: true,
+							},
+						},
+					},
+				},
+			);
+
+			await this.sendInviteRequestNotification(request, group, groupLeader);
 
 			return request;
 		} catch (error) {
@@ -518,6 +561,9 @@ export class RequestsService {
 				`Request ${requestId} ${dto.status.toLowerCase()} by user ${userId}`,
 			);
 
+			// Send email notification about request status update
+			await this.sendRequestStatusUpdateNotification(requestId, dto.status);
+
 			return result;
 		} catch (error) {
 			this.logger.error('Error updating request status', error);
@@ -645,6 +691,153 @@ export class RequestsService {
 		} catch (error) {
 			this.logger.error('Error fetching request', error);
 			throw error;
+		}
+	}
+
+	// Email notification helpers
+	private async sendJoinRequestNotification(
+		request: any,
+		group: any,
+		groupLeader: any,
+	) {
+		try {
+			if (groupLeader?.student.user.email) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_JOIN_REQUEST_NOTIFICATION,
+					{
+						to: groupLeader.student.user.email,
+						subject: `New Join Request for Group ${group.code}`,
+						context: {
+							leaderName: groupLeader.student.user.fullName,
+							studentName: request.student.user.fullName,
+							studentEmail: request.student.user.email,
+							groupName: group.name,
+							groupCode: group.code,
+							semesterName: group.semester.name,
+							requestDate: new Date().toLocaleDateString(),
+						},
+					},
+				);
+			}
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send join request notification email',
+				emailError,
+			);
+		}
+	}
+
+	private async sendInviteRequestNotification(
+		request: any,
+		group: any,
+		groupLeader: any,
+	) {
+		try {
+			if (request.student.user.email) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_INVITE_REQUEST_NOTIFICATION,
+					{
+						to: request.student.user.email,
+						subject: `Group Invitation from ${group.code}`,
+						context: {
+							studentName: request.student.user.fullName,
+							groupName: group.name,
+							groupCode: group.code,
+							leaderName: groupLeader?.student.user.fullName || 'Group Leader',
+							leaderEmail: groupLeader?.student.user.email || '',
+							semesterName: group.semester.name,
+							requestDate: new Date().toLocaleDateString(),
+						},
+					},
+				);
+			}
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send invite request notification email',
+				emailError,
+			);
+		}
+	}
+
+	private async sendRequestStatusUpdateNotification(
+		requestId: string,
+		status: RequestStatus,
+	) {
+		try {
+			const requestWithUsers = await this.prisma.request.findUnique({
+				where: { id: requestId },
+				include: {
+					student: {
+						include: {
+							user: true,
+						},
+					},
+					group: {
+						include: {
+							semester: true,
+							studentGroupParticipations: {
+								where: { isLeader: true },
+								include: {
+									student: {
+										include: {
+											user: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (!requestWithUsers) return;
+
+			const studentName = requestWithUsers.student.user.fullName;
+			const leaderName =
+				requestWithUsers.group.studentGroupParticipations[0]?.student.user
+					.fullName || 'Group Leader';
+
+			let emailRecipient: string | undefined;
+			let recipientName = '';
+
+			// Determine email recipient based on request type
+			if (requestWithUsers.type === RequestType.Join) {
+				// For join requests, notify the student who sent the request
+				emailRecipient = requestWithUsers.student.user.email;
+				recipientName = studentName;
+			} else if (requestWithUsers.type === RequestType.Invite) {
+				// For invite requests, notify the group leader who sent the invite
+				emailRecipient =
+					requestWithUsers.group.studentGroupParticipations[0]?.student.user
+						.email;
+				recipientName = leaderName;
+			}
+
+			if (emailRecipient) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_REQUEST_STATUS_UPDATE,
+					{
+						to: emailRecipient,
+						subject: `Request ${status}: ${requestWithUsers.group.name} (${requestWithUsers.group.code})`,
+						context: {
+							recipientName,
+							requestType: requestWithUsers.type,
+							requestStatus: status,
+							groupName: requestWithUsers.group.name,
+							groupCode: requestWithUsers.group.code,
+							studentName,
+							leaderName,
+							semesterName: requestWithUsers.group.semester.name,
+							updateDate: new Date().toLocaleDateString(),
+						},
+					},
+				);
+			}
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send request status update email',
+				emailError,
+			);
 		}
 	}
 }
