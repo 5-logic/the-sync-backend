@@ -1,12 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsUUID } from 'class-validator';
 
 export class ChangeSupervisionDto {
 	@ApiProperty()
-	@IsString()
+	@IsUUID()
 	currentLecturerId: string;
 
 	@ApiProperty()
-	@IsString()
+	@IsUUID()
 	newLecturerId: string;
 }
