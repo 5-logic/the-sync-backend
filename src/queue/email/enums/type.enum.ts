@@ -4,5 +4,6 @@ export enum EmailJobType {
 	SEND_THESIS_STATUS_CHANGE = 'send-thesis-status-change',
 	SEND_SUPERVISION_NOTIFICATION = 'send-supervision-notification',
 	SEND_OTP = 'send-otp',
+	SEND_RESET_PASSWORD = 'send-reset-password',
 	SEND_NOTIFICATION = 'send-notification',
 }

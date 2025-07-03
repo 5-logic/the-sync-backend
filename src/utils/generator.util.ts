@@ -21,3 +21,14 @@ export const generateIdentifier = (): string => {
 		strict: true,
 	});
 };
+
+export const generateOTP = (): string => {
+	return generate({
+		length: 8,
+		numbers: true,
+		symbols: false,
+		uppercase: false,
+		lowercase: false,
+		strict: true,
+	});
+};
