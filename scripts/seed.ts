@@ -1,5 +1,5 @@
 import { Gender, PrismaClient, SemesterStatus } from '../generated/prisma';
-import { TIMEOUT } from '../src/configs/constant.config';
+import { CONSTANTS } from '../src/configs/constant.config';
 import { hash } from '../src/utils/hash.util';
 
 const prisma = new PrismaClient();
@@ -1496,7 +1496,7 @@ const seedLectuers = async () => {
 				});
 			}
 		},
-		{ timeout: TIMEOUT },
+		{ timeout: CONSTANTS.TIMEOUT },
 	);
 
 	console.log('👨‍🏫 Lecturers seeded successfully');
@@ -1531,7 +1531,7 @@ const seedStudents = async () => {
 		{
 			id: '7f0c713f-54e5-4823-a889-82d34335faf9',
 			fullName: 'Đinh Quốc Chương',
-			email: 'chuongdqqe170092@fpt.edu.vn',
+			email: 'chuongdqqe170097@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
 			studentCode: 'QE170092',
@@ -1607,7 +1607,7 @@ const seedStudents = async () => {
 				});
 			}
 		},
-		{ timeout: TIMEOUT },
+		{ timeout: CONSTANTS.TIMEOUT },
 	);
 
 	console.log('👩‍🎓 Students seeded successfully');

@@ -1,0 +1,67 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= studentName
+    | ,
+
+  p
+    | You have received an invitation to join the group 
+    strong= groupName
+    |  (
+    strong= groupCode
+    | ) from their group leader. Please review the invitation and respond accordingly.
+
+  .info-box
+    h3 🎯 Invitation Details
+    
+    .info-item
+      span.info-label Group Name:
+      span.info-value= groupName
+    
+    .info-item
+      span.info-label Group Code:
+      span.info-value= groupCode
+    
+    .info-item
+      span.info-label Group Leader:
+      span.info-value= leaderName
+    
+    .info-item
+      span.info-label Leader Email:
+      span.info-value= leaderEmail
+    
+    .info-item
+      span.info-label Semester:
+      span.info-value= semesterName
+    
+    .info-item
+      span.info-label Invitation Date:
+      span.info-value= requestDate
+
+  .success-box
+    strong What's Next?
+    | You can respond to this invitation by:
+    ul
+      li ✅ Accepting the invitation to join the group
+      li ❌ Declining the invitation if you're not interested
+      li 📞 Contacting the group leader for more information
+
+  .warning-box
+    strong Important Notes:
+    ul
+      li You can only be a member of one group per semester
+      li If you accept, any other pending requests you have will be cancelled
+      li Make sure you're comfortable working with this group before accepting
+
+  p
+    | Please log in to TheSync to review and respond to this invitation. You can find the invitation in your requests section.
+
+  p
+    | If you have any questions about this invitation or the group, feel free to contact the group leader directly.
+
+  p
+    strong Best regards,
+    br
+    | TheSync Team

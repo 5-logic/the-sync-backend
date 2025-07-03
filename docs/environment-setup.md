@@ -13,17 +13,22 @@ Create a `.env` file in the root directory of the project and configure the foll
 | 3   | `DIRECT_URL`               | Direct connection to the database, primarily used for Prisma migrations   | `postgresql://postgres:randompassword@localhost:5432/randomdb` |
 | 4   | `JWT_ACCESS_TOKEN_SECRET`  | Your JWT access token secret                                              | `randomaccesstoken123`                                         |
 | 5   | `JWT_REFRESH_TOKEN_SECRET` | Your JWT refresh token secret                                             | `randomrefreshtoken456`                                        |
-| 6   | `REDIS_URL`                | Redis connection string for queue management and caching                  | `redis://localhost:6379`                                       |
-| 7   | `BULLMQ_USERNAME`          | Username for BullMQ dashboard authentication                              | `randomuser`                                                   |
-| 8   | `BULLMQ_PASSWORD`          | Password for BullMQ dashboard authentication                              | `randompassword789`                                            |
-| 9   | `SMTP_HOST`                | SMTP server host for email sending                                        | `smtp.example.com`                                             |
-| 10  | `SMTP_PORT`                | SMTP server port for email sending                                        | `465`                                                          |
-| 11  | `SMTP_USER`                | SMTP username for email sending                                           | `randomemail@example.com`                                      |
-| 12  | `SMTP_PASS`                | SMTP password for email sending                                           | `randomsmtppassword`                                           |
+| 6   | `FRONTEND_URL`             | Frontend application URL for redirect purposes                            | `https://example.com`                                          |
+| 7   | `REDIS_URL`                | Redis connection string for queue management and caching                  | `redis://localhost:6379`                                       |
+| 8   | `BULLMQ_USERNAME`          | Username for BullMQ dashboard authentication                              | `randomuser`                                                   |
+| 9   | `BULLMQ_PASSWORD`          | Password for BullMQ dashboard authentication                              | `randompassword789`                                            |
+| 10  | `SMTP_HOST`                | SMTP server host for email sending                                        | `smtp.example.com`                                             |
+| 11  | `SMTP_PORT`                | SMTP server port for email sending                                        | `465`                                                          |
+| 12  | `SMTP_USER`                | SMTP username for email sending                                           | `randomemail@example.com`                                      |
+| 13  | `SMTP_PASS`                | SMTP password for email sending                                           | `randomsmtppassword`                                           |
 
 ### Required Variables
 
 All variables in the table above are **required** for the application to function properly.
+
+### Frontend Configuration
+
+- **FRONTEND_URL**: The URL of the frontend application. This is used for redirect purposes in authentication flows.
 
 ### Redis & Queue Management
 
@@ -64,6 +69,9 @@ DIRECT_URL=postgresql://postgres:randompassword@localhost:5432/randomdb
 # JWT Secrets
 JWT_ACCESS_TOKEN_SECRET=randomaccesstoken123
 JWT_REFRESH_TOKEN_SECRET=randomrefreshtoken456
+
+# Frontend Configuration
+FRONTEND_URL=https://example.com
 
 # Redis & Queue
 REDIS_URL=redis://localhost:6379

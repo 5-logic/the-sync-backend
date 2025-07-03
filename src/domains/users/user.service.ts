@@ -1,13 +1,14 @@
 import {
 	BadRequestException,
+	ConflictException,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 
+import { ChangePasswordDto } from '@/auth/dto';
 import { Role } from '@/auth/enums/role.enum';
 import { PrismaService } from '@/providers/prisma/prisma.service';
-import { UpdateUserPasswordDto } from '@/users/dto/update-user.dto';
 import { hash, verify } from '@/utils/hash.util';
 
 @Injectable()
@@ -114,10 +115,10 @@ export class UserService {
 		}
 	}
 
-	async changePassword(userId: string, dto: UpdateUserPasswordDto) {
-		try {
-			this.logger.log(`Changing password for user: ${userId}`);
+	async changePassword(userId: string, dto: ChangePasswordDto) {
+		this.logger.log(`Changing password for user: ${userId}`);
 
+		try {
 			const existingUser = await this.prisma.user.findUnique({
 				where: { id: userId },
 				select: { id: true, password: true },
@@ -125,6 +126,7 @@ export class UserService {
 
 			if (!existingUser) {
 				this.logger.warn(`User with ID ${userId} not found`);
+
 				throw new NotFoundException('User not found');
 			}
 
@@ -132,7 +134,8 @@ export class UserService {
 				this.logger.warn(
 					`New password must be different from current password for user: ${userId}`,
 				);
-				throw new BadRequestException(
+
+				throw new ConflictException(
 					'New password must be different from current password',
 				);
 			}
@@ -144,7 +147,8 @@ export class UserService {
 
 			if (!isCurrentPasswordValid) {
 				this.logger.warn(`Invalid current password for user: ${userId}`);
-				throw new BadRequestException('Current password is incorrect');
+
+				throw new ConflictException('Current password is incorrect');
 			}
 
 			const hashedNewPassword = await hash(dto.newPassword);
@@ -166,17 +170,38 @@ export class UserService {
 			const response = this.flattenUserData(updatedUser);
 
 			this.logger.log(`Password changed successfully for user: ${userId}`);
+
 			return response;
 		} catch (error) {
 			if (
-				error instanceof BadRequestException ||
+				error instanceof ConflictException ||
 				error instanceof NotFoundException
 			) {
 				throw error;
 			}
 
 			this.logger.error(`Error changing password for user ${userId}:`, error);
+
 			throw new BadRequestException('Failed to change password');
+		}
+	}
+
+	async updatePassword(id: string, newPassword: string): Promise<void> {
+		this.logger.log(`Updating password for user: ${id}`);
+
+		try {
+			const hashedPassword = await hash(newPassword);
+
+			await this.prisma.user.update({
+				where: { id: id },
+				data: { password: hashedPassword },
+			});
+
+			this.logger.log(`Password updated successfully for user: ${id}`);
+		} catch (error) {
+			this.logger.error('Error updating user password', error);
+
+			throw error;
 		}
 	}
 
