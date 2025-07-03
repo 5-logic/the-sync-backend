@@ -66,12 +66,36 @@ export class GroupService {
 				`Cannot create/update group. Semester status must be ${SemesterStatus.Picking}, current status is ${semester.status}`,
 			);
 		}
+
+		return semester;
 	}
 
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
-			await this.validateSemester(dto.semesterId);
+			const currentSemester = await this.validateSemester(dto.semesterId);
 
+			const currentTotalGroups = await this.prisma.group.count({
+				where: { semesterId: dto.semesterId },
+			});
+
+			if (currentSemester) {
+				if (currentSemester.maxGroup == null) {
+					this.logger.warn(
+						`maxGroup is not set for semester ${dto.semesterId}`,
+					);
+					throw new ConflictException(
+						`Cannot create group. Maximum number of groups for this semester is not configured.`,
+					);
+				}
+				if (currentTotalGroups >= currentSemester.maxGroup) {
+					this.logger.warn(
+						`Maximum number of groups for semester ${dto.semesterId} reached: ${currentSemester.maxGroup}`,
+					);
+					throw new ConflictException(
+						`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
+					);
+				}
+			}
 			// Validate that the user is a student enrolled in the semester
 			await this.validateStudentEnrollment(userId, dto.semesterId);
 
