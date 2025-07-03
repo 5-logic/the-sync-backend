@@ -7,7 +7,7 @@ import {
 	Put,
 	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto';
@@ -22,26 +22,25 @@ export class SupervisionsController {
 	constructor(private readonly supervisionsService: SupervisionsService) {}
 
 	@Roles(Role.MODERATOR)
-	@Put('assign/:id')
-	@ApiParam({ name: 'id', description: 'Thesis ID' })
+	@Put('assign/:thesisId')
 	async assignSupervisor(
-		@Param('id') id: string,
+		@Param('thesisId') thesisId: string,
 		@Body() assignSupervisionDto: AssignSupervisionDto,
 	) {
 		return await this.supervisionsService.assignSupervisor(
-			id,
+			thesisId,
 			assignSupervisionDto,
 		);
 	}
 
 	@Roles(Role.MODERATOR)
-	@Put('change/:id')
+	@Put('change/:thesisId')
 	async changeSupervisor(
-		@Param('id') id: string,
+		@Param('thesisId') thesisId: string,
 		@Body() changeSupervisionDto: ChangeSupervisionDto,
 	) {
 		return await this.supervisionsService.changeSupervisor(
-			id,
+			thesisId,
 			changeSupervisionDto,
 		);
 	}
@@ -58,13 +57,13 @@ export class SupervisionsController {
 		);
 	}
 
-	@Get('thesis/:id')
-	async getSupervisionsByThesis(@Param('id') id: string) {
-		return await this.supervisionsService.getSupervisionsByThesis(id);
+	@Get('thesis/:thesisId')
+	async getSupervisionsByThesis(@Param('thesisId') thesisId: string) {
+		return await this.supervisionsService.getSupervisionsByThesis(thesisId);
 	}
 
-	@Get('lecturer/:id')
-	async getSupervisionsByLecturer(@Param('id') id: string) {
-		return await this.supervisionsService.getSupervisionsByLecturer(id);
+	@Get('lecturer/:lecturerId')
+	async getSupervisionsByLecturer(@Param('lecturerId') lecturerId: string) {
+		return await this.supervisionsService.getSupervisionsByLecturer(lecturerId);
 	}
 }
