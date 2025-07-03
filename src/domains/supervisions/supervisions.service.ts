@@ -23,6 +23,50 @@ export class SupervisionsService {
 	) {}
 
 	/**
+	 * Helper method để validate lecturer tồn tại và active
+	 */
+	private async validateLecturer(lecturerId: string, context = 'Lecturer') {
+		const lecturer = await this.prisma.lecturer.findUnique({
+			where: { userId: lecturerId },
+			include: { user: true },
+		});
+
+		if (!lecturer) {
+			this.logger.error(`${context} with ID ${lecturerId} does not exist`);
+			throw new NotFoundException(
+				`${context} with ID ${lecturerId} does not exist`,
+			);
+		}
+
+		if (!lecturer.user.isActive) {
+			this.logger.error(`${context} with ID ${lecturerId} is not active`);
+			throw new BadRequestException(
+				`${context} with ID ${lecturerId} is not active`,
+			);
+		}
+
+		return lecturer;
+	}
+
+	/**
+	 * Helper method để kiểm tra supervision đã tồn tại
+	 */
+	private async checkExistingSupervision(thesisId: string, lecturerId: string) {
+		return this.prisma.supervision.findFirst({
+			where: { thesisId, lecturerId },
+		});
+	}
+
+	/**
+	 * Helper method để đếm số supervision hiện tại của thesis
+	 */
+	private async getSupervisionCount(thesisId: string) {
+		return this.prisma.supervision.count({
+			where: { thesisId },
+		});
+	}
+
+	/**
 	 * Helper method để gửi email thông báo supervision
 	 */
 	private async sendSupervisionNotificationEmail(
@@ -67,51 +111,28 @@ export class SupervisionsService {
 				`Assigning supervision for thesis ${thesisId} to lecturer ${dto.lecturerId}`,
 			);
 
-			const existingLecturer = await this.prisma.lecturer.findUnique({
-				where: { userId: dto.lecturerId },
-				include: { user: true },
-			});
+			await this.validateLecturer(dto.lecturerId);
 
-			if (!existingLecturer) {
-				this.logger.error(`Lecturer with ID ${dto.lecturerId} does not exist`);
-				throw new NotFoundException(
-					`Lecturer with ID ${dto.lecturerId} does not exist`,
-				);
-			}
-
-			if (!existingLecturer.user.isActive) {
-				this.logger.error(`Lecturer with ID ${dto.lecturerId} is not active`);
-				throw new BadRequestException(
-					`Lecturer with ID ${dto.lecturerId} is not active`,
-				);
-			}
-
-			const existingSupervision = await this.prisma.supervision.findFirst({
-				where: {
-					thesisId,
-					lecturerId: dto.lecturerId,
-				},
-			});
+			const existingSupervision = await this.checkExistingSupervision(
+				thesisId,
+				dto.lecturerId,
+			);
 
 			if (existingSupervision) {
 				this.logger.warn(
 					`Supervision for thesis ${thesisId} already exists for lecturer ${dto.lecturerId}`,
 				);
-				throw new ConflictException(
-					`Supervision for thesis ${thesisId} already exists for lecturer ${dto.lecturerId}`,
-				);
+				throw new ConflictException(`Thesis was supervised by this lecturer.`);
 			}
 
-			const currentSupervisionsCount = await this.prisma.supervision.count({
-				where: { thesisId },
-			});
+			const currentSupervisionsCount = await this.getSupervisionCount(thesisId);
 
 			if (currentSupervisionsCount >= 2) {
 				this.logger.warn(
 					`Thesis ${thesisId} has already reached the maximum number of supervisors (2)`,
 				);
 				throw new BadRequestException(
-					`Thesis ${thesisId} has already reached the maximum number of supervisors (2)`,
+					`Thesis has already reached the maximum number of supervisors (2)`,
 				);
 			}
 
@@ -134,7 +155,6 @@ export class SupervisionsService {
 				`Successfully assigned supervision for thesis ${thesisId} to lecturer ${dto.lecturerId}`,
 			);
 
-			// Gửi email thông báo cho lecturer
 			await this.sendSupervisionNotificationEmail(
 				supervision.lecturer.user.email,
 				supervision.lecturer.user.fullName,
@@ -145,7 +165,16 @@ export class SupervisionsService {
 				'assigned',
 			);
 
-			return supervision;
+			this.logger.debug(
+				`Supervision assignment email sent to ${supervision.lecturer.user.email}`,
+			);
+
+			this.logger.log(`Supervision assignment email sent successfully.`);
+
+			return {
+				lecturerId: supervision.lecturerId,
+				thesisId: supervision.thesisId,
+			};
 		} catch (error) {
 			this.logger.error(
 				`Failed to assign supervision for thesis ${thesisId}`,
@@ -158,61 +187,36 @@ export class SupervisionsService {
 	async changeSupervisor(thesisId: string, dto: ChangeSupervisionDto) {
 		try {
 			this.logger.log(
-				`Updating supervision for thesis ${thesisId} from lecturer ${dto.currentLecturerId} to lecturer ${dto.newLecturerId}`,
+				`Updating supervision for thesis ${thesisId} from lecturer ${dto.currentSupervisorId} to lecturer ${dto.newSupervisorId}`,
 			);
 
-			const existingSupervision = await this.prisma.supervision.findFirst({
-				where: {
-					thesisId,
-					lecturerId: dto.currentLecturerId,
-				},
-			});
+			const existingSupervision = await this.checkExistingSupervision(
+				thesisId,
+				dto.currentSupervisorId,
+			);
 
 			if (!existingSupervision) {
 				this.logger.error(
-					`Supervision for thesis ${thesisId} with lecturer ${dto.currentLecturerId} does not exist`,
+					`Supervision for thesis ${thesisId} with lecturer ${dto.currentSupervisorId} does not exist`,
 				);
 				throw new NotFoundException(
-					`Supervision for thesis ${thesisId} with lecturer ${dto.currentLecturerId} does not exist`,
+					`Thesis was not supervised by this lecturers.`,
 				);
 			}
 
-			const newLecturer = await this.prisma.lecturer.findUnique({
-				where: { userId: dto.newLecturerId },
-				include: { user: true },
-			});
+			await this.validateLecturer(dto.newSupervisorId, 'New lecturer');
 
-			if (!newLecturer) {
-				this.logger.error(
-					`New lecturer with ID ${dto.newLecturerId} does not exist`,
-				);
-				throw new NotFoundException(
-					`New lecturer with ID ${dto.newLecturerId} does not exist`,
-				);
-			}
-
-			if (!newLecturer.user.isActive) {
-				this.logger.error(
-					`New lecturer with ID ${dto.newLecturerId} is not active`,
-				);
-				throw new BadRequestException(
-					`New lecturer with ID ${dto.newLecturerId} is not active`,
-				);
-			}
-
-			const newLecturerSupervision = await this.prisma.supervision.findFirst({
-				where: {
-					thesisId,
-					lecturerId: dto.newLecturerId,
-				},
-			});
+			const newLecturerSupervision = await this.checkExistingSupervision(
+				thesisId,
+				dto.newSupervisorId,
+			);
 
 			if (newLecturerSupervision) {
 				this.logger.warn(
-					`New lecturer ${dto.newLecturerId} already has supervision for thesis ${thesisId}`,
+					`New lecturer ${dto.newSupervisorId} already has supervision for thesis ${thesisId}`,
 				);
 				throw new ConflictException(
-					`New lecturer ${dto.newLecturerId} already has supervision for thesis ${thesisId}`,
+					`New lecturer ${dto.newSupervisorId} already has supervision for thesis ${thesisId}`,
 				);
 			}
 
@@ -220,11 +224,11 @@ export class SupervisionsService {
 				where: {
 					thesisId_lecturerId: {
 						thesisId,
-						lecturerId: dto.currentLecturerId,
+						lecturerId: dto.currentSupervisorId,
 					},
 				},
 				data: {
-					lecturerId: dto.newLecturerId,
+					lecturerId: dto.newSupervisorId,
 				},
 				include: {
 					lecturer: {
@@ -237,16 +241,14 @@ export class SupervisionsService {
 			});
 
 			this.logger.log(
-				`Successfully updated supervision for thesis ${thesisId} from lecturer ${dto.currentLecturerId} to lecturer ${dto.newLecturerId}`,
+				`Successfully updated supervision for thesis ${thesisId} from lecturer ${dto.currentSupervisorId} to lecturer ${dto.newSupervisorId}`,
 			);
 
-			// Lấy thông tin lecturer cũ để gửi email thông báo
 			const oldLecturer = await this.prisma.lecturer.findUnique({
-				where: { userId: dto.currentLecturerId },
+				where: { userId: dto.currentSupervisorId },
 				include: { user: true },
 			});
 
-			// Gửi email cho lecturer cũ
 			if (oldLecturer) {
 				await this.sendSupervisionNotificationEmail(
 					oldLecturer.user.email,
@@ -259,7 +261,6 @@ export class SupervisionsService {
 				);
 			}
 
-			// Gửi email cho lecturer mới
 			await this.sendSupervisionNotificationEmail(
 				updatedSupervision.lecturer.user.email,
 				updatedSupervision.lecturer.user.fullName,
@@ -270,7 +271,10 @@ export class SupervisionsService {
 				'assigned',
 			);
 
-			return updatedSupervision;
+			return {
+				lecturerId: updatedSupervision.lecturerId,
+				thesisId: updatedSupervision.thesisId,
+			};
 		} catch (error) {
 			this.logger.error(
 				`Failed to update supervision for thesis ${thesisId}`,
@@ -286,36 +290,31 @@ export class SupervisionsService {
 				`Removing supervision for thesis ${thesisId} from lecturer ${lecturerId}`,
 			);
 
-			const existingSupervision = await this.prisma.supervision.findFirst({
-				where: {
-					thesisId,
-					lecturerId,
-				},
-			});
+			const existingSupervision = await this.checkExistingSupervision(
+				thesisId,
+				lecturerId,
+			);
 
 			if (!existingSupervision) {
 				this.logger.error(
 					`Supervision for thesis ${thesisId} with lecturer ${lecturerId} does not exist`,
 				);
 				throw new NotFoundException(
-					`Supervision for thesis ${thesisId} with lecturer ${lecturerId} does not exist`,
+					`This thesis was not supervised by this lecturers.`,
 				);
 			}
 
-			const currentSupervisionsCount = await this.prisma.supervision.count({
-				where: { thesisId },
-			});
+			const currentSupervisionsCount = await this.getSupervisionCount(thesisId);
 
 			if (currentSupervisionsCount <= 1) {
 				this.logger.warn(
 					`Cannot remove supervisor: thesis ${thesisId} must have at least 1 supervisor`,
 				);
 				throw new BadRequestException(
-					`Cannot remove supervisor: thesis ${thesisId} must have at least 1 supervisor`,
+					`Cannot remove supervisor of thesis because thesis must have at least 1 supervisor`,
 				);
 			}
 
-			// Lấy thông tin lecturer và thesis trước khi xóa
 			const supervisionToDelete = await this.prisma.supervision.findFirst({
 				where: {
 					thesisId,
@@ -344,7 +343,6 @@ export class SupervisionsService {
 				`Successfully removed supervision for thesis ${thesisId} from lecturer ${lecturerId}`,
 			);
 
-			// Gửi email thông báo cho lecturer bị xóa
 			if (supervisionToDelete) {
 				await this.sendSupervisionNotificationEmail(
 					supervisionToDelete.lecturer.user.email,
@@ -357,7 +355,7 @@ export class SupervisionsService {
 				);
 			}
 
-			return { message: 'Supervision removed successfully' };
+			return { lecturerId, thesisId };
 		} catch (error) {
 			this.logger.error(
 				`Failed to remove supervision for thesis ${thesisId}`,
@@ -380,31 +378,7 @@ export class SupervisionsService {
 				`Found ${supervisions.length} supervisions for thesis ${thesisId}`,
 			);
 
-			const lecturerIds = supervisions.map((s) => s.lecturerId);
-
-			const lecturers = await this.prisma.lecturer.findMany({
-				where: {
-					userId: { in: lecturerIds },
-				},
-				select: {
-					user: { select: { email: true, fullName: true, phoneNumber: true } },
-					userId: true,
-				},
-			});
-
-			const result = supervisions.map((supervision) => {
-				const lecturer = lecturers.find(
-					(l) => l.userId === supervision.lecturerId,
-				);
-				return {
-					...supervision,
-					email: lecturer?.user.email,
-					fullName: lecturer?.user.fullName,
-					phoneNumber: lecturer?.user.phoneNumber,
-				};
-			});
-
-			return result;
+			return supervisions;
 		} catch (error) {
 			this.logger.error(
 				`Failed to get supervisions for thesis ${thesisId}`,
@@ -427,35 +401,7 @@ export class SupervisionsService {
 				`Found ${supervisions.length} supervisions for lecturer ${lecturerId}`,
 			);
 
-			const thesisIds = supervisions.map((s) => s.thesisId);
-
-			const theses = await this.prisma.thesis.findMany({
-				where: {
-					id: { in: thesisIds },
-				},
-				select: {
-					id: true,
-					group: {
-						select: {
-							id: true,
-						},
-					},
-				},
-			});
-
-			const result = supervisions.map((supervision) => {
-				const thesis = theses.find((t) => t.id === supervision.thesisId);
-				return {
-					...supervision,
-					group: thesis?.group
-						? {
-								id: thesis.group.id,
-							}
-						: null,
-				};
-			});
-
-			return result;
+			return supervisions;
 		} catch (error) {
 			this.logger.error(
 				`Failed to get supervisions for lecturer ${lecturerId}`,
