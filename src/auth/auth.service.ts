@@ -396,7 +396,7 @@ export class AuthService {
 
 	async changePassword(userId: string, dto: ChangePasswordDto) {
 		try {
-			const result = this.userService.changePassword(userId, dto);
+			const result = await this.userService.changePassword(userId, dto);
 
 			return result;
 		} catch (error) {
