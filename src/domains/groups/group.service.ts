@@ -23,16 +23,24 @@ export class GroupService {
 					studentId: userId,
 					groupId: groupId,
 				},
+				include: {
+					group: {
+						select: {
+							code: true,
+							name: true,
+						},
+					},
+				},
 			},
 		);
 
 		if (!participation) {
-			throw new NotFoundException(`Student is not a member of group`);
+			throw new NotFoundException(`Student is not a member of this group`);
 		}
 
 		if (!participation.isLeader) {
 			throw new ConflictException(
-				`Only group leader can update group information`,
+				`Access denied. Only the group leader can update group "${participation.group.name}" (${participation.group.code}) information`,
 			);
 		}
 	}
@@ -122,6 +130,34 @@ export class GroupService {
 		}
 	}
 
+	private async validateStudentNotInAnyGroup(
+		userId: string,
+		semesterId: string,
+	) {
+		const existingParticipation =
+			await this.prisma.studentGroupParticipation.findFirst({
+				where: {
+					studentId: userId,
+					semesterId: semesterId,
+				},
+				include: {
+					group: {
+						select: {
+							id: true,
+							code: true,
+							name: true,
+						},
+					},
+				},
+			});
+
+		if (existingParticipation) {
+			throw new ConflictException(
+				`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
+			);
+		}
+	}
+
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
 			const currentSemester = await this.validateSemester(dto.semesterId);
@@ -150,6 +186,9 @@ export class GroupService {
 			}
 			// Validate that the user is a student enrolled in the semester
 			await this.validateStudentEnrollment(userId, dto.semesterId);
+
+			// Validate that the student is not already in a group for the semester
+			await this.validateStudentNotInAnyGroup(userId, dto.semesterId);
 
 			// Validate skills and responsibilities if provided
 			if (dto.skillIds && dto.skillIds.length > 0) {
@@ -241,7 +280,10 @@ export class GroupService {
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId}`,
 			);
 
-			return result;
+			// Fetch the complete group data with all relationships
+			const completeGroup = await this.findOne(result.id);
+
+			return completeGroup;
 		} catch (error) {
 			this.logger.error('Error creating group', error);
 
@@ -491,7 +533,10 @@ export class GroupService {
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
-			return result;
+			// Fetch the complete group data with all relationships
+			const completeGroup = await this.findOne(result.id);
+
+			return completeGroup;
 		} catch (error) {
 			this.logger.error('Error updating group', error);
 
