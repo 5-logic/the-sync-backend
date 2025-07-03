@@ -158,22 +158,22 @@ export class SupervisionsService {
 	async updateSupervisor(thesisId: string, dto: UpdateSupervisionDto) {
 		try {
 			this.logger.log(
-				`Updating supervision for thesis ${thesisId} from lecturer ${dto.oldLecturerId} to lecturer ${dto.newLecturerId}`,
+				`Updating supervision for thesis ${thesisId} from lecturer ${dto.currentLecturerId} to lecturer ${dto.newLecturerId}`,
 			);
 
 			const existingSupervision = await this.prisma.supervision.findFirst({
 				where: {
 					thesisId,
-					lecturerId: dto.oldLecturerId,
+					lecturerId: dto.currentLecturerId,
 				},
 			});
 
 			if (!existingSupervision) {
 				this.logger.error(
-					`Supervision for thesis ${thesisId} with lecturer ${dto.oldLecturerId} does not exist`,
+					`Supervision for thesis ${thesisId} with lecturer ${dto.currentLecturerId} does not exist`,
 				);
 				throw new NotFoundException(
-					`Supervision for thesis ${thesisId} with lecturer ${dto.oldLecturerId} does not exist`,
+					`Supervision for thesis ${thesisId} with lecturer ${dto.currentLecturerId} does not exist`,
 				);
 			}
 
@@ -220,7 +220,7 @@ export class SupervisionsService {
 				where: {
 					thesisId_lecturerId: {
 						thesisId,
-						lecturerId: dto.oldLecturerId,
+						lecturerId: dto.currentLecturerId,
 					},
 				},
 				data: {
@@ -237,12 +237,12 @@ export class SupervisionsService {
 			});
 
 			this.logger.log(
-				`Successfully updated supervision for thesis ${thesisId} from lecturer ${dto.oldLecturerId} to lecturer ${dto.newLecturerId}`,
+				`Successfully updated supervision for thesis ${thesisId} from lecturer ${dto.currentLecturerId} to lecturer ${dto.newLecturerId}`,
 			);
 
 			// Lấy thông tin lecturer cũ để gửi email thông báo
 			const oldLecturer = await this.prisma.lecturer.findUnique({
-				where: { userId: dto.oldLecturerId },
+				where: { userId: dto.currentLecturerId },
 				include: { user: true },
 			});
 

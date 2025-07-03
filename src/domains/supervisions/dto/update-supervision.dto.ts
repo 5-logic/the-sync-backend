@@ -4,7 +4,7 @@ import { IsString } from 'class-validator';
 export class UpdateSupervisionDto {
 	@ApiProperty()
 	@IsString()
-	oldLecturerId: string;
+	currentLecturerId: string;
 
 	@ApiProperty()
 	@IsString()
