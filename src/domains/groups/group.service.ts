@@ -216,13 +216,10 @@ export class GroupService {
 			await this.validateStudentNotInAnyGroup(userId, currentSemester.id);
 
 			// Validate skills and responsibilities if provided
-			if (dto.skillIds && dto.skillIds.length > 0) {
-				await this.validateSkills(dto.skillIds);
-			}
-
-			if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
-				await this.validateResponsibilities(dto.responsibilityIds);
-			}
+			await this.validateSkillsAndResponsibilities(
+				dto.skillIds,
+				dto.responsibilityIds,
+			);
 
 			// Create group and add student as leader in a transaction
 			const result = await this.prisma.$transaction(async (prisma) => {
@@ -262,31 +259,13 @@ export class GroupService {
 					},
 				});
 
-				// Create group required skills if provided
-				if (dto.skillIds && dto.skillIds.length > 0) {
-					const groupRequiredSkills = dto.skillIds.map((skillId) => ({
-						groupId: group.id,
-						skillId: skillId,
-					}));
-
-					await prisma.groupRequiredSkill.createMany({
-						data: groupRequiredSkills,
-					});
-				}
-
-				// Create group expected responsibilities if provided
-				if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
-					const groupExpectedResponsibilities = dto.responsibilityIds.map(
-						(responsibilityId) => ({
-							groupId: group.id,
-							responsibilityId: responsibilityId,
-						}),
-					);
-
-					await prisma.groupExpectedResponsibility.createMany({
-						data: groupExpectedResponsibilities,
-					});
-				}
+				// Create group required skills and responsibilities
+				await this.createGroupSkills(prisma, group.id, dto.skillIds);
+				await this.createGroupResponsibilities(
+					prisma,
+					group.id,
+					dto.responsibilityIds,
+				);
 
 				return group;
 			});
@@ -300,65 +279,157 @@ export class GroupService {
 
 			return completeGroup;
 		} catch (error) {
-			this.logger.error('Error creating group', error);
-
-			throw error;
+			this.handleError('creating group', error);
 		}
 	}
 
-	async findAll() {
-		try {
-			const groups = await this.prisma.group.findMany({
+	private async validateSkillsAndResponsibilities(
+		skillIds?: string[],
+		responsibilityIds?: string[],
+	) {
+		if (skillIds && skillIds.length > 0) {
+			await this.validateSkills(skillIds);
+		}
+
+		if (responsibilityIds && responsibilityIds.length > 0) {
+			await this.validateResponsibilities(responsibilityIds);
+		}
+	}
+
+	private handleError(operation: string, error: any): never {
+		this.logger.error(`Error ${operation}`, error);
+		throw error;
+	}
+
+	private async createGroupSkills(
+		prisma: any,
+		groupId: string,
+		skillIds?: string[],
+	) {
+		if (skillIds && skillIds.length > 0) {
+			const groupRequiredSkills = skillIds.map((skillId) => ({
+				groupId: groupId,
+				skillId: skillId,
+			}));
+
+			await prisma.groupRequiredSkill.createMany({
+				data: groupRequiredSkills,
+			});
+		}
+	}
+
+	private async createGroupResponsibilities(
+		prisma: any,
+		groupId: string,
+		responsibilityIds?: string[],
+	) {
+		if (responsibilityIds && responsibilityIds.length > 0) {
+			const groupExpectedResponsibilities = responsibilityIds.map(
+				(responsibilityId) => ({
+					groupId: groupId,
+					responsibilityId: responsibilityId,
+				}),
+			);
+
+			await prisma.groupExpectedResponsibility.createMany({
+				data: groupExpectedResponsibilities,
+			});
+		}
+	}
+
+	private async updateGroupSkills(
+		prisma: any,
+		groupId: string,
+		skillIds?: string[],
+	) {
+		if (skillIds !== undefined) {
+			// Delete existing skills
+			await prisma.groupRequiredSkill.deleteMany({
+				where: { groupId: groupId },
+			});
+
+			// Create new skills if any
+			await this.createGroupSkills(prisma, groupId, skillIds);
+		}
+	}
+
+	private async updateGroupResponsibilities(
+		prisma: any,
+		groupId: string,
+		responsibilityIds?: string[],
+	) {
+		if (responsibilityIds !== undefined) {
+			// Delete existing responsibilities
+			await prisma.groupExpectedResponsibility.deleteMany({
+				where: { groupId: groupId },
+			});
+
+			// Create new responsibilities if any
+			await this.createGroupResponsibilities(
+				prisma,
+				groupId,
+				responsibilityIds,
+			);
+		}
+	}
+
+	private getGroupIncludeOptions() {
+		return {
+			semester: {
+				select: {
+					id: true,
+					name: true,
+					code: true,
+				},
+			},
+			groupRequiredSkills: {
 				include: {
-					semester: {
+					skill: {
 						select: {
 							id: true,
 							name: true,
-							code: true,
-						},
-					},
-					groupRequiredSkills: {
-						include: {
-							skill: {
+							skillSet: {
 								select: {
 									id: true,
 									name: true,
-									skillSet: {
-										select: {
-											id: true,
-											name: true,
-										},
-									},
-								},
-							},
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
-						},
-					},
-					studentGroupParticipations: {
-						include: {
-							student: {
-								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-											email: true,
-										},
-									},
 								},
 							},
 						},
 					},
 				},
+			},
+			groupExpectedResponsibilities: {
+				include: {
+					responsibility: {
+						select: {
+							id: true,
+							name: true,
+						},
+					},
+				},
+			},
+			studentGroupParticipations: {
+				include: {
+					student: {
+						include: {
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		};
+	}
+
+	async findAll() {
+		try {
+			const groups = await this.prisma.group.findMany({
+				include: this.getGroupIncludeOptions(),
 				orderBy: { createdAt: 'desc' },
 			});
 
@@ -366,9 +437,7 @@ export class GroupService {
 
 			return groups;
 		} catch (error) {
-			this.logger.error('Error fetching groups', error);
-
-			throw error;
+			this.handleError('fetching groups', error);
 		}
 	}
 
@@ -377,54 +446,7 @@ export class GroupService {
 			const group = await this.prisma.group.findUnique({
 				where: { id },
 				include: {
-					semester: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-						},
-					},
-					groupRequiredSkills: {
-						include: {
-							skill: {
-								select: {
-									id: true,
-									name: true,
-									skillSet: {
-										select: {
-											id: true,
-											name: true,
-										},
-									},
-								},
-							},
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
-						},
-					},
-					studentGroupParticipations: {
-						include: {
-							student: {
-								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-											email: true,
-										},
-									},
-								},
-							},
-						},
-					},
+					...this.getGroupIncludeOptions(),
 					thesis: {
 						select: {
 							id: true,
@@ -446,9 +468,7 @@ export class GroupService {
 
 			return group;
 		} catch (error) {
-			this.logger.error('Error fetching group', error);
-
-			throw error;
+			this.handleError('fetching group', error);
 		}
 	}
 
@@ -471,21 +491,10 @@ export class GroupService {
 			await this.validateSemester(existingGroup.semesterId);
 
 			// Validate skills and responsibilities if provided
-			if (
-				dto.skillIds &&
-				Array.isArray(dto.skillIds) &&
-				dto.skillIds.length > 0
-			) {
-				await this.validateSkills(dto.skillIds);
-			}
-
-			if (
-				dto.responsibilityIds &&
-				Array.isArray(dto.responsibilityIds) &&
-				dto.responsibilityIds.length > 0
-			) {
-				await this.validateResponsibilities(dto.responsibilityIds);
-			}
+			await this.validateSkillsAndResponsibilities(
+				dto.skillIds,
+				dto.responsibilityIds,
+			);
 
 			// Update group and relationships in a transaction
 			const result = await this.prisma.$transaction(async (prisma) => {
@@ -498,50 +507,13 @@ export class GroupService {
 					},
 				});
 
-				// Update group required skills if provided
-				if (dto.skillIds !== undefined) {
-					// Delete existing skills
-					await prisma.groupRequiredSkill.deleteMany({
-						where: { groupId: id },
-					});
-
-					// Create new skills if any
-					if (Array.isArray(dto.skillIds) && dto.skillIds.length > 0) {
-						const groupRequiredSkills = dto.skillIds.map((skillId) => ({
-							groupId: id,
-							skillId: skillId,
-						}));
-
-						await prisma.groupRequiredSkill.createMany({
-							data: groupRequiredSkills,
-						});
-					}
-				}
-
-				// Update group expected responsibilities if provided
-				if (dto.responsibilityIds !== undefined) {
-					// Delete existing responsibilities
-					await prisma.groupExpectedResponsibility.deleteMany({
-						where: { groupId: id },
-					});
-
-					// Create new responsibilities if any
-					if (
-						Array.isArray(dto.responsibilityIds) &&
-						dto.responsibilityIds.length > 0
-					) {
-						const groupExpectedResponsibilities = dto.responsibilityIds.map(
-							(responsibilityId) => ({
-								groupId: id,
-								responsibilityId: responsibilityId,
-							}),
-						);
-
-						await prisma.groupExpectedResponsibility.createMany({
-							data: groupExpectedResponsibilities,
-						});
-					}
-				}
+				// Update group skills and responsibilities
+				await this.updateGroupSkills(prisma, id, dto.skillIds);
+				await this.updateGroupResponsibilities(
+					prisma,
+					id,
+					dto.responsibilityIds,
+				);
 
 				return group;
 			});
@@ -553,9 +525,7 @@ export class GroupService {
 
 			return completeGroup;
 		} catch (error) {
-			this.logger.error('Error updating group', error);
-
-			throw error;
+			this.handleError('updating group', error);
 		}
 	}
 }
