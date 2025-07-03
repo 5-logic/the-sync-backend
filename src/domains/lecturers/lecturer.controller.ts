@@ -16,22 +16,14 @@ import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { LecturerService } from '@/lecturers/lecturer.service';
-import {
-	CreateUserDto,
-	UpdateUserDto,
-	UpdateUserPasswordDto,
-} from '@/users/dto';
-import { UserService } from '@/users/user.service';
+import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Lecturer')
 @Controller('lecturers')
 export class LecturerController {
-	constructor(
-		private readonly lecturerService: LecturerService,
-		private readonly userService: UserService,
-	) {}
+	constructor(private readonly lecturerService: LecturerService) {}
 
 	@Roles(Role.ADMIN)
 	@Post()
@@ -62,16 +54,6 @@ export class LecturerController {
 		const user = req.user as UserPayload;
 
 		return await this.lecturerService.update(user.id, dto);
-	}
-
-	@Roles(Role.LECTURER, Role.MODERATOR)
-	@Put('change-password')
-	async changePassword(
-		@Req() req: Request,
-		@Body() dto: UpdateUserPasswordDto,
-	) {
-		const user = req.user as UserPayload;
-		return await this.userService.changePassword(user.id, dto);
 	}
 
 	@Roles(Role.ADMIN)
