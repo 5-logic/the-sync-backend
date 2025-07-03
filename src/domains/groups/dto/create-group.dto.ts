@@ -11,10 +11,6 @@ export class CreateGroupDto {
 	@IsString()
 	projectDirection?: string;
 
-	@ApiProperty()
-	@IsString()
-	semesterId: string;
-
 	@ApiPropertyOptional({ type: [String] })
 	@IsOptional()
 	@IsArray()

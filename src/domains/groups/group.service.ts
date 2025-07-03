@@ -8,7 +8,7 @@ import {
 import { CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
-import { SemesterStatus } from '~/generated/prisma';
+import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
 export class GroupService {
@@ -158,37 +158,62 @@ export class GroupService {
 		}
 	}
 
+	private async getStudentCurrentSemester(userId: string) {
+		const enrollment = await this.prisma.enrollment.findFirst({
+			where: {
+				studentId: userId,
+				status: EnrollmentStatus.NotYet,
+			},
+			include: {
+				semester: true,
+			},
+		});
+
+		if (!enrollment) {
+			throw new NotFoundException(
+				`Student is not enrolled in any semester with status 'NotYet'`,
+			);
+		}
+
+		return enrollment.semester;
+	}
+
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
-			const currentSemester = await this.validateSemester(dto.semesterId);
+			// Get current semester from student's enrollment with status NotYet
+			const currentSemester = await this.getStudentCurrentSemester(userId);
+
+			// Validate semester status
+			if (currentSemester.status !== SemesterStatus.Picking) {
+				throw new ConflictException(
+					`Cannot create group. Semester status must be ${SemesterStatus.Picking}, current status is ${currentSemester.status}`,
+				);
+			}
 
 			const currentTotalGroups = await this.prisma.group.count({
-				where: { semesterId: dto.semesterId },
+				where: { semesterId: currentSemester.id },
 			});
 
-			if (currentSemester) {
-				if (currentSemester.maxGroup == null) {
-					this.logger.warn(
-						`maxGroup is not set for semester ${dto.semesterId}`,
-					);
-					throw new ConflictException(
-						`Cannot create group. Maximum number of groups for this semester is not configured.`,
-					);
-				}
-				if (currentTotalGroups >= currentSemester.maxGroup) {
-					this.logger.warn(
-						`Maximum number of groups for semester ${dto.semesterId} reached: ${currentSemester.maxGroup}`,
-					);
-					throw new ConflictException(
-						`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
-					);
-				}
+			if (currentSemester.maxGroup == null) {
+				this.logger.warn(
+					`maxGroup is not set for semester ${currentSemester.id}`,
+				);
+				throw new ConflictException(
+					`Cannot create group. Maximum number of groups for this semester is not configured.`,
+				);
 			}
-			// Validate that the user is a student enrolled in the semester
-			await this.validateStudentEnrollment(userId, dto.semesterId);
+
+			if (currentTotalGroups >= currentSemester.maxGroup) {
+				this.logger.warn(
+					`Maximum number of groups for semester ${currentSemester.id} reached: ${currentSemester.maxGroup}`,
+				);
+				throw new ConflictException(
+					`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
+				);
+			}
 
 			// Validate that the student is not already in a group for the semester
-			await this.validateStudentNotInAnyGroup(userId, dto.semesterId);
+			await this.validateStudentNotInAnyGroup(userId, currentSemester.id);
 
 			// Validate skills and responsibilities if provided
 			if (dto.skillIds && dto.skillIds.length > 0) {
@@ -201,29 +226,19 @@ export class GroupService {
 
 			// Create group and add student as leader in a transaction
 			const result = await this.prisma.$transaction(async (prisma) => {
-				// Generate group code inside transaction to ensure consistency
-				const semester = await prisma.semester.findUnique({
-					where: { id: dto.semesterId },
-					select: { code: true },
-				});
-
-				if (!semester) {
-					throw new NotFoundException(`Semester not found`);
-				}
-
 				// Count existing groups in this semester to get the next sequence number
 				const existingGroupsCount = await prisma.group.count({
 					where: {
-						semesterId: dto.semesterId,
+						semesterId: currentSemester.id,
 						code: {
-							startsWith: `${semester.code}QN`,
+							startsWith: `${currentSemester.code}QN`,
 						},
 					},
 				});
 
 				// Generate next sequence number (starting from 1)
 				const sequenceNumber = existingGroupsCount + 1;
-				const groupCode = `${semester.code}QN${sequenceNumber
+				const groupCode = `${currentSemester.code}QN${sequenceNumber
 					.toString()
 					.padStart(3, '0')}`;
 
@@ -233,7 +248,7 @@ export class GroupService {
 						code: groupCode,
 						name: dto.name,
 						projectDirection: dto.projectDirection,
-						semesterId: dto.semesterId,
+						semesterId: currentSemester.id,
 					},
 				});
 
@@ -242,7 +257,7 @@ export class GroupService {
 					data: {
 						studentId: userId,
 						groupId: group.id,
-						semesterId: dto.semesterId,
+						semesterId: currentSemester.id,
 						isLeader: true,
 					},
 				});
@@ -277,7 +292,7 @@ export class GroupService {
 			});
 
 			this.logger.log(
-				`Group "${result.name}" created with ID: ${result.id} by student ${userId}`,
+				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
 			);
 
 			// Fetch the complete group data with all relationships
