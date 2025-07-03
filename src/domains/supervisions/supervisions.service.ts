@@ -11,7 +11,7 @@ import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto';
-import { UpdateSupervisionDto } from '@/supervisions/dto/update-supervision.dto';
+import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
 
 @Injectable()
 export class SupervisionsService {
@@ -155,7 +155,7 @@ export class SupervisionsService {
 		}
 	}
 
-	async updateSupervisor(thesisId: string, dto: UpdateSupervisionDto) {
+	async changeSupervisor(thesisId: string, dto: ChangeSupervisionDto) {
 		try {
 			this.logger.log(
 				`Updating supervision for thesis ${thesisId} from lecturer ${dto.currentLecturerId} to lecturer ${dto.newLecturerId}`,

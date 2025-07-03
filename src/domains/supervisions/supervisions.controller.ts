@@ -11,7 +11,7 @@ import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto';
-import { UpdateSupervisionDto } from '@/supervisions/dto/update-supervision.dto';
+import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
 import { SupervisionsService } from '@/supervisions/supervisions.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -35,14 +35,14 @@ export class SupervisionsController {
 	}
 
 	@Roles(Role.MODERATOR)
-	@Put('update/:id')
-	async updateSupervisor(
+	@Put('change/:id')
+	async changeSupervisor(
 		@Param('id') id: string,
-		@Body() updateSupervisionDto: UpdateSupervisionDto,
+		@Body() changeSupervisionDto: ChangeSupervisionDto,
 	) {
-		return await this.supervisionsService.updateSupervisor(
+		return await this.supervisionsService.changeSupervisor(
 			id,
-			updateSupervisionDto,
+			changeSupervisionDto,
 		);
 	}
 
