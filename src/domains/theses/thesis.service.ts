@@ -266,6 +266,14 @@ export class ThesisService {
 					},
 				});
 
+				//  Create first supervisor who create thí thesis
+				await prisma.supervision.create({
+					data: {
+						lecturerId,
+						thesisId: thesis.id,
+					},
+				});
+
 				// Create thesis required skills if skillIds provided
 				if (skillIds && skillIds.length > 0) {
 					await prisma.thesisRequiredSkill.createMany({
