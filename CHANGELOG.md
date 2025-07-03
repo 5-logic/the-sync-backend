@@ -5,6 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2025-07-03
+
+### Added
+
+- **Password Reset System**:
+  - `POST /auth/password-reset/request` - New endpoint for requesting password reset via OTP sent to email (requires `RequestPasswordResetDto` with `email` field)
+  - `POST /auth/password-reset/verify` - New endpoint for verifying OTP and receiving new password via email (requires `VerifyOtpAndResetPasswordDto` with `email` and `otpCode` fields)
+  - `RequestPasswordResetDto` - DTO for password reset requests with email validation
+  - `VerifyOtpAndResetPasswordDto` - DTO for OTP verification with email and 8-digit OTP code validation
+  - OTP cache system with 10-minute TTL for secure password reset process
+  - Email templates: `send-otp.pug` for OTP delivery and `send-reset-password.pug` for new password notifications
+
+- **Requests Management System**:
+  - `POST /requests/join` - New endpoint for students to create join requests to groups (requires `CreateJoinRequestDto` with `groupId`)
+  - `POST /requests/invite/:groupId` - New endpoint for students to create invite requests for other students (requires `CreateInviteRequestDto` with `studentId`)
+  - `GET /requests/student` - New endpoint for students to view their own requests
+  - `GET /requests/group/:groupId` - New endpoint for students to view requests for their group
+  - `PUT /requests/:requestId/status` - New endpoint for updating request status (requires `UpdateRequestStatusDto` with `status` enum)
+  - `DELETE /requests/:requestId` - New endpoint for canceling requests
+  - `GET /requests/:requestId` - New endpoint for viewing specific request details
+  - Email notifications for join requests, invite requests, and status updates
+
+- **Supervision Management System**:
+  - `POST /supervisions/assign/:thesisId` - New moderator endpoint for assigning supervisors to thesis (requires `AssignSupervisionDto` with lecturer assignments)
+  - `PUT /supervisions/change/:thesisId` - New moderator endpoint for changing thesis supervisors (requires `ChangeSupervisionDto`)
+  - `DELETE /supervisions/remove/:thesisId/:lecturerId` - New moderator endpoint for removing supervisors from thesis
+  - `GET /supervisions/thesis/:thesisId` - New endpoint for viewing thesis supervisions
+  - `GET /supervisions/lecturer/:lecturerId` - New endpoint for viewing lecturer supervisions
+  - Email notifications for supervision assignments and changes
+
+- **Enhanced Caching System**:
+  - Redis integration with `@nestjs/cache-manager` and `@keyv/redis` for improved performance
+  - Caching implemented in `MajorService`, `SkillSetsService`, and authentication services
+  - JWT token caching with separate identifiers for access and refresh tokens
+  - Enhanced security with cache-based token validation
+
+### Changed
+
+- **Password Management Consolidation**:
+  - Moved `change-password` endpoint from `/students/change-password` and `/lecturers/change-password` to `/auth/change-password`
+  - Unified password change functionality for all user roles (STUDENT, LECTURER, MODERATOR) under auth module
+  - `ChangePasswordDto` - New DTO in auth module with enhanced password validation (minimum 12 characters, uppercase, digits, special characters)
+  - Enhanced security with consistent password validation across all endpoints
+
+- **Group Management Enhancements**:
+  - Enhanced group creation with skill and responsibility validation
+  - Added maximum group limit validation during group creation
+  - Improved group service with better validation and error handling
+  - Skills and responsibilities are now properly validated during group operations
+
+- **Authentication Improvements**:
+  - Enhanced JWT handling with separate cache identifiers for access and refresh tokens
+  - Improved logout functionality for both admin and user with proper cache management
+  - Enhanced security validation with cached token verification
+
+- **Email System Enhancements**:
+  - Added new email job types: `SEND_OTP`, `SEND_RESET_PASSWORD`, `SEND_JOIN_REQUEST_NOTIFICATION`, `SEND_INVITE_REQUEST_NOTIFICATION`, `SEND_REQUEST_STATUS_UPDATE`, `SEND_SUPERVISION_NOTIFICATION`
+  - Enhanced email templates with better styling and user experience
+  - Improved email notification flow for various system events
+
+### Fixed
+
+- **User Status Validation**: Fixed user active status checks to properly validate active users only
+- **Group Validation**: Enhanced group creation validation with better error messages and user feedback
+- **Supervision Logic**: Improved supervision assignment and change logic with proper validation
+- **Cache Management**: Fixed cache storage issues with proper identifier usage in authentication services
+
+### Removed
+
+- `PUT /students/change-password` - Consolidated into `/auth/change-password`
+- `PUT /lecturers/change-password` - Consolidated into `/auth/change-password`
+- Deprecated password generation utilities (consolidated into unified generator utilities)
+
+### Security
+
+- **Enhanced Password Security**: Implemented OTP-based password reset with time-limited codes (10 minutes)
+- **Token Security**: Enhanced JWT token management with cache-based validation and separate identifiers
+- **Request Validation**: Improved validation for all request operations with proper role-based access control
+
+### Performance
+
+- **Caching Implementation**: Added Redis-based caching for major services to improve response times
+- **Database Optimization**: Enhanced query performance with proper caching strategies
+- **Email Processing**: Improved email queue processing with better error handling
+
+### Pull Requests
+
+- [#152](https://github.com/5-logic/the-sync-backend/pull/152) - Merge dev branch for v0.5.8 release
+- [#156](https://github.com/5-logic/the-sync-backend/pull/156) - Request management system implementation
+- [#154](https://github.com/5-logic/the-sync-backend/pull/154) - Request management system enhancements
+- [#155](https://github.com/5-logic/the-sync-backend/pull/155) - Password management consolidation and authentication improvements
+- [#151](https://github.com/5-logic/the-sync-backend/pull/151) - Password reset system implementation
+- [#149](https://github.com/5-logic/the-sync-backend/pull/149) - Supervision management system
+- [#148](https://github.com/5-logic/the-sync-backend/pull/148) - Supervision management enhancements
+- [#147](https://github.com/5-logic/the-sync-backend/pull/147) - Authentication and caching improvements
+
 ## [0.5.7] - 2025-07-02
 
 ### Added

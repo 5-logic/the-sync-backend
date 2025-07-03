@@ -5,15 +5,26 @@ import { hash } from '../src/utils/hash.util';
 const prisma = new PrismaClient();
 
 const seedAdmins = async () => {
-	await prisma.admin.upsert({
-		where: { username: 'admin' },
-		update: {},
-		create: {
-			id: '6a9a72cb-c78e-46b9-9a2c-41706b700bdc',
-			username: 'admin',
-			password: await hash('FPTUniversity@2025'),
-		},
-	});
+	const admins = [
+		'admin',
+		'hardingadonis',
+		'bakaqc',
+		'htnghia1423',
+		'siddle1512',
+		'yuhtnguyen',
+	];
+
+	const hashPassword = await hash('FPTUniversity@2025');
+
+	const operations = admins.map((u) =>
+		prisma.admin.upsert({
+			where: { username: u },
+			update: {},
+			create: { username: u, password: hashPassword },
+		}),
+	);
+
+	await prisma.$transaction(operations);
 
 	console.log('👤 Admin seeded successfully');
 };
