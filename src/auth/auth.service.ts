@@ -191,7 +191,7 @@ export class AuthService {
 			const key = `${AuthService.CACHE_KEY}:${user.id}`;
 			await this.cache.set(
 				key,
-				{ accessPayload, refreshPayload },
+				{ accessIdentifier, refreshIdentifier },
 				AuthService.CACHE_TTL,
 			);
 

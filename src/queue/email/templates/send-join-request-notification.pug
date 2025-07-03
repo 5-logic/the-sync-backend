@@ -1,0 +1,67 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= leaderName
+    | ,
+
+  p
+    | A student has sent a request to join your group 
+    strong= groupName
+    |  (
+    strong= groupCode
+    | ). Please review the request and take appropriate action.
+
+  .info-box
+    h3 📋 Join Request Details
+    
+    .info-item
+      span.info-label Student Name:
+      span.info-value= studentName
+    
+    .info-item
+      span.info-label Student Email:
+      span.info-value= studentEmail
+    
+    .info-item
+      span.info-label Group Name:
+      span.info-value= groupName
+    
+    .info-item
+      span.info-label Group Code:
+      span.info-value= groupCode
+    
+    .info-item
+      span.info-label Semester:
+      span.info-value= semesterName
+    
+    .info-item
+      span.info-label Request Date:
+      span.info-value= requestDate
+
+  .success-box
+    strong What's Next?
+    | As the group leader, you can:
+    ul
+      li ✅ Approve the request to add the student to your group
+      li ❌ Reject the request if your group is not suitable
+      li ⏰ Review the request within the semester timeline
+
+  .warning-box
+    strong Important Notes:
+    ul
+      li Your group can have a maximum of 5 members
+      li Once approved, the student will become a member of your group
+      li All other pending requests from this student will be automatically cancelled
+
+  p
+    | Please log in to TheSync to review and respond to this request. You can find the request in your group management section.
+
+  p
+    | If you have any questions about this request or need assistance, please contact the system administrator.
+
+  p
+    strong Best regards,
+    br
+    | TheSync Team
