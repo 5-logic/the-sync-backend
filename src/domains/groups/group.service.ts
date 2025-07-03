@@ -70,6 +70,58 @@ export class GroupService {
 		return semester;
 	}
 
+	private async validateSkills(skillIds: string[]) {
+		if (!skillIds || skillIds.length === 0) return;
+
+		const existingSkills = await this.prisma.skill.findMany({
+			where: {
+				id: {
+					in: skillIds,
+				},
+			},
+			select: { id: true },
+		});
+
+		const existingSkillIds = existingSkills.map((skill) => skill.id);
+		const missingSkillIds = skillIds.filter(
+			(id) => !existingSkillIds.includes(id),
+		);
+
+		if (missingSkillIds.length > 0) {
+			throw new NotFoundException(
+				`Skills not found with IDs: ${missingSkillIds.join(', ')}`,
+			);
+		}
+	}
+
+	private async validateResponsibilities(responsibilityIds: string[]) {
+		if (!responsibilityIds || responsibilityIds.length === 0) return;
+
+		const existingResponsibilities = await this.prisma.responsibility.findMany({
+			where: {
+				id: {
+					in: responsibilityIds,
+				},
+			},
+			select: { id: true },
+		});
+
+		const existingResponsibilityIds = existingResponsibilities.map(
+			(resp) => resp.id,
+		);
+		const missingResponsibilityIds = responsibilityIds.filter(
+			(id) => !existingResponsibilityIds.includes(id),
+		);
+
+		if (missingResponsibilityIds.length > 0) {
+			throw new NotFoundException(
+				`Responsibilities not found with IDs: ${missingResponsibilityIds.join(
+					', ',
+				)}`,
+			);
+		}
+	}
+
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
 			const currentSemester = await this.validateSemester(dto.semesterId);
@@ -99,22 +151,47 @@ export class GroupService {
 			// Validate that the user is a student enrolled in the semester
 			await this.validateStudentEnrollment(userId, dto.semesterId);
 
-			const existingGroup = await this.prisma.group.findUnique({
-				where: { code: dto.code },
-			});
+			// Validate skills and responsibilities if provided
+			if (dto.skillIds && dto.skillIds.length > 0) {
+				await this.validateSkills(dto.skillIds);
+			}
 
-			if (existingGroup) {
-				throw new ConflictException(
-					`Group with code ${dto.code} already exists`,
-				);
+			if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
+				await this.validateResponsibilities(dto.responsibilityIds);
 			}
 
 			// Create group and add student as leader in a transaction
 			const result = await this.prisma.$transaction(async (prisma) => {
+				// Generate group code inside transaction to ensure consistency
+				const semester = await prisma.semester.findUnique({
+					where: { id: dto.semesterId },
+					select: { code: true },
+				});
+
+				if (!semester) {
+					throw new NotFoundException(`Semester not found`);
+				}
+
+				// Count existing groups in this semester to get the next sequence number
+				const existingGroupsCount = await prisma.group.count({
+					where: {
+						semesterId: dto.semesterId,
+						code: {
+							startsWith: `${semester.code}QN`,
+						},
+					},
+				});
+
+				// Generate next sequence number (starting from 1)
+				const sequenceNumber = existingGroupsCount + 1;
+				const groupCode = `${semester.code}QN${sequenceNumber
+					.toString()
+					.padStart(3, '0')}`;
+
 				// Create the group
 				const group = await prisma.group.create({
 					data: {
-						code: dto.code,
+						code: groupCode,
 						name: dto.name,
 						projectDirection: dto.projectDirection,
 						semesterId: dto.semesterId,
@@ -130,6 +207,32 @@ export class GroupService {
 						isLeader: true,
 					},
 				});
+
+				// Create group required skills if provided
+				if (dto.skillIds && dto.skillIds.length > 0) {
+					const groupRequiredSkills = dto.skillIds.map((skillId) => ({
+						groupId: group.id,
+						skillId: skillId,
+					}));
+
+					await prisma.groupRequiredSkill.createMany({
+						data: groupRequiredSkills,
+					});
+				}
+
+				// Create group expected responsibilities if provided
+				if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
+					const groupExpectedResponsibilities = dto.responsibilityIds.map(
+						(responsibilityId) => ({
+							groupId: group.id,
+							responsibilityId: responsibilityId,
+						}),
+					);
+
+					await prisma.groupExpectedResponsibility.createMany({
+						data: groupExpectedResponsibilities,
+					});
+				}
 
 				return group;
 			});
@@ -149,6 +252,56 @@ export class GroupService {
 	async findAll() {
 		try {
 			const groups = await this.prisma.group.findMany({
+				include: {
+					semester: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+					groupRequiredSkills: {
+						include: {
+							skill: {
+								select: {
+									id: true,
+									name: true,
+									skillSet: {
+										select: {
+											id: true,
+											name: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					groupExpectedResponsibilities: {
+						include: {
+							responsibility: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 				orderBy: { createdAt: 'desc' },
 			});
 
@@ -166,6 +319,66 @@ export class GroupService {
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id },
+				include: {
+					semester: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+					groupRequiredSkills: {
+						include: {
+							skill: {
+								select: {
+									id: true,
+									name: true,
+									skillSet: {
+										select: {
+											id: true,
+											name: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					groupExpectedResponsibilities: {
+						include: {
+							responsibility: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					thesis: {
+						select: {
+							id: true,
+							englishName: true,
+							vietnameseName: true,
+							abbreviation: true,
+							description: true,
+							status: true,
+						},
+					},
+				},
 			});
 
 			if (!group) {
@@ -200,14 +413,85 @@ export class GroupService {
 			// Validate semester status for update
 			await this.validateSemester(existingGroup.semesterId);
 
-			const group = await this.prisma.group.update({
-				where: { id },
-				data: dto,
+			// Validate skills and responsibilities if provided
+			if (
+				dto.skillIds &&
+				Array.isArray(dto.skillIds) &&
+				dto.skillIds.length > 0
+			) {
+				await this.validateSkills(dto.skillIds);
+			}
+
+			if (
+				dto.responsibilityIds &&
+				Array.isArray(dto.responsibilityIds) &&
+				dto.responsibilityIds.length > 0
+			) {
+				await this.validateResponsibilities(dto.responsibilityIds);
+			}
+
+			// Update group and relationships in a transaction
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Update basic group information
+				const group = await prisma.group.update({
+					where: { id },
+					data: {
+						name: dto.name,
+						projectDirection: dto.projectDirection,
+					},
+				});
+
+				// Update group required skills if provided
+				if (dto.skillIds !== undefined) {
+					// Delete existing skills
+					await prisma.groupRequiredSkill.deleteMany({
+						where: { groupId: id },
+					});
+
+					// Create new skills if any
+					if (Array.isArray(dto.skillIds) && dto.skillIds.length > 0) {
+						const groupRequiredSkills = dto.skillIds.map((skillId) => ({
+							groupId: id,
+							skillId: skillId,
+						}));
+
+						await prisma.groupRequiredSkill.createMany({
+							data: groupRequiredSkills,
+						});
+					}
+				}
+
+				// Update group expected responsibilities if provided
+				if (dto.responsibilityIds !== undefined) {
+					// Delete existing responsibilities
+					await prisma.groupExpectedResponsibility.deleteMany({
+						where: { groupId: id },
+					});
+
+					// Create new responsibilities if any
+					if (
+						Array.isArray(dto.responsibilityIds) &&
+						dto.responsibilityIds.length > 0
+					) {
+						const groupExpectedResponsibilities = dto.responsibilityIds.map(
+							(responsibilityId) => ({
+								groupId: id,
+								responsibilityId: responsibilityId,
+							}),
+						);
+
+						await prisma.groupExpectedResponsibility.createMany({
+							data: groupExpectedResponsibilities,
+						});
+					}
+				}
+
+				return group;
 			});
 
-			this.logger.log(`Group updated with ID: ${group.id}`);
+			this.logger.log(`Group updated with ID: ${result.id}`);
 
-			return group;
+			return result;
 		} catch (error) {
 			this.logger.error('Error updating group', error);
 
