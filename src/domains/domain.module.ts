@@ -8,6 +8,7 @@ import { MilestoneModule } from '@/milestones/milestone.module';
 import { SemesterModule } from '@/semesters/semester.module';
 import { SkillSetsModule } from '@/skill-sets/skill-sets.module';
 import { StudentModule } from '@/students/student.module';
+import { SupervisionsModule } from '@/supervisions/supervisions.module';
 import { ThesisModule } from '@/theses/thesis.module';
 
 @Module({
@@ -18,9 +19,10 @@ import { ThesisModule } from '@/theses/thesis.module';
 		MajorModule,
 		MilestoneModule,
 		SemesterModule,
-		StudentModule,
-		ThesisModule,
 		SkillSetsModule,
+		StudentModule,
+		SupervisionsModule,
+		ThesisModule,
 	],
 })
 export class DomainModule {}

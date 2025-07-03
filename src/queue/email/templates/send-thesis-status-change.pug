@@ -61,9 +61,9 @@ block content
     else if actionType === 'Approved'
       .success-box
         strong 🎉 Congratulations!
-        | Your theses have been approved by the review committee. You can now publish them to make them available for students to select.
+        | Your theses have been approved by the review committee. They are now awaiting publication by the system moderator.
       p
-        | Your theses have passed the review process. You can now choose to publish them to make them available for students to select for their capstone projects.
+        | Your theses have passed the review process. The system moderator will review and publish them to make them available for students to select for their capstone projects.
     else if actionType === 'Rejected'
       .warning-box
         strong ❌ Thesis Review Results:
@@ -109,7 +109,7 @@ block content
     else if status === 'Approved'
       .success-box
         strong 🎉 Congratulations!
-        | Your thesis has been approved by the review committee. You can now publish it to make it available for students to select.
+        | Your thesis has been approved by the review committee. It is now awaiting publication by the system moderator.
     else if status === 'Rejected'
       .warning-box
         strong ❌ Thesis Review Result:
@@ -134,7 +134,7 @@ block content
         | You can edit your thesis and submit it for review again once you have addressed the feedback provided by the review committee.
     else if status === 'Approved'
       p
-        | Your thesis has passed the review process. You can now choose to publish it to make it available for students to select for their capstone projects.
+        | Your thesis has passed the review process. The system moderator will review and publish it to make it available for students to select for their capstone projects.
     else if status === 'Published'
       p
         | Students can now view and select your thesis for their capstone projects. You may start receiving student applications and group formation requests soon.
