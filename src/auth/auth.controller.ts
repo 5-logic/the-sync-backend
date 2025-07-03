@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
@@ -6,6 +6,7 @@ import { AuthService } from '@/auth/auth.service';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import {
 	AdminLoginDto,
+	ChangePasswordDto,
 	RefreshDto,
 	RequestPasswordResetDto,
 	UserLoginDto,
@@ -67,5 +68,15 @@ export class AuthController {
 	@Post('password-reset/verify')
 	async verifyOtpAndResetPassword(@Body() dto: VerifyOtpAndResetPasswordDto) {
 		return await this.authService.verifyOtpAndResetPassword(dto);
+	}
+
+	@UseGuards(JwtAccessAuthGuard, RoleGuard)
+	@ApiBearerAuth()
+	@Roles(Role.STUDENT, Role.LECTURER, Role.MODERATOR)
+	@Put('change-password')
+	async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
+		const user = req.user as UserPayload;
+
+		return await this.authService.changePassword(user.id, dto);
 	}
 }
