@@ -12,6 +12,7 @@ import { Cache } from 'cache-manager';
 import { AdminService } from '@/admins/admin.service';
 import {
 	AdminLoginDto,
+	ChangePasswordDto,
 	RefreshDto,
 	RequestPasswordResetDto,
 	UserLoginDto,
@@ -388,6 +389,18 @@ export class AuthService {
 				'Error during OTP verification and password reset',
 				error,
 			);
+
+			throw error;
+		}
+	}
+
+	async changePassword(userId: string, dto: ChangePasswordDto) {
+		try {
+			const result = await this.userService.changePassword(userId, dto);
+
+			return result;
+		} catch (error) {
+			this.logger.error('Error during password change', error);
 
 			throw error;
 		}
