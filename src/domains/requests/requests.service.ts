@@ -743,8 +743,8 @@ export class RequestsService {
 							studentName: request.student.user.fullName,
 							groupName: group.name,
 							groupCode: group.code,
-							leaderName: groupLeader?.student.user.fullName || 'Group Leader',
-							leaderEmail: groupLeader?.student.user.email || '',
+							leaderName: groupLeader?.student.user.fullName ?? 'Group Leader',
+							leaderEmail: groupLeader?.student.user.email ?? '',
 							semesterName: group.semester.name,
 							requestDate: new Date().toLocaleDateString(),
 						},
@@ -795,7 +795,7 @@ export class RequestsService {
 			const studentName = requestWithUsers.student.user.fullName;
 			const leaderName =
 				requestWithUsers.group.studentGroupParticipations[0]?.student.user
-					.fullName || 'Group Leader';
+					.fullName ?? 'Group Leader';
 
 			let emailRecipient: string | undefined;
 			let recipientName = '';
