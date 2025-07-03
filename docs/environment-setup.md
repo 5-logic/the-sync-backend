@@ -9,18 +9,19 @@ Create a `.env` file in the root directory of the project and configure the foll
 | #   | Variable Name              | Description                                                               | Example                                                        |
 | --- | -------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | 1   | `NODE_ENV`                 | Environment mode, determines if running in development or production      | `development` or `production`                                  |
-| 2   | `DATABASE_URL`             | Connection string used for database operations through connection pooling | `postgresql://postgres:randompassword@localhost:5432/randomdb` |
-| 3   | `DIRECT_URL`               | Direct connection to the database, primarily used for Prisma migrations   | `postgresql://postgres:randompassword@localhost:5432/randomdb` |
-| 4   | `JWT_ACCESS_TOKEN_SECRET`  | Your JWT access token secret                                              | `randomaccesstoken123`                                         |
-| 5   | `JWT_REFRESH_TOKEN_SECRET` | Your JWT refresh token secret                                             | `randomrefreshtoken456`                                        |
-| 6   | `FRONTEND_URL`             | Frontend application URL for redirect purposes                            | `https://example.com`                                          |
-| 7   | `REDIS_URL`                | Redis connection string for queue management and caching                  | `redis://localhost:6379`                                       |
-| 8   | `BULLMQ_USERNAME`          | Username for BullMQ dashboard authentication                              | `randomuser`                                                   |
-| 9   | `BULLMQ_PASSWORD`          | Password for BullMQ dashboard authentication                              | `randompassword789`                                            |
-| 10  | `SMTP_HOST`                | SMTP server host for email sending                                        | `smtp.example.com`                                             |
-| 11  | `SMTP_PORT`                | SMTP server port for email sending                                        | `465`                                                          |
-| 12  | `SMTP_USER`                | SMTP username for email sending                                           | `randomemail@example.com`                                      |
-| 13  | `SMTP_PASS`                | SMTP password for email sending                                           | `randomsmtppassword`                                           |
+| 2   | `ALLOWED_ORIGINS`          | The allowed origins for CORS (separated by commas )                       | `http://localhost:3000,http://localhost:3001`                  |
+| 3   | `DATABASE_URL`             | Connection string used for database operations through connection pooling | `postgresql://postgres:randompassword@localhost:5432/randomdb` |
+| 4   | `DIRECT_URL`               | Direct connection to the database, primarily used for Prisma migrations   | `postgresql://postgres:randompassword@localhost:5432/randomdb` |
+| 5   | `JWT_ACCESS_TOKEN_SECRET`  | Your JWT access token secret                                              | `randomaccesstoken123`                                         |
+| 6   | `JWT_REFRESH_TOKEN_SECRET` | Your JWT refresh token secret                                             | `randomrefreshtoken456`                                        |
+| 7   | `FRONTEND_URL`             | Frontend application URL for redirect purposes                            | `https://example.com`                                          |
+| 8   | `REDIS_URL`                | Redis connection string for queue management and caching                  | `redis://localhost:6379`                                       |
+| 9   | `BULLMQ_USERNAME`          | Username for BullMQ dashboard authentication                              | `randomuser`                                                   |
+| 10  | `BULLMQ_PASSWORD`          | Password for BullMQ dashboard authentication                              | `randompassword789`                                            |
+| 11  | `SMTP_HOST`                | SMTP server host for email sending                                        | `smtp.example.com`                                             |
+| 12  | `SMTP_PORT`                | SMTP server port for email sending                                        | `465`                                                          |
+| 13  | `SMTP_USER`                | SMTP username for email sending                                           | `randomemail@example.com`                                      |
+| 14  | `SMTP_PASS`                | SMTP password for email sending                                           | `randomsmtppassword`                                           |
 
 ### Required Variables
 
