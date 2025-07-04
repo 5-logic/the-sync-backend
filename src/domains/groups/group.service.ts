@@ -26,7 +26,7 @@ export class GroupService {
 	private async getCachedData<T>(key: string): Promise<T | null> {
 		try {
 			const result = await this.cacheManager.get<T>(key);
-			return result || null;
+			return result ?? null;
 		} catch (error) {
 			this.logger.warn(`Cache get error for key ${key}:`, error);
 			return null;
@@ -39,7 +39,7 @@ export class GroupService {
 		ttl?: number,
 	): Promise<void> {
 		try {
-			await this.cacheManager.set(key, data, ttl || this.CACHE_TTL);
+			await this.cacheManager.set(key, data, ttl ?? this.CACHE_TTL);
 		} catch (error) {
 			this.logger.warn(`Cache set error for key ${key}:`, error);
 		}
@@ -584,7 +584,7 @@ export class GroupService {
 				memberCount: group._count.studentGroupParticipations,
 				skillCount: group._count.groupRequiredSkills,
 				responsibilityCount: group._count.groupExpectedResponsibilities,
-				leader: group.studentGroupParticipations[0] || null,
+				leader: group.studentGroupParticipations[0] ?? null,
 			}));
 
 			await this.setCachedData(cacheKey, transformedGroups);
@@ -654,7 +654,7 @@ export class GroupService {
 				})),
 				leader:
 					group.studentGroupParticipations.find((sgp) => sgp.isLeader)
-						?.student || null,
+						?.student ?? null,
 			};
 
 			await this.setCachedData(cacheKey, transformedGroup);
