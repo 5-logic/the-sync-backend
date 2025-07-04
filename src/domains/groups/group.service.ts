@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
-import { CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
+import { ChangeLeaderDto, CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
@@ -338,7 +338,9 @@ export class GroupService {
 			);
 
 			await this.clearCache('groups:all');
-			await this.clearCache(`student:${userId}`);
+			await this.clearCache(`student:${userId}:groups`);
+			await this.clearCache(`group:${result.id}:members`);
+			await this.clearCache(`group:${result.id}:skills-responsibilities`);
 
 			const completeGroup = await this.findOne(result.id);
 
@@ -449,10 +451,11 @@ export class GroupService {
 					id: true,
 					name: true,
 					code: true,
+					status: true,
 				},
 			},
 			groupRequiredSkills: {
-				include: {
+				select: {
 					skill: {
 						select: {
 							id: true,
@@ -468,7 +471,7 @@ export class GroupService {
 				},
 			},
 			groupExpectedResponsibilities: {
-				include: {
+				select: {
 					responsibility: {
 						select: {
 							id: true,
@@ -478,9 +481,12 @@ export class GroupService {
 				},
 			},
 			studentGroupParticipations: {
-				include: {
+				select: {
+					isLeader: true,
 					student: {
-						include: {
+						select: {
+							userId: true,
+							studentCode: true,
 							user: {
 								select: {
 									id: true,
@@ -488,9 +494,57 @@ export class GroupService {
 									email: true,
 								},
 							},
+							major: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+								},
+							},
 						},
 					},
 				},
+			},
+		};
+	}
+
+	// Optimized include for list operations (less data)
+	private getGroupListIncludeOptions() {
+		return {
+			semester: {
+				select: {
+					id: true,
+					name: true,
+					code: true,
+					status: true,
+				},
+			},
+			_count: {
+				select: {
+					studentGroupParticipations: true,
+					groupRequiredSkills: true,
+					groupExpectedResponsibilities: true,
+				},
+			},
+			studentGroupParticipations: {
+				where: {
+					isLeader: true,
+				},
+				select: {
+					student: {
+						select: {
+							userId: true,
+							studentCode: true,
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+								},
+							},
+						},
+					},
+				},
+				take: 1, // Only get the leader
 			},
 		};
 	}
@@ -505,17 +559,39 @@ export class GroupService {
 			}
 
 			const groups = await this.prisma.group.findMany({
-				include: this.getGroupIncludeOptions(),
+				select: {
+					id: true,
+					code: true,
+					name: true,
+					projectDirection: true,
+					createdAt: true,
+					updatedAt: true,
+					...this.getGroupListIncludeOptions(),
+				},
 				orderBy: { createdAt: 'desc' },
-
 				take: 1000,
 			});
 
-			await this.setCachedData(cacheKey, groups);
+			// Transform data for better frontend consumption
+			const transformedGroups = groups.map((group) => ({
+				id: group.id,
+				code: group.code,
+				name: group.name,
+				projectDirection: group.projectDirection,
+				createdAt: group.createdAt,
+				updatedAt: group.updatedAt,
+				semester: group.semester,
+				memberCount: group._count.studentGroupParticipations,
+				skillCount: group._count.groupRequiredSkills,
+				responsibilityCount: group._count.groupExpectedResponsibilities,
+				leader: group.studentGroupParticipations[0] || null,
+			}));
 
-			this.logger.log(`Found ${groups.length} groups`);
+			await this.setCachedData(cacheKey, transformedGroups);
 
-			return groups;
+			this.logger.log(`Found ${transformedGroups.length} groups`);
+
+			return transformedGroups;
 		} catch (error) {
 			this.handleError('fetching groups', error);
 		}
@@ -532,7 +608,13 @@ export class GroupService {
 
 			const group = await this.prisma.group.findUnique({
 				where: { id },
-				include: {
+				select: {
+					id: true,
+					code: true,
+					name: true,
+					projectDirection: true,
+					createdAt: true,
+					updatedAt: true,
 					...this.getGroupIncludeOptions(),
 					thesis: {
 						select: {
@@ -542,6 +624,7 @@ export class GroupService {
 							abbreviation: true,
 							description: true,
 							status: true,
+							domain: true,
 						},
 					},
 				},
@@ -551,11 +634,34 @@ export class GroupService {
 				throw new NotFoundException(`Group not found`);
 			}
 
-			await this.setCachedData(cacheKey, group);
+			// Transform data for better frontend consumption
+			const transformedGroup = {
+				id: group.id,
+				code: group.code,
+				name: group.name,
+				projectDirection: group.projectDirection,
+				createdAt: group.createdAt,
+				updatedAt: group.updatedAt,
+				semester: group.semester,
+				thesis: group.thesis,
+				skills: group.groupRequiredSkills.map((grs) => grs.skill),
+				responsibilities: group.groupExpectedResponsibilities.map(
+					(ger) => ger.responsibility,
+				),
+				members: group.studentGroupParticipations.map((sgp) => ({
+					...sgp.student,
+					isLeader: sgp.isLeader,
+				})),
+				leader:
+					group.studentGroupParticipations.find((sgp) => sgp.isLeader)
+						?.student || null,
+			};
 
-			this.logger.log(`Group found with ID: ${group.id}`);
+			await this.setCachedData(cacheKey, transformedGroup);
 
-			return group;
+			this.logger.log(`Group found with ID: ${transformedGroup.id}`);
+
+			return transformedGroup;
 		} catch (error) {
 			this.handleError('fetching group', error);
 		}
@@ -634,13 +740,431 @@ export class GroupService {
 
 			await this.clearCache('groups:all');
 			await this.clearCache(`group:${id}`);
-			await this.clearCache(`student:${userId}`);
+			await this.clearCache(`student:${userId}:groups`);
+			await this.clearCache(`group:${id}:members`);
+			await this.clearCache(`group:${id}:skills-responsibilities`);
 
 			const completeGroup = await this.findOne(result.id);
 
 			return completeGroup;
 		} catch (error) {
 			this.handleError('updating group', error);
+		}
+	}
+
+	async changeLeader(
+		groupId: string,
+		currentLeaderId: string,
+		dto: ChangeLeaderDto,
+	) {
+		try {
+			this.logger.log(`Changing leader for group with ID: ${groupId}`);
+
+			// Run validations in parallel for better performance
+			const [
+				existingGroup,
+				currentLeaderParticipation,
+				newLeaderParticipation,
+			] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: true,
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: currentLeaderId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: dto.newLeaderId,
+						groupId: groupId,
+					},
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validate group exists
+			if (!existingGroup) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			// Validate current user is the leader
+			if (!currentLeaderParticipation) {
+				throw new NotFoundException(`Student is not a member of this group`);
+			}
+
+			if (!currentLeaderParticipation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can change group leadership for "${currentLeaderParticipation.group.name}" (${currentLeaderParticipation.group.code})`,
+				);
+			}
+
+			// Validate new leader is a member of the group
+			if (!newLeaderParticipation) {
+				throw new NotFoundException(
+					`New leader is not a member of this group. Only existing members can become leaders.`,
+				);
+			}
+
+			// Validate new leader is not already the current leader
+			if (dto.newLeaderId === currentLeaderId) {
+				throw new ConflictException(
+					`Student is already the leader of this group`,
+				);
+			}
+
+			// Validate semester status for leadership change
+			if (existingGroup.semester.status !== SemesterStatus.Picking) {
+				throw new ConflictException(
+					`Cannot change group leadership. Semester status must be ${SemesterStatus.Picking}, current status is ${existingGroup.semester.status}`,
+				);
+			}
+
+			// Perform leadership change in a transaction
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Update current leader to regular member
+				await prisma.studentGroupParticipation.update({
+					where: {
+						studentId_groupId_semesterId: {
+							studentId: currentLeaderId,
+							groupId: groupId,
+							semesterId: existingGroup.semesterId,
+						},
+					},
+					data: {
+						isLeader: false,
+					},
+				});
+
+				// Update new leader
+				await prisma.studentGroupParticipation.update({
+					where: {
+						studentId_groupId_semesterId: {
+							studentId: dto.newLeaderId,
+							groupId: groupId,
+							semesterId: existingGroup.semesterId,
+						},
+					},
+					data: {
+						isLeader: true,
+					},
+				});
+
+				return existingGroup;
+			});
+
+			this.logger.log(
+				`Group leadership changed successfully. Group: "${result.name}" (${result.code}), ` +
+					`New Leader: ${newLeaderParticipation.student.user.fullName} (${newLeaderParticipation.student.user.email})`,
+			);
+
+			// Clear relevant caches
+			await this.clearCache('groups:all');
+			await this.clearCache(`group:${groupId}`);
+			await this.clearCache(`student:${currentLeaderId}:groups`);
+			await this.clearCache(`student:${dto.newLeaderId}:groups`);
+			await this.clearCache(`group:${groupId}:members`);
+
+			// Fetch the complete group data with updated leadership
+			const completeGroup = await this.findOne(result.id);
+
+			return completeGroup;
+		} catch (error) {
+			this.handleError('changing group leadership', error);
+		}
+	}
+
+	async findByStudentId(studentId: string) {
+		try {
+			this.logger.log(`Finding groups for student ID: ${studentId}`);
+
+			// Check cache first
+			const cacheKey = `student:${studentId}:groups`;
+			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
+			if (cachedGroups) {
+				this.logger.log(
+					`Found ${cachedGroups.length} groups for student (from cache)`,
+				);
+				return cachedGroups;
+			}
+
+			// Find all groups where the student is a participant
+			const participations =
+				await this.prisma.studentGroupParticipation.findMany({
+					where: {
+						studentId: studentId,
+					},
+					select: {
+						isLeader: true,
+						group: {
+							select: {
+								id: true,
+								code: true,
+								name: true,
+								projectDirection: true,
+								createdAt: true,
+								updatedAt: true,
+								semester: {
+									select: {
+										id: true,
+										name: true,
+										code: true,
+										status: true,
+									},
+								},
+								_count: {
+									select: {
+										studentGroupParticipations: true,
+									},
+								},
+								thesis: {
+									select: {
+										id: true,
+										englishName: true,
+										vietnameseName: true,
+										status: true,
+									},
+								},
+							},
+						},
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+					},
+					orderBy: {
+						group: {
+							createdAt: 'desc',
+						},
+					},
+				});
+
+			// Transform data for better frontend consumption
+			const groupsWithParticipation = participations.map((participation) => ({
+				id: participation.group.id,
+				code: participation.group.code,
+				name: participation.group.name,
+				projectDirection: participation.group.projectDirection,
+				createdAt: participation.group.createdAt,
+				updatedAt: participation.group.updatedAt,
+				semester: participation.group.semester,
+				thesis: participation.group.thesis,
+				memberCount: participation.group._count.studentGroupParticipations,
+				participation: {
+					isLeader: participation.isLeader,
+					semester: participation.semester,
+				},
+			}));
+
+			// Cache the result
+			await this.setCachedData(cacheKey, groupsWithParticipation);
+
+			this.logger.log(
+				`Found ${groupsWithParticipation.length} groups for student ID: ${studentId}`,
+			);
+
+			return groupsWithParticipation;
+		} catch (error) {
+			this.handleError('fetching groups by student ID', error);
+		}
+	}
+
+	async findGroupMembers(groupId: string) {
+		try {
+			this.logger.log(`Finding members for group ID: ${groupId}`);
+
+			// Check cache first
+			const cacheKey = `group:${groupId}:members`;
+			const cachedMembers = await this.getCachedData<any[]>(cacheKey);
+			if (cachedMembers) {
+				this.logger.log(
+					`Found ${cachedMembers.length} members for group (from cache)`,
+				);
+				return cachedMembers;
+			}
+
+			const members = await this.prisma.studentGroupParticipation.findMany({
+				where: {
+					groupId: groupId,
+				},
+				select: {
+					isLeader: true,
+					student: {
+						select: {
+							userId: true,
+							studentCode: true,
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
+									phoneNumber: true,
+									gender: true,
+								},
+							},
+							major: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+								},
+							},
+							studentSkills: {
+								select: {
+									level: true,
+									skill: {
+										select: {
+											id: true,
+											name: true,
+											skillSet: {
+												select: {
+													id: true,
+													name: true,
+												},
+											},
+										},
+									},
+								},
+							},
+							studentExpectedResponsibilities: {
+								select: {
+									responsibility: {
+										select: {
+											id: true,
+											name: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				orderBy: [
+					{ isLeader: 'desc' }, // Leaders first
+					{ student: { user: { fullName: 'asc' } } },
+				],
+			});
+
+			// Transform data
+			const transformedMembers = members.map((member) => ({
+				userId: member.student.userId,
+				studentCode: member.student.studentCode,
+				fullName: member.student.user.fullName,
+				email: member.student.user.email,
+				phoneNumber: member.student.user.phoneNumber,
+				gender: member.student.user.gender,
+				major: member.student.major,
+				isLeader: member.isLeader,
+				skills: member.student.studentSkills.map((ss) => ({
+					...ss.skill,
+					level: ss.level,
+				})),
+				responsibilities: member.student.studentExpectedResponsibilities.map(
+					(ser) => ser.responsibility,
+				),
+			}));
+
+			// Cache the result
+			await this.setCachedData(cacheKey, transformedMembers);
+
+			this.logger.log(
+				`Found ${transformedMembers.length} members for group ID: ${groupId}`,
+			);
+
+			return transformedMembers;
+		} catch (error) {
+			this.handleError('fetching group members', error);
+		}
+	}
+
+	async findGroupSkillsAndResponsibilities(groupId: string) {
+		try {
+			this.logger.log(
+				`Finding skills and responsibilities for group ID: ${groupId}`,
+			);
+
+			// Check cache first
+			const cacheKey = `group:${groupId}:skills-responsibilities`;
+			const cached = await this.getCachedData<any>(cacheKey);
+			if (cached) {
+				this.logger.log('Found skills and responsibilities (from cache)');
+				return cached;
+			}
+
+			const [groupSkills, groupResponsibilities] = await Promise.all([
+				this.prisma.groupRequiredSkill.findMany({
+					where: { groupId },
+					select: {
+						skill: {
+							select: {
+								id: true,
+								name: true,
+								skillSet: {
+									select: {
+										id: true,
+										name: true,
+									},
+								},
+							},
+						},
+					},
+				}),
+				this.prisma.groupExpectedResponsibility.findMany({
+					where: { groupId },
+					select: {
+						responsibility: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			const result = {
+				skills: groupSkills.map((gs) => gs.skill),
+				responsibilities: groupResponsibilities.map((gr) => gr.responsibility),
+			};
+
+			// Cache the result
+			await this.setCachedData(cacheKey, result);
+
+			this.logger.log(
+				`Found ${result.skills.length} skills and ${result.responsibilities.length} responsibilities for group ID: ${groupId}`,
+			);
+
+			return result;
+		} catch (error) {
+			this.handleError('fetching group skills and responsibilities', error);
 		}
 	}
 }
