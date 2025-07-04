@@ -10,6 +10,8 @@ import { Cache } from 'cache-manager';
 
 import { ChangeLeaderDto, CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 
@@ -21,6 +23,7 @@ export class GroupService {
 	constructor(
 		private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		private readonly emailQueueService: EmailQueueService,
 	) {}
 
 	private async getCachedData<T>(key: string): Promise<T | null> {
@@ -889,12 +892,137 @@ export class GroupService {
 			await this.clearCache(`student:${dto.newLeaderId}:groups`);
 			await this.clearCache(`group:${groupId}:members`);
 
+			// Send email notifications
+			await this.sendGroupLeaderChangeNotification(
+				result,
+				currentLeaderParticipation,
+				newLeaderParticipation,
+			);
+
 			// Fetch the complete group data with updated leadership
 			const completeGroup = await this.findOne(result.id);
 
 			return completeGroup;
 		} catch (error) {
 			this.handleError('changing group leadership', error);
+		}
+	}
+
+	// Email notification helper
+	private async sendGroupLeaderChangeNotification(
+		group: any,
+		previousLeaderParticipation: any,
+		newLeaderParticipation: any,
+	) {
+		try {
+			const previousLeaderUser = await this.prisma.student.findUnique({
+				where: { userId: previousLeaderParticipation.studentId },
+				include: {
+					user: {
+						select: {
+							id: true,
+							fullName: true,
+							email: true,
+						},
+					},
+				},
+			});
+
+			const changeDate = new Date().toLocaleDateString();
+			const baseContext = {
+				groupName: group.name,
+				groupCode: group.code,
+				semesterName: group.semester.name,
+				previousLeaderName: previousLeaderUser?.user.fullName || 'Unknown',
+				newLeaderName: newLeaderParticipation.student.user.fullName,
+				changeDate,
+			};
+
+			// Send email to new leader
+			if (newLeaderParticipation.student.user.email) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION,
+					{
+						to: newLeaderParticipation.student.user.email,
+						subject: `You are now the leader of Group ${group.code}`,
+						context: {
+							...baseContext,
+							recipientName: newLeaderParticipation.student.user.fullName,
+							recipientType: 'new_leader',
+						},
+					},
+				);
+			}
+
+			// Send email to previous leader
+			if (previousLeaderUser?.user.email) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION,
+					{
+						to: previousLeaderUser.user.email,
+						subject: `Leadership transfer completed for Group ${group.code}`,
+						context: {
+							...baseContext,
+							recipientName: previousLeaderUser.user.fullName,
+							recipientType: 'previous_leader',
+						},
+					},
+				);
+			}
+
+			// Send email to other group members
+			const otherMembers = await this.prisma.studentGroupParticipation.findMany(
+				{
+					where: {
+						groupId: group.id,
+						studentId: {
+							notIn: [
+								previousLeaderParticipation.studentId,
+								newLeaderParticipation.studentId,
+							],
+						},
+					},
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			);
+
+			for (const member of otherMembers) {
+				if (member.student.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION,
+						{
+							to: member.student.user.email,
+							subject: `Group leadership change in ${group.code}`,
+							context: {
+								...baseContext,
+								recipientName: member.student.user.fullName,
+								recipientType: 'member',
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Group leader change notifications sent for group ${group.code}`,
+			);
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send group leader change notification emails',
+				emailError,
+			);
 		}
 	}
 
