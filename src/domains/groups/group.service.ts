@@ -933,7 +933,7 @@ export class GroupService {
 				groupName: group.name,
 				groupCode: group.code,
 				semesterName: group.semester.name,
-				previousLeaderName: previousLeaderUser?.user.fullName || 'Unknown',
+				previousLeaderName: previousLeaderUser?.user.fullName ?? 'Unknown',
 				newLeaderName: newLeaderParticipation.student.user.fullName,
 				changeDate,
 			};
