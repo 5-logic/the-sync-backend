@@ -1,9 +1,12 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
+	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
 import { CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
@@ -13,8 +16,46 @@ import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 @Injectable()
 export class GroupService {
 	private readonly logger = new Logger(GroupService.name);
+	private readonly CACHE_TTL = 5 * 60 * 1000;
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+	) {}
+
+	private async getCachedData<T>(key: string): Promise<T | null> {
+		try {
+			const result = await this.cacheManager.get<T>(key);
+			return result || null;
+		} catch (error) {
+			this.logger.warn(`Cache get error for key ${key}:`, error);
+			return null;
+		}
+	}
+
+	private async setCachedData(
+		key: string,
+		data: any,
+		ttl?: number,
+	): Promise<void> {
+		try {
+			await this.cacheManager.set(key, data, ttl || this.CACHE_TTL);
+		} catch (error) {
+			this.logger.warn(`Cache set error for key ${key}:`, error);
+		}
+	}
+
+	private async clearCache(pattern?: string): Promise<void> {
+		try {
+			if (pattern) {
+				await this.cacheManager.del(pattern);
+			} else {
+				this.logger.warn('Cache reset not implemented for current store');
+			}
+		} catch (error) {
+			this.logger.warn(`Cache clear error:`, error);
+		}
+	}
 
 	private async validateStudentIsLeader(userId: string, groupId: string) {
 		const participation = await this.prisma.studentGroupParticipation.findFirst(
@@ -81,21 +122,29 @@ export class GroupService {
 	private async validateSkills(skillIds: string[]) {
 		if (!skillIds || skillIds.length === 0) return;
 
-		const existingSkills = await this.prisma.skill.findMany({
+		const existingSkillsCount = await this.prisma.skill.count({
 			where: {
 				id: {
 					in: skillIds,
 				},
 			},
-			select: { id: true },
 		});
 
-		const existingSkillIds = existingSkills.map((skill) => skill.id);
-		const missingSkillIds = skillIds.filter(
-			(id) => !existingSkillIds.includes(id),
-		);
+		if (existingSkillsCount !== skillIds.length) {
+			const existingSkills = await this.prisma.skill.findMany({
+				where: {
+					id: {
+						in: skillIds,
+					},
+				},
+				select: { id: true },
+			});
 
-		if (missingSkillIds.length > 0) {
+			const existingSkillIds = existingSkills.map((skill) => skill.id);
+			const missingSkillIds = skillIds.filter(
+				(id) => !existingSkillIds.includes(id),
+			);
+
 			throw new NotFoundException(
 				`Skills not found with IDs: ${missingSkillIds.join(', ')}`,
 			);
@@ -180,19 +229,19 @@ export class GroupService {
 
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
-			// Get current semester from student's enrollment with status NotYet
-			const currentSemester = await this.getStudentCurrentSemester(userId);
+			const [currentSemester] = await Promise.all([
+				this.getStudentCurrentSemester(userId),
+				this.validateSkillsAndResponsibilities(
+					dto.skillIds,
+					dto.responsibilityIds,
+				),
+			]);
 
-			// Validate semester status
 			if (currentSemester.status !== SemesterStatus.Picking) {
 				throw new ConflictException(
 					`Cannot create group. Semester status must be ${SemesterStatus.Picking}, current status is ${currentSemester.status}`,
 				);
 			}
-
-			const currentTotalGroups = await this.prisma.group.count({
-				where: { semesterId: currentSemester.id },
-			});
 
 			if (currentSemester.maxGroup == null) {
 				this.logger.warn(
@@ -200,6 +249,33 @@ export class GroupService {
 				);
 				throw new ConflictException(
 					`Cannot create group. Maximum number of groups for this semester is not configured.`,
+				);
+			}
+
+			const [currentTotalGroups, existingParticipation] = await Promise.all([
+				this.prisma.group.count({
+					where: { semesterId: currentSemester.id },
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: userId,
+						semesterId: currentSemester.id,
+					},
+					include: {
+						group: {
+							select: {
+								id: true,
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			if (existingParticipation) {
+				throw new ConflictException(
+					`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
 				);
 			}
 
@@ -212,18 +288,7 @@ export class GroupService {
 				);
 			}
 
-			// Validate that the student is not already in a group for the semester
-			await this.validateStudentNotInAnyGroup(userId, currentSemester.id);
-
-			// Validate skills and responsibilities if provided
-			await this.validateSkillsAndResponsibilities(
-				dto.skillIds,
-				dto.responsibilityIds,
-			);
-
-			// Create group and add student as leader in a transaction
 			const result = await this.prisma.$transaction(async (prisma) => {
-				// Count existing groups in this semester to get the next sequence number
 				const existingGroupsCount = await prisma.group.count({
 					where: {
 						semesterId: currentSemester.id,
@@ -233,13 +298,11 @@ export class GroupService {
 					},
 				});
 
-				// Generate next sequence number (starting from 1)
 				const sequenceNumber = existingGroupsCount + 1;
 				const groupCode = `${currentSemester.code}QN${sequenceNumber
 					.toString()
 					.padStart(3, '0')}`;
 
-				// Create the group
 				const group = await prisma.group.create({
 					data: {
 						code: groupCode,
@@ -249,23 +312,23 @@ export class GroupService {
 					},
 				});
 
-				// Add the student to the group as leader
-				await prisma.studentGroupParticipation.create({
-					data: {
-						studentId: userId,
-						groupId: group.id,
-						semesterId: currentSemester.id,
-						isLeader: true,
-					},
-				});
+				await Promise.all([
+					prisma.studentGroupParticipation.create({
+						data: {
+							studentId: userId,
+							groupId: group.id,
+							semesterId: currentSemester.id,
+							isLeader: true,
+						},
+					}),
 
-				// Create group required skills and responsibilities
-				await this.createGroupSkills(prisma, group.id, dto.skillIds);
-				await this.createGroupResponsibilities(
-					prisma,
-					group.id,
-					dto.responsibilityIds,
-				);
+					this.createGroupSkills(prisma, group.id, dto.skillIds),
+					this.createGroupResponsibilities(
+						prisma,
+						group.id,
+						dto.responsibilityIds,
+					),
+				]);
 
 				return group;
 			});
@@ -274,7 +337,9 @@ export class GroupService {
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
 			);
 
-			// Fetch the complete group data with all relationships
+			await this.clearCache('groups:all');
+			await this.clearCache(`student:${userId}`);
+
 			const completeGroup = await this.findOne(result.id);
 
 			return completeGroup;
@@ -286,13 +351,19 @@ export class GroupService {
 	private async validateSkillsAndResponsibilities(
 		skillIds?: string[],
 		responsibilityIds?: string[],
-	) {
+	): Promise<void> {
+		const validationPromises: Promise<void>[] = [];
+
 		if (skillIds && skillIds.length > 0) {
-			await this.validateSkills(skillIds);
+			validationPromises.push(this.validateSkills(skillIds));
 		}
 
 		if (responsibilityIds && responsibilityIds.length > 0) {
-			await this.validateResponsibilities(responsibilityIds);
+			validationPromises.push(this.validateResponsibilities(responsibilityIds));
+		}
+
+		if (validationPromises.length > 0) {
+			await Promise.all(validationPromises);
 		}
 	}
 
@@ -343,13 +414,14 @@ export class GroupService {
 		skillIds?: string[],
 	) {
 		if (skillIds !== undefined) {
-			// Delete existing skills
-			await prisma.groupRequiredSkill.deleteMany({
-				where: { groupId: groupId },
-			});
-
-			// Create new skills if any
-			await this.createGroupSkills(prisma, groupId, skillIds);
+			await Promise.all([
+				prisma.groupRequiredSkill.deleteMany({
+					where: { groupId: groupId },
+				}),
+				skillIds.length > 0
+					? this.createGroupSkills(prisma, groupId, skillIds)
+					: Promise.resolve(),
+			]);
 		}
 	}
 
@@ -359,17 +431,14 @@ export class GroupService {
 		responsibilityIds?: string[],
 	) {
 		if (responsibilityIds !== undefined) {
-			// Delete existing responsibilities
-			await prisma.groupExpectedResponsibility.deleteMany({
-				where: { groupId: groupId },
-			});
-
-			// Create new responsibilities if any
-			await this.createGroupResponsibilities(
-				prisma,
-				groupId,
-				responsibilityIds,
-			);
+			await Promise.all([
+				prisma.groupExpectedResponsibility.deleteMany({
+					where: { groupId: groupId },
+				}),
+				responsibilityIds.length > 0
+					? this.createGroupResponsibilities(prisma, groupId, responsibilityIds)
+					: Promise.resolve(),
+			]);
 		}
 	}
 
@@ -428,10 +497,21 @@ export class GroupService {
 
 	async findAll() {
 		try {
+			const cacheKey = 'groups:all';
+			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
+			if (cachedGroups) {
+				this.logger.log(`Found ${cachedGroups.length} groups (from cache)`);
+				return cachedGroups;
+			}
+
 			const groups = await this.prisma.group.findMany({
 				include: this.getGroupIncludeOptions(),
 				orderBy: { createdAt: 'desc' },
+
+				take: 1000,
 			});
+
+			await this.setCachedData(cacheKey, groups);
 
 			this.logger.log(`Found ${groups.length} groups`);
 
@@ -443,6 +523,13 @@ export class GroupService {
 
 	async findOne(id: string) {
 		try {
+			const cacheKey = `group:${id}`;
+			const cachedGroup = await this.getCachedData<any>(cacheKey);
+			if (cachedGroup) {
+				this.logger.log(`Group found with ID: ${cachedGroup.id} (from cache)`);
+				return cachedGroup;
+			}
+
 			const group = await this.prisma.group.findUnique({
 				where: { id },
 				include: {
@@ -464,6 +551,8 @@ export class GroupService {
 				throw new NotFoundException(`Group not found`);
 			}
 
+			await this.setCachedData(cacheKey, group);
+
 			this.logger.log(`Group found with ID: ${group.id}`);
 
 			return group;
@@ -476,29 +565,55 @@ export class GroupService {
 		try {
 			this.logger.log(`Updating group with ID: ${id}`);
 
-			const existingGroup = await this.prisma.group.findUnique({
-				where: { id },
-			});
+			const [existingGroup, participation] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id },
+					include: {
+						semester: true,
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: userId,
+						groupId: id,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
 
 			if (!existingGroup) {
 				throw new NotFoundException(`Group not found`);
 			}
 
-			// Check if user is the leader of the group
-			await this.validateStudentIsLeader(userId, id);
+			if (!participation) {
+				throw new NotFoundException(`Student is not a member of this group`);
+			}
 
-			// Validate semester status for update
-			await this.validateSemester(existingGroup.semesterId);
+			if (!participation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can update group "${participation.group.name}" (${participation.group.code}) information`,
+				);
+			}
 
-			// Validate skills and responsibilities if provided
+			if (existingGroup.semester.status !== SemesterStatus.Picking) {
+				throw new ConflictException(
+					`Cannot create/update group. Semester status must be ${SemesterStatus.Picking}, current status is ${existingGroup.semester.status}`,
+				);
+			}
+
 			await this.validateSkillsAndResponsibilities(
 				dto.skillIds,
 				dto.responsibilityIds,
 			);
 
-			// Update group and relationships in a transaction
 			const result = await this.prisma.$transaction(async (prisma) => {
-				// Update basic group information
 				const group = await prisma.group.update({
 					where: { id },
 					data: {
@@ -507,20 +622,20 @@ export class GroupService {
 					},
 				});
 
-				// Update group skills and responsibilities
-				await this.updateGroupSkills(prisma, id, dto.skillIds);
-				await this.updateGroupResponsibilities(
-					prisma,
-					id,
-					dto.responsibilityIds,
-				);
+				await Promise.all([
+					this.updateGroupSkills(prisma, id, dto.skillIds),
+					this.updateGroupResponsibilities(prisma, id, dto.responsibilityIds),
+				]);
 
 				return group;
 			});
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
-			// Fetch the complete group data with all relationships
+			await this.clearCache('groups:all');
+			await this.clearCache(`group:${id}`);
+			await this.clearCache(`student:${userId}`);
+
 			const completeGroup = await this.findOne(result.id);
 
 			return completeGroup;
