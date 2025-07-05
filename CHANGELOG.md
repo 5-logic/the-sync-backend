@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2025-07-05
+
+### Added
+
+- **Group Management Enhancements**:
+  - `GET /groups/student` - New endpoint for students to view their own groups
+  - `GET /groups/student/:studentId` - New endpoint to view groups by specific student ID
+  - `PUT /groups/:id/change-leader` - New endpoint for students to change group leader (requires `ChangeLeaderDto` with `newLeaderId`)
+  - `GET /groups/:id/members` - New endpoint to view group members
+  - `GET /groups/:id/skills-responsibilities` - New endpoint to view group skills and responsibilities
+  - `ChangeLeaderDto` - New DTO for changing group leaders with validation for new leader ID
+  - Email notifications for group leader changes using new template `send-group-leader-change-notification.pug`
+
+- **Responsibility Management System**:
+  - `GET /responsibilities` - New endpoint to view all responsibilities
+  - `GET /responsibilities/:id` - New endpoint to view specific responsibility details
+  - Complete `ResponsibilityController` and `ResponsibilityService` implementation
+  - New `ResponsibilityModule` with proper dependency injection
+
+- **Thesis-Semester Integration**:
+  - Added `semesterId` field to `CreateThesisDto` for linking theses with semesters
+  - Enhanced thesis creation process to include semester association
+  - New database relationship between `Thesis` and `Semester` models
+  - Added `defaultThesesPerLecturer` and `maxThesesPerLecturer` fields to `Semester` model with defaults (4 and 6 respectively)
+  - Updated `UpdateSemesterDto` to support thesis limit configuration
+
+### Changed
+
+- **Module Architecture Improvements**:
+  - Renamed `RequestsModule` to `RequestModule` and `requests.controller.ts` to `request.controller.ts` for consistency
+  - Renamed `SkillSetsModule` to `SkillSetModule` and related files for consistency
+  - Renamed `SupervisionsModule` to `SupervisionModule` and related files for consistency
+  - Updated import paths to use absolute paths for better maintainability
+  - Enhanced `DomainModule` to include the new `ResponsibilityModule`
+
+- **Group Service Enhancements**:
+  - Implemented comprehensive caching for group service methods to improve performance
+  - Enhanced validation logic in group operations
+  - Added support for finding groups by student ID with proper filtering
+  - Improved group member and skills/responsibilities retrieval methods
+
+- **Email System Updates**:
+  - Added new email job type: `SEND_GROUP_LEADER_CHANGE_NOTIFICATION`
+  - Reordered email job types alphabetically for better organization
+  - Enhanced email notification flow for group leader changes
+
+### Fixed
+
+- **Group Leader Management**: Fixed null handling in group leader change operations using nullish coalescing operator
+- **Cache Management**: Improved cache handling for group operations with proper fallback mechanisms
+- **Import Path Resolution**: Fixed module import paths to use absolute paths preventing resolution issues
+
+### Database
+
+- **Migration 20250705071441**: Link thesis with semester
+  - Added `semester_id` field to `theses` table with foreign key constraint
+  - Added `default_theses_per_lecturer` (default: 4) and `max_theses_per_lecturer` (default: 6) to `semesters` table
+
+### Pull Requests
+
+- [#162](https://github.com/5-logic/the-sync-backend/pull/162) - Merge dev branch for v0.5.9 release
+- [#161](https://github.com/5-logic/the-sync-backend/pull/161) - Module refactoring and Responsibility system implementation (close #160)
+- [#159](https://github.com/5-logic/the-sync-backend/pull/159) - Group leader change functionality and email notifications (task-157)
+- [#158](https://github.com/5-logic/the-sync-backend/pull/158) - Group service enhancements and caching improvements (task-157_chuong)
+
 ## [0.5.8] - 2025-07-03
 
 ### Added
