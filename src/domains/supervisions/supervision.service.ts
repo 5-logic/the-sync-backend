@@ -14,8 +14,8 @@ import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto'
 import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
 
 @Injectable()
-export class SupervisionsService {
-	private readonly logger = new Logger(SupervisionsService.name);
+export class SupervisionService {
+	private readonly logger = new Logger(SupervisionService.name);
 
 	constructor(
 		private readonly prisma: PrismaService,

@@ -2,14 +2,14 @@ import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
-import { SkillSetsService } from '@/skill-sets/skill-sets.service';
+import { SkillSetService } from '@/domains/skill-sets/skill-set.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('SkillSets')
 @Controller('skill-sets')
-export class SkillSetsController {
-	constructor(private readonly skillSetsService: SkillSetsService) {}
+export class SkillSetController {
+	constructor(private readonly skillSetsService: SkillSetService) {}
 
 	@Get()
 	async findAll() {

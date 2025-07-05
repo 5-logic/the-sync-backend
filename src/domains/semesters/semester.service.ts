@@ -496,6 +496,14 @@ export class SemesterService {
 			);
 		}
 
+		if (updateSemesterDto.defaultThesesPerLecturer !== undefined) {
+			updateData.defaultThesesPerLecturer =
+				updateSemesterDto.defaultThesesPerLecturer;
+		}
+		if (updateSemesterDto.maxThesesPerLecturer !== undefined) {
+			updateData.maxThesesPerLecturer = updateSemesterDto.maxThesesPerLecturer;
+		}
+
 		return updateData;
 	}
 }
