@@ -23,4 +23,14 @@ export class UpdateSemesterDto extends PartialType(CreateSemesterDto) {
 	@IsOptional()
 	@IsEnum(OngoingPhase)
 	ongoingPhase?: OngoingPhase;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsPositive()
+	defaultThesesPerLecturer?: number;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsPositive()
+	maxThesesPerLecturer?: number;
 }
