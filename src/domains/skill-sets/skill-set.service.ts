@@ -6,8 +6,8 @@ import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
-export class SkillSetsService {
-	private readonly logger = new Logger(SkillSetsService.name);
+export class SkillSetService {
+	private readonly logger = new Logger(SkillSetService.name);
 	private static readonly CACHE_KEY = 'cache:/skill-sets';
 
 	constructor(
@@ -19,7 +19,7 @@ export class SkillSetsService {
 		this.logger.log('Fetching all skill sets');
 
 		try {
-			const cached = await this.cache.get(SkillSetsService.CACHE_KEY);
+			const cached = await this.cache.get(SkillSetService.CACHE_KEY);
 
 			if (cached) {
 				return cached;
@@ -38,11 +38,7 @@ export class SkillSetsService {
 				},
 			});
 
-			await this.cache.set(
-				SkillSetsService.CACHE_KEY,
-				skillSets,
-				CONSTANTS.TTL,
-			);
+			await this.cache.set(SkillSetService.CACHE_KEY, skillSets, CONSTANTS.TTL);
 
 			this.logger.log(`Found ${skillSets.length} skill sets`);
 			this.logger.debug('SkillSets detail:', JSON.stringify(skillSets));
@@ -59,7 +55,7 @@ export class SkillSetsService {
 		this.logger.log(`Fetching skill set with id: ${id}`);
 
 		try {
-			const key = `${SkillSetsService.CACHE_KEY}/${id}`;
+			const key = `${SkillSetService.CACHE_KEY}/${id}`;
 			const cached = await this.cache.get(key);
 
 			if (cached) {

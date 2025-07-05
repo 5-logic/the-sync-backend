@@ -19,14 +19,15 @@ import {
 	CreateJoinRequestDto,
 	UpdateRequestStatusDto,
 } from '@/requests/dto';
-import { RequestsService } from '@/requests/requests.service';
+
+import { RequestService } from '~/src/domains/requests/request.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Requests')
 @Controller('requests')
-export class RequestsController {
-	constructor(private readonly requestsService: RequestsService) {}
+export class RequestController {
+	constructor(private readonly requestsService: RequestService) {}
 
 	@Roles(Role.STUDENT)
 	@Post('join')

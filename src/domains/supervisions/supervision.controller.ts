@@ -13,14 +13,15 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto';
 import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
-import { SupervisionsService } from '@/supervisions/supervisions.service';
+
+import { SupervisionService } from '~/src/domains/supervisions/supervision.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Supervision')
 @Controller('supervisions')
-export class SupervisionsController {
-	constructor(private readonly supervisionsService: SupervisionsService) {}
+export class SupervisionController {
+	constructor(private readonly supervisionsService: SupervisionService) {}
 
 	@Roles(Role.MODERATOR)
 	@Post('assign/:thesisId')

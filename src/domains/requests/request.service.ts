@@ -23,8 +23,8 @@ import {
 } from '~/generated/prisma';
 
 @Injectable()
-export class RequestsService {
-	private readonly logger = new Logger(RequestsService.name);
+export class RequestService {
+	private readonly logger = new Logger(RequestService.name);
 
 	constructor(
 		private readonly prisma: PrismaService,

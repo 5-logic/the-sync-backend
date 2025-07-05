@@ -5,12 +5,13 @@ import { GroupModule } from '@/groups/group.module';
 import { LecturerModule } from '@/lecturers/lecturer.module';
 import { MajorModule } from '@/majors/major.module';
 import { MilestoneModule } from '@/milestones/milestone.module';
-import { RequestsModule } from '@/requests/requests.module';
 import { SemesterModule } from '@/semesters/semester.module';
-import { SkillSetsModule } from '@/skill-sets/skill-sets.module';
 import { StudentModule } from '@/students/student.module';
-import { SupervisionsModule } from '@/supervisions/supervisions.module';
 import { ThesisModule } from '@/theses/thesis.module';
+
+import { RequestModule } from '~/src/domains/requests/request.module';
+import { SkillSetModule } from '~/src/domains/skill-sets/skill-set.module';
+import { SupervisionModule } from '~/src/domains/supervisions/supervision.module';
 
 @Module({
 	imports: [
@@ -19,11 +20,11 @@ import { ThesisModule } from '@/theses/thesis.module';
 		LecturerModule,
 		MajorModule,
 		MilestoneModule,
-		RequestsModule,
+		RequestModule,
 		SemesterModule,
-		SkillSetsModule,
+		SkillSetModule,
 		StudentModule,
-		SupervisionsModule,
+		SupervisionModule,
 		ThesisModule,
 	],
 })
