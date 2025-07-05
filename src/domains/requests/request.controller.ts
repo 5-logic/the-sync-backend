@@ -14,19 +14,19 @@ import { Request } from 'express';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
+import { RequestService } from '@/domains/requests/request.service';
 import {
 	CreateInviteRequestDto,
 	CreateJoinRequestDto,
 	UpdateRequestStatusDto,
 } from '@/requests/dto';
-import { RequestsService } from '@/requests/requests.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Requests')
 @Controller('requests')
-export class RequestsController {
-	constructor(private readonly requestsService: RequestsService) {}
+export class RequestController {
+	constructor(private readonly requestsService: RequestService) {}
 
 	@Roles(Role.STUDENT)
 	@Post('join')

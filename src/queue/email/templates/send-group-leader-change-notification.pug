@@ -1,0 +1,58 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello #{recipientName},
+
+  p We're writing to inform you about an important update regarding your group in TheSync system.
+
+  .info-box
+    h3 🔄 Group Leadership Change
+    p The leadership of your group has been successfully transferred.
+
+    .info-item
+      .info-label Group:
+      .info-value #{groupName} (#{groupCode})
+
+    .info-item
+      .info-label Semester:
+      .info-value #{semesterName}
+
+    .info-item
+      .info-label Previous Leader:
+      .info-value #{previousLeaderName}
+
+    .info-item
+      .info-label New Leader:
+      .info-value #{newLeaderName}
+
+    .info-item
+      .info-label Change Date:
+      .info-value #{changeDate}
+
+  if recipientType === 'new_leader'
+    .success-box
+      strong 🎉 Congratulations!
+      | You have been appointed as the new leader of group "#{groupName}". As the group leader, you now have additional responsibilities including:
+      ul
+        li Managing group member requests
+        li Updating group information and project direction
+        li Coordinating with team members
+        li Representing the group in official communications
+
+  else if recipientType === 'previous_leader'
+    .info-box
+      strong ℹ️ Leadership Transfer Complete
+      | You have successfully transferred the leadership of group "#{groupName}" to #{newLeaderName}. Thank you for your leadership during your time as group leader.
+
+  else
+    .info-box
+      strong 📢 Group Update
+      | The leadership of your group "#{groupName}" has been changed. #{newLeaderName} is now your new group leader. Please coordinate with them for any group-related activities.
+
+  p If you have any questions about this change or need assistance, please don't hesitate to contact our support team.
+
+  p
+    | Best regards,
+    br
+    | The TheSync Team
