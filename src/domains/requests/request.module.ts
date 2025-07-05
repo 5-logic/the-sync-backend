@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { RequestService } from '@/domains/requests/request.service';
 import { EmailModule } from '@/queue/email/email.module';
 import { RequestController } from '@/requests/request.controller';
-
-import { RequestService } from '~/src/domains/requests/request.service';
 
 @Module({
 	imports: [EmailModule],

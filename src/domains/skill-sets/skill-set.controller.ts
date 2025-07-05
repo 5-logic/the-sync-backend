@@ -2,8 +2,7 @@ import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
-
-import { SkillSetService } from '~/src/domains/skill-sets/skill-set.service';
+import { SkillSetService } from '@/domains/skill-sets/skill-set.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()

@@ -14,13 +14,12 @@ import { Request } from 'express';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
+import { RequestService } from '@/domains/requests/request.service';
 import {
 	CreateInviteRequestDto,
 	CreateJoinRequestDto,
 	UpdateRequestStatusDto,
 } from '@/requests/dto';
-
-import { RequestService } from '~/src/domains/requests/request.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
