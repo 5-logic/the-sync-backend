@@ -237,6 +237,7 @@ export class ThesisService {
 				description,
 				domain,
 				skillIds,
+				semesterId,
 			} = dto;
 
 			// Validate skillIds if provided
@@ -254,6 +255,7 @@ export class ThesisService {
 						description,
 						domain,
 						lecturerId,
+						semesterId,
 					},
 				});
 
