@@ -42,13 +42,10 @@ export class StudentService {
 			throw new NotFoundException(`Semester not found`);
 		}
 
-		// Only allow enrollment when semester is in Preparing or Picking status
-		if (
-			semester.status !== SemesterStatus.Preparing &&
-			semester.status !== SemesterStatus.Picking
-		) {
+		// Only allow enrollment when semester is in Preparing status
+		if (semester.status !== SemesterStatus.Preparing) {
 			throw new ConflictException(
-				`Cannot add students to semester ${semester.name}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} and ${SemesterStatus.Picking} semesters allow student enrollment.`,
+				`Cannot add students to semester ${semester.name}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} semesters allow student enrollment.`,
 			);
 		}
 
