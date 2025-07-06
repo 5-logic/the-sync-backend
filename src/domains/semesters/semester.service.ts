@@ -1,10 +1,14 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
+	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -19,11 +23,47 @@ import {
 @Injectable()
 export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
+	private static readonly CACHE_KEY = 'cache:semester';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly emailQueueService: EmailQueueService,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 	) {}
+
+	private async getCachedData<T>(key: string): Promise<T | null> {
+		try {
+			const result = await this.cacheManager.get<T>(key);
+			return result ?? null;
+		} catch (error) {
+			this.logger.warn(`Cache get error for key ${key}:`, error);
+			return null;
+		}
+	}
+
+	private async setCachedData(
+		key: string,
+		data: any,
+		ttl?: number,
+	): Promise<void> {
+		try {
+			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
+		} catch (error) {
+			this.logger.warn(`Cache set error for key ${key}:`, error);
+		}
+	}
+
+	private async clearCache(pattern?: string): Promise<void> {
+		try {
+			if (pattern) {
+				await this.cacheManager.del(pattern);
+			} else {
+				this.logger.warn('Cache reset not implemented for current store');
+			}
+		} catch (error) {
+			this.logger.warn(`Cache clear error:`, error);
+		}
+	}
 
 	async create(dto: CreateSemesterDto) {
 		try {
@@ -78,6 +118,9 @@ export class SemesterService {
 			);
 			this.logger.debug('New semester details', newSemester);
 
+			// Clear cache after creating new semester
+			await this.clearCache(`${SemesterService.CACHE_KEY}:all`);
+
 			return newSemester;
 		} catch (error) {
 			this.logger.error('Error creating semester', error);
@@ -88,40 +131,56 @@ export class SemesterService {
 
 	async findAll() {
 		try {
+			const cacheKey = `${SemesterService.CACHE_KEY}:all`;
+			const cachedSemesters = await this.getCachedData<any[]>(cacheKey);
+			if (cachedSemesters) {
+				this.logger.log(
+					`Found ${cachedSemesters.length} semesters (from cache)`,
+				);
+				return cachedSemesters;
+			}
+
 			const semesters = await this.prisma.semester.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
 
+			await this.setCachedData(cacheKey, semesters);
+
 			this.logger.log(`Found ${semesters.length} semesters`);
-			this.logger.debug('Semesters detail', semesters);
 
 			return semesters;
 		} catch (error) {
-			this.logger.error('Error fetching semesters', error);
-
+			this.logger.error('Error fetching semesters:', error);
 			throw error;
 		}
 	}
 
 	async findOne(id: string) {
 		try {
+			const cacheKey = `${SemesterService.CACHE_KEY}:${id}`;
+			const cachedSemester = await this.getCachedData<any>(cacheKey);
+			if (cachedSemester) {
+				this.logger.log(
+					`Semester found with ID: ${cachedSemester.id} (from cache)`,
+				);
+				return cachedSemester;
+			}
+
 			const semester = await this.prisma.semester.findUnique({
 				where: { id },
 			});
 
 			if (!semester) {
-				this.logger.warn(`Semester with ID ${id} not found`);
-
 				throw new NotFoundException(`Semester not found`);
 			}
 
+			await this.setCachedData(cacheKey, semester);
+
 			this.logger.log(`Semester found with ID: ${semester.id}`);
-			this.logger.debug('Semester detail', semester);
 
 			return semester;
 		} catch (error) {
-			this.logger.error('Error fetching semester', error);
-
+			this.logger.error('Error fetching semester:', error);
 			throw error;
 		}
 	}
@@ -154,6 +213,10 @@ export class SemesterService {
 				`Semester updated successfully with ID: ${updatedSemester.id}`,
 			);
 			this.logger.debug('Updated semester details', updatedSemester);
+
+			// Clear cache after updating semester
+			await this.clearCache(`${SemesterService.CACHE_KEY}:all`);
+			await this.clearCache(`${SemesterService.CACHE_KEY}:${id}`);
 
 			return updatedSemester;
 		} catch (error) {
@@ -220,6 +283,10 @@ export class SemesterService {
 				`Semester deleted successfully with ID: ${deletedSemester.id}`,
 			);
 			this.logger.debug('Deleted semester details', deletedSemester);
+
+			// Clear cache after deleting semester
+			await this.clearCache(`${SemesterService.CACHE_KEY}:all`);
+			await this.clearCache(`${SemesterService.CACHE_KEY}:${id}`);
 
 			return deletedSemester;
 		} catch (error) {
