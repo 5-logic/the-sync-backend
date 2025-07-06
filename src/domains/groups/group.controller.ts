@@ -40,12 +40,12 @@ export class GroupController {
 	async findMyGroups(@Req() req: Request) {
 		const user = req.user as UserPayload;
 
-		return await this.groupService.findByStudentId(user.id);
+		return await this.groupService.findDetailedByStudentId(user.id);
 	}
 
 	@Get('student/:studentId')
 	async findByStudentId(@Param('studentId') studentId: string) {
-		return await this.groupService.findByStudentId(studentId);
+		return await this.groupService.findDetailedByStudentId(studentId);
 	}
 
 	@Get(':id')

@@ -42,6 +42,11 @@ export class ThesisController {
 		return await this.thesisService.findAll();
 	}
 
+	@Get('semester/:semesterId')
+	async findAllBySemesterId(@Param('semesterId') semesterId: string) {
+		return await this.thesisService.findAllBySemesterId(semesterId);
+	}
+
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
 		return await this.thesisService.findOne(id);

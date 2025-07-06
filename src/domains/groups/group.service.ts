@@ -1125,6 +1125,114 @@ export class GroupService {
 		}
 	}
 
+	async findDetailedByStudentId(studentId: string) {
+		try {
+			this.logger.log(`Finding detailed groups for student ID: ${studentId}`);
+
+			// Check cache first
+			const cacheKey = `student:${studentId}:detailed-groups`;
+			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
+			if (cachedGroups) {
+				this.logger.log(
+					`Found ${cachedGroups.length} detailed groups for student (from cache)`,
+				);
+				return cachedGroups;
+			}
+
+			// Find all groups where the student is a participant with detailed data
+			const participations =
+				await this.prisma.studentGroupParticipation.findMany({
+					where: {
+						studentId: studentId,
+					},
+					select: {
+						isLeader: true,
+						group: {
+							select: {
+								id: true,
+								code: true,
+								name: true,
+								projectDirection: true,
+								createdAt: true,
+								updatedAt: true,
+								...this.getGroupIncludeOptions(),
+								thesis: {
+									select: {
+										id: true,
+										englishName: true,
+										vietnameseName: true,
+										abbreviation: true,
+										description: true,
+										status: true,
+										domain: true,
+									},
+								},
+							},
+						},
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+					},
+					orderBy: {
+						group: {
+							createdAt: 'desc',
+						},
+					},
+				});
+
+			// Transform data for better frontend consumption (similar to findOne)
+			const detailedGroupsWithParticipation = participations.map(
+				(participation) => ({
+					id: participation.group.id,
+					code: participation.group.code,
+					name: participation.group.name,
+					projectDirection: participation.group.projectDirection,
+					createdAt: participation.group.createdAt,
+					updatedAt: participation.group.updatedAt,
+					semester: participation.group.semester,
+					thesis: participation.group.thesis,
+					skills: participation.group.groupRequiredSkills.map(
+						(grs) => grs.skill,
+					),
+					responsibilities:
+						participation.group.groupExpectedResponsibilities.map(
+							(ger) => ger.responsibility,
+						),
+					members: participation.group.studentGroupParticipations.map(
+						(sgp) => ({
+							...sgp.student,
+							isLeader: sgp.isLeader,
+						}),
+					),
+					leader:
+						participation.group.studentGroupParticipations.find(
+							(sgp) => sgp.isLeader,
+						)?.student ?? null,
+					participation: {
+						isLeader: participation.isLeader,
+						semester: participation.semester,
+					},
+				}),
+			);
+
+			// Cache the result
+			await this.setCachedData(cacheKey, detailedGroupsWithParticipation);
+
+			this.logger.log(
+				`Found ${detailedGroupsWithParticipation.length} detailed groups for student ID: ${studentId}`,
+			);
+
+			return detailedGroupsWithParticipation;
+		} catch (error) {
+			this.handleError('fetching detailed groups by student ID', error);
+		}
+	}
+
 	async findGroupMembers(groupId: string) {
 		try {
 			this.logger.log(`Finding members for group ID: ${groupId}`);
