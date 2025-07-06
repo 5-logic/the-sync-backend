@@ -23,7 +23,7 @@ import {
 @Injectable()
 export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
-	private static readonly CACHE_KEY = 'cache:semester';
+	private static readonly CACHE_KEY = 'cache:/semesters';
 
 	constructor(
 		private readonly prisma: PrismaService,

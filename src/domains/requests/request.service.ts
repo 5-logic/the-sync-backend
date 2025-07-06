@@ -29,7 +29,7 @@ import {
 @Injectable()
 export class RequestService {
 	private readonly logger = new Logger(RequestService.name);
-	private static readonly CACHE_KEY = 'cache:request';
+	private static readonly CACHE_KEY = 'cache:/requests';
 
 	constructor(
 		private readonly prisma: PrismaService,

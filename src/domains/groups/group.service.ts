@@ -19,7 +19,7 @@ import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 @Injectable()
 export class GroupService {
 	private readonly logger = new Logger(GroupService.name);
-	private static readonly CACHE_KEY = 'cache:group';
+	private static readonly CACHE_KEY = 'cache:/groups';
 
 	constructor(
 		private readonly prisma: PrismaService,

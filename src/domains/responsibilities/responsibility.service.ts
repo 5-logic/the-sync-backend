@@ -8,7 +8,7 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 @Injectable()
 export class ResponsibilityService {
 	private readonly logger = new Logger(ResponsibilityService.name);
-	private static readonly CACHE_KEY = 'cache:responsibilities';
+	private static readonly CACHE_KEY = 'cache:/responsibilities';
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,

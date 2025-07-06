@@ -20,7 +20,7 @@ import { generateStrongPassword, hash } from '@/utils';
 @Injectable()
 export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
-	private static readonly CACHE_KEY = 'cache:lecturer';
+	private static readonly CACHE_KEY = 'cache:/lecturers';
 
 	constructor(
 		private readonly prisma: PrismaService,
