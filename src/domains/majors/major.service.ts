@@ -22,6 +22,9 @@ export class MajorService {
 			const cached = await this.cache.get(MajorService.CACHE_KEY);
 
 			if (cached) {
+				this.logger.log(
+					`Found ${(cached as any[])?.length || 0} majors (from cache)`,
+				);
 				return cached;
 			}
 
@@ -50,6 +53,7 @@ export class MajorService {
 			const cached = await this.cache.get(key);
 
 			if (cached) {
+				this.logger.log(`Major found with id: ${id} (from cache)`);
 				return cached;
 			}
 
@@ -68,7 +72,7 @@ export class MajorService {
 
 			return major;
 		} catch (error) {
-			this.logger.error('Error fetching major', error);
+			this.logger.error(`Error fetching major with id ${id}`, error);
 
 			throw error;
 		}
