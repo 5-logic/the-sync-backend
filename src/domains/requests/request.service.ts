@@ -256,7 +256,7 @@ export class RequestService {
 	}
 
 	/**
-	 * Group leader sends an invite to a student
+	 * Group leader sends invites to multiple students
 	 */
 	async createInviteRequest(
 		userId: string,
@@ -280,53 +280,73 @@ export class RequestService {
 			// Validate user is group leader
 			await this.validateStudentIsGroupLeader(userId, groupId);
 
-			// Validate target student enrollment
-			await this.validateStudentEnrollment(dto.studentId, group.semesterId);
+			// Get current group member count
+			const currentMemberCount =
+				await this.prisma.studentGroupParticipation.count({
+					where: { groupId: groupId },
+				});
 
-			// Validate target student is not already in a group
-			await this.validateStudentNotInGroup(dto.studentId, group.semesterId);
+			// Check if inviting all students would exceed group capacity
+			if (currentMemberCount + dto.studentIds.length > 5) {
+				throw new ConflictException(
+					`Cannot invite ${dto.studentIds.length} students. Group capacity would be exceeded. Current members: ${currentMemberCount}, Maximum: 5`,
+				);
+			}
 
-			// Validate no pending invite request for this student from this group
-			await this.validateNoPendingInviteRequest(dto.studentId, groupId);
+			// Validate each student before creating requests
+			for (const studentId of dto.studentIds) {
+				// Validate target student enrollment
+				await this.validateStudentEnrollment(studentId, group.semesterId);
 
-			// Validate group capacity
-			await this.validateGroupCapacity(groupId);
+				// Validate target student is not already in a group
+				await this.validateStudentNotInGroup(studentId, group.semesterId);
 
-			// Create invite request
-			const request = await this.prisma.request.create({
-				data: {
-					type: RequestType.Invite,
-					status: RequestStatus.Pending,
-					studentId: dto.studentId,
-					groupId: groupId,
-				},
-				include: {
-					student: {
+				// Validate no pending invite request for this student from this group
+				await this.validateNoPendingInviteRequest(studentId, groupId);
+			}
+
+			// Create all invite requests in a transaction
+			const requests = await this.prisma.$transaction(async (prisma) => {
+				const createdRequests: any[] = [];
+				for (const studentId of dto.studentIds) {
+					const request = await prisma.request.create({
+						data: {
+							type: RequestType.Invite,
+							status: RequestStatus.Pending,
+							studentId: studentId,
+							groupId: groupId,
+						},
 						include: {
-							user: {
+							student: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
+							group: {
 								select: {
 									id: true,
-									fullName: true,
-									email: true,
+									code: true,
+									name: true,
 								},
 							},
 						},
-					},
-					group: {
-						select: {
-							id: true,
-							code: true,
-							name: true,
-						},
-					},
-				},
+					});
+					createdRequests.push(request);
+				}
+				return createdRequests;
 			});
 
 			this.logger.log(
-				`Group ${group.code} sent invite request to student ${dto.studentId}`,
+				`Group ${group.code} sent invite requests to ${dto.studentIds.length} students: ${dto.studentIds.join(', ')}`,
 			);
 
-			// Send email notification to invited student
+			// Get group leader info for email notifications
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
 				{
 					where: {
@@ -343,11 +363,16 @@ export class RequestService {
 				},
 			);
 
-			await this.sendInviteRequestNotification(request, group, groupLeader);
+			// Send email notifications to all invited students
+			await Promise.allSettled(
+				requests.map((request) =>
+					this.sendInviteRequestNotification(request, group, groupLeader),
+				),
+			);
 
-			return request;
+			return requests;
 		} catch (error) {
-			this.logger.error('Error creating invite request', error);
+			this.logger.error('Error creating invite requests', error);
 			throw error;
 		}
 	}
