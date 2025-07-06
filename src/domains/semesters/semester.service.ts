@@ -249,7 +249,6 @@ export class SemesterService {
 		const allowedStatuses: SemesterStatus[] = [
 			SemesterStatus.Preparing,
 			SemesterStatus.Picking,
-			SemesterStatus.Ongoing,
 		];
 
 		const statusToCheck = newStatus ?? currentStatus;
@@ -260,7 +259,7 @@ export class SemesterService {
 			);
 
 			throw new ConflictException(
-				`maxGroup can only be updated when status is ${SemesterStatus.Preparing}, ${SemesterStatus.Picking} or ${SemesterStatus.Ongoing}`,
+				`maxGroup can only be updated when status is ${SemesterStatus.Preparing} or ${SemesterStatus.Picking}`,
 			);
 		}
 
