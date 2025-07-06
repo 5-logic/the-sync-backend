@@ -13,7 +13,13 @@ import { Request } from 'express';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
-import { ChangeLeaderDto, CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
+import {
+	AssignStudentDto,
+	ChangeLeaderDto,
+	CreateGroupDto,
+	RemoveStudentDto,
+	UpdateGroupDto,
+} from '@/groups/dto';
 import { GroupService } from '@/groups/group.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -75,6 +81,30 @@ export class GroupController {
 		const user = req.user as UserPayload;
 
 		return await this.groupService.changeLeader(id, user.id, dto);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Put(':id/assign-student')
+	async assignStudent(
+		@Req() req: Request,
+		@Param('id') id: string,
+		@Body() dto: AssignStudentDto,
+	) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.assignStudent(id, dto.studentId, user.id);
+	}
+
+	@Roles(Role.STUDENT)
+	@Put(':id/remove-student')
+	async removeStudent(
+		@Req() req: Request,
+		@Param('id') id: string,
+		@Body() dto: RemoveStudentDto,
+	) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.removeStudent(id, dto.studentId, user.id);
 	}
 
 	@Get(':id/members')
