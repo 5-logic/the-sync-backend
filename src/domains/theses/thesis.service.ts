@@ -399,6 +399,60 @@ export class ThesisService {
 		}
 	}
 
+	async findAllBySemesterId(semesterId: string) {
+		try {
+			this.logger.log(
+				`Fetching all theses for semester with ID: ${semesterId}`,
+			);
+
+			const theses = await this.prisma.thesis.findMany({
+				where: { semesterId },
+				include: {
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
+						include: {
+							skill: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+					lecturer: {
+						include: {
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
+								},
+							},
+						},
+					},
+				},
+				orderBy: { createdAt: 'desc' },
+			});
+
+			this.logger.log(
+				`Found ${theses.length} theses for semester ${semesterId}`,
+			);
+			this.logger.debug('Theses detail', theses);
+
+			return theses;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching theses for semester with ID ${semesterId}`,
+				error,
+			);
+
+			throw error;
+		}
+	}
+
 	async findAllByLecturerId(lecturerId: string) {
 		try {
 			this.logger.log(
