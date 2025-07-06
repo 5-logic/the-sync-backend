@@ -66,7 +66,7 @@ export class ThesisService {
 		ttl?: number,
 	): Promise<void> {
 		try {
-			await this.cacheManager.set(key, data, ttl || ThesisService.CACHE_TTL);
+			await this.cacheManager.set(key, data, ttl ?? ThesisService.CACHE_TTL);
 			this.logger.debug(`Data cached with key: ${key}`);
 		} catch (error) {
 			this.logger.error(`Error setting cache for key ${key}:`, error);
