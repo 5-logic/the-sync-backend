@@ -10,8 +10,8 @@ export class ResponsibilityService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:responsibility';
 
 	constructor(
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
-		private readonly prisma: PrismaService,
 	) {
 		super(cacheManager, ResponsibilityService.name);
 	}

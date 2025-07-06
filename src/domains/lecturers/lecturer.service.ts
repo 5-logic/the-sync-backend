@@ -22,9 +22,10 @@ export class LecturerService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:lecturer';
 
 	constructor(
-		private readonly prisma: PrismaService,
-		private readonly email: EmailQueueService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		@Inject(EmailQueueService)
+		private readonly emailQueueService: EmailQueueService,
 	) {
 		super(cacheManager, LecturerService.name);
 	}
@@ -94,7 +95,7 @@ export class LecturerService extends BaseCacheService {
 				throw new Error('Email DTO is undefined');
 			}
 
-			await this.email.sendEmail(
+			await this.emailQueueService.sendEmail(
 				EmailJobType.SEND_LECTURER_ACCOUNT,
 				emailDto,
 				500,
@@ -386,7 +387,7 @@ export class LecturerService extends BaseCacheService {
 
 			// Send bulk emails after all lecturers are created successfully
 			if (emailsToSend.length > 0) {
-				await this.email.sendBulkEmails(
+				await this.emailQueueService.sendBulkEmails(
 					EmailJobType.SEND_LECTURER_ACCOUNT,
 					emailsToSend,
 					500,

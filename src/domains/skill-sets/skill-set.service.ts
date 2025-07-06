@@ -10,8 +10,8 @@ export class SkillSetService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:skill-set';
 
 	constructor(
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
-		private readonly prisma: PrismaService,
 	) {
 		super(cacheManager, SkillSetService.name);
 	}

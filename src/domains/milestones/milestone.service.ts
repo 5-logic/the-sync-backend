@@ -18,7 +18,7 @@ export class MilestoneService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:milestone';
 
 	constructor(
-		private readonly prisma: PrismaService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
 	) {
 		super(cacheManager, MilestoneService.name);
