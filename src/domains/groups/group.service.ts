@@ -113,9 +113,9 @@ export class GroupService {
 			throw new NotFoundException(`Semester not found`);
 		}
 
-		if (semester.status !== SemesterStatus.Picking) {
+		if (semester.status !== SemesterStatus.Preparing) {
 			throw new ConflictException(
-				`Cannot create/update group. Semester status must be ${SemesterStatus.Picking}, current status is ${semester.status}`,
+				`Cannot create/update group. Semester status must be ${SemesterStatus.Preparing}, current status is ${semester.status}`,
 			);
 		}
 
@@ -240,9 +240,9 @@ export class GroupService {
 				),
 			]);
 
-			if (currentSemester.status !== SemesterStatus.Picking) {
+			if (currentSemester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
-					`Cannot create group. Semester status must be ${SemesterStatus.Picking}, current status is ${currentSemester.status}`,
+					`Cannot create group. Semester status must be ${SemesterStatus.Preparing}, current status is ${currentSemester.status}`,
 				);
 			}
 
@@ -711,9 +711,9 @@ export class GroupService {
 				);
 			}
 
-			if (existingGroup.semester.status !== SemesterStatus.Picking) {
+			if (existingGroup.semester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
-					`Cannot create/update group. Semester status must be ${SemesterStatus.Picking}, current status is ${existingGroup.semester.status}`,
+					`Cannot create/update group. Semester status must be ${SemesterStatus.Preparing}, current status is ${existingGroup.semester.status}`,
 				);
 			}
 
@@ -841,9 +841,9 @@ export class GroupService {
 			}
 
 			// Validate semester status for leadership change
-			if (existingGroup.semester.status !== SemesterStatus.Picking) {
+			if (existingGroup.semester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
-					`Cannot change group leadership. Semester status must be ${SemesterStatus.Picking}, current status is ${existingGroup.semester.status}`,
+					`Cannot change group leadership. Semester status must be ${SemesterStatus.Preparing}, current status is ${existingGroup.semester.status}`,
 				);
 			}
 
