@@ -62,9 +62,9 @@ export class RequestService {
 			throw new NotFoundException(`Semester not found`);
 		}
 
-		if (semester.status !== SemesterStatus.Picking) {
+		if (semester.status !== SemesterStatus.Preparing) {
 			throw new ConflictException(
-				`Cannot send/process requests. Semester status must be ${SemesterStatus.Picking}, current status is ${semester.status}`,
+				`Cannot send/process requests. Semester status must be ${SemesterStatus.Preparing}, current status is ${semester.status}`,
 			);
 		}
 
