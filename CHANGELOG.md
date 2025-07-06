@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2025-07-06
+
+### Fixed
+
+- **Dependency Injection Improvements**:
+  - Fixed incorrect dependency injection order and missing `@Inject` decorators across multiple services
+  - Updated constructor dependency injection patterns for `GroupService`, `LecturerService`, `MajorService`, `MilestoneService`, `RequestService`, `ResponsibilityService`, `SemesterService`, `SkillSetService`, `StudentService`, `SupervisionService`, and `ThesisService`
+  - Added proper `@Inject` decorators for `PrismaService` and `EmailQueueService` dependencies
+  - Enhanced `GroupModule` to properly import `EmailModule` for email queue functionality
+
+- **Caching System Optimization**:
+  - Streamlined caching logic in `MajorService` by extending `BaseCacheService` usage
+  - Improved cache key management with consistent naming patterns (`cache:major:all`, `cache:major:${id}`)
+  - Enhanced error handling and logging for cached data operations
+  - Migrated from direct cache manager usage to standardized `BaseCacheService` methods
+
+### Technical Improvements
+
+- **Service Architecture**:
+  - Standardized constructor dependency injection patterns across all domain services
+  - Improved service initialization with proper dependency ordering
+  - Enhanced email service integration in `LecturerService` with correct injection patterns
+  - Added validation checks and proper dependency injection in `GroupService`
+
+**Related PR**: [#174](https://github.com/5-logic/the-sync-backend/pull/174)
+
+**Note**: This is a hotfix release addressing dependency injection issues that could cause runtime errors in service initialization. No API changes or breaking changes were introduced.
+
 ## [0.6.0] - 2025-07-06
 
 ### Added
