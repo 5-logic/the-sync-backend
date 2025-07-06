@@ -1,38 +1,38 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
-import { CONSTANTS } from '@/configs';
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
-export class MajorService {
-	private readonly logger = new Logger(MajorService.name);
+export class MajorService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:major';
 
 	constructor(
-		@Inject(CACHE_MANAGER) private readonly cache: Cache,
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		private readonly prisma: PrismaService,
-	) {}
+	) {
+		super(cacheManager, MajorService.name);
+	}
 
 	async findAll() {
 		this.logger.log('Fetching all majors');
 
 		try {
-			const cached = await this.cache.get(MajorService.CACHE_KEY);
+			const cacheKey = `${MajorService.CACHE_KEY}:all`;
+			const cachedMajors = await this.getCachedData<any[]>(cacheKey);
 
-			if (cached) {
-				this.logger.log(
-					`Found ${(cached as any[])?.length || 0} majors (from cache)`,
-				);
-				return cached;
+			if (cachedMajors) {
+				this.logger.log(`Found ${cachedMajors.length} majors (from cache)`);
+				return cachedMajors;
 			}
 
 			const majors = await this.prisma.major.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
 
-			await this.cache.set(MajorService.CACHE_KEY, majors, CONSTANTS.TTL);
+			await this.setCachedData(cacheKey, majors);
 
 			this.logger.log(`Fetched ${majors.length} majors`);
 			this.logger.debug('Majors:', majors);
@@ -49,12 +49,12 @@ export class MajorService {
 		this.logger.log(`Fetching major with id: ${id}`);
 
 		try {
-			const key = `${MajorService.CACHE_KEY}/${id}`;
-			const cached = await this.cache.get(key);
+			const cacheKey = `${MajorService.CACHE_KEY}:${id}`;
+			const cachedMajor = await this.getCachedData<any>(cacheKey);
 
-			if (cached) {
+			if (cachedMajor) {
 				this.logger.log(`Major found with id: ${id} (from cache)`);
-				return cached;
+				return cachedMajor;
 			}
 
 			const major = await this.prisma.major.findUnique({ where: { id } });
@@ -65,7 +65,7 @@ export class MajorService {
 				throw new NotFoundException(`Major not found`);
 			}
 
-			await this.cache.set(key, major, CONSTANTS.TTL);
+			await this.setCachedData(cacheKey, major);
 
 			this.logger.log(`Major found with id: ${id}`);
 			this.logger.debug('Major detail', major);
