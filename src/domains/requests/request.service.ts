@@ -1,11 +1,14 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	ForbiddenException,
+	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -23,13 +26,16 @@ import {
 } from '~/generated/prisma';
 
 @Injectable()
-export class RequestService {
-	private readonly logger = new Logger(RequestService.name);
+export class RequestService extends BaseCacheService {
+	private static readonly CACHE_KEY = 'cache:request';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly emailQueueService: EmailQueueService,
-	) {}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, RequestService.name);
+	}
 
 	// Validation methods
 	private async validateStudentEnrollment(userId: string, semesterId: string) {
@@ -229,6 +235,10 @@ export class RequestService {
 				`Student ${userId} sent join request to group ${group.code}`,
 			);
 
+			// Clear relevant caches
+			await this.clearCache(`${RequestService.CACHE_KEY}:student:${userId}`);
+			await this.clearCache(`${RequestService.CACHE_KEY}:group:${dto.groupId}`);
+
 			// Send email notification to group leader
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
 				{
@@ -346,6 +356,15 @@ export class RequestService {
 				`Group ${group.code} sent invite requests to ${dto.studentIds.length} students: ${dto.studentIds.join(', ')}`,
 			);
 
+			// Clear relevant caches
+			await this.clearCache(`${RequestService.CACHE_KEY}:group:${groupId}`);
+			// Clear cache for all invited students
+			await Promise.all(
+				dto.studentIds.map((studentId) =>
+					this.clearCache(`${RequestService.CACHE_KEY}:student:${studentId}`),
+				),
+			);
+
 			// Get group leader info for email notifications
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
 				{
@@ -382,6 +401,18 @@ export class RequestService {
 	 */
 	async getStudentRequests(userId: string) {
 		try {
+			this.logger.log(`Fetching requests for student: ${userId}`);
+
+			// Check cache first
+			const cacheKey = `${RequestService.CACHE_KEY}:student:${userId}`;
+			const cachedRequests = await this.getCachedData<any[]>(cacheKey);
+			if (cachedRequests) {
+				this.logger.log(
+					`Found ${cachedRequests.length} requests for student (from cache)`,
+				);
+				return cachedRequests;
+			}
+
 			const requests = await this.prisma.request.findMany({
 				where: {
 					studentId: userId,
@@ -416,6 +447,9 @@ export class RequestService {
 				orderBy: { createdAt: 'desc' },
 			});
 
+			// Cache the result
+			await this.setCachedData(cacheKey, requests);
+
 			this.logger.log(
 				`Found ${requests.length} requests for student ${userId}`,
 			);
@@ -431,8 +465,20 @@ export class RequestService {
 	 */
 	async getGroupRequests(userId: string, groupId: string) {
 		try {
+			this.logger.log(`Fetching requests for group: ${groupId}`);
+
 			// Validate user is group leader
 			await this.validateStudentIsGroupLeader(userId, groupId);
+
+			// Check cache first
+			const cacheKey = `${RequestService.CACHE_KEY}:group:${groupId}`;
+			const cachedRequests = await this.getCachedData<any[]>(cacheKey);
+			if (cachedRequests) {
+				this.logger.log(
+					`Found ${cachedRequests.length} requests for group (from cache)`,
+				);
+				return cachedRequests;
+			}
 
 			const requests = await this.prisma.request.findMany({
 				where: {
@@ -460,6 +506,9 @@ export class RequestService {
 				},
 				orderBy: { createdAt: 'desc' },
 			});
+
+			// Cache the result
+			await this.setCachedData(cacheKey, requests);
 
 			this.logger.log(`Found ${requests.length} requests for group ${groupId}`);
 			return requests;
@@ -586,6 +635,15 @@ export class RequestService {
 				`Request ${requestId} ${dto.status.toLowerCase()} by user ${userId}`,
 			);
 
+			// Clear relevant caches
+			await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
+			await this.clearCache(
+				`${RequestService.CACHE_KEY}:student:${request.studentId}`,
+			);
+			await this.clearCache(
+				`${RequestService.CACHE_KEY}:group:${request.groupId}`,
+			);
+
 			// Send email notification about request status update
 			await this.sendRequestStatusUpdateNotification(requestId, dto.status);
 
@@ -646,6 +704,13 @@ export class RequestService {
 				},
 			});
 
+			// Clear relevant caches
+			await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
+			await this.clearCache(`${RequestService.CACHE_KEY}:student:${userId}`);
+			await this.clearCache(
+				`${RequestService.CACHE_KEY}:group:${request.groupId}`,
+			);
+
 			this.logger.log(`Request ${requestId} cancelled by student ${userId}`);
 			return cancelledRequest;
 		} catch (error) {
@@ -659,6 +724,34 @@ export class RequestService {
 	 */
 	async findOne(userId: string, requestId: string) {
 		try {
+			this.logger.log(`Fetching request: ${requestId} for user: ${userId}`);
+
+			// Check cache first
+			const cacheKey = `${RequestService.CACHE_KEY}:${requestId}`;
+			const cachedRequest = await this.getCachedData<any>(cacheKey);
+			if (cachedRequest) {
+				// Still need to check permissions for cached data
+				const isStudent = cachedRequest.studentId === userId;
+				const isGroupLeader = await this.prisma.studentGroupParticipation
+					.findFirst({
+						where: {
+							studentId: userId,
+							groupId: cachedRequest.groupId,
+							isLeader: true,
+						},
+					})
+					.then((participation) => !!participation);
+
+				if (!isStudent && !isGroupLeader) {
+					throw new ForbiddenException(
+						`You don't have permission to view this request`,
+					);
+				}
+
+				this.logger.log(`Request found with ID: ${requestId} (from cache)`);
+				return cachedRequest;
+			}
+
 			const request = await this.prisma.request.findUnique({
 				where: { id: requestId },
 				include: {
@@ -712,6 +805,10 @@ export class RequestService {
 				);
 			}
 
+			// Cache the result
+			await this.setCachedData(cacheKey, request);
+
+			this.logger.log(`Request found with ID: ${requestId}`);
 			return request;
 		} catch (error) {
 			this.logger.error('Error fetching request', error);

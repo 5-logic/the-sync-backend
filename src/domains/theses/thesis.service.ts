@@ -4,11 +4,11 @@ import {
 	ForbiddenException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -24,54 +24,16 @@ import {
 import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
-export class ThesisService {
-	private readonly logger = new Logger(ThesisService.name);
+export class ThesisService extends BaseCacheService {
 	private static readonly INITIAL_VERSION = 1;
-
-	// Cache configuration
-	private static readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-	private static readonly CACHE_KEYS = {
-		ALL_THESES: 'theses:all',
-		THESIS_BY_ID: (id: string) => `thesis:${id}`,
-		THESES_BY_LECTURER: (lecturerId: string) => `theses:lecturer:${lecturerId}`,
-		THESES_BY_SEMESTER: (semesterId: string) => `theses:semester:${semesterId}`,
-	};
+	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-	) {}
-
-	/**
-	 * Helper methods for cache management
-	 */
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const cachedData = await this.cacheManager.get<T>(key);
-			if (cachedData) {
-				this.logger.debug(`Cache hit for key: ${key}`);
-				return cachedData;
-			}
-			this.logger.debug(`Cache miss for key: ${key}`);
-			return null;
-		} catch (error) {
-			this.logger.error(`Error retrieving cache for key ${key}:`, error);
-			return null;
-		}
-	}
-
-	private async setCachedData<T>(
-		key: string,
-		data: T,
-		ttl?: number,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl ?? ThesisService.CACHE_TTL);
-			this.logger.debug(`Data cached with key: ${key}`);
-		} catch (error) {
-			this.logger.error(`Error setting cache for key ${key}:`, error);
-		}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, ThesisService.name);
 	}
 
 	private async invalidateThesisCache(
@@ -80,22 +42,18 @@ export class ThesisService {
 		semesterId?: string,
 	): Promise<void> {
 		try {
-			const keysToDelete = [ThesisService.CACHE_KEYS.ALL_THESES];
+			const keysToDelete = [`${ThesisService.CACHE_KEY}:all`];
 
 			if (thesisId) {
-				keysToDelete.push(ThesisService.CACHE_KEYS.THESIS_BY_ID(thesisId));
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:${thesisId}`);
 			}
 
 			if (lecturerId) {
-				keysToDelete.push(
-					ThesisService.CACHE_KEYS.THESES_BY_LECTURER(lecturerId),
-				);
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:lecturer:${lecturerId}`);
 			}
 
 			if (semesterId) {
-				keysToDelete.push(
-					ThesisService.CACHE_KEYS.THESES_BY_SEMESTER(semesterId),
-				);
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:semester:${semesterId}`);
 			}
 
 			await Promise.all(keysToDelete.map((key) => this.cacheManager.del(key)));
@@ -115,27 +73,23 @@ export class ThesisService {
 				select: { id: true, lecturerId: true, semesterId: true },
 			});
 
-			const keysToDelete = [ThesisService.CACHE_KEYS.ALL_THESES];
+			const keysToDelete = [`${ThesisService.CACHE_KEY}:all`];
 			const lecturerIds = new Set<string>();
 			const semesterIds = new Set<string>();
 
 			theses.forEach((thesis) => {
-				keysToDelete.push(ThesisService.CACHE_KEYS.THESIS_BY_ID(thesis.id));
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:${thesis.id}`);
 				lecturerIds.add(thesis.lecturerId);
 				semesterIds.add(thesis.semesterId);
 			});
 
 			// Add lecturer and semester cache keys
 			lecturerIds.forEach((lecturerId) => {
-				keysToDelete.push(
-					ThesisService.CACHE_KEYS.THESES_BY_LECTURER(lecturerId),
-				);
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:lecturer:${lecturerId}`);
 			});
 
 			semesterIds.forEach((semesterId) => {
-				keysToDelete.push(
-					ThesisService.CACHE_KEYS.THESES_BY_SEMESTER(semesterId),
-				);
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:semester:${semesterId}`);
 			});
 
 			await Promise.all(keysToDelete.map((key) => this.cacheManager.del(key)));
@@ -453,7 +407,7 @@ export class ThesisService {
 			this.logger.log('Fetching all theses');
 
 			// Check cache first
-			const cacheKey = ThesisService.CACHE_KEYS.ALL_THESES;
+			const cacheKey = `${ThesisService.CACHE_KEY}:all`;
 			const cachedTheses = await this.getCachedData<any[]>(cacheKey);
 
 			if (cachedTheses) {
@@ -500,7 +454,7 @@ export class ThesisService {
 			this.logger.log(`Fetching thesis with id: ${id}`);
 
 			// Check cache first
-			const cacheKey = ThesisService.CACHE_KEYS.THESIS_BY_ID(id);
+			const cacheKey = `${ThesisService.CACHE_KEY}:${id}`;
 			const cachedThesis = await this.getCachedData<any>(cacheKey);
 
 			if (cachedThesis) {
@@ -555,7 +509,7 @@ export class ThesisService {
 			);
 
 			// Check cache first
-			const cacheKey = ThesisService.CACHE_KEYS.THESES_BY_SEMESTER(semesterId);
+			const cacheKey = `${ThesisService.CACHE_KEY}:semester:${semesterId}`;
 			const cachedTheses = await this.getCachedData<any[]>(cacheKey);
 
 			if (cachedTheses) {
@@ -623,7 +577,7 @@ export class ThesisService {
 			);
 
 			// Check cache first
-			const cacheKey = ThesisService.CACHE_KEYS.THESES_BY_LECTURER(lecturerId);
+			const cacheKey = `${ThesisService.CACHE_KEY}:lecturer:${lecturerId}`;
 			const cachedTheses = await this.getCachedData<any[]>(cacheKey);
 
 			if (cachedTheses) {

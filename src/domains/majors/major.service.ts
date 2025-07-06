@@ -8,7 +8,7 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 @Injectable()
 export class MajorService {
 	private readonly logger = new Logger(MajorService.name);
-	private static readonly CACHE_KEY = 'cache:/majors';
+	private static readonly CACHE_KEY = 'cache:major';
 
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cache: Cache,
@@ -22,6 +22,9 @@ export class MajorService {
 			const cached = await this.cache.get(MajorService.CACHE_KEY);
 
 			if (cached) {
+				this.logger.log(
+					`Found ${(cached as any[])?.length || 0} majors (from cache)`,
+				);
 				return cached;
 			}
 
@@ -50,6 +53,7 @@ export class MajorService {
 			const cached = await this.cache.get(key);
 
 			if (cached) {
+				this.logger.log(`Major found with id: ${id} (from cache)`);
 				return cached;
 			}
 
@@ -68,7 +72,7 @@ export class MajorService {
 
 			return major;
 		} catch (error) {
-			this.logger.error('Error fetching major', error);
+			this.logger.error(`Error fetching major with id ${id}`, error);
 
 			throw error;
 		}

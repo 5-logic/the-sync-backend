@@ -15,6 +15,7 @@
 			"@/*": ["src/*"],
 			"@/admins/*": ["src/domains/admins/*"],
 			"@/auth/*": ["src/auth/*"],
+			"@/bases/*": ["src/domains/bases/*"],
 			"@/email/*": ["src/queue/email/*"],
 			"@/groups/*": ["src/domains/groups/*"],
 			"@/lecturers/*": ["src/domains/lecturers/*"],

@@ -3,11 +3,11 @@ import {
 	ConflictException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { ChangeLeaderDto, CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -16,39 +16,18 @@ import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
-export class GroupService {
-	private readonly logger = new Logger(GroupService.name);
-	private readonly CACHE_TTL = 5 * 60 * 1000;
+export class GroupService extends BaseCacheService {
+	private static readonly CACHE_KEY = 'cache:group';
 
 	constructor(
 		private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		private readonly emailQueueService: EmailQueueService,
-	) {}
-
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const result = await this.cacheManager.get<T>(key);
-			return result ?? null;
-		} catch (error) {
-			this.logger.warn(`Cache get error for key ${key}:`, error);
-			return null;
-		}
+	) {
+		super(cacheManager, GroupService.name);
 	}
 
-	private async setCachedData(
-		key: string,
-		data: any,
-		ttl?: number,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl ?? this.CACHE_TTL);
-		} catch (error) {
-			this.logger.warn(`Cache set error for key ${key}:`, error);
-		}
-	}
-
-	private async clearCache(pattern?: string): Promise<void> {
+	private async clearCacheWithPattern(pattern?: string): Promise<void> {
 		try {
 			if (pattern) {
 				await this.cacheManager.del(pattern);
@@ -278,10 +257,14 @@ export class GroupService {
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
 			);
 
-			await this.clearCache('groups:all');
-			await this.clearCache(`student:${userId}:groups`);
-			await this.clearCache(`group:${result.id}:members`);
-			await this.clearCache(`group:${result.id}:skills-responsibilities`);
+			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
+			await this.clearCacheWithPattern(`cache:student:${userId}:groups`);
+			await this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${result.id}:members`,
+			);
+			await this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${result.id}:skills-responsibilities`,
+			);
 
 			const completeGroup = await this.findOne(result.id);
 
@@ -492,7 +475,7 @@ export class GroupService {
 
 	async findAll() {
 		try {
-			const cacheKey = 'groups:all';
+			const cacheKey = `${GroupService.CACHE_KEY}:all`;
 			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
 			if (cachedGroups) {
 				this.logger.log(`Found ${cachedGroups.length} groups (from cache)`);
@@ -540,7 +523,7 @@ export class GroupService {
 
 	async findOne(id: string) {
 		try {
-			const cacheKey = `group:${id}`;
+			const cacheKey = `${GroupService.CACHE_KEY}:${id}`;
 			const cachedGroup = await this.getCachedData<any>(cacheKey);
 			if (cachedGroup) {
 				this.logger.log(`Group found with ID: ${cachedGroup.id} (from cache)`);
@@ -679,11 +662,15 @@ export class GroupService {
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
-			await this.clearCache('groups:all');
-			await this.clearCache(`group:${id}`);
-			await this.clearCache(`student:${userId}:groups`);
-			await this.clearCache(`group:${id}:members`);
-			await this.clearCache(`group:${id}:skills-responsibilities`);
+			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
+			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${id}`);
+			await this.clearCacheWithPattern(`cache:student:${userId}:groups`);
+			await this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${id}:members`,
+			);
+			await this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${id}:skills-responsibilities`,
+			);
 
 			const completeGroup = await this.findOne(result.id);
 
@@ -824,11 +811,17 @@ export class GroupService {
 			);
 
 			// Clear relevant caches
-			await this.clearCache('groups:all');
-			await this.clearCache(`group:${groupId}`);
-			await this.clearCache(`student:${currentLeaderId}:groups`);
-			await this.clearCache(`student:${dto.newLeaderId}:groups`);
-			await this.clearCache(`group:${groupId}:members`);
+			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
+			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`);
+			await this.clearCacheWithPattern(
+				`cache:student:${currentLeaderId}:groups`,
+			);
+			await this.clearCacheWithPattern(
+				`cache:student:${dto.newLeaderId}:groups`,
+			);
+			await this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${groupId}:members`,
+			);
 
 			// Send email notifications
 			await this.sendGroupLeaderChangeNotification(
@@ -969,7 +962,7 @@ export class GroupService {
 			this.logger.log(`Finding groups for student ID: ${studentId}`);
 
 			// Check cache first
-			const cacheKey = `student:${studentId}:groups`;
+			const cacheKey = `cache:student:${studentId}:groups`;
 			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
 			if (cachedGroups) {
 				this.logger.log(
@@ -1068,7 +1061,7 @@ export class GroupService {
 			this.logger.log(`Finding detailed groups for student ID: ${studentId}`);
 
 			// Check cache first
-			const cacheKey = `student:${studentId}:detailed-groups`;
+			const cacheKey = `cache:student:${studentId}:detailed-groups`;
 			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
 			if (cachedGroups) {
 				this.logger.log(
@@ -1176,7 +1169,7 @@ export class GroupService {
 			this.logger.log(`Finding members for group ID: ${groupId}`);
 
 			// Check cache first
-			const cacheKey = `group:${groupId}:members`;
+			const cacheKey = `${GroupService.CACHE_KEY}:${groupId}:members`;
 			const cachedMembers = await this.getCachedData<any[]>(cacheKey);
 			if (cachedMembers) {
 				this.logger.log(
@@ -1286,7 +1279,7 @@ export class GroupService {
 			);
 
 			// Check cache first
-			const cacheKey = `group:${groupId}:skills-responsibilities`;
+			const cacheKey = `${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`;
 			const cached = await this.getCachedData<any>(cacheKey);
 			if (cached) {
 				this.logger.log('Found skills and responsibilities (from cache)');
@@ -1538,11 +1531,15 @@ export class GroupService {
 
 			// Clear relevant caches
 			await Promise.all([
-				this.clearCache('groups:all'),
-				this.clearCache(`group:${groupId}`),
-				this.clearCache(`student:${studentId}:groups`),
-				this.clearCache(`student:${studentId}:detailed-groups`),
-				this.clearCache(`group:${groupId}:members`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+				this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
+				this.clearCacheWithPattern(
+					`cache:student:${studentId}:detailed-groups`,
+				),
+				this.clearCacheWithPattern(
+					`${GroupService.CACHE_KEY}:${groupId}:members`,
+				),
 			]);
 
 			// Send email notifications to all group members
@@ -1803,13 +1800,17 @@ export class GroupService {
 
 			// Clear relevant caches
 			await Promise.all([
-				this.clearCache('groups:all'),
-				this.clearCache(`group:${groupId}`),
-				this.clearCache(`student:${studentId}:groups`),
-				this.clearCache(`student:${studentId}:detailed-groups`),
-				this.clearCache(`student:${leaderId}:groups`),
-				this.clearCache(`student:${leaderId}:detailed-groups`),
-				this.clearCache(`group:${groupId}:members`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+				this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
+				this.clearCacheWithPattern(
+					`cache:student:${studentId}:detailed-groups`,
+				),
+				this.clearCacheWithPattern(`cache:student:${leaderId}:groups`),
+				this.clearCacheWithPattern(`cache:student:${leaderId}:detailed-groups`),
+				this.clearCacheWithPattern(
+					`${GroupService.CACHE_KEY}:${groupId}:members`,
+				),
 			]);
 
 			// Send email notifications to all remaining group members and the removed student
