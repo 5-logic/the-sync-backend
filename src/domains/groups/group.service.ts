@@ -20,8 +20,9 @@ export class GroupService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:group';
 
 	constructor(
-		private readonly prisma: PrismaService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 	) {
 		super(cacheManager, GroupService.name);
