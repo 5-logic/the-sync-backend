@@ -5,6 +5,158 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-07-06
+
+### Added
+
+- **Group Management Enhancements**:
+  - `PUT /groups/:id/assign-student` - New moderator endpoint for assigning students to groups (requires `AssignStudentDto` with `studentId`)
+  - `PUT /groups/:id/remove-student` - New endpoint for group leaders to remove members from groups (requires `RemoveStudentDto` with `studentId`)
+  - `AssignStudentDto` - New DTO for student assignment with UUID validation
+  - `RemoveStudentDto` - New DTO for student removal with UUID validation
+  - Enhanced group member management with proper validation and email notifications
+  - Email template `send-group-member-change-notification.pug` for group membership change notifications
+
+- **Thesis Management System**:
+  - `GET /theses/semester/:semesterId` - New endpoint to retrieve all theses by semester ID
+  - `POST /theses/:id/assign` - New moderator endpoint for assigning theses to groups (requires `AssignThesisDto` with `groupId`)
+  - `AssignThesisDto` - New DTO for thesis assignment with UUID validation
+  - Enhanced thesis-group assignment workflow for academic management
+
+- **Student Management Improvements**:
+  - `GET /students/semester/:semesterId/without-group` - New endpoint to retrieve students without group assignment in a specific semester
+  - Enhanced student filtering capabilities for group assignment operations
+
+- **Email Notification System**:
+  - `SEND_GROUP_MEMBER_CHANGE_NOTIFICATION` - New email job type for group membership changes
+  - `SEND_SEMESTER_ONGOING_NOTIFICATION` - New email job type for semester status transitions
+  - Email template `send-semester-ongoing-notification.pug` for semester ongoing notifications
+  - Automated email notifications for enrollment status updates during semester transitions
+
+- **Base Caching Infrastructure**:
+  - `BaseCacheService` - New base service class with standardized caching methods (`get`, `set`, `clear`)
+  - Unified caching pattern implementation across all domain services
+  - Enhanced cache key management with consistent structure and TTL handling
+
+- **Comprehensive API Documentation**:
+  - Added `@ApiOperation` decorators to all controller endpoints across the application
+  - Detailed endpoint descriptions with usage guidelines and parameter requirements
+  - Enhanced Swagger documentation for improved developer experience
+  - Comprehensive API documentation for authentication, admin, group, thesis, student, and all domain operations
+
+### Changed
+
+- **Enhanced Request Management**:
+  - Updated `CreateInviteRequestDto` to accept array of student IDs instead of single ID
+  - Added validation for 1-4 students per invite request with proper error messages
+  - Enhanced invite request handling for batch student invitations
+  - Improved request validation with UUID array validation
+
+- **Caching Architecture Improvements**:
+  - Refactored all domain services to extend `BaseCacheService` for consistent caching behavior
+  - Standardized cache key structures across all services with constants
+  - Enhanced cache management with improved logging and error handling
+  - Optimized cache TTL handling with nullish coalescing operator for better performance
+
+- **Service Layer Enhancements**:
+  - Enhanced `GroupService` with detailed group retrieval methods (`findDetailedByStudentId`)
+  - Improved `StudentService` with semester-specific filtering capabilities
+  - Enhanced `ThesisService` with semester-based thesis retrieval and assignment logic
+  - Added comprehensive logging throughout all service operations
+
+- **Semester Status Management**:
+  - Implemented automatic enrollment status updates when semester transitions to Ongoing
+  - Enhanced semester workflow with proper status transition handling
+  - Improved validation for semester-dependent operations
+
+### Fixed
+
+- **Group Assignment Logic**: Improved null checks for moderator and group leader validation in student assignment operations
+- **Cache Management**: Enhanced cache handling with proper nullish coalescing for TTL values
+- **Request Validation**: Updated semester status checks from "Picking" to "Preparing" for consistent terminology
+- **Enrollment Restrictions**: Restricted student enrollment to only "Preparing" semester status for data consistency
+
+### Enhanced
+
+- **TypeScript Configuration**: Added path mapping for bases domain in `tsconfig.json` for improved module resolution
+- **Performance Optimization**: Implemented comprehensive caching across all domain services for better response times
+- **Error Handling**: Enhanced error handling and validation throughout the application
+- **Code Quality**: Improved code consistency with standardized patterns and better logging
+
+### Pull Requests
+
+- [#171](https://github.com/5-logic/the-sync-backend/pull/171) - Merge dev branch for v0.6.0 release
+- [#172](https://github.com/5-logic/the-sync-backend/pull/172) - Refactor services to extend BaseCacheService and enhance API documentation (task-166)
+- [#170](https://github.com/5-logic/the-sync-backend/pull/170) - Implement thesis assignment functionality (task-165)
+- [#169](https://github.com/5-logic/the-sync-backend/pull/169) - Group member management and email notifications (task-145)
+- [#168](https://github.com/5-logic/the-sync-backend/pull/168) - Enhanced caching and student filtering (task-164)
+- [#167](https://github.com/5-logic/the-sync-backend/pull/167) - Request management improvements and semester status fixes (task-163)
+
+## [0.5.9] - 2025-07-05
+
+### Added
+
+- **Group Management Enhancements**:
+  - `GET /groups/student` - New endpoint for students to view their own groups
+  - `GET /groups/student/:studentId` - New endpoint to view groups by specific student ID
+  - `PUT /groups/:id/change-leader` - New endpoint for students to change group leader (requires `ChangeLeaderDto` with `newLeaderId`)
+  - `GET /groups/:id/members` - New endpoint to view group members
+  - `GET /groups/:id/skills-responsibilities` - New endpoint to view group skills and responsibilities
+  - `ChangeLeaderDto` - New DTO for changing group leaders with validation for new leader ID
+  - Email notifications for group leader changes using new template `send-group-leader-change-notification.pug`
+
+- **Responsibility Management System**:
+  - `GET /responsibilities` - New endpoint to view all responsibilities
+  - `GET /responsibilities/:id` - New endpoint to view specific responsibility details
+  - Complete `ResponsibilityController` and `ResponsibilityService` implementation
+  - New `ResponsibilityModule` with proper dependency injection
+
+- **Thesis-Semester Integration**:
+  - Added `semesterId` field to `CreateThesisDto` for linking theses with semesters
+  - Enhanced thesis creation process to include semester association
+  - New database relationship between `Thesis` and `Semester` models
+  - Added `defaultThesesPerLecturer` and `maxThesesPerLecturer` fields to `Semester` model with defaults (4 and 6 respectively)
+  - Updated `UpdateSemesterDto` to support thesis limit configuration
+
+### Changed
+
+- **Module Architecture Improvements**:
+  - Renamed `RequestsModule` to `RequestModule` and `requests.controller.ts` to `request.controller.ts` for consistency
+  - Renamed `SkillSetsModule` to `SkillSetModule` and related files for consistency
+  - Renamed `SupervisionsModule` to `SupervisionModule` and related files for consistency
+  - Updated import paths to use absolute paths for better maintainability
+  - Enhanced `DomainModule` to include the new `ResponsibilityModule`
+
+- **Group Service Enhancements**:
+  - Implemented comprehensive caching for group service methods to improve performance
+  - Enhanced validation logic in group operations
+  - Added support for finding groups by student ID with proper filtering
+  - Improved group member and skills/responsibilities retrieval methods
+
+- **Email System Updates**:
+  - Added new email job type: `SEND_GROUP_LEADER_CHANGE_NOTIFICATION`
+  - Reordered email job types alphabetically for better organization
+  - Enhanced email notification flow for group leader changes
+
+### Fixed
+
+- **Group Leader Management**: Fixed null handling in group leader change operations using nullish coalescing operator
+- **Cache Management**: Improved cache handling for group operations with proper fallback mechanisms
+- **Import Path Resolution**: Fixed module import paths to use absolute paths preventing resolution issues
+
+### Database
+
+- **Migration 20250705071441**: Link thesis with semester
+  - Added `semester_id` field to `theses` table with foreign key constraint
+  - Added `default_theses_per_lecturer` (default: 4) and `max_theses_per_lecturer` (default: 6) to `semesters` table
+
+### Pull Requests
+
+- [#162](https://github.com/5-logic/the-sync-backend/pull/162) - Merge dev branch for v0.5.9 release
+- [#161](https://github.com/5-logic/the-sync-backend/pull/161) - Module refactoring and Responsibility system implementation (close #160)
+- [#159](https://github.com/5-logic/the-sync-backend/pull/159) - Group leader change functionality and email notifications (task-157)
+- [#158](https://github.com/5-logic/the-sync-backend/pull/158) - Group service enhancements and caching improvements (task-157_chuong)
+
 ## [0.5.8] - 2025-07-03
 
 ### Added
