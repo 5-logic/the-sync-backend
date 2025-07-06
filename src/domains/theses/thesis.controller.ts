@@ -15,6 +15,7 @@ import { Request } from 'express';
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import {
+	AssignThesisDto,
 	CreateThesisDto,
 	PublishThesisDto,
 	ReviewThesisDto,
@@ -88,6 +89,12 @@ export class ThesisController {
 	@Post(':id/review')
 	async reviewThesis(@Param('id') id: string, @Body() dto: ReviewThesisDto) {
 		return await this.thesisService.reviewThesis(id, dto);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Post(':id/assign')
+	async assignThesis(@Param('id') id: string, @Body() dto: AssignThesisDto) {
+		return await this.thesisService.assignThesis(id, dto);
 	}
 
 	@Roles(Role.MODERATOR, Role.LECTURER)
