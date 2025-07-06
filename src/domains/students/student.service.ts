@@ -27,7 +27,7 @@ import { SemesterStatus } from '~/generated/prisma';
 @Injectable()
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
-	private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+	private static readonly CACHE_KEY = 'cache:students';
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -240,10 +240,12 @@ export class StudentService {
 			);
 
 			// Clear relevant caches
-			await this.clearCache('students:all');
-			await this.clearCache(`students:semester:${dto.semesterId}`);
+			await this.clearCache(`${StudentService.CACHE_KEY}:all`);
 			await this.clearCache(
-				`students:semester:${dto.semesterId}:without-group`,
+				`${StudentService.CACHE_KEY}:semester:${dto.semesterId}`,
+			);
+			await this.clearCache(
+				`${StudentService.CACHE_KEY}:semester:${dto.semesterId}:without-group`,
 			);
 
 			this.logger.log(`Student operation completed with userId: ${result.id}`);
@@ -261,7 +263,7 @@ export class StudentService {
 		this.logger.log('Fetching all students');
 
 		try {
-			const cacheKey = 'students:all';
+			const cacheKey = `${StudentService.CACHE_KEY}:all`;
 			const cachedStudents = await this.getCachedData<any[]>(cacheKey);
 			if (cachedStudents) {
 				this.logger.log(`Found ${cachedStudents.length} students (from cache)`);
@@ -306,7 +308,7 @@ export class StudentService {
 		this.logger.log(`Fetching student with ID: ${id}`);
 
 		try {
-			const cacheKey = `student:${id}`;
+			const cacheKey = `${StudentService.CACHE_KEY}:${id}`;
 			const cachedStudent = await this.getCachedData<any>(cacheKey);
 			if (cachedStudent) {
 				this.logger.log(`Student found with ID: ${id} (from cache)`);
@@ -385,6 +387,10 @@ export class StudentService {
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', result);
 
+			// Clear relevant caches
+			await this.clearCache(`${StudentService.CACHE_KEY}:all`);
+			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error updating student with ID ${id}`, error);
@@ -435,6 +441,10 @@ export class StudentService {
 
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', result);
+
+			// Clear relevant caches
+			await this.clearCache(`${StudentService.CACHE_KEY}:all`);
+			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {
@@ -621,6 +631,15 @@ export class StudentService {
 
 			this.logger.log(`Successfully processed ${results.length} students`);
 
+			// Clear relevant caches
+			await this.clearCache(`${StudentService.CACHE_KEY}:all`);
+			await this.clearCache(
+				`${StudentService.CACHE_KEY}:semester:${dto.semesterId}`,
+			);
+			await this.clearCache(
+				`${StudentService.CACHE_KEY}:semester:${dto.semesterId}:without-group`,
+			);
+
 			return results;
 		} catch (error) {
 			this.logger.error('Error creating students in batch', error);
@@ -674,6 +693,10 @@ export class StudentService {
 
 			this.logger.debug('Updated student status', result);
 
+			// Clear relevant caches
+			await this.clearCache(`${StudentService.CACHE_KEY}:all`);
+			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error toggling student status with ID ${id}`, error);
@@ -686,7 +709,7 @@ export class StudentService {
 		this.logger.log(`Fetching all students for semester: ${semesterId}`);
 
 		try {
-			const cacheKey = `students:semester:${semesterId}`;
+			const cacheKey = `${StudentService.CACHE_KEY}:semester:${semesterId}`;
 			const cachedStudents = await this.getCachedData<any[]>(cacheKey);
 			if (cachedStudents) {
 				this.logger.log(
@@ -759,7 +782,7 @@ export class StudentService {
 		);
 
 		try {
-			const cacheKey = `students:semester:${semesterId}:without-group`;
+			const cacheKey = `${StudentService.CACHE_KEY}:semester:${semesterId}:without-group`;
 			const cachedStudents = await this.getCachedData<any[]>(cacheKey);
 			if (cachedStudents) {
 				this.logger.log(
@@ -934,6 +957,16 @@ export class StudentService {
 				};
 			});
 
+			// Clear relevant caches
+			await this.clearCache(`${StudentService.CACHE_KEY}:all`);
+			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
+			await this.clearCache(
+				`${StudentService.CACHE_KEY}:semester:${semesterId}`,
+			);
+			await this.clearCache(
+				`${StudentService.CACHE_KEY}:semester:${semesterId}:without-group`,
+			);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error deleting student with ID ${id}:`, error);
@@ -958,7 +991,7 @@ export class StudentService {
 		ttl?: number,
 	): Promise<void> {
 		try {
-			await this.cacheManager.set(key, data, ttl ?? this.CACHE_TTL);
+			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
 		} catch (error) {
 			this.logger.warn(`Cache set error for key ${key}:`, error);
 		}
