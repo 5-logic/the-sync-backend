@@ -6,15 +6,24 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
 
-import { OngoingPhase, SemesterStatus } from '~/generated/prisma';
+import {
+	EnrollmentStatus,
+	OngoingPhase,
+	SemesterStatus,
+} from '~/generated/prisma';
 
 @Injectable()
 export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly emailQueueService: EmailQueueService,
+	) {}
 
 	async create(dto: CreateSemesterDto) {
 		try {
@@ -132,6 +141,14 @@ export class SemesterService {
 				where: { id },
 				data: updateData,
 			});
+
+			// Handle enrollment status update and email notifications when status changes to Ongoing
+			if (
+				existingSemester.status !== SemesterStatus.Ongoing &&
+				dto.status === SemesterStatus.Ongoing
+			) {
+				await this.handleSemesterOngoingTransition(updatedSemester);
+			}
 
 			this.logger.log(
 				`Semester updated successfully with ID: ${updatedSemester.id}`,
@@ -504,5 +521,77 @@ export class SemesterService {
 		}
 
 		return updateData;
+	}
+
+	private async handleSemesterOngoingTransition(semester: {
+		id: string;
+		name: string;
+		code: string;
+	}) {
+		this.logger.log(
+			`Handling enrollment status update for semester ${semester.id} transition to Ongoing`,
+		);
+
+		try {
+			// Update all enrollments in this semester to Ongoing status
+			const updateResult = await this.prisma.enrollment.updateMany({
+				where: {
+					semesterId: semester.id,
+					status: EnrollmentStatus.NotYet, // Only update NotYet enrollments
+				},
+				data: {
+					status: EnrollmentStatus.Ongoing,
+				},
+			});
+
+			this.logger.log(
+				`Updated ${updateResult.count} enrollments to Ongoing status`,
+			);
+
+			// Get all students in this semester to send notifications
+			const enrollments = await this.prisma.enrollment.findMany({
+				where: {
+					semesterId: semester.id,
+					status: EnrollmentStatus.Ongoing,
+				},
+				include: {
+					student: {
+						include: {
+							user: true,
+						},
+					},
+				},
+			});
+
+			this.logger.log(
+				`Found ${enrollments.length} students to notify about semester ongoing`,
+			);
+
+			// Send email notifications to all students
+			const emailPromises = enrollments.map((enrollment) => {
+				return this.emailQueueService.sendEmail(
+					EmailJobType.SEND_SEMESTER_ONGOING_NOTIFICATION,
+					{
+						to: enrollment.student.user.email,
+						subject: `Thông báo học kỳ ${semester.name} đã bắt đầu - TheSync`,
+						context: {
+							fullName: enrollment.student.user.fullName,
+							semesterName: semester.name,
+							semesterCode: semester.code,
+						},
+					},
+				);
+			});
+
+			await Promise.all(emailPromises);
+
+			this.logger.log(
+				`Successfully sent ${emailPromises.length} email notifications for semester ongoing transition`,
+			);
+		} catch (error) {
+			this.logger.error('Error handling semester ongoing transition', error);
+			// Don't throw error to prevent semester update from failing
+			// The main semester update should succeed even if notifications fail
+		}
 	}
 }
