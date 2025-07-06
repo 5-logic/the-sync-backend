@@ -1,11 +1,14 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	BadRequestException,
 	ConflictException,
+	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -14,13 +17,16 @@ import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto'
 import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
 
 @Injectable()
-export class SupervisionService {
-	private readonly logger = new Logger(SupervisionService.name);
+export class SupervisionService extends BaseCacheService {
+	private static readonly CACHE_KEY = 'cache:supervision';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-	) {}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, SupervisionService.name);
+	}
 
 	/**
 	 * Helper method để validate lecturer tồn tại và active
@@ -155,6 +161,15 @@ export class SupervisionService {
 				`Successfully assigned supervision for thesis ${thesisId} to lecturer ${dto.lecturerId}`,
 			);
 
+			// Clear relevant caches
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:thesis:${thesisId}`,
+			);
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:lecturer:${dto.lecturerId}`,
+			);
+			this.logger.debug('Cache invalidated for supervision assignment');
+
 			await this.sendSupervisionNotificationEmail(
 				supervision.lecturer.user.email,
 				supervision.lecturer.user.fullName,
@@ -243,6 +258,18 @@ export class SupervisionService {
 			this.logger.log(
 				`Successfully updated supervision for thesis ${thesisId} from lecturer ${dto.currentSupervisorId} to lecturer ${dto.newSupervisorId}`,
 			);
+
+			// Clear relevant caches
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:thesis:${thesisId}`,
+			);
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:lecturer:${dto.currentSupervisorId}`,
+			);
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:lecturer:${dto.newSupervisorId}`,
+			);
+			this.logger.debug('Cache invalidated for supervision change');
 
 			const oldLecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: dto.currentSupervisorId },
@@ -343,6 +370,15 @@ export class SupervisionService {
 				`Successfully removed supervision for thesis ${thesisId} from lecturer ${lecturerId}`,
 			);
 
+			// Clear relevant caches
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:thesis:${thesisId}`,
+			);
+			await this.clearCache(
+				`${SupervisionService.CACHE_KEY}:lecturer:${lecturerId}`,
+			);
+			this.logger.debug('Cache invalidated for supervision removal');
+
 			if (supervisionToDelete) {
 				await this.sendSupervisionNotificationEmail(
 					supervisionToDelete.lecturer.user.email,
@@ -369,10 +405,20 @@ export class SupervisionService {
 		try {
 			this.logger.log(`Getting supervisions for thesis ${thesisId}`);
 
+			const cacheKey = `${SupervisionService.CACHE_KEY}:thesis:${thesisId}`;
+			const cachedData = await this.getCachedData(cacheKey);
+
+			if (cachedData) {
+				this.logger.log(`Found cached supervisions for thesis ${thesisId}`);
+				return cachedData;
+			}
+
 			const supervisions = await this.prisma.supervision.groupBy({
 				where: { thesisId },
 				by: ['lecturerId'],
 			});
+
+			await this.setCachedData(cacheKey, supervisions);
 
 			this.logger.log(
 				`Found ${supervisions.length} supervisions for thesis ${thesisId}`,
@@ -392,10 +438,20 @@ export class SupervisionService {
 		try {
 			this.logger.log(`Getting supervisions for lecturer ${lecturerId}`);
 
+			const cacheKey = `${SupervisionService.CACHE_KEY}:lecturer:${lecturerId}`;
+			const cachedData = await this.getCachedData(cacheKey);
+
+			if (cachedData) {
+				this.logger.log(`Found cached supervisions for lecturer ${lecturerId}`);
+				return cachedData;
+			}
+
 			const supervisions = await this.prisma.supervision.groupBy({
 				where: { lecturerId },
 				by: ['thesisId'],
 			});
+
+			await this.setCachedData(cacheKey, supervisions);
 
 			this.logger.log(
 				`Found ${supervisions.length} supervisions for lecturer ${lecturerId}`,

@@ -1,28 +1,30 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
-import { CONSTANTS } from '@/configs';
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
-export class SkillSetService {
-	private readonly logger = new Logger(SkillSetService.name);
-	private static readonly CACHE_KEY = 'cache:/skill-sets';
+export class SkillSetService extends BaseCacheService {
+	private static readonly CACHE_KEY = 'cache:skill-set';
 
 	constructor(
-		@Inject(CACHE_MANAGER) private readonly cache: Cache,
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		private readonly prisma: PrismaService,
-	) {}
+	) {
+		super(cacheManager, SkillSetService.name);
+	}
 
 	async findAll() {
-		this.logger.log('Fetching all skill sets');
-
 		try {
-			const cached = await this.cache.get(SkillSetService.CACHE_KEY);
-
-			if (cached) {
-				return cached;
+			const cacheKey = `${SkillSetService.CACHE_KEY}:all`;
+			const cachedSkillSets = await this.getCachedData<any[]>(cacheKey);
+			if (cachedSkillSets) {
+				this.logger.log(
+					`Found ${cachedSkillSets.length} skill sets (from cache)`,
+				);
+				return cachedSkillSets;
 			}
 
 			const skillSets = await this.prisma.skillSet.findMany({
@@ -38,28 +40,26 @@ export class SkillSetService {
 				},
 			});
 
-			await this.cache.set(SkillSetService.CACHE_KEY, skillSets, CONSTANTS.TTL);
+			await this.setCachedData(cacheKey, skillSets);
 
 			this.logger.log(`Found ${skillSets.length} skill sets`);
-			this.logger.debug('SkillSets detail:', JSON.stringify(skillSets));
 
 			return skillSets;
 		} catch (error) {
-			this.logger.error('Error fetching skill sets', error);
-
+			this.logger.error('Error fetching skill sets:', error);
 			throw error;
 		}
 	}
 
 	async findOne(id: string) {
-		this.logger.log(`Fetching skill set with id: ${id}`);
-
 		try {
-			const key = `${SkillSetService.CACHE_KEY}/${id}`;
-			const cached = await this.cache.get(key);
-
-			if (cached) {
-				return cached;
+			const cacheKey = `${SkillSetService.CACHE_KEY}:${id}`;
+			const cachedSkillSet = await this.getCachedData<any>(cacheKey);
+			if (cachedSkillSet) {
+				this.logger.log(
+					`Skill set found with ID: ${cachedSkillSet.id} (from cache)`,
+				);
+				return cachedSkillSet;
 			}
 
 			const skillSet = await this.prisma.skillSet.findUnique({
@@ -74,20 +74,16 @@ export class SkillSetService {
 			});
 
 			if (!skillSet) {
-				this.logger.warn(`Skill set with id ${id} not found`);
-
 				throw new NotFoundException(`SkillSet not found`);
 			}
 
-			await this.cache.set(key, skillSet, CONSTANTS.TTL);
+			await this.setCachedData(cacheKey, skillSet);
 
-			this.logger.log(`Found skill set with id ${id}`);
-			this.logger.debug('SkillSet detail:', skillSet);
+			this.logger.log(`Skill set found with ID: ${skillSet.id}`);
 
 			return skillSet;
 		} catch (error) {
-			this.logger.error(`Error fetching skill set with id ${id}`, error);
-
+			this.logger.error('Error fetching skill set:', error);
 			throw error;
 		}
 	}

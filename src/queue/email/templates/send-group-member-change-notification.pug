@@ -1,0 +1,71 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello #{recipientName},
+
+  p We're writing to inform you about an important update regarding your group membership in TheSync system.
+
+  .info-box
+    if actionType === 'assigned'
+      h3 👥 New Member Added to Group
+      p A new member has been assigned to your group by a moderator.
+    else if actionType === 'removed'
+      h3 👥 Member Removed from Group
+      p A member has been removed from your group.
+
+    .info-item
+      .info-label Group:
+      .info-value #{groupName} (#{groupCode})
+
+    .info-item
+      .info-label Semester:
+      .info-value #{semesterName}
+
+    if actionType === 'assigned'
+      .info-item
+        .info-label New Member:
+        .info-value #{targetStudentName} (#{targetStudentCode})
+    else if actionType === 'removed'
+      .info-item
+        .info-label Removed Member:
+        .info-value #{targetStudentName} (#{targetStudentCode})
+
+    .info-item
+      .info-label Current Group Size:
+      .info-value #{currentGroupSize} member(s)
+
+    .info-item
+      .info-label Date:
+      .info-value #{changeDate}
+
+  if actionType === 'assigned'
+    if recipientType === 'target_student'
+      .success-box
+        strong 🎉 Welcome to the Group!
+        | You have been assigned to group "#{groupName}" by a moderator. Please coordinate with your group leader and team members to get started on your project.
+        
+        .info-item
+          .info-label Group Leader:
+          .info-value #{groupLeaderName}
+    else
+      .info-box
+        strong 📢 Group Update
+        | #{targetStudentName} has been assigned to your group "#{groupName}" by a moderator. Please welcome them to the team and help them get up to speed with your project.
+
+  else if actionType === 'removed'
+    if recipientType === 'target_student'
+      .info-box
+        strong ℹ️ Group Membership Update
+        | You have been removed from group "#{groupName}". If you have any questions about this change, please contact your instructor or the system moderator.
+    else
+      .info-box
+        strong 📢 Group Update
+        | #{targetStudentName} has been removed from your group "#{groupName}". Please adjust your project plans accordingly.
+
+  p If you have any questions about this change or need assistance, please don't hesitate to contact our support team.
+
+  p
+    | Best regards,
+    br
+    | The TheSync Team

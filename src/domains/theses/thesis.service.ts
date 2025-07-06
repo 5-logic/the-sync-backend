@@ -1,16 +1,20 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	ForbiddenException,
+	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
+	AssignThesisDto,
 	CreateThesisDto,
 	PublishThesisDto,
 	ReviewThesisDto,
@@ -20,14 +24,82 @@ import {
 import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
-export class ThesisService {
-	private readonly logger = new Logger(ThesisService.name);
+export class ThesisService extends BaseCacheService {
 	private static readonly INITIAL_VERSION = 1;
+	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-	) {}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, ThesisService.name);
+	}
+
+	private async invalidateThesisCache(
+		thesisId?: string,
+		lecturerId?: string,
+		semesterId?: string,
+	): Promise<void> {
+		try {
+			const keysToDelete = [`${ThesisService.CACHE_KEY}:all`];
+
+			if (thesisId) {
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:${thesisId}`);
+			}
+
+			if (lecturerId) {
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:lecturer:${lecturerId}`);
+			}
+
+			if (semesterId) {
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:semester:${semesterId}`);
+			}
+
+			await Promise.all(keysToDelete.map((key) => this.cacheManager.del(key)));
+			this.logger.debug(
+				`Cache invalidated for keys: ${keysToDelete.join(', ')}`,
+			);
+		} catch (error) {
+			this.logger.error('Error invalidating thesis cache:', error);
+		}
+	}
+
+	private async invalidateBulkThesisCache(thesesIds: string[]): Promise<void> {
+		try {
+			// Get all affected theses to determine which cache keys to invalidate
+			const theses = await this.prisma.thesis.findMany({
+				where: { id: { in: thesesIds } },
+				select: { id: true, lecturerId: true, semesterId: true },
+			});
+
+			const keysToDelete = [`${ThesisService.CACHE_KEY}:all`];
+			const lecturerIds = new Set<string>();
+			const semesterIds = new Set<string>();
+
+			theses.forEach((thesis) => {
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:${thesis.id}`);
+				lecturerIds.add(thesis.lecturerId);
+				semesterIds.add(thesis.semesterId);
+			});
+
+			// Add lecturer and semester cache keys
+			lecturerIds.forEach((lecturerId) => {
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:lecturer:${lecturerId}`);
+			});
+
+			semesterIds.forEach((semesterId) => {
+				keysToDelete.push(`${ThesisService.CACHE_KEY}:semester:${semesterId}`);
+			});
+
+			await Promise.all(keysToDelete.map((key) => this.cacheManager.del(key)));
+			this.logger.debug(
+				`Bulk cache invalidated for ${thesesIds.length} theses, keys: ${keysToDelete.join(', ')}`,
+			);
+		} catch (error) {
+			this.logger.error('Error invalidating bulk thesis cache:', error);
+		}
+	}
 
 	/**
 	 * Helper method to send thesis status change email notification
@@ -312,6 +384,13 @@ export class ThesisService {
 				throw new ConflictException('Failed to create thesis');
 			}
 
+			// Invalidate cache after creating new thesis
+			await this.invalidateThesisCache(
+				newThesis.id,
+				newThesis.lecturerId,
+				newThesis.semesterId,
+			);
+
 			this.logger.log(`Thesis created with ID: ${newThesis.id}`);
 			this.logger.debug('Thesis detail', newThesis);
 
@@ -326,6 +405,15 @@ export class ThesisService {
 	async findAll() {
 		try {
 			this.logger.log('Fetching all theses');
+
+			// Check cache first
+			const cacheKey = `${ThesisService.CACHE_KEY}:all`;
+			const cachedTheses = await this.getCachedData<any[]>(cacheKey);
+
+			if (cachedTheses) {
+				this.logger.log(`Found ${cachedTheses.length} theses from cache`);
+				return cachedTheses;
+			}
 
 			const theses = await this.prisma.thesis.findMany({
 				include: {
@@ -347,6 +435,9 @@ export class ThesisService {
 				orderBy: { createdAt: 'desc' },
 			});
 
+			// Cache the result
+			await this.setCachedData(cacheKey, theses);
+
 			this.logger.log(`Found ${theses.length} theses`);
 			this.logger.debug('Theses detail', theses);
 
@@ -361,6 +452,15 @@ export class ThesisService {
 	async findOne(id: string) {
 		try {
 			this.logger.log(`Fetching thesis with id: ${id}`);
+
+			// Check cache first
+			const cacheKey = `${ThesisService.CACHE_KEY}:${id}`;
+			const cachedThesis = await this.getCachedData<any>(cacheKey);
+
+			if (cachedThesis) {
+				this.logger.log(`Found thesis ${id} from cache`);
+				return cachedThesis;
+			}
 
 			const thesis = await this.prisma.thesis.findUnique({
 				where: { id },
@@ -388,6 +488,9 @@ export class ThesisService {
 				throw new NotFoundException(`Thesis not found`);
 			}
 
+			// Cache the result
+			await this.setCachedData(cacheKey, thesis);
+
 			this.logger.log(`Thesis found with ID: ${id}`);
 			this.logger.debug('Thesis detail', thesis);
 
@@ -399,11 +502,91 @@ export class ThesisService {
 		}
 	}
 
+	async findAllBySemesterId(semesterId: string) {
+		try {
+			this.logger.log(
+				`Fetching all theses for semester with ID: ${semesterId}`,
+			);
+
+			// Check cache first
+			const cacheKey = `${ThesisService.CACHE_KEY}:semester:${semesterId}`;
+			const cachedTheses = await this.getCachedData<any[]>(cacheKey);
+
+			if (cachedTheses) {
+				this.logger.log(
+					`Found ${cachedTheses.length} theses for semester ${semesterId} from cache`,
+				);
+				return cachedTheses;
+			}
+
+			const theses = await this.prisma.thesis.findMany({
+				where: { semesterId },
+				include: {
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
+						include: {
+							skill: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
+					lecturer: {
+						include: {
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
+								},
+							},
+						},
+					},
+				},
+				orderBy: { createdAt: 'desc' },
+			});
+
+			// Cache the result
+			await this.setCachedData(cacheKey, theses);
+
+			this.logger.log(
+				`Found ${theses.length} theses for semester ${semesterId}`,
+			);
+			this.logger.debug('Theses detail', theses);
+
+			return theses;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching theses for semester with ID ${semesterId}`,
+				error,
+			);
+
+			throw error;
+		}
+	}
+
 	async findAllByLecturerId(lecturerId: string) {
 		try {
 			this.logger.log(
 				`Fetching all theses for lecturer with ID: ${lecturerId}`,
 			);
+
+			// Check cache first
+			const cacheKey = `${ThesisService.CACHE_KEY}:lecturer:${lecturerId}`;
+			const cachedTheses = await this.getCachedData<any[]>(cacheKey);
+
+			if (cachedTheses) {
+				this.logger.log(
+					`Found ${cachedTheses.length} theses for lecturer ${lecturerId} from cache`,
+				);
+				return cachedTheses;
+			}
+
 			const theses = await this.prisma.thesis.findMany({
 				where: { lecturerId },
 				include: {
@@ -424,6 +607,9 @@ export class ThesisService {
 				},
 				orderBy: { createdAt: 'desc' },
 			});
+
+			// Cache the result
+			await this.setCachedData(cacheKey, theses);
 
 			return theses;
 		} catch (error) {
@@ -461,6 +647,9 @@ export class ThesisService {
 
 			// Send notifications
 			this.sendPublicationNotifications(dto.thesesIds, dto.isPublish);
+
+			// Invalidate cache for updated theses
+			await this.invalidateBulkThesisCache(dto.thesesIds);
 
 			// Return updated theses
 			return await this.fetchUpdatedTheses(dto.thesesIds);
@@ -764,6 +953,13 @@ export class ThesisService {
 			this.logger.log(`Thesis updated with ID: ${updatedThesis.id}`);
 			this.logger.debug('Updated thesis detail', updatedThesis);
 
+			// Invalidate cache for updated thesis
+			await this.invalidateThesisCache(
+				updatedThesis.id,
+				updatedThesis.lecturerId,
+				updatedThesis.semesterId,
+			);
+
 			return updatedThesis;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
@@ -983,6 +1179,13 @@ export class ThesisService {
 			this.logger.log(`Thesis with ID: ${id} successfully deleted`);
 			this.logger.debug('Deleted thesis detail', deletedThesis);
 
+			// Invalidate cache for deleted thesis
+			await this.invalidateThesisCache(
+				id,
+				deletedThesis.lecturerId,
+				deletedThesis.semesterId,
+			);
+
 			return deletedThesis;
 		} catch (error) {
 			this.logger.error(`Error deleting thesis with ID ${id}`, error);
@@ -1012,6 +1215,137 @@ export class ThesisService {
 			throw new NotFoundException(
 				`Skills with IDs ${missingSkillIds.join(', ')} do not exist`,
 			);
+		}
+	}
+
+	async assignThesis(id: string, dto: AssignThesisDto) {
+		try {
+			this.logger.log(
+				`Attempting to assign thesis with ID: ${id} to group with ID: ${dto.groupId}`,
+			);
+
+			// Check if thesis exists and is approved
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+				include: {
+					group: {
+						select: { id: true, code: true, name: true },
+					},
+					semester: {
+						select: { id: true, name: true, status: true },
+					},
+				},
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with ID ${id} not found for assignment`);
+				throw new NotFoundException(`Thesis not found`);
+			}
+
+			// Check if thesis is approved and published
+			if (existingThesis.status !== ThesisStatus.Approved) {
+				throw new ConflictException(
+					`Cannot assign thesis with status ${existingThesis.status}. Only ${ThesisStatus.Approved} theses can be assigned.`,
+				);
+			}
+
+			if (!existingThesis.isPublish) {
+				throw new ConflictException(
+					'Cannot assign unpublished thesis. Please publish the thesis first.',
+				);
+			}
+
+			// Check if thesis is already assigned to a group
+			if (existingThesis.group) {
+				throw new ConflictException(
+					`Thesis is already assigned to group ${existingThesis.group.code} (${existingThesis.group.name})`,
+				);
+			}
+
+			// Check if group exists and is in the same semester
+			const targetGroup = await this.prisma.group.findUnique({
+				where: { id: dto.groupId },
+				include: {
+					thesis: {
+						select: { id: true, englishName: true },
+					},
+					semester: {
+						select: { id: true, name: true },
+					},
+				},
+			});
+
+			if (!targetGroup) {
+				this.logger.warn(`Group with ID ${dto.groupId} not found`);
+				throw new NotFoundException(`Group not found`);
+			}
+
+			// Check if group already has a thesis assigned
+			if (targetGroup.thesis) {
+				throw new ConflictException(
+					`Group already has thesis "${targetGroup.thesis.englishName}" assigned`,
+				);
+			}
+
+			// Check if thesis and group are in the same semester
+			if (existingThesis.semesterId !== targetGroup.semesterId) {
+				throw new ConflictException(
+					`Thesis is in semester "${existingThesis.semester.name}" but group is in semester "${targetGroup.semester.name}". They must be in the same semester.`,
+				);
+			}
+
+			// Assign thesis to group
+			const updatedGroup = await this.prisma.group.update({
+				where: { id: dto.groupId },
+				data: {
+					thesisId: id,
+				},
+				include: {
+					thesis: {
+						include: {
+							thesisVersions: {
+								select: { id: true, version: true, supportingDocument: true },
+								orderBy: { version: 'desc' },
+							},
+							lecturer: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+
+			this.logger.log(
+				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
+			);
+			this.logger.debug('Assignment result', updatedGroup);
+
+			// Invalidate relevant caches
+			await this.invalidateThesisCache(
+				id,
+				existingThesis.lecturerId,
+				existingThesis.semesterId,
+			);
+
+			return {
+				message: 'Thesis assigned to group successfully',
+				group: updatedGroup,
+			};
+		} catch (error) {
+			this.logger.error(
+				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId}`,
+				error,
+			);
+
+			throw error;
 		}
 	}
 }
