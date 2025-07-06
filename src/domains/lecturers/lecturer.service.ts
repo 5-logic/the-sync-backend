@@ -3,11 +3,11 @@ import {
 	ConflictException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
@@ -18,45 +18,15 @@ import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { generateStrongPassword, hash } from '@/utils';
 
 @Injectable()
-export class LecturerService {
-	private readonly logger = new Logger(LecturerService.name);
+export class LecturerService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:lecturer';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-	) {}
-
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const result = await this.cacheManager.get<T>(key);
-			return result ?? null;
-		} catch (error) {
-			this.logger.warn(`Cache get error for key ${key}:`, error);
-			return null;
-		}
-	}
-
-	private async setCachedData(
-		key: string,
-		data: any,
-		ttl?: number,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
-		} catch (error) {
-			this.logger.warn(`Cache set error for key ${key}:`, error);
-		}
-	}
-
-	private async clearCache(key: string): Promise<void> {
-		try {
-			await this.cacheManager.del(key);
-			this.logger.debug(`Cache cleared for key: ${key}`);
-		} catch (error) {
-			this.logger.warn(`Cache clear error for key ${key}:`, error);
-		}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, LecturerService.name);
 	}
 
 	async create(dto: CreateUserDto) {

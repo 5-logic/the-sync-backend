@@ -3,12 +3,11 @@ import {
 	ConflictException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
-import { CONSTANTS } from '@/configs';
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -21,48 +20,15 @@ import {
 } from '~/generated/prisma';
 
 @Injectable()
-export class SemesterService {
-	private readonly logger = new Logger(SemesterService.name);
+export class SemesterService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:semester';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly emailQueueService: EmailQueueService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-	) {}
-
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const result = await this.cacheManager.get<T>(key);
-			return result ?? null;
-		} catch (error) {
-			this.logger.warn(`Cache get error for key ${key}:`, error);
-			return null;
-		}
-	}
-
-	private async setCachedData(
-		key: string,
-		data: any,
-		ttl?: number,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
-		} catch (error) {
-			this.logger.warn(`Cache set error for key ${key}:`, error);
-		}
-	}
-
-	private async clearCache(pattern?: string): Promise<void> {
-		try {
-			if (pattern) {
-				await this.cacheManager.del(pattern);
-			} else {
-				this.logger.warn('Cache reset not implemented for current store');
-			}
-		} catch (error) {
-			this.logger.warn(`Cache clear error:`, error);
-		}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, SemesterService.name);
 	}
 
 	async create(dto: CreateSemesterDto) {

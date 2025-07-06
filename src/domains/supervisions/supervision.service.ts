@@ -4,12 +4,11 @@ import {
 	ConflictException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
-import { CONSTANTS } from '@/configs';
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -18,60 +17,15 @@ import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto'
 import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
 
 @Injectable()
-export class SupervisionService {
-	private readonly logger = new Logger(SupervisionService.name);
+export class SupervisionService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:supervision';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-	) {}
-
-	/**
-	 * Helper method để lấy dữ liệu từ cache
-	 */
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const cachedData = await this.cacheManager.get<T>(key);
-			if (cachedData) {
-				this.logger.debug(`Cache hit for key: ${key}`);
-				return cachedData;
-			}
-			this.logger.debug(`Cache miss for key: ${key}`);
-			return null;
-		} catch (error) {
-			this.logger.error(`Failed to get cached data for key ${key}:`, error);
-			return null;
-		}
-	}
-
-	/**
-	 * Helper method để set dữ liệu vào cache
-	 */
-	private async setCachedData<T>(
-		key: string,
-		data: T,
-		ttl: number = CONSTANTS.TTL,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl);
-			this.logger.debug(`Cache set for key: ${key} with TTL: ${ttl}ms`);
-		} catch (error) {
-			this.logger.error(`Failed to set cache for key ${key}:`, error);
-		}
-	}
-
-	/**
-	 * Helper method để xóa cache
-	 */
-	private async clearCache(key: string): Promise<void> {
-		try {
-			await this.cacheManager.del(key);
-			this.logger.debug(`Cache cleared for key: ${key}`);
-		} catch (error) {
-			this.logger.error(`Failed to clear cache for key ${key}:`, error);
-		}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, SupervisionService.name);
 	}
 
 	/**

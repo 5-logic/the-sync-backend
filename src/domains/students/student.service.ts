@@ -3,11 +3,11 @@ import {
 	ConflictException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
@@ -25,15 +25,16 @@ import { generateStrongPassword, hash } from '@/utils';
 import { SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
-export class StudentService {
-	private readonly logger = new Logger(StudentService.name);
+export class StudentService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:student';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-	) {}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, StudentService.name);
+	}
 
 	/**
 	 * Validate that a semester exists and is in the correct status for student enrollment
@@ -972,42 +973,6 @@ export class StudentService {
 			this.logger.error(`Error deleting student with ID ${id}:`, error);
 
 			throw error;
-		}
-	}
-
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const result = await this.cacheManager.get<T>(key);
-			return result ?? null;
-		} catch (error) {
-			this.logger.warn(`Cache get error for key ${key}:`, error);
-			return null;
-		}
-	}
-
-	private async setCachedData(
-		key: string,
-		data: any,
-		ttl?: number,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
-		} catch (error) {
-			this.logger.warn(`Cache set error for key ${key}:`, error);
-		}
-	}
-
-	private async clearCache(pattern?: string): Promise<void> {
-		try {
-			if (pattern) {
-				// Clear specific key
-				await this.cacheManager.del(pattern);
-			} else {
-				// Clear all cache - simplified approach
-				this.logger.warn('Full cache clear requested but not implemented');
-			}
-		} catch (error) {
-			this.logger.warn(`Cache clear error:`, error);
 		}
 	}
 }

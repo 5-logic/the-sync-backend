@@ -4,12 +4,11 @@ import {
 	ForbiddenException,
 	Inject,
 	Injectable,
-	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
-import { CONSTANTS } from '@/configs';
+import { BaseCacheService } from '@/bases/base-cache.service';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -25,46 +24,16 @@ import {
 import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
-export class ThesisService {
-	private readonly logger = new Logger(ThesisService.name);
+export class ThesisService extends BaseCacheService {
 	private static readonly INITIAL_VERSION = 1;
 	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-	) {}
-
-	/**
-	 * Helper methods for cache management
-	 */
-	private async getCachedData<T>(key: string): Promise<T | null> {
-		try {
-			const cachedData = await this.cacheManager.get<T>(key);
-			if (cachedData) {
-				this.logger.debug(`Cache hit for key: ${key}`);
-				return cachedData;
-			}
-			this.logger.debug(`Cache miss for key: ${key}`);
-			return null;
-		} catch (error) {
-			this.logger.error(`Error retrieving cache for key ${key}:`, error);
-			return null;
-		}
-	}
-
-	private async setCachedData<T>(
-		key: string,
-		data: T,
-		ttl?: number,
-	): Promise<void> {
-		try {
-			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
-			this.logger.debug(`Data cached with key: ${key}`);
-		} catch (error) {
-			this.logger.error(`Error setting cache for key ${key}:`, error);
-		}
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
+	) {
+		super(cacheManager, ThesisService.name);
 	}
 
 	private async invalidateThesisCache(
