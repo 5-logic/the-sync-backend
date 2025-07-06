@@ -29,9 +29,10 @@ export class ThesisService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
-		private readonly prisma: PrismaService,
-		private readonly email: EmailQueueService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		@Inject(EmailQueueService)
+		private readonly emailQueueService: EmailQueueService,
 	) {
 		super(cacheManager, ThesisService.name);
 	}
@@ -155,7 +156,7 @@ export class ThesisService extends BaseCacheService {
 			};
 
 			// Send email
-			await this.email.sendEmail(
+			await this.emailQueueService.sendEmail(
 				EmailJobType.SEND_THESIS_STATUS_CHANGE,
 				emailDto,
 				500,
@@ -273,7 +274,7 @@ export class ThesisService extends BaseCacheService {
 					};
 
 					// Send email
-					await this.email.sendEmail(emailType, emailDto, 500);
+					await this.emailQueueService.sendEmail(emailType, emailDto, 500);
 
 					this.logger.log(
 						`${

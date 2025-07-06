@@ -30,9 +30,10 @@ export class RequestService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:request';
 
 	constructor(
-		private readonly prisma: PrismaService,
-		private readonly emailQueueService: EmailQueueService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		@Inject(EmailQueueService)
+		private readonly emailQueueService: EmailQueueService,
 	) {
 		super(cacheManager, RequestService.name);
 	}

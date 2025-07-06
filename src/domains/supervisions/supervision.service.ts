@@ -21,9 +21,10 @@ export class SupervisionService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:supervision';
 
 	constructor(
-		private readonly prisma: PrismaService,
-		private readonly email: EmailQueueService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		@Inject(EmailQueueService)
+		private readonly emailQueueService: EmailQueueService,
 	) {
 		super(cacheManager, SupervisionService.name);
 	}
@@ -102,7 +103,7 @@ export class SupervisionService extends BaseCacheService {
 			},
 		};
 
-		await this.email.sendEmail(
+		await this.emailQueueService.sendEmail(
 			EmailJobType.SEND_SUPERVISION_NOTIFICATION,
 			emailDto,
 			500,
