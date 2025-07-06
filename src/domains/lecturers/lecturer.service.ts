@@ -1,9 +1,12 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
+	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
@@ -17,11 +20,50 @@ import { generateStrongPassword, hash } from '@/utils';
 @Injectable()
 export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
+	private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 	) {}
+
+	private async getCachedData<T>(key: string): Promise<T | null> {
+		try {
+			const result = await this.cacheManager.get<T>(key);
+			return result ?? null;
+		} catch (error) {
+			this.logger.warn(`Cache get error for key ${key}:`, error);
+			return null;
+		}
+	}
+
+	private async setCachedData(
+		key: string,
+		data: any,
+		ttl?: number,
+	): Promise<void> {
+		try {
+			await this.cacheManager.set(key, data, ttl ?? this.CACHE_TTL);
+		} catch (error) {
+			this.logger.warn(`Cache set error for key ${key}:`, error);
+		}
+	}
+
+	private async clearCache(pattern?: string): Promise<void> {
+		try {
+			if (pattern) {
+				// Note: This is a simplified cache clearing. In production, you might want
+				// to use a more sophisticated cache invalidation strategy
+				await this.cacheManager.del(pattern);
+			} else {
+				// Global cache clearing is not supported by the Cache interface.
+				this.logger.warn('Global cache reset is not supported.');
+			}
+		} catch (error) {
+			this.logger.warn(`Cache clear error:`, error);
+		}
+	}
 
 	async create(dto: CreateUserDto) {
 		this.logger.log(`Creating lecturer with email: ${dto.email}`);
@@ -94,6 +136,9 @@ export class LecturerService {
 				500,
 			);
 
+			// Clear cache after successful creation
+			await this.clearCache('lecturers:all');
+
 			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
 
@@ -109,6 +154,16 @@ export class LecturerService {
 		this.logger.log('Fetching all lecturers');
 
 		try {
+			// Check cache first
+			const cacheKey = 'lecturers:all';
+			const cachedLecturers = await this.getCachedData<any[]>(cacheKey);
+			if (cachedLecturers) {
+				this.logger.log(
+					`Found ${cachedLecturers.length} lecturers (from cache)`,
+				);
+				return cachedLecturers;
+			}
+
 			const lecturers = await this.prisma.lecturer.findMany({
 				include: {
 					user: {
@@ -130,6 +185,9 @@ export class LecturerService {
 				isModerator: lecturer.isModerator,
 			}));
 
+			// Cache the result
+			await this.setCachedData(cacheKey, formattedLecturers);
+
 			this.logger.log(`Found ${formattedLecturers.length} lecturers`);
 			this.logger.debug('Lecturers detail', formattedLecturers);
 
@@ -144,6 +202,14 @@ export class LecturerService {
 		this.logger.log(`Fetching lecturer with ID: ${id}`);
 
 		try {
+			// Check cache first
+			const cacheKey = `lecturer:${id}`;
+			const cachedLecturer = await this.getCachedData<any>(cacheKey);
+			if (cachedLecturer) {
+				this.logger.log(`Lecturer found with ID: ${id} (from cache)`);
+				return cachedLecturer;
+			}
+
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: id },
 				include: {
@@ -161,13 +227,18 @@ export class LecturerService {
 				throw new NotFoundException(`Lecturer not found`);
 			}
 
-			this.logger.log(`Lecturer found with ID: ${id}`);
-			this.logger.debug('Lecturer detail', lecturer);
-
-			return {
+			const result = {
 				...lecturer.user,
 				isModerator: lecturer.isModerator,
 			};
+
+			// Cache the result
+			await this.setCachedData(cacheKey, result);
+
+			this.logger.log(`Lecturer found with ID: ${id}`);
+			this.logger.debug('Lecturer detail', lecturer);
+
+			return result;
 		} catch (error) {
 			this.logger.error(`Error fetching lecturer with ID ${id}`, error);
 
@@ -205,6 +276,10 @@ export class LecturerService {
 					isModerator: existingLecturer.isModerator,
 				};
 			});
+
+			// Clear cache after successful update
+			await this.clearCache('lecturers:all');
+			await this.clearCache(`lecturer:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -253,6 +328,10 @@ export class LecturerService {
 					isModerator: updatedLecturer.lecturer!.isModerator,
 				};
 			});
+
+			// Clear cache after successful update
+			await this.clearCache('lecturers:all');
+			await this.clearCache(`lecturer:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -350,6 +429,9 @@ export class LecturerService {
 				);
 			}
 
+			// Clear cache after successful batch creation
+			await this.clearCache('lecturers:all');
+
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
 			return results;
@@ -404,6 +486,10 @@ export class LecturerService {
 					isModerator: updatedLecturer.isModerator,
 				};
 			});
+
+			// Clear cache after successful status update
+			await this.clearCache('lecturers:all');
+			await this.clearCache(`lecturer:${id}`);
 
 			this.logger.log(
 				`Lecturer status updated - ID: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
@@ -496,6 +582,10 @@ export class LecturerService {
 
 				return { ...deletedUser, isModerator: deletedLecturer.isModerator };
 			});
+
+			// Clear cache after successful deletion
+			await this.clearCache('lecturers:all');
+			await this.clearCache(`lecturer:${id}`);
 
 			return result;
 		} catch (error) {
