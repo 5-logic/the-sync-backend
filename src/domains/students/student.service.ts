@@ -29,9 +29,10 @@ export class StudentService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:student';
 
 	constructor(
-		private readonly prisma: PrismaService,
-		private readonly email: EmailQueueService,
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		@Inject(EmailQueueService)
+		private readonly emailQueueService: EmailQueueService,
 	) {
 		super(cacheManager, StudentService.name);
 	}
@@ -234,7 +235,7 @@ export class StudentService extends BaseCacheService {
 				);
 			}
 
-			await this.email.sendEmail(
+			await this.emailQueueService.sendEmail(
 				EmailJobType.SEND_STUDENT_ACCOUNT,
 				emailDto,
 				500,
@@ -623,7 +624,7 @@ export class StudentService extends BaseCacheService {
 
 			// Send bulk emails after all students are created successfully
 			if (emailsToSend.length > 0) {
-				await this.email.sendBulkEmails(
+				await this.emailQueueService.sendBulkEmails(
 					EmailJobType.SEND_STUDENT_ACCOUNT,
 					emailsToSend,
 					500,

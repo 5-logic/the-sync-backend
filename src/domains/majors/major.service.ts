@@ -10,8 +10,8 @@ export class MajorService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:major';
 
 	constructor(
+		@Inject(PrismaService) private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
-		private readonly prisma: PrismaService,
 	) {
 		super(cacheManager, MajorService.name);
 	}
