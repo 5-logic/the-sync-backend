@@ -710,6 +710,79 @@ export class StudentService {
 		}
 	}
 
+	async findStudentsWithoutGroup(semesterId: string) {
+		this.logger.log(
+			`Fetching students without group for semester: ${semesterId}`,
+		);
+
+		try {
+			// Validate semester exists
+			const semester = await this.prisma.semester.findUnique({
+				where: { id: semesterId },
+			});
+
+			if (!semester) {
+				throw new NotFoundException(`Semester not found`);
+			}
+
+			// Find all students enrolled in the semester who don't have a group participation
+			const studentsWithoutGroup = await this.prisma.student.findMany({
+				where: {
+					enrollments: {
+						some: {
+							semesterId: semesterId,
+						},
+					},
+					studentGroupParticipations: {
+						none: {
+							semesterId: semesterId,
+						},
+					},
+				},
+				include: {
+					user: {
+						omit: {
+							password: true,
+						},
+					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+				},
+				orderBy: {
+					user: {
+						createdAt: 'desc',
+					},
+				},
+			});
+
+			// Format the response same as other methods
+			const formattedStudents = studentsWithoutGroup.map((student) => ({
+				...student.user,
+				studentCode: student.studentCode,
+				major: student.major,
+			}));
+
+			this.logger.log(
+				`Found ${formattedStudents.length} students without group for semester ${semesterId}`,
+			);
+			this.logger.debug('Students without group detail', formattedStudents);
+
+			return formattedStudents;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching students without group for semester ${semesterId}`,
+				error,
+			);
+
+			throw error;
+		}
+	}
+
 	async delete(id: string, semesterId: string) {
 		this.logger.log(
 			`Deleting student with ID: ${id} in Semester ${semesterId}`,
