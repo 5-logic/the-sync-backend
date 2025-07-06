@@ -20,7 +20,7 @@ import { generateStrongPassword, hash } from '@/utils';
 @Injectable()
 export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
-	private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+	private static readonly CACHE_KEY = 'cache:lecturer';
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -44,24 +44,18 @@ export class LecturerService {
 		ttl?: number,
 	): Promise<void> {
 		try {
-			await this.cacheManager.set(key, data, ttl ?? this.CACHE_TTL);
+			await this.cacheManager.set(key, data, ttl ?? CONSTANTS.TTL);
 		} catch (error) {
 			this.logger.warn(`Cache set error for key ${key}:`, error);
 		}
 	}
 
-	private async clearCache(pattern?: string): Promise<void> {
+	private async clearCache(key: string): Promise<void> {
 		try {
-			if (pattern) {
-				// Note: This is a simplified cache clearing. In production, you might want
-				// to use a more sophisticated cache invalidation strategy
-				await this.cacheManager.del(pattern);
-			} else {
-				// Global cache clearing is not supported by the Cache interface.
-				this.logger.warn('Global cache reset is not supported.');
-			}
+			await this.cacheManager.del(key);
+			this.logger.debug(`Cache cleared for key: ${key}`);
 		} catch (error) {
-			this.logger.warn(`Cache clear error:`, error);
+			this.logger.warn(`Cache clear error for key ${key}:`, error);
 		}
 	}
 
@@ -137,7 +131,7 @@ export class LecturerService {
 			);
 
 			// Clear cache after successful creation
-			await this.clearCache('lecturers:all');
+			await this.clearCache(`${LecturerService.CACHE_KEY}:all`);
 
 			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
@@ -155,7 +149,7 @@ export class LecturerService {
 
 		try {
 			// Check cache first
-			const cacheKey = 'lecturers:all';
+			const cacheKey = `${LecturerService.CACHE_KEY}:all`;
 			const cachedLecturers = await this.getCachedData<any[]>(cacheKey);
 			if (cachedLecturers) {
 				this.logger.log(
@@ -203,7 +197,7 @@ export class LecturerService {
 
 		try {
 			// Check cache first
-			const cacheKey = `lecturer:${id}`;
+			const cacheKey = `${LecturerService.CACHE_KEY}:${id}`;
 			const cachedLecturer = await this.getCachedData<any>(cacheKey);
 			if (cachedLecturer) {
 				this.logger.log(`Lecturer found with ID: ${id} (from cache)`);
@@ -278,8 +272,8 @@ export class LecturerService {
 			});
 
 			// Clear cache after successful update
-			await this.clearCache('lecturers:all');
-			await this.clearCache(`lecturer:${result.id}`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:all`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -330,8 +324,8 @@ export class LecturerService {
 			});
 
 			// Clear cache after successful update
-			await this.clearCache('lecturers:all');
-			await this.clearCache(`lecturer:${result.id}`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:all`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -430,7 +424,7 @@ export class LecturerService {
 			}
 
 			// Clear cache after successful batch creation
-			await this.clearCache('lecturers:all');
+			await this.clearCache(`${LecturerService.CACHE_KEY}:all`);
 
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
@@ -488,8 +482,8 @@ export class LecturerService {
 			});
 
 			// Clear cache after successful status update
-			await this.clearCache('lecturers:all');
-			await this.clearCache(`lecturer:${id}`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:all`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${id}`);
 
 			this.logger.log(
 				`Lecturer status updated - ID: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
@@ -584,8 +578,8 @@ export class LecturerService {
 			});
 
 			// Clear cache after successful deletion
-			await this.clearCache('lecturers:all');
-			await this.clearCache(`lecturer:${id}`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:all`);
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {
