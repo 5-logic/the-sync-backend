@@ -1433,7 +1433,7 @@ export class GroupService {
 				throw new NotFoundException(`Student not found`);
 			}
 
-			if (!moderator || !moderator.isModerator) {
+			if (!moderator?.isModerator) {
 				throw new ConflictException(
 					`Access denied. Only moderators can assign students to groups`,
 				);
@@ -1607,7 +1607,7 @@ export class GroupService {
 				targetStudentName: assignedStudent.user.fullName,
 				targetStudentCode: assignedStudent.code,
 				groupLeaderName:
-					groupLeader?.student.user.fullName || 'No leader assigned',
+					groupLeader?.student.user.fullName ?? 'No leader assigned',
 				changeDate: assignmentDate,
 				actionType: 'assigned',
 				currentGroupSize,
