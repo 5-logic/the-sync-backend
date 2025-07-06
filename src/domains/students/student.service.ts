@@ -27,7 +27,7 @@ import { SemesterStatus } from '~/generated/prisma';
 @Injectable()
 export class StudentService {
 	private readonly logger = new Logger(StudentService.name);
-	private static readonly CACHE_KEY = 'cache:/students';
+	private static readonly CACHE_KEY = 'cache:student';
 
 	constructor(
 		private readonly prisma: PrismaService,
