@@ -7,7 +7,7 @@ import {
 	Req,
 	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AdminService } from '@/admins/admin.service';
@@ -19,6 +19,7 @@ import {
 	Roles,
 	UserPayload,
 } from '@/auth';
+import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
@@ -29,20 +30,14 @@ export class AdminController {
 
 	@Roles(Role.ADMIN)
 	@Get(':id')
-	@ApiOperation({
-		summary: 'Get admin by ID',
-		description: 'Retrieve admin details by ID. Admin access only.',
-	})
+	@SwaggerDoc('admin', 'findOne')
 	async findOne(@Param('id') id: string) {
 		return await this.adminService.findOne(id);
 	}
 
 	@Roles(Role.ADMIN)
 	@Put()
-	@ApiOperation({
-		summary: 'Update admin profile',
-		description: 'Update current admin email and password.',
-	})
+	@SwaggerDoc('admin', 'update')
 	async update(@Req() req: Request, @Body() dto: UpdateAdminDto) {
 		const user = req.user as UserPayload;
 
