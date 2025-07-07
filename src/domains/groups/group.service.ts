@@ -2612,136 +2612,36 @@ export class GroupService extends BaseCacheService {
 		assignDate?: string,
 	) {
 		try {
-			// Get group details with members
-			const group = await this.prisma.group.findUnique({
-				where: { id: groupId },
-				include: {
-					semester: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-						},
-					},
-				},
-			});
+			// Get required data using helper methods
+			const group = await this.getGroupForNotification(groupId);
+			const thesis = await this.getThesisForNotification(thesisId);
+			const groupMembers = await this.getGroupMembersForNotification(groupId);
 
-			if (!group) {
-				throw new NotFoundException(`Group with ID ${groupId} not found`);
-			}
-
-			// Get thesis details
-			const thesis = await this.prisma.thesis.findUnique({
-				where: { id: thesisId },
-				include: {
-					lecturer: {
-						include: {
-							user: {
-								select: {
-									id: true,
-									fullName: true,
-									email: true,
-								},
-							},
-						},
-					},
-				},
-			});
-
-			if (!thesis) {
-				throw new NotFoundException(`Thesis with ID ${thesisId} not found`);
-			}
-
-			// Get group members
-			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
-				{
-					where: { groupId: groupId },
-					include: {
-						student: {
-							include: {
-								user: {
-									select: {
-										id: true,
-										fullName: true,
-										email: true,
-									},
-								},
-							},
-						},
-					},
-				},
+			// Create base context for email notifications
+			const baseContext = this.createNotificationBaseContext(
+				group,
+				thesis,
+				groupMembers,
+				actionType,
+				assignDate,
 			);
 
-			// Prepare base context for email
-			const currentDate = new Date().toLocaleDateString();
-			const baseContext = {
-				groupName: group.name,
-				groupCode: group.code,
-				semesterName: group.semester.name,
-				thesisEnglishName: thesis.englishName,
-				thesisVietnameseName: thesis.vietnameseName,
-				thesisAbbreviation: thesis.abbreviation,
-				lecturerName: thesis.lecturer.user.fullName,
-				leaderName: groupMembers.find((member) => member.isLeader)?.student.user
-					.fullName,
-				actionType,
-				assignDate: assignDate ?? currentDate,
-				pickDate: actionType === 'picked' ? currentDate : undefined,
-				unpickDate: actionType === 'unpicked' ? currentDate : undefined,
-			};
-
 			// Send email to thesis lecturer
-			if (thesis.lecturer.user.email) {
-				let lecturerSubject: string;
-				if (actionType === 'assigned') {
-					lecturerSubject = `Your thesis has been assigned to Group ${group.code}`;
-				} else if (actionType === 'picked') {
-					lecturerSubject = `Your thesis has been selected by Group ${group.code}`;
-				} else {
-					lecturerSubject = `Thesis removed from Group ${group.code}`;
-				}
-
-				await this.emailQueueService.sendEmail(
-					EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
-					{
-						to: thesis.lecturer.user.email,
-						subject: lecturerSubject,
-						context: {
-							...baseContext,
-							recipientName: thesis.lecturer.user.fullName,
-							recipientType: 'lecturer',
-						},
-					},
-				);
-			}
+			await this.sendLecturerNotification(
+				thesis.lecturer,
+				baseContext,
+				actionType,
+				group.code,
+			);
 
 			// Send email to all group members
 			for (const member of groupMembers) {
-				if (member.student.user.email) {
-					let memberSubject: string;
-					if (actionType === 'assigned') {
-						memberSubject = `Thesis assigned to Group ${group.code}`;
-					} else if (actionType === 'picked') {
-						memberSubject = `Thesis selected for Group ${group.code}`;
-					} else {
-						memberSubject = `Thesis removed from Group ${group.code}`;
-					}
-
-					await this.emailQueueService.sendEmail(
-						EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
-						{
-							to: member.student.user.email,
-							subject: memberSubject,
-							context: {
-								...baseContext,
-								recipientName: member.student.user.fullName,
-								recipientType: member.isLeader
-									? 'group_leader'
-									: 'group_member',
-							},
-						},
-					);
-				}
+				await this.sendMemberNotification(
+					member,
+					baseContext,
+					actionType,
+					group.code,
+				);
 			}
 
 			this.logger.log(
@@ -2761,7 +2661,205 @@ export class GroupService extends BaseCacheService {
 		}
 	}
 
-	// Helper methods to reduce code duplication
+	/**
+	 * Get group details with semester for notification
+	 */
+	private async getGroupForNotification(groupId: string) {
+		const group = await this.prisma.group.findUnique({
+			where: { id: groupId },
+			include: {
+				semester: {
+					select: {
+						id: true,
+						name: true,
+						code: true,
+					},
+				},
+			},
+		});
+
+		if (!group) {
+			throw new NotFoundException(`Group with ID ${groupId} not found`);
+		}
+
+		return group;
+	}
+
+	/**
+	 * Get thesis details with lecturer for notification
+	 */
+	private async getThesisForNotification(thesisId: string) {
+		const thesis = await this.prisma.thesis.findUnique({
+			where: { id: thesisId },
+			include: {
+				lecturer: {
+					include: {
+						user: {
+							select: {
+								id: true,
+								fullName: true,
+								email: true,
+							},
+						},
+					},
+				},
+			},
+		});
+
+		if (!thesis) {
+			throw new NotFoundException(`Thesis with ID ${thesisId} not found`);
+		}
+
+		return thesis;
+	}
+
+	/**
+	 * Get group members for notification
+	 */
+	private async getGroupMembersForNotification(groupId: string) {
+		return this.prisma.studentGroupParticipation.findMany({
+			where: { groupId: groupId },
+			include: {
+				student: {
+					include: {
+						user: {
+							select: {
+								id: true,
+								fullName: true,
+								email: true,
+							},
+						},
+					},
+				},
+			},
+		});
+	}
+
+	/**
+	 * Generate subject line for lecturer email
+	 */
+	private getLecturerEmailSubject(
+		actionType: 'assigned' | 'picked' | 'unpicked',
+		groupCode: string,
+	): string {
+		switch (actionType) {
+			case 'assigned':
+				return `Your thesis has been assigned to Group ${groupCode}`;
+			case 'picked':
+				return `Your thesis has been selected by Group ${groupCode}`;
+			case 'unpicked':
+				return `Thesis removed from Group ${groupCode}`;
+			default:
+				return `Thesis update for Group ${groupCode}`;
+		}
+	}
+
+	/**
+	 * Generate subject line for member email
+	 */
+	private getMemberEmailSubject(
+		actionType: 'assigned' | 'picked' | 'unpicked',
+		groupCode: string,
+	): string {
+		switch (actionType) {
+			case 'assigned':
+				return `Thesis assigned to Group ${groupCode}`;
+			case 'picked':
+				return `Thesis selected for Group ${groupCode}`;
+			case 'unpicked':
+				return `Thesis removed from Group ${groupCode}`;
+			default:
+				return `Thesis update for Group ${groupCode}`;
+		}
+	}
+
+	/**
+	 * Send email notification to lecturer
+	 */
+	private async sendLecturerNotification(
+		lecturer: any,
+		baseContext: any,
+		actionType: 'assigned' | 'picked' | 'unpicked',
+		groupCode: string,
+	): Promise<void> {
+		if (!lecturer.user.email) {
+			return;
+		}
+
+		const subject = this.getLecturerEmailSubject(actionType, groupCode);
+
+		await this.emailQueueService.sendEmail(
+			EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
+			{
+				to: lecturer.user.email,
+				subject: subject,
+				context: {
+					...baseContext,
+					recipientName: lecturer.user.fullName,
+					recipientType: 'lecturer',
+				},
+			},
+		);
+	}
+
+	/**
+	 * Send email notification to group member
+	 */
+	private async sendMemberNotification(
+		member: any,
+		baseContext: any,
+		actionType: 'assigned' | 'picked' | 'unpicked',
+		groupCode: string,
+	): Promise<void> {
+		if (!member.student.user.email) {
+			return;
+		}
+
+		const subject = this.getMemberEmailSubject(actionType, groupCode);
+
+		await this.emailQueueService.sendEmail(
+			EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
+			{
+				to: member.student.user.email,
+				subject: subject,
+				context: {
+					...baseContext,
+					recipientName: member.student.user.fullName,
+					recipientType: member.isLeader ? 'group_leader' : 'group_member',
+				},
+			},
+		);
+	}
+
+	/**
+	 * Create base context for email notifications
+	 */
+	private createNotificationBaseContext(
+		group: any,
+		thesis: any,
+		groupMembers: any[],
+		actionType: 'assigned' | 'picked' | 'unpicked',
+		assignDate?: string,
+	) {
+		const currentDate = new Date().toLocaleDateString();
+		const leaderName = groupMembers.find((member) => member.isLeader)?.student
+			.user.fullName;
+
+		return {
+			groupName: group.name,
+			groupCode: group.code,
+			semesterName: group.semester.name,
+			thesisEnglishName: thesis.englishName,
+			thesisVietnameseName: thesis.vietnameseName,
+			thesisAbbreviation: thesis.abbreviation,
+			lecturerName: thesis.lecturer.user.fullName,
+			leaderName,
+			actionType,
+			assignDate: assignDate ?? currentDate,
+			pickDate: actionType === 'picked' ? currentDate : undefined,
+			unpickDate: actionType === 'unpicked' ? currentDate : undefined,
+		};
+	}
 
 	/**
 	 * Clear multiple cache patterns related to group operations
@@ -2900,71 +2998,5 @@ export class GroupService extends BaseCacheService {
 				`Cannot ${operation}. Operation is only allowed during ${allowedStatuses.join(' or ')} semester status. Current status is ${semesterStatus}`,
 			);
 		}
-	}
-
-	/**
-	 * Get user details with standard selections
-	 */
-	private getUserSelectOptions() {
-		return {
-			id: true,
-			fullName: true,
-			email: true,
-		};
-	}
-
-	/**
-	 * Get student with user and major details
-	 */
-	private async getStudentDetails(studentId: string) {
-		return this.prisma.student.findUnique({
-			where: { userId: studentId },
-			include: {
-				user: {
-					select: this.getUserSelectOptions(),
-				},
-				major: {
-					select: {
-						id: true,
-						name: true,
-						code: true,
-					},
-				},
-			},
-		});
-	}
-
-	/**
-	 * Validate that students exist and get their details
-	 */
-	private async validateAndGetStudents(studentIds: string[]) {
-		const students = await Promise.all(
-			studentIds.map((id) => this.getStudentDetails(id)),
-		);
-
-		const missingStudents = students
-			.map((student, index) => ({ student, id: studentIds[index] }))
-			.filter(({ student }) => !student)
-			.map(({ id }) => id);
-
-		if (missingStudents.length > 0) {
-			throw new NotFoundException(
-				`Students not found with IDs: ${missingStudents.join(', ')}`,
-			);
-		}
-
-		return students.filter((student) => student !== null);
-	}
-
-	/**
-	 * Get common semester selection options
-	 */
-	private getSemesterSelectOptions() {
-		return {
-			id: true,
-			name: true,
-			code: true,
-			status: true,
-		};
 	}
 }
