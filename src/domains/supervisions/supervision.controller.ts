@@ -12,8 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { SupervisionService } from '@/domains/supervisions/supervision.service';
-import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto';
-import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
+import { AssignSupervisionDto, ChangeSupervisionDto } from '@/supervisions/dto';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()

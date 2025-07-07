@@ -13,8 +13,7 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { AssignSupervisionDto } from '@/supervisions/dto/assign-supervision.dto';
-import { ChangeSupervisionDto } from '@/supervisions/dto/change-supervision.dto';
+import { AssignSupervisionDto, ChangeSupervisionDto } from '@/supervisions/dto';
 
 @Injectable()
 export class SupervisionService extends BaseCacheService {
