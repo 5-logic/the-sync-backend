@@ -1886,4 +1886,238 @@ export class GroupService extends BaseCacheService {
 			);
 		}
 	}
+
+	async delete(groupId: string, leaderId: string) {
+		try {
+			this.logger.log(
+				`Deleting group with ID: ${groupId} by leader: ${leaderId}`,
+			);
+
+			// Get group details with all necessary data for validation
+			const [group, leaderParticipation] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								status: true,
+								name: true,
+								code: true,
+							},
+						},
+						thesis: {
+							select: {
+								id: true,
+							},
+						},
+						_count: {
+							select: {
+								studentGroupParticipations: true,
+								submissions: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: leaderId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validate group exists
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			// Validate current user is the leader
+			if (!leaderParticipation) {
+				throw new NotFoundException(`Student is not a member of this group`);
+			}
+
+			if (!leaderParticipation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can delete group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+				);
+			}
+
+			// Validate semester status - only allow deletion during PREPARING phase
+			if (group.semester.status !== SemesterStatus.Preparing) {
+				throw new ConflictException(
+					`Cannot delete group. Groups can only be deleted during the PREPARING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			// Validate group doesn't have assigned thesis
+			if (group.thesis) {
+				throw new ConflictException(
+					`Cannot delete group. Group has an assigned thesis. Please remove the thesis assignment first or contact a moderator for assistance.`,
+				);
+			}
+
+			// Validate group doesn't have any submissions
+			if (group._count.submissions > 0) {
+				throw new ConflictException(
+					`Cannot delete group. Group has ${group._count.submissions} milestone submission(s). Groups with submissions cannot be deleted.`,
+				);
+			}
+
+			// Get all group members for email notification before deletion
+			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
+				{
+					where: {
+						groupId: groupId,
+					},
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			);
+
+			// Perform deletion in a transaction
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Delete all related records first (cascade deletions)
+				await Promise.all([
+					// Delete group required skills
+					prisma.groupRequiredSkill.deleteMany({
+						where: { groupId: groupId },
+					}),
+					// Delete group expected responsibilities
+					prisma.groupExpectedResponsibility.deleteMany({
+						where: { groupId: groupId },
+					}),
+					// Delete all pending requests for this group
+					prisma.request.deleteMany({
+						where: { groupId: groupId },
+					}),
+					// Delete student group participations
+					prisma.studentGroupParticipation.deleteMany({
+						where: { groupId: groupId },
+					}),
+				]);
+
+				// Finally, delete the group itself
+				const deletedGroup = await prisma.group.delete({
+					where: { id: groupId },
+				});
+
+				return deletedGroup;
+			});
+
+			this.logger.log(
+				`Group "${result.name}" (${result.code}) successfully deleted by leader. ${groupMembers.length} members affected.`,
+			);
+
+			// Clear all relevant caches
+			await Promise.all([
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+				this.clearCacheWithPattern(
+					`${GroupService.CACHE_KEY}:${groupId}:members`,
+				),
+				this.clearCacheWithPattern(
+					`${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`,
+				),
+				// Clear cache for all affected students
+				...groupMembers.map((member) =>
+					this.clearCacheWithPattern(
+						`cache:student:${member.studentId}:groups`,
+					),
+				),
+				...groupMembers.map((member) =>
+					this.clearCacheWithPattern(
+						`cache:student:${member.studentId}:detailed-groups`,
+					),
+				),
+			]);
+
+			// Send email notifications to all group members
+			await this.sendGroupDeletionNotification(
+				result,
+				group.semester,
+				groupMembers,
+				leaderParticipation,
+			);
+
+			return result;
+		} catch (error) {
+			this.handleError('deleting group', error);
+		}
+	}
+
+	// Email notification helper for group deletion
+	private async sendGroupDeletionNotification(
+		deletedGroup: any,
+		semester: any,
+		groupMembers: any[],
+		leaderParticipation: any,
+	) {
+		try {
+			const deletionDate = new Date().toLocaleDateString();
+			const leaderName =
+				groupMembers.find(
+					(member) => member.studentId === leaderParticipation.studentId,
+				)?.student.user.fullName ?? 'Group Leader';
+
+			const baseContext = {
+				groupName: deletedGroup.name,
+				groupCode: deletedGroup.code,
+				semesterName: semester.name,
+				semesterCode: semester.code,
+				leaderName,
+				deletionDate,
+				memberCount: groupMembers.length,
+			};
+
+			// Send email to all group members
+			for (const member of groupMembers) {
+				if (member.student.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_GROUP_DELETION_NOTIFICATION,
+						{
+							to: member.student.user.email,
+							subject: `Group ${deletedGroup.code} has been deleted`,
+							context: {
+								...baseContext,
+								recipientName: member.student.user.fullName,
+								recipientType: member.isLeader
+									? 'group_leader'
+									: 'group_member',
+								isLeader: member.isLeader,
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Group deletion notifications sent to ${groupMembers.length} members for group ${deletedGroup.code}`,
+			);
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send group deletion notification emails',
+				emailError,
+			);
+		}
+	}
 }
