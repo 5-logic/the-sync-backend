@@ -316,13 +316,34 @@ export class StudentService extends BaseCacheService {
 				this.logger.log(`Student found with ID: ${id} (from cache)`);
 				return cachedStudent;
 			}
-
 			const student = await this.prisma.student.findUnique({
 				where: { userId: id },
 				include: {
 					user: {
 						omit: {
 							password: true,
+						},
+					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+					enrollments: {
+						include: {
+							semester: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+									status: true,
+								},
+							},
+						},
+						orderBy: {
+							status: 'asc', // Failed status will be last (alphabetically)
 						},
 					},
 				},
@@ -334,9 +355,27 @@ export class StudentService extends BaseCacheService {
 				throw new NotFoundException(`Student not found`);
 			}
 
+			// Filter out failed enrollments if there are multiple enrollments
+			let currentEnrollments = student.enrollments;
+			if (student.enrollments.length >= 2) {
+				const nonFailedEnrollments = student.enrollments.filter(
+					(enrollment) => enrollment.status !== 'Failed',
+				);
+				// If there are non-failed enrollments, use them; otherwise use all enrollments
+				if (nonFailedEnrollments.length > 0) {
+					currentEnrollments = nonFailedEnrollments;
+				}
+			}
+
 			const formattedStudent = {
 				...student.user,
 				studentCode: student.studentCode,
+				major: student.major,
+				enrollments: currentEnrollments.map((enrollment) => ({
+					status: enrollment.status,
+					semester: enrollment.semester,
+				})),
+				// For backward compatibility, keep majorId
 				majorId: student.majorId,
 			};
 

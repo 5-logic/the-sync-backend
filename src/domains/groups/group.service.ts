@@ -8,12 +8,20 @@ import {
 import { Cache } from 'cache-manager';
 
 import { BaseCacheService } from '@/bases/base-cache.service';
-import { ChangeLeaderDto, CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
+import {
+	ChangeLeaderDto,
+	CreateGroupDto,
+	PickThesisDto,
+	UpdateGroupDto,
+} from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
+
+// Define a type alias for thesis assignment actions
+export type ThesisAssignmentActionType = 'assigned' | 'picked' | 'unpicked';
 
 @Injectable()
 export class GroupService extends BaseCacheService {
@@ -100,34 +108,6 @@ export class GroupService extends BaseCacheService {
 		}
 	}
 
-	private async validateStudentNotInAnyGroup(
-		userId: string,
-		semesterId: string,
-	) {
-		const existingParticipation =
-			await this.prisma.studentGroupParticipation.findFirst({
-				where: {
-					studentId: userId,
-					semesterId: semesterId,
-				},
-				include: {
-					group: {
-						select: {
-							id: true,
-							code: true,
-							name: true,
-						},
-					},
-				},
-			});
-
-		if (existingParticipation) {
-			throw new ConflictException(
-				`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
-			);
-		}
-	}
-
 	private async getStudentCurrentSemester(userId: string) {
 		const enrollment = await this.prisma.enrollment.findFirst({
 			where: {
@@ -210,16 +190,25 @@ export class GroupService extends BaseCacheService {
 			}
 
 			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingGroupsCount = await prisma.group.count({
+				const lastGroup = await prisma.group.findFirst({
 					where: {
 						semesterId: currentSemester.id,
 						code: {
 							startsWith: `${currentSemester.code}QN`,
 						},
 					},
+					orderBy: {
+						code: 'desc',
+					},
 				});
 
-				const sequenceNumber = existingGroupsCount + 1;
+				let sequenceNumber = 1;
+				if (lastGroup) {
+					const lastCode = lastGroup.code;
+					const lastSequence = parseInt(lastCode.slice(-3), 10);
+					sequenceNumber = lastSequence + 1;
+				}
+
 				const groupCode = `${currentSemester.code}QN${sequenceNumber
 					.toString()
 					.padStart(3, '0')}`;
@@ -268,7 +257,6 @@ export class GroupService extends BaseCacheService {
 			);
 
 			const completeGroup = await this.findOne(result.id);
-
 			return completeGroup;
 		} catch (error) {
 			this.handleError('creating group', error);
@@ -663,15 +651,7 @@ export class GroupService extends BaseCacheService {
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
-			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
-			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${id}`);
-			await this.clearCacheWithPattern(`cache:student:${userId}:groups`);
-			await this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${id}:members`,
-			);
-			await this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${id}:skills-responsibilities`,
-			);
+			await this.clearGroupRelatedCaches(id, [userId]);
 
 			const completeGroup = await this.findOne(result.id);
 
@@ -810,19 +790,11 @@ export class GroupService extends BaseCacheService {
 				`Group leadership changed successfully. Group: "${result.name}" (${result.code}), ` +
 					`New Leader: ${newLeaderParticipation.student.user.fullName} (${newLeaderParticipation.student.user.email})`,
 			);
-
 			// Clear relevant caches
-			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
-			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`);
-			await this.clearCacheWithPattern(
-				`cache:student:${currentLeaderId}:groups`,
-			);
-			await this.clearCacheWithPattern(
-				`cache:student:${dto.newLeaderId}:groups`,
-			);
-			await this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${groupId}:members`,
-			);
+			await this.clearGroupRelatedCaches(groupId, [
+				currentLeaderId,
+				dto.newLeaderId,
+			]);
 
 			// Send email notifications
 			await this.sendGroupLeaderChangeNotification(
@@ -1475,6 +1447,7 @@ export class GroupService extends BaseCacheService {
 			}
 
 			// Check semester status - allow assignment only in Preparing phase
+			const maxMembersPerGroup = 6;
 			if (!['Preparing'].includes(group.semester.status)) {
 				throw new ConflictException(
 					`Cannot assign student to group. Semester status must be 'Preparing', current status is '${group.semester.status}'`,
@@ -1482,7 +1455,6 @@ export class GroupService extends BaseCacheService {
 			}
 
 			// Check group capacity (max 6 members per group)
-			const maxMembersPerGroup = 6;
 			if (group._count.studentGroupParticipations >= maxMembersPerGroup) {
 				throw new ConflictException(
 					`Cannot assign student to this group. Group has reached maximum capacity of ${maxMembersPerGroup} members. Please assign the student to another group.`,
@@ -1531,17 +1503,7 @@ export class GroupService extends BaseCacheService {
 			);
 
 			// Clear relevant caches
-			await Promise.all([
-				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
-				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
-				this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
-				this.clearCacheWithPattern(
-					`cache:student:${studentId}:detailed-groups`,
-				),
-				this.clearCacheWithPattern(
-					`${GroupService.CACHE_KEY}:${groupId}:members`,
-				),
-			]);
+			await this.clearGroupRelatedCaches(groupId, [studentId]);
 
 			// Send email notifications to all group members
 			await this.sendStudentAssignmentNotification(group, student);
@@ -1796,23 +1758,11 @@ export class GroupService extends BaseCacheService {
 			});
 
 			this.logger.log(
-				`Student "${student.user.fullName}" (${student.user.email}) successfully removed from group "${group.name}" (${group.code}) by leader`,
+				`Student "${student.user.fullName}" (${student.user.email}) successfully removed from group "${group.name}" (${group.code})`,
 			);
 
 			// Clear relevant caches
-			await Promise.all([
-				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
-				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
-				this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
-				this.clearCacheWithPattern(
-					`cache:student:${studentId}:detailed-groups`,
-				),
-				this.clearCacheWithPattern(`cache:student:${leaderId}:groups`),
-				this.clearCacheWithPattern(`cache:student:${leaderId}:detailed-groups`),
-				this.clearCacheWithPattern(
-					`${GroupService.CACHE_KEY}:${groupId}:members`,
-				),
-			]);
+			await this.clearGroupRelatedCaches(groupId, [studentId, leaderId]);
 
 			// Send email notifications to all remaining group members and the removed student
 			await this.sendStudentRemovalNotification(
@@ -1903,6 +1853,1152 @@ export class GroupService extends BaseCacheService {
 			this.logger.warn(
 				'Failed to send student removal notification emails',
 				emailError,
+			);
+		}
+	}
+
+	async leaveGroup(groupId: string, studentId: string) {
+		try {
+			this.logger.log(`Student ${studentId} is leaving group ${groupId}`);
+
+			// Validate inputs and get required data in parallel
+			const [group, participation] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+						_count: {
+							select: {
+								studentGroupParticipations: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: studentId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validations
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			if (!participation) {
+				throw new NotFoundException(`You are not a member of this group`);
+			}
+
+			// Check semester status - only allow leaving during PREPARING phase
+			if (group.semester.status !== SemesterStatus.Preparing) {
+				throw new ConflictException(
+					`Cannot leave group. You can only leave groups during the PREPARING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			// Check if student is the leader and if there are other members
+			if (participation.isLeader) {
+				if (group._count.studentGroupParticipations > 1) {
+					throw new ConflictException(
+						`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
+					);
+				}
+				// If leader is the only member, they can leave (which effectively deletes the group)
+			}
+
+			// Get student info for notifications
+			const student = await this.prisma.student.findUnique({
+				where: { userId: studentId },
+				include: {
+					user: {
+						select: {
+							id: true,
+							fullName: true,
+							email: true,
+						},
+					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+				},
+			});
+
+			if (!student) {
+				throw new NotFoundException(`Student not found`);
+			}
+
+			// Get remaining group members for notification before removal
+			const remainingMembers =
+				await this.prisma.studentGroupParticipation.findMany({
+					where: {
+						groupId: groupId,
+						studentId: { not: studentId },
+					},
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				});
+
+			// If this is the last member (leader), delete the entire group
+			if (group._count.studentGroupParticipations === 1) {
+				await this.prisma.$transaction(async (prisma) => {
+					// Delete all related records first
+					await Promise.all([
+						prisma.groupRequiredSkill.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.groupExpectedResponsibility.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.request.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.studentGroupParticipation.deleteMany({
+							where: { groupId: groupId },
+						}),
+					]);
+
+					// Delete the group itself
+					await prisma.group.delete({
+						where: { id: groupId },
+					});
+				});
+
+				this.logger.log(
+					`Group "${group.name}" (${group.code}) was automatically deleted as the last member (leader) left`,
+				);
+
+				// Clear relevant caches
+				await this.clearGroupRelatedCaches(groupId, [studentId]);
+
+				return {
+					success: true,
+					message: `You have successfully left the group. Since you were the last member, group "${group.name}" (${group.code}) has been automatically deleted.`,
+					groupDeleted: true,
+					deletedGroup: {
+						id: group.id,
+						code: group.code,
+						name: group.name,
+						semester: group.semester,
+					},
+				};
+			}
+
+			// Otherwise, just remove the student from the group
+			await this.prisma.studentGroupParticipation.delete({
+				where: {
+					studentId_groupId_semesterId: {
+						studentId: studentId,
+						groupId: groupId,
+						semesterId: group.semesterId,
+					},
+				},
+			});
+
+			this.logger.log(
+				`Student "${student.user.fullName}" (${student.user.email}) successfully left group "${group.name}" (${group.code})`,
+			);
+
+			// Clear relevant caches
+			await this.clearGroupRelatedCaches(groupId, [studentId]);
+
+			// Send email notifications to remaining group members and the leaving student
+			await this.sendStudentLeaveNotification(group, student, remainingMembers);
+
+			// Return the updated group
+			const updatedGroup = await this.findOne(groupId);
+
+			return {
+				success: true,
+				message: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
+				groupDeleted: false,
+				group: updatedGroup,
+				leftStudent: {
+					userId: student.userId,
+					fullName: student.user.fullName,
+					email: student.user.email,
+					major: student.major,
+				},
+			};
+		} catch (error) {
+			this.handleError('leaving group', error);
+		}
+	}
+
+	// Email notification helper for student leaving group
+	private async sendStudentLeaveNotification(
+		group: any,
+		leavingStudent: any,
+		remainingMembers: any[],
+	) {
+		try {
+			const leaveDate = new Date().toLocaleDateString();
+			const baseContext = {
+				groupName: group.name,
+				groupCode: group.code,
+				semesterName: group.semester.name,
+				targetStudentName: leavingStudent.user.fullName,
+				targetStudentCode: leavingStudent.studentCode ?? 'N/A',
+				changeDate: leaveDate,
+				actionType: 'left',
+				currentGroupSize: remainingMembers.length,
+				groupLeaderName:
+					remainingMembers.find((member) => member.isLeader)?.student.user
+						.fullName ?? 'No leader assigned',
+			};
+
+			// Send email to the leaving student
+			if (leavingStudent.user.email) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
+					{
+						to: leavingStudent.user.email,
+						subject: `You have left Group ${group.code}`,
+						context: {
+							...baseContext,
+							recipientName: leavingStudent.user.fullName,
+							recipientType: 'target_student',
+						},
+					},
+				);
+			}
+
+			// Send email to all remaining group members
+			for (const member of remainingMembers) {
+				if (member.student.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
+						{
+							to: member.student.user.email,
+							subject: `Member left Group ${group.code}`,
+							context: {
+								...baseContext,
+								recipientName: member.student.user.fullName,
+								recipientType: member.isLeader
+									? 'group_leader'
+									: 'group_member',
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Student leave notifications sent for group ${group.code}`,
+			);
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send student leave notification emails',
+				emailError,
+			);
+		}
+	}
+
+	async delete(groupId: string, leaderId: string) {
+		try {
+			this.logger.log(
+				`Deleting group with ID: ${groupId} by leader: ${leaderId}`,
+			);
+
+			// Get group details with all necessary data for validation
+			const [group, leaderParticipation] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								status: true,
+								name: true,
+								code: true,
+							},
+						},
+						thesis: {
+							select: {
+								id: true,
+							},
+						},
+						_count: {
+							select: {
+								studentGroupParticipations: true,
+								submissions: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: leaderId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validate group exists
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			// Validate current user is the leader
+			if (!leaderParticipation) {
+				throw new NotFoundException(`Student is not a member of this group`);
+			}
+
+			if (!leaderParticipation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can delete group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+				);
+			}
+
+			// Validate semester status - only allow deletion during PREPARING phase
+			if (group.semester.status !== SemesterStatus.Preparing) {
+				throw new ConflictException(
+					`Cannot delete group. Groups can only be deleted during the PREPARING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			// Validate group doesn't have assigned thesis
+			if (group.thesis) {
+				throw new ConflictException(
+					`Cannot delete group. Group has an assigned thesis. Please remove the thesis assignment first or contact a moderator for assistance.`,
+				);
+			}
+
+			// Validate group doesn't have any submissions
+			if (group._count.submissions > 0) {
+				throw new ConflictException(
+					`Cannot delete group. Group has ${group._count.submissions} milestone submission(s). Groups with submissions cannot be deleted.`,
+				);
+			}
+
+			// Get all group members for email notification before deletion
+			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
+				{
+					where: {
+						groupId: groupId,
+					},
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			);
+
+			// Perform deletion in a transaction
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Delete all related records first (cascade deletions)
+				await Promise.all([
+					// Delete group required skills
+					prisma.groupRequiredSkill.deleteMany({
+						where: { groupId: groupId },
+					}),
+					// Delete group expected responsibilities
+					prisma.groupExpectedResponsibility.deleteMany({
+						where: { groupId: groupId },
+					}),
+					// Delete all pending requests for this group
+					prisma.request.deleteMany({
+						where: { groupId: groupId },
+					}),
+					// Delete student group participations
+					prisma.studentGroupParticipation.deleteMany({
+						where: { groupId: groupId },
+					}),
+				]);
+
+				// Finally, delete the group itself
+				const deletedGroup = await prisma.group.delete({
+					where: { id: groupId },
+				});
+
+				return deletedGroup;
+			});
+			this.logger.log(
+				`Group "${result.name}" (${result.code}) successfully deleted by leader. ${groupMembers.length} members affected.`,
+			);
+
+			// Clear all relevant caches
+			const affectedStudentIds = groupMembers.map((member) => member.studentId);
+			await this.clearGroupRelatedCaches(groupId, affectedStudentIds);
+
+			// Send email notifications to all group members
+			await this.sendGroupDeletionNotification(
+				result,
+				group.semester,
+				groupMembers,
+				leaderParticipation,
+			);
+
+			return result;
+		} catch (error) {
+			this.handleError('deleting group', error);
+		}
+	}
+
+	// Email notification helper for group deletion
+	private async sendGroupDeletionNotification(
+		deletedGroup: any,
+		semester: any,
+		groupMembers: any[],
+		leaderParticipation: any,
+	) {
+		try {
+			const deletionDate = new Date().toLocaleDateString();
+			const leaderName =
+				groupMembers.find(
+					(member) => member.studentId === leaderParticipation.studentId,
+				)?.student.user.fullName ?? 'Group Leader';
+
+			const baseContext = {
+				groupName: deletedGroup.name,
+				groupCode: deletedGroup.code,
+				semesterName: semester.name,
+				semesterCode: semester.code,
+				leaderName,
+				deletionDate,
+				memberCount: groupMembers.length,
+			};
+
+			// Send email to all group members
+			for (const member of groupMembers) {
+				if (member.student.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_GROUP_DELETION_NOTIFICATION,
+						{
+							to: member.student.user.email,
+							subject: `Group ${deletedGroup.code} has been deleted`,
+							context: {
+								...baseContext,
+								recipientName: member.student.user.fullName,
+								recipientType: member.isLeader
+									? 'group_leader'
+									: 'group_member',
+								isLeader: member.isLeader,
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Group deletion notifications sent to ${groupMembers.length} members for group ${deletedGroup.code}`,
+			);
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send group deletion notification emails',
+				emailError,
+			);
+		}
+	}
+
+	async pickThesis(groupId: string, leaderId: string, dto: PickThesisDto) {
+		try {
+			this.logger.log(
+				`Group leader ${leaderId} is picking thesis ${dto.thesisId} for group ${groupId}`,
+			);
+
+			// Validate inputs and get required data in parallel
+			const [group, leaderParticipation, thesis] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+						thesis: {
+							select: {
+								id: true,
+								englishName: true,
+								vietnameseName: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: leaderId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+				this.prisma.thesis.findUnique({
+					where: { id: dto.thesisId },
+					include: {
+						lecturer: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+						semester: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
+						group: {
+							select: {
+								id: true,
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validations
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			if (!leaderParticipation) {
+				throw new NotFoundException(`You are not a member of this group`);
+			}
+
+			if (!leaderParticipation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can pick thesis for group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+				);
+			}
+
+			if (!thesis) {
+				throw new NotFoundException(`Thesis not found`);
+			}
+			// Check semester status - only allow picking during PICKING phase
+			this.validateSemesterStatus(
+				group.semester.status,
+				[SemesterStatus.Picking],
+				'pick thesis',
+			);
+
+			// Check if group is in same semester as thesis
+			if (group.semesterId !== thesis.semesterId) {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis belongs to semester "${thesis.semester.name}" but your group is in semester "${group.semester.name}"`,
+				);
+			}
+
+			// Check if group already has a thesis
+			if (group.thesis) {
+				throw new ConflictException(
+					`Cannot pick thesis. Group already has thesis "${group.thesis.vietnameseName}" (${group.thesis.englishName}) assigned. Please unpick the current thesis first.`,
+				);
+			}
+
+			// Check if thesis is published
+			if (!thesis.isPublish) {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" is not published yet. Only published theses can be picked by groups.`,
+				);
+			}
+
+			// Check if thesis is approved
+			if (thesis.status !== 'Approved') {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" has status "${thesis.status}". Only approved theses can be picked by groups.`,
+				);
+			}
+
+			// Check if thesis is already assigned to another group
+			if (thesis.group) {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" is already assigned to group "${thesis.group.name}" (${thesis.group.code})`,
+				);
+			}
+
+			// Perform thesis assignment in a transaction
+			await this.prisma.$transaction(async (prisma) => {
+				// Update group with thesis assignment
+				await prisma.group.update({
+					where: { id: groupId },
+					data: {
+						thesisId: dto.thesisId,
+					},
+				});
+
+				// Update thesis with group assignment
+				await prisma.thesis.update({
+					where: { id: dto.thesisId },
+					data: {
+						groupId: groupId,
+					},
+				});
+			});
+			this.logger.log(
+				`Thesis "${thesis.vietnameseName}" successfully assigned to group "${group.name}" (${group.code}) by leader`,
+			);
+
+			// Clear relevant caches
+			await this.clearGroupRelatedCaches(groupId, [leaderId]);
+
+			// Send email notifications
+			await this.sendThesisAssignmentNotification(
+				group.id,
+				thesis.id,
+				'picked',
+			);
+
+			// Return the updated group with thesis information
+			const completeGroup = await this.findOne(groupId);
+
+			return {
+				success: true,
+				message: `Thesis "${thesis.vietnameseName}" has been successfully assigned to group "${group.name}" (${group.code}). All group members and thesis lecturer have been notified.`,
+				group: completeGroup,
+				assignedThesis: {
+					id: thesis.id,
+					englishName: thesis.englishName,
+					vietnameseName: thesis.vietnameseName,
+					abbreviation: thesis.abbreviation,
+					lecturer: thesis.lecturer.user,
+				},
+			};
+		} catch (error) {
+			this.handleError('picking thesis for group', error);
+		}
+	}
+
+	async unpickThesis(groupId: string, leaderId: string) {
+		try {
+			this.logger.log(
+				`Group leader ${leaderId} is unpicking thesis for group ${groupId}`,
+			);
+
+			// Validate inputs and get required data
+			const { group } = await this.validateGroupAndLeader(
+				groupId,
+				leaderId,
+				'unpick thesis',
+			);
+
+			// Check semester status - only allow unpicking during PICKING phase
+			this.validateSemesterStatus(
+				group.semester.status as string,
+				[SemesterStatus.Picking],
+				'unpick thesis',
+			);
+
+			// Check if group has a thesis assigned
+			if (!group.thesis) {
+				throw new ConflictException(
+					`Cannot unpick thesis. Group "${group.name}" (${group.code}) does not have any thesis assigned.`,
+				);
+			}
+
+			// Store thesis info for notifications before removal
+			const thesisInfo = {
+				id: group.thesis.id,
+				englishName: group.thesis.englishName,
+				vietnameseName: group.thesis.vietnameseName,
+				abbreviation: group.thesis.abbreviation,
+				lecturer: group.thesis.lecturer.user,
+			};
+
+			// Perform thesis removal in a transaction
+			await this.prisma.$transaction(async (prisma) => {
+				// Remove thesis assignment from group
+				await prisma.group.update({
+					where: { id: groupId },
+					data: {
+						thesisId: null,
+					},
+				});
+
+				// Remove group assignment from thesis
+				await prisma.thesis.update({
+					where: { id: group.thesis!.id },
+					data: {
+						groupId: null,
+					},
+				});
+			});
+
+			this.logger.log(
+				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
+			);
+
+			// // Clear relevant caches
+			await this.clearGroupRelatedCaches(groupId, [leaderId]);
+
+			// Send email notifications
+			await this.sendThesisAssignmentNotification(
+				group.id,
+				thesisInfo.id,
+				'unpicked',
+			);
+
+			// Return the updated group without thesis
+			const completeGroup = await this.findOne(groupId);
+
+			return {
+				success: true,
+				message: `Thesis "${thesisInfo.vietnameseName}" has been successfully removed from group "${group.name}" (${group.code}). All group members and thesis lecturer have been notified.`,
+				group: completeGroup,
+				removedThesis: thesisInfo,
+			};
+		} catch (error) {
+			this.handleError('unpicking thesis from group', error);
+		}
+	}
+
+	// Public method for thesis assignment notification (can be called from thesis service)
+	async sendThesisAssignmentNotification(
+		groupId: string,
+		thesisId: string,
+		actionType: ThesisAssignmentActionType,
+		assignDate?: string,
+	) {
+		try {
+			// Get required data using helper methods
+			const group = await this.getGroupForNotification(groupId);
+			const thesis = await this.getThesisForNotification(thesisId);
+			const groupMembers = await this.getGroupMembersForNotification(groupId);
+
+			// Create base context for email notifications
+			const baseContext = this.createNotificationBaseContext(
+				group,
+				thesis,
+				groupMembers,
+				actionType,
+				assignDate,
+			);
+
+			// Send email to thesis lecturer
+			await this.sendLecturerNotification(
+				thesis.lecturer,
+				baseContext,
+				actionType,
+				group.code,
+			);
+
+			// Send email to all group members
+			for (const member of groupMembers) {
+				await this.sendMemberNotification(
+					member,
+					baseContext,
+					actionType,
+					group.code,
+				);
+			}
+
+			this.logger.log(
+				`Thesis ${actionType} notifications sent for group ${group.code} and thesis ${thesis.abbreviation}`,
+			);
+
+			return {
+				success: true,
+				message: `Email notifications sent successfully for thesis ${actionType}`,
+			};
+		} catch (error) {
+			this.logger.error(
+				`Failed to send thesis ${actionType} notification emails`,
+				error,
+			);
+			throw error;
+		}
+	}
+
+	/**
+	 * Get group details with semester for notification
+	 */
+	private async getGroupForNotification(groupId: string) {
+		const group = await this.prisma.group.findUnique({
+			where: { id: groupId },
+			include: {
+				semester: {
+					select: {
+						id: true,
+						name: true,
+						code: true,
+					},
+				},
+			},
+		});
+
+		if (!group) {
+			throw new NotFoundException(`Group with ID ${groupId} not found`);
+		}
+
+		return group;
+	}
+
+	/**
+	 * Get thesis details with lecturer for notification
+	 */
+	private async getThesisForNotification(thesisId: string) {
+		const thesis = await this.prisma.thesis.findUnique({
+			where: { id: thesisId },
+			include: {
+				lecturer: {
+					include: {
+						user: {
+							select: {
+								id: true,
+								fullName: true,
+								email: true,
+							},
+						},
+					},
+				},
+			},
+		});
+
+		if (!thesis) {
+			throw new NotFoundException(`Thesis with ID ${thesisId} not found`);
+		}
+
+		return thesis;
+	}
+
+	/**
+	 * Get group members for notification
+	 */
+	private async getGroupMembersForNotification(groupId: string) {
+		return this.prisma.studentGroupParticipation.findMany({
+			where: { groupId: groupId },
+			include: {
+				student: {
+					include: {
+						user: {
+							select: {
+								id: true,
+								fullName: true,
+								email: true,
+							},
+						},
+					},
+				},
+			},
+		});
+	}
+
+	/**
+	 * Generate subject line for lecturer email
+	 */
+	private getLecturerEmailSubject(
+		actionType: ThesisAssignmentActionType,
+		groupCode: string,
+	): string {
+		switch (actionType) {
+			case 'assigned':
+				return `Your thesis has been assigned to Group ${groupCode}`;
+			case 'picked':
+				return `Your thesis has been selected by Group ${groupCode}`;
+			case 'unpicked':
+				return `Thesis removed from Group ${groupCode}`;
+			default:
+				return `Thesis update for Group ${groupCode}`;
+		}
+	}
+
+	/**
+	 * Generate subject line for member email
+	 */
+	private getMemberEmailSubject(
+		actionType: ThesisAssignmentActionType,
+		groupCode: string,
+	): string {
+		switch (actionType) {
+			case 'assigned':
+				return `Thesis assigned to Group ${groupCode}`;
+			case 'picked':
+				return `Thesis selected for Group ${groupCode}`;
+			case 'unpicked':
+				return `Thesis removed from Group ${groupCode}`;
+			default:
+				return `Thesis update for Group ${groupCode}`;
+		}
+	}
+
+	/**
+	 * Send email notification to lecturer
+	 */
+	private async sendLecturerNotification(
+		lecturer: any,
+		baseContext: any,
+		actionType: ThesisAssignmentActionType,
+		groupCode: string,
+	): Promise<void> {
+		if (!lecturer.user.email) {
+			return;
+		}
+
+		const subject = this.getLecturerEmailSubject(actionType, groupCode);
+
+		await this.emailQueueService.sendEmail(
+			EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
+			{
+				to: lecturer.user.email,
+				subject: subject,
+				context: {
+					...baseContext,
+					recipientName: lecturer.user.fullName,
+					recipientType: 'lecturer',
+				},
+			},
+		);
+	}
+
+	/**
+	 * Send email notification to group member
+	 */
+	private async sendMemberNotification(
+		member: any,
+		baseContext: any,
+		actionType: ThesisAssignmentActionType,
+		groupCode: string,
+	): Promise<void> {
+		if (!member.student.user.email) {
+			return;
+		}
+
+		const subject = this.getMemberEmailSubject(actionType, groupCode);
+
+		await this.emailQueueService.sendEmail(
+			EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
+			{
+				to: member.student.user.email,
+				subject: subject,
+				context: {
+					...baseContext,
+					recipientName: member.student.user.fullName,
+					recipientType: member.isLeader ? 'group_leader' : 'group_member',
+				},
+			},
+		);
+	}
+
+	/**
+	 * Create base context for email notifications
+	 */
+	private createNotificationBaseContext(
+		group: any,
+		thesis: any,
+		groupMembers: any[],
+		actionType: ThesisAssignmentActionType,
+		assignDate?: string,
+	) {
+		const currentDate = new Date().toLocaleDateString();
+		const leaderName = groupMembers.find((member) => member.isLeader)?.student
+			.user.fullName;
+
+		return {
+			groupName: group.name,
+			groupCode: group.code,
+			semesterName: group.semester.name,
+			thesisEnglishName: thesis.englishName,
+			thesisVietnameseName: thesis.vietnameseName,
+			thesisAbbreviation: thesis.abbreviation,
+			lecturerName: thesis.lecturer.user.fullName,
+			leaderName,
+			actionType,
+			assignDate: assignDate ?? currentDate,
+			pickDate: actionType === 'picked' ? currentDate : undefined,
+			unpickDate: actionType === 'unpicked' ? currentDate : undefined,
+		};
+	}
+
+	/**
+	 * Clear multiple cache patterns related to group operations
+	 */
+	private async clearGroupRelatedCaches(
+		groupId: string,
+		studentIds?: string[],
+		clearAll = true,
+	): Promise<void> {
+		const cachePromises: Promise<void>[] = [];
+
+		if (clearAll) {
+			cachePromises.push(
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+			);
+		}
+
+		cachePromises.push(
+			this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+			this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${groupId}:members`,
+			),
+			this.clearCacheWithPattern(
+				`${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`,
+			),
+		);
+
+		if (studentIds?.length) {
+			for (const studentId of studentIds) {
+				cachePromises.push(
+					this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
+					this.clearCacheWithPattern(
+						`cache:student:${studentId}:detailed-groups`,
+					),
+				);
+			}
+		}
+
+		await Promise.all(cachePromises);
+	}
+
+	/**
+	 * Get standard group include options for detailed group queries
+	 */
+	private getGroupWithThesisIncludeOptions() {
+		return {
+			semester: {
+				select: {
+					id: true,
+					name: true,
+					code: true,
+					status: true,
+				},
+			},
+			thesis: {
+				include: {
+					lecturer: {
+						include: {
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		};
+	}
+
+	/**
+	 * Get standard participation include options
+	 */
+	private getParticipationIncludeOptions() {
+		return {
+			group: {
+				select: {
+					code: true,
+					name: true,
+				},
+			},
+		};
+	}
+
+	/**
+	 * Validate group existence and leader permissions
+	 */
+	private async validateGroupAndLeader(
+		groupId: string,
+		leaderId: string,
+		operation: string,
+	) {
+		const [group, leaderParticipation] = await Promise.all([
+			this.prisma.group.findUnique({
+				where: { id: groupId },
+				include: this.getGroupWithThesisIncludeOptions(),
+			}),
+			this.prisma.studentGroupParticipation.findFirst({
+				where: {
+					studentId: leaderId,
+					groupId: groupId,
+				},
+				include: this.getParticipationIncludeOptions(),
+			}),
+		]);
+
+		if (!group) {
+			throw new NotFoundException(`Group not found`);
+		}
+
+		if (!leaderParticipation) {
+			throw new NotFoundException(`You are not a member of this group`);
+		}
+
+		if (!leaderParticipation.isLeader) {
+			throw new ConflictException(
+				`Access denied. Only the group leader can ${operation} for group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+			);
+		}
+
+		return { group, leaderParticipation };
+	}
+
+	/**
+	 * Validate semester status for specific operations
+	 */
+	private validateSemesterStatus(
+		semesterStatus: string,
+		allowedStatuses: string[],
+		operation: string,
+	): void {
+		if (!allowedStatuses.includes(semesterStatus)) {
+			throw new ConflictException(
+				`Cannot ${operation}. Operation is only allowed during ${allowedStatuses.join(' or ')} semester status. Current status is ${semesterStatus}`,
 			);
 		}
 	}

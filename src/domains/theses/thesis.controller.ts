@@ -137,9 +137,9 @@ export class ThesisController {
 	}
 
 	@ApiOperation({
-		summary: 'Assign thesis to student',
+		summary: 'Assign thesis to group',
 		description:
-			'Assigns a thesis project to a specific student, creating the thesis-student enrollment relationship. This endpoint facilitates thesis allocation process by connecting approved students with available thesis projects. The requesting user must have MODERATOR role privileges. Validates student eligibility, checks thesis availability, and creates assignment record with proper status tracking. Includes automatic notification system for students, supervisors, and related stakeholders. Used in academic workflow for thesis allocation and student enrollment management.',
+			'Assigns a thesis project to a specific student group, creating the thesis-group enrollment relationship. This endpoint facilitates the thesis allocation process by connecting approved groups with available thesis projects. The requesting user must have MODERATOR role privileges. Validates group eligibility, checks thesis availability, and creates assignment record with proper status tracking. Includes automatic notification system for group members, supervisors, and related stakeholders. Used in academic workflow for thesis allocation and group enrollment management.',
 	})
 	@Roles(Role.MODERATOR)
 	@Post(':id/assign')
