@@ -191,14 +191,12 @@ export class RequestService extends BaseCacheService {
 		request: { studentId: string; groupId: string },
 		status: RequestStatus,
 	) {
-		if (status === RequestStatus.Cancelled) {
+		if (status === RequestStatus.Cancelled && userId !== request.studentId) {
 			// For join requests, only the student who sent it can cancel
-			if (userId !== request.studentId) {
-				throw new ForbiddenException(
-					`Only the student who sent the join request can cancel it`,
-				);
-			}
-		} else {
+			throw new ForbiddenException(
+				`Only the student who sent the join request can cancel it`,
+			);
+		} else if (status !== RequestStatus.Cancelled) {
 			// For join requests, only group leader can approve/reject
 			await this.validateStudentIsGroupLeader(userId, request.groupId);
 		}
@@ -215,13 +213,11 @@ export class RequestService extends BaseCacheService {
 		if (status === RequestStatus.Cancelled) {
 			// For invite requests, only group leader can cancel
 			await this.validateStudentIsGroupLeader(userId, request.groupId);
-		} else {
+		} else if (userId !== request.studentId) {
 			// For invite requests, only the invited student can approve/reject
-			if (userId !== request.studentId) {
-				throw new ForbiddenException(
-					`Only the invited student can respond to this invitation`,
-				);
-			}
+			throw new ForbiddenException(
+				`Only the invited student can respond to this invitation`,
+			);
 		}
 	}
 
