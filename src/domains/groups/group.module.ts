@@ -8,5 +8,6 @@ import { EmailModule } from '@/queue/email/email.module';
 	imports: [EmailModule],
 	controllers: [GroupController],
 	providers: [GroupService],
+	exports: [GroupService],
 })
 export class GroupModule {}

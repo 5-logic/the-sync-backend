@@ -10,6 +10,7 @@ import { Cache } from 'cache-manager';
 
 import { BaseCacheService } from '@/bases/base-cache.service';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
+import { GroupService } from '@/groups/group.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -33,6 +34,7 @@ export class ThesisService extends BaseCacheService {
 		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
+		@Inject(GroupService) private readonly groupService: GroupService,
 	) {
 		super(cacheManager, ThesisService.name);
 	}
@@ -1335,6 +1337,20 @@ export class ThesisService extends BaseCacheService {
 				existingThesis.lecturerId,
 				existingThesis.semesterId,
 			);
+
+			// Send email notifications
+			try {
+				await this.groupService.sendThesisAssignmentNotification(
+					dto.groupId,
+					id,
+					'assigned',
+				);
+			} catch (emailError) {
+				this.logger.warn(
+					'Failed to send thesis assignment notification emails',
+					emailError,
+				);
+			}
 
 			return {
 				message: 'Thesis assigned to group successfully',

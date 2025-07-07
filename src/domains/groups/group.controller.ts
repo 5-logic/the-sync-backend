@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -17,6 +18,7 @@ import {
 	AssignStudentDto,
 	ChangeLeaderDto,
 	CreateGroupDto,
+	PickThesisDto,
 	RemoveStudentDto,
 	UpdateGroupDto,
 } from '@/groups/dto';
@@ -152,6 +154,19 @@ export class GroupController {
 		return await this.groupService.removeStudent(id, dto.studentId, user.id);
 	}
 
+	@Roles(Role.STUDENT)
+	@Put(':id/leave')
+	@ApiOperation({
+		summary: 'Leave group',
+		description:
+			'Allow a student to leave their current group. Only allowed during the PREPARING semester status. If the student is the group leader, they must transfer leadership to another member before leaving. Cannot leave if the student is the only member of the group - the group must be deleted instead. Sends email notifications to remaining group members about the departure.',
+	})
+	async leaveGroup(@Req() req: Request, @Param('id') id: string) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.leaveGroup(id, user.id);
+	}
+
 	@Get(':id/members')
 	@ApiOperation({
 		summary: 'Get group members',
@@ -170,5 +185,48 @@ export class GroupController {
 	})
 	async findGroupSkillsAndResponsibilities(@Param('id') id: string) {
 		return await this.groupService.findGroupSkillsAndResponsibilities(id);
+	}
+
+	@Roles(Role.STUDENT)
+	@Put(':id/pick-thesis')
+	@ApiOperation({
+		summary: 'Pick thesis for group',
+		description:
+			'Allow group leader to pick a thesis for their group during the PICKING semester status. Only the group leader can pick thesis. The thesis must be published (isPublish=true), approved status, and not already assigned to another group. The group must not already have a thesis assigned. Sends email notifications to group members and thesis lecturer about the thesis assignment.',
+	})
+	async pickThesis(
+		@Req() req: Request,
+		@Param('id') id: string,
+		@Body() dto: PickThesisDto,
+	) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.pickThesis(id, user.id, dto);
+	}
+
+	@Roles(Role.STUDENT)
+	@Put(':id/unpick-thesis')
+	@ApiOperation({
+		summary: 'Unpick thesis from group',
+		description:
+			'Allow group leader to unpick (remove) the currently assigned thesis from their group during the PICKING semester status. Only the group leader can unpick thesis. The group must have a thesis currently assigned. Sends email notifications to group members and thesis lecturer about the thesis removal.',
+	})
+	async unpickThesis(@Req() req: Request, @Param('id') id: string) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.unpickThesis(id, user.id);
+	}
+
+	@Roles(Role.STUDENT)
+	@Delete(':id')
+	@ApiOperation({
+		summary: 'Delete group',
+		description:
+			'Delete a group permanently. Only the group leader can delete the group. Groups can only be deleted during the PREPARING semester status. Cannot delete groups that have assigned thesis, submitted work, or any milestone submissions. All pending requests will be automatically rejected. All group members will be notified via email about the group deletion. This action cannot be undone.',
+	})
+	async delete(@Req() req: Request, @Param('id') id: string) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.delete(id, user.id);
 	}
 }

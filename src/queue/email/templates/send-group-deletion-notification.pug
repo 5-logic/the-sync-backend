@@ -1,0 +1,70 @@
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Hello 
+    strong= recipientName
+    | ,
+
+  if isLeader
+    p
+      | We are writing to inform you that the group you were leading has been successfully deleted from the TheSync system.
+  else
+    p
+      | We are writing to inform you that a group you were a member of has been deleted from the TheSync system.
+
+  .info-box
+    h3 🗑️ Group Deletion Details
+    
+    .info-item
+      span.info-label Group Name:
+      span.info-value= groupName
+    
+    .info-item
+      span.info-label Group Code:
+      span.info-value= groupCode
+    
+    .info-item
+      span.info-label Semester:
+      span.info-value= semesterName + " (" + semesterCode + ")"
+    
+    .info-item
+      span.info-label Deleted By:
+      span.info-value= leaderName + " (Group Leader)"
+    
+    .info-item
+      span.info-label Deletion Date:
+      span.info-value= deletionDate
+    
+    .info-item
+      span.info-label Members Affected:
+      span.info-value= memberCount + " students"
+
+  if isLeader
+    .success-box
+      strong 👨‍💼 Leader Action Completed:
+      | As the group leader, your request to delete the group has been processed successfully. All group data, including member participations, required skills, and expected responsibilities, have been permanently removed from the system.
+  else
+    .warning-box
+      strong 📢 Membership Status Update:
+      | Your membership in this group has been automatically removed. You are now available to join or create a new group during the current semester's preparation phase.
+
+  .info-box
+    h3 📋 What happens next?
+    p
+      strong For all former members:
+    ul
+      li You can now create a new group or join an existing group
+      li All pending requests related to this group have been automatically cancelled
+      li Your individual student profile and academic records remain unchanged
+    
+    if isLeader
+      p
+        strong Additional notes for former leader:
+      ul
+        li You can create a new group and automatically become the leader again
+        li If you want to join an existing group instead, you can send join requests to other groups
+
+  .warning-box
+    strong ⚠️ Important Notice:
+    | This action cannot be undone. If you need to form a group again, you will need to create a new group and invite members manually. Please ensure you are ready to commit to a group before creating one in the future.
