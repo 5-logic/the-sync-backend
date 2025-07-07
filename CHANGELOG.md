@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2025-07-07
+
+### Added
+
+- **Advanced Group Management Features**:
+  - `PUT /groups/:id/leave` - New endpoint for students to leave their groups during PREPARING status (requires group leadership transfer if leaving member is leader)
+  - `PUT /groups/:id/pick-thesis` - New endpoint for group leaders to select thesis during PICKING status (requires `PickThesisDto` with `thesisId`)
+  - `PUT /groups/:id/unpick-thesis` - New endpoint for group leaders to remove assigned thesis during PICKING status
+  - `DELETE /groups/:id` - New endpoint for group leaders to permanently delete groups during PREPARING status
+  - `PickThesisDto` - New DTO for thesis selection with UUID validation for `thesisId` field
+
+- **Enhanced Email Notification System**:
+  - `SEND_GROUP_DELETION_NOTIFICATION` - New email type for notifying members when group is deleted
+  - `SEND_THESIS_ASSIGNMENT_NOTIFICATION` - New email type for thesis assignment/removal notifications
+  - Email template `send-group-deletion-notification.pug` for group deletion notifications
+  - Email template `send-thesis-assignment-notification.pug` for thesis pick/unpick notifications
+  - Enhanced `send-group-member-change-notification.pug` template to include leaving member details
+
+- **Improved Student Data Retrieval**:
+  - Enhanced student service to include major information and filtered enrollments for better group management
+  - Advanced student filtering capabilities for group assignment operations
+
+### Changed
+
+- **Thesis Assignment Workflow**:
+  - Updated thesis assignment endpoint description to clarify group-based assignments instead of individual student assignments
+  - Enhanced thesis assignment process to support group assignments with proper validation
+  - Improved type safety in thesis assignment notifications using `ThesisAssignmentActionType` enum
+
+- **Group Management Improvements**:
+  - Enhanced group code generation using sequential numbering based on last created group
+  - Improved group deletion workflow with comprehensive validation for thesis assignments and milestone submissions
+  - Streamlined cache clearing logic with helper methods for better maintainability
+  - Enhanced email notification process with consolidated helper methods
+
+- **Service Layer Enhancements**:
+  - Integrated `GroupService` into `ThesisModule` and `ThesisService` for cross-module email notifications
+  - Enhanced `GroupService` export from `GroupModule` for better dependency injection
+  - Improved email subject assignment logic with better null handling for student codes
+  - Added timeout configuration for invite request transactions to enhance reliability
+
+### Fixed
+
+- **Code Quality Improvements**:
+  - Removed redundant student group validation methods for cleaner codebase
+  - Streamlined thesis assignment notification process with improved error handling
+  - Enhanced type safety by replacing string literals with proper enum types
+  - Improved transaction reliability with timeout configurations
+
+### Enhanced Validations
+
+- **Group Operations Security**:
+  - Groups can only be deleted during PREPARING semester status
+  - Groups with assigned thesis, submitted work, or milestone submissions cannot be deleted
+  - Group leaders must transfer leadership before leaving groups
+  - Cannot leave group if student is the only member (must delete group instead)
+  - Thesis picking restricted to PICKING semester status with published and approved theses only
+
+- **Email Notification Improvements**:
+  - Comprehensive email notifications for all group membership changes
+  - Automated notifications for thesis assignments and removals
+  - Enhanced notification content with detailed member and thesis information
+
+### Pull Requests
+
+- [#181](https://github.com/5-logic/the-sync-backend/pull/181) - Merge dev branch for v0.6.2 release
+- [#179](https://github.com/5-logic/the-sync-backend/pull/179) - Advanced group management and thesis selection features (task-178)
+
 ## [0.6.1] - 2025-07-06
 
 ### Fixed
