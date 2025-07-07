@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AdminModule } from '@/admins/admin.module';
+import { ChecklistsModule } from '@/checklists/checklists.module';
 import { RequestModule } from '@/domains/requests/request.module';
 import { SkillSetModule } from '@/domains/skill-sets/skill-set.module';
 import { SupervisionModule } from '@/domains/supervisions/supervision.module';
@@ -16,16 +17,17 @@ import { ThesisModule } from '@/theses/thesis.module';
 @Module({
 	imports: [
 		AdminModule,
-		RequestModule,
-		SkillSetModule,
-		SupervisionModule,
+		ChecklistsModule,
 		GroupModule,
 		LecturerModule,
 		MajorModule,
 		MilestoneModule,
 		ReponsibilityModule,
+		RequestModule,
 		SemesterModule,
+		SkillSetModule,
 		StudentModule,
+		SupervisionModule,
 		ThesisModule,
 	],
 })

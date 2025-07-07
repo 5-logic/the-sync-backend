@@ -53,6 +53,7 @@ enum RequestType {
 }
 
 enum RequestStatus {
+	Cancelled @map("cancelled")
   Pending  @map("pending")
   Approved @map("approved")
   Rejected @map("rejected")
@@ -255,19 +256,18 @@ model ThesisVersion {
 }
 
 model Milestone {
-  id          String   @id @default(uuid())
-  name        String   @map("name")
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  semesterId  String   @map("semester_id")
-  checklistId String?  @unique @map("checklist_id")
+  id         String   @id @default(uuid())
+  name       String   @map("name")
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  semesterId String   @map("semester_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   semester    Semester     @relation(fields: [semesterId], references: [id])
-  checklist   Checklist?   @relation(fields: [checklistId], references: [id])
   submissions Submission[]
+  Checklist   Checklist[]
 
   @@map("milestones")
 }
@@ -312,12 +312,12 @@ model Checklist {
   id          String  @id @default(uuid())
   name        String  @map("name")
   description String? @map("description")
-  milestoneId String  @map("milestone_id")
+  milestoneId String? @map("milestone_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  milestone      Milestone?
+  milestone      Milestone?      @relation(fields: [milestoneId], references: [id])
   checklistItems ChecklistItem[]
   reviews        Review[]
 

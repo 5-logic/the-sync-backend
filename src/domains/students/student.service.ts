@@ -346,6 +346,32 @@ export class StudentService extends BaseCacheService {
 							status: 'asc', // Failed status will be last (alphabetically)
 						},
 					},
+					studentSkills: {
+						include: {
+							skill: {
+								select: {
+									id: true,
+									name: true,
+									skillSet: {
+										select: {
+											id: true,
+											name: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					studentExpectedResponsibilities: {
+						include: {
+							responsibility: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
 				},
 			});
 
@@ -375,6 +401,19 @@ export class StudentService extends BaseCacheService {
 					status: enrollment.status,
 					semester: enrollment.semester,
 				})),
+				studentSkills: student.studentSkills.map((studentSkill) => ({
+					skillId: studentSkill.skill.id,
+					skillName: studentSkill.skill.name,
+					level: studentSkill.level,
+					skillSet: studentSkill.skill.skillSet,
+				})),
+				studentExpectedResponsibilities:
+					student.studentExpectedResponsibilities.map(
+						(studentResponsibility) => ({
+							responsibilityId: studentResponsibility.responsibility.id,
+							responsibilityName: studentResponsibility.responsibility.name,
+						}),
+					),
 				// For backward compatibility, keep majorId
 				majorId: student.majorId,
 			};
@@ -406,6 +445,7 @@ export class StudentService extends BaseCacheService {
 					throw new NotFoundException(`Student not found`);
 				}
 
+				// Update user information
 				const updatedUser = await txn.user.update({
 					where: { id },
 					data: {
@@ -417,6 +457,45 @@ export class StudentService extends BaseCacheService {
 						password: true,
 					},
 				});
+
+				// Update student skills if provided
+				if (dto.studentSkills !== undefined) {
+					// Remove existing skills
+					await txn.studentSkill.deleteMany({
+						where: { studentId: id },
+					});
+
+					// Add new skills if any
+					if (dto.studentSkills.length > 0) {
+						await txn.studentSkill.createMany({
+							data: dto.studentSkills.map((skill) => ({
+								studentId: id,
+								skillId: skill.skillId,
+								level: skill.level,
+							})),
+						});
+					}
+				}
+
+				// Update student expected responsibilities if provided
+				if (dto.studentExpectedResponsibilities !== undefined) {
+					// Remove existing responsibilities
+					await txn.studentExpectedResponsibility.deleteMany({
+						where: { studentId: id },
+					});
+
+					// Add new responsibilities if any
+					if (dto.studentExpectedResponsibilities.length > 0) {
+						await txn.studentExpectedResponsibility.createMany({
+							data: dto.studentExpectedResponsibilities.map(
+								(responsibility) => ({
+									studentId: id,
+									responsibilityId: responsibility.responsibilityId,
+								}),
+							),
+						});
+					}
+				}
 
 				return {
 					...updatedUser,
