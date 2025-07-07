@@ -182,16 +182,25 @@ export class GroupService extends BaseCacheService {
 			}
 
 			const result = await this.prisma.$transaction(async (prisma) => {
-				const existingGroupsCount = await prisma.group.count({
+				const lastGroup = await prisma.group.findFirst({
 					where: {
 						semesterId: currentSemester.id,
 						code: {
 							startsWith: `${currentSemester.code}QN`,
 						},
 					},
+					orderBy: {
+						code: 'desc',
+					},
 				});
 
-				const sequenceNumber = existingGroupsCount + 1;
+				let sequenceNumber = 1;
+				if (lastGroup) {
+					const lastCode = lastGroup.code;
+					const lastSequence = parseInt(lastCode.slice(-3), 10);
+					sequenceNumber = lastSequence + 1;
+				}
+
 				const groupCode = `${currentSemester.code}QN${sequenceNumber
 					.toString()
 					.padStart(3, '0')}`;
@@ -240,7 +249,6 @@ export class GroupService extends BaseCacheService {
 			);
 
 			const completeGroup = await this.findOne(result.id);
-
 			return completeGroup;
 		} catch (error) {
 			this.handleError('creating group', error);
