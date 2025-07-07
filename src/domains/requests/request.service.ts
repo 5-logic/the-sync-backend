@@ -524,7 +524,7 @@ export class RequestService extends BaseCacheService {
 	}
 
 	/**
-	 * Process a request (approve/reject) - can be done by student or group leader
+	 * Process a request (approve/reject/cancel) - can be done by student or group leader
 	 */
 	async updateRequestStatus(
 		userId: string,
@@ -555,16 +555,30 @@ export class RequestService extends BaseCacheService {
 				);
 			}
 
-			// Validate permissions based on request type
+			// Validate permissions based on request type and action
 			if (request.type === RequestType.Join) {
-				// For join requests, only group leader can approve/reject
-				await this.validateStudentIsGroupLeader(userId, request.groupId);
+				if (dto.status === RequestStatus.Cancelled) {
+					// For join requests, only the student who sent it can cancel
+					if (userId !== request.studentId) {
+						throw new ForbiddenException(
+							`Only the student who sent the join request can cancel it`,
+						);
+					}
+				} else {
+					// For join requests, only group leader can approve/reject
+					await this.validateStudentIsGroupLeader(userId, request.groupId);
+				}
 			} else if (request.type === RequestType.Invite) {
-				// For invite requests, only the invited student can approve/reject
-				if (userId !== request.studentId) {
-					throw new ForbiddenException(
-						`Only the invited student can respond to this invitation`,
-					);
+				if (dto.status === RequestStatus.Cancelled) {
+					// For invite requests, only group leader can cancel
+					await this.validateStudentIsGroupLeader(userId, request.groupId);
+				} else {
+					// For invite requests, only the invited student can approve/reject
+					if (userId !== request.studentId) {
+						throw new ForbiddenException(
+							`Only the invited student can respond to this invitation`,
+						);
+					}
 				}
 			}
 
@@ -686,7 +700,7 @@ export class RequestService extends BaseCacheService {
 
 			const cancelledRequest = await this.prisma.request.update({
 				where: { id: requestId },
-				data: { status: RequestStatus.Rejected },
+				data: { status: RequestStatus.Cancelled },
 				include: {
 					student: {
 						include: {
