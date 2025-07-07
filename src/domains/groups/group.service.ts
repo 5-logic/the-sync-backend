@@ -1776,7 +1776,7 @@ export class GroupService extends BaseCacheService {
 			});
 
 			this.logger.log(
-				`Student "${student.user.fullName}" (${student.user.email}) successfully removed from group "${group.name}" (${group.code}) by leader`,
+				`Student "${student.user.fullName}" (${student.user.email}) successfully removed from group "${group.name}" (${group.code})`,
 			);
 
 			// Clear relevant caches
@@ -1882,6 +1882,297 @@ export class GroupService extends BaseCacheService {
 		} catch (emailError) {
 			this.logger.warn(
 				'Failed to send student removal notification emails',
+				emailError,
+			);
+		}
+	}
+
+	async leaveGroup(groupId: string, studentId: string) {
+		try {
+			this.logger.log(`Student ${studentId} is leaving group ${groupId}`);
+
+			// Validate inputs and get required data in parallel
+			const [group, participation] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+						_count: {
+							select: {
+								studentGroupParticipations: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: studentId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validations
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			if (!participation) {
+				throw new NotFoundException(`You are not a member of this group`);
+			}
+
+			// Check semester status - only allow leaving during PREPARING phase
+			if (group.semester.status !== SemesterStatus.Preparing) {
+				throw new ConflictException(
+					`Cannot leave group. You can only leave groups during the PREPARING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			// Check if student is the leader and if there are other members
+			if (participation.isLeader) {
+				if (group._count.studentGroupParticipations > 1) {
+					throw new ConflictException(
+						`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
+					);
+				}
+				// If leader is the only member, they can leave (which effectively deletes the group)
+			}
+
+			// Get student info for notifications
+			const student = await this.prisma.student.findUnique({
+				where: { userId: studentId },
+				include: {
+					user: {
+						select: {
+							id: true,
+							fullName: true,
+							email: true,
+						},
+					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+				},
+			});
+
+			if (!student) {
+				throw new NotFoundException(`Student not found`);
+			}
+
+			// Get remaining group members for notification before removal
+			const remainingMembers =
+				await this.prisma.studentGroupParticipation.findMany({
+					where: {
+						groupId: groupId,
+						studentId: { not: studentId },
+					},
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				});
+
+			// If this is the last member (leader), delete the entire group
+			if (group._count.studentGroupParticipations === 1) {
+				await this.prisma.$transaction(async (prisma) => {
+					// Delete all related records first
+					await Promise.all([
+						prisma.groupRequiredSkill.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.groupExpectedResponsibility.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.request.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.studentGroupParticipation.deleteMany({
+							where: { groupId: groupId },
+						}),
+					]);
+
+					// Delete the group itself
+					await prisma.group.delete({
+						where: { id: groupId },
+					});
+				});
+
+				this.logger.log(
+					`Group "${group.name}" (${group.code}) was automatically deleted as the last member (leader) left`,
+				);
+
+				// Clear relevant caches
+				await Promise.all([
+					this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+					this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+					this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
+					this.clearCacheWithPattern(
+						`cache:student:${studentId}:detailed-groups`,
+					),
+					this.clearCacheWithPattern(
+						`${GroupService.CACHE_KEY}:${groupId}:members`,
+					),
+					this.clearCacheWithPattern(
+						`${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`,
+					),
+				]);
+
+				return {
+					success: true,
+					message: `You have successfully left the group. Since you were the last member, group "${group.name}" (${group.code}) has been automatically deleted.`,
+					groupDeleted: true,
+					deletedGroup: {
+						id: group.id,
+						code: group.code,
+						name: group.name,
+						semester: group.semester,
+					},
+				};
+			}
+
+			// Otherwise, just remove the student from the group
+			await this.prisma.studentGroupParticipation.delete({
+				where: {
+					studentId_groupId_semesterId: {
+						studentId: studentId,
+						groupId: groupId,
+						semesterId: group.semesterId,
+					},
+				},
+			});
+
+			this.logger.log(
+				`Student "${student.user.fullName}" (${student.user.email}) successfully left group "${group.name}" (${group.code})`,
+			);
+
+			// Clear relevant caches
+			await Promise.all([
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+				this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
+				this.clearCacheWithPattern(
+					`cache:student:${studentId}:detailed-groups`,
+				),
+				this.clearCacheWithPattern(
+					`${GroupService.CACHE_KEY}:${groupId}:members`,
+				),
+			]);
+
+			// Send email notifications to remaining group members and the leaving student
+			await this.sendStudentLeaveNotification(group, student, remainingMembers);
+
+			// Return the updated group
+			const updatedGroup = await this.findOne(groupId);
+
+			return {
+				success: true,
+				message: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
+				groupDeleted: false,
+				group: updatedGroup,
+				leftStudent: {
+					userId: student.userId,
+					fullName: student.user.fullName,
+					email: student.user.email,
+					major: student.major,
+				},
+			};
+		} catch (error) {
+			this.handleError('leaving group', error);
+		}
+	}
+
+	// Email notification helper for student leaving group
+	private async sendStudentLeaveNotification(
+		group: any,
+		leavingStudent: any,
+		remainingMembers: any[],
+	) {
+		try {
+			const leaveDate = new Date().toLocaleDateString();
+			const baseContext = {
+				groupName: group.name,
+				groupCode: group.code,
+				semesterName: group.semester.name,
+				targetStudentName: leavingStudent.user.fullName,
+				targetStudentCode: leavingStudent.studentCode || 'N/A',
+				changeDate: leaveDate,
+				actionType: 'left',
+				currentGroupSize: remainingMembers.length,
+				groupLeaderName:
+					remainingMembers.find((member) => member.isLeader)?.student.user
+						.fullName || 'No leader assigned',
+			};
+
+			// Send email to the leaving student
+			if (leavingStudent.user.email) {
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
+					{
+						to: leavingStudent.user.email,
+						subject: `You have left Group ${group.code}`,
+						context: {
+							...baseContext,
+							recipientName: leavingStudent.user.fullName,
+							recipientType: 'target_student',
+						},
+					},
+				);
+			}
+
+			// Send email to all remaining group members
+			for (const member of remainingMembers) {
+				if (member.student.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
+						{
+							to: member.student.user.email,
+							subject: `Member left Group ${group.code}`,
+							context: {
+								...baseContext,
+								recipientName: member.student.user.fullName,
+								recipientType: member.isLeader
+									? 'group_leader'
+									: 'group_member',
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Student leave notifications sent for group ${group.code}`,
+			);
+		} catch (emailError) {
+			this.logger.warn(
+				'Failed to send student leave notification emails',
 				emailError,
 			);
 		}
