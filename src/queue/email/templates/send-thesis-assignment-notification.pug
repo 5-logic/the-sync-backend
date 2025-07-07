@@ -1,0 +1,221 @@
+doctype html
+html(lang="en")
+	head
+		meta(charset="UTF-8")
+		meta(name="viewport", content="width=device-width, initial-scale=1.0")
+		title Thesis #{actionType === 'assigned' ? 'Assignment' : actionType === 'picked' ? 'Selection' : 'Removal'} Notification
+		style.
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 20px;
+				background-color: #f4f4f4;
+			}
+			.container {
+				max-width: 600px;
+				margin: 0 auto;
+				background-color: #ffffff;
+				border-radius: 8px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+				overflow: hidden;
+			}
+			.header {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				color: white;
+				padding: 20px;
+				text-align: center;
+			}
+			.header h1 {
+				margin: 0;
+				font-size: 24px;
+			}
+			.content {
+				padding: 30px;
+			}
+			.info-section {
+				background-color: #f8f9fa;
+				border-left: 4px solid #667eea;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.thesis-info {
+				background-color: #e8f4fd;
+				border-left: 4px solid #007bff;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.action-info {
+				background-color: #d4edda;
+				border-left: 4px solid #28a745;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.warning-info {
+				background-color: #fff3cd;
+				border-left: 4px solid #ffc107;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.removal-info {
+				background-color: #f8d7da;
+				border-left: 4px solid #dc3545;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 4px;
+			}
+			.footer {
+				background-color: #6c757d;
+				color: white;
+				padding: 15px;
+				text-align: center;
+				font-size: 12px;
+			}
+			.btn {
+				display: inline-block;
+				padding: 10px 20px;
+				background-color: #667eea;
+				color: white;
+				text-decoration: none;
+				border-radius: 5px;
+				margin: 10px 0;
+			}
+			.highlight {
+				color: #667eea;
+				font-weight: bold;
+			}
+			ul {
+				padding-left: 20px;
+			}
+			li {
+				margin: 5px 0;
+			}
+
+	body
+		.container
+			.header
+				h1 
+					if actionType === 'assigned'
+						| Thesis Assignment Notification
+					else if actionType === 'picked'
+						| Thesis Selection Notification
+					else if actionType === 'unpicked'
+						| Thesis Removal Notification
+
+			.content
+				p Dear #{recipientName},
+
+				if actionType === 'assigned'
+					p We are pleased to inform you that a thesis has been assigned to your group.
+				else if actionType === 'picked'
+					p We are pleased to inform you that your group has successfully selected a thesis.
+				else if actionType === 'unpicked'
+					p This is to inform you that a thesis has been removed from your group.
+
+				.info-section
+					h3 Group Information
+					ul
+						li Group Name: <strong>#{groupName}</strong>
+						li Group Code: <strong>#{groupCode}</strong>
+						li Semester: <strong>#{semesterName}</strong>
+						if leaderName
+							li Group Leader: <strong>#{leaderName}</strong>
+
+				if actionType === 'assigned' || actionType === 'picked'
+					.thesis-info
+						h3 Thesis Details
+						ul
+							li Vietnamese Name: <strong>#{thesisVietnameseName}</strong>
+							li English Name: <strong>#{thesisEnglishName}</strong>
+							if thesisAbbreviation
+								li Abbreviation: <strong>#{thesisAbbreviation}</strong>
+							li Supervisor: <strong>#{lecturerName}</strong>
+
+					if actionType === 'assigned'
+						.action-info
+							h3 Assignment Details
+							ul
+								li Assignment Date: <strong>#{assignDate}</strong>
+								li Assigned By: <strong>System/Moderator</strong>
+								li Status: <strong>Active</strong>
+					else
+						.action-info
+							h3 Selection Details
+							ul
+								li Selection Date: <strong>#{pickDate}</strong>
+								li Selected By: <strong>#{leaderName}</strong>
+								li Status: <strong>Active</strong>
+
+				else if actionType === 'unpicked'
+					.removal-info
+						h3 Removed Thesis Details
+						ul
+							li Vietnamese Name: <strong>#{thesisVietnameseName}</strong>
+							li English Name: <strong>#{thesisEnglishName}</strong>
+							if thesisAbbreviation
+								li Abbreviation: <strong>#{thesisAbbreviation}</strong>
+							li Previous Supervisor: <strong>#{lecturerName}</strong>
+							li Removal Date: <strong>#{unpickDate}</strong>
+							li Removed By: <strong>#{leaderName}</strong>
+
+				if recipientType === 'lecturer'
+					if actionType === 'assigned' || actionType === 'picked'
+						.warning-info
+							h3 Next Steps for Supervisor
+							p As the thesis supervisor, please:
+							ul
+								li Review the group composition and member qualifications
+								li Contact the group leader to establish communication
+								li Schedule initial meetings to discuss project requirements
+								li Provide guidance on thesis objectives and methodology
+
+					else if actionType === 'unpicked'
+						.warning-info
+							h3 Information for Previous Supervisor
+							p The thesis is now available for selection by other groups. You may:
+							ul
+								li Update the thesis description if needed
+								li Make the thesis available for other groups
+								li Contact administration if you have any questions
+
+				else
+					if actionType === 'assigned' || actionType === 'picked'
+						.action-info
+							h3 Next Steps for Group Members
+							p Now that your group has a thesis assignment:
+							ul
+								li Contact your thesis supervisor to introduce yourselves
+								li Schedule regular meetings with your supervisor
+								li Begin preliminary research on your thesis topic
+								li Coordinate group responsibilities and timeline
+
+					else if actionType === 'unpicked'
+						.warning-info
+							h3 Next Steps for Group
+							p Since the thesis has been removed:
+							ul
+								li Your group can now select a different thesis
+								li Browse available theses in the system
+								li Discuss with group members before making a new selection
+								li Ensure the selection is made before the deadline
+
+				if recipientType === 'group_leader'
+					p <strong>Note:</strong> As the group leader, you are responsible for coordinating with both your group members and the thesis supervisor.
+				else if recipientType === 'group_member'
+					p <strong>Note:</strong> Please coordinate with your group leader regarding thesis-related activities.
+
+				p If you have any questions or concerns, please contact the academic administration.
+
+				p Best regards,<br>
+				strong The Sync System<br>
+				em Academic Management Platform
+
+			.footer
+				p This is an automated email from The Sync System. Please do not reply to this email.
+				if actionType === 'assigned' || actionType === 'picked'
+					p Congratulations on your thesis assignment! Work hard and achieve great results.
+				else
+					p Good luck with selecting your new thesis!
