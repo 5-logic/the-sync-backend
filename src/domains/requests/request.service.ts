@@ -9,6 +9,7 @@ import {
 import { Cache } from 'cache-manager';
 
 import { BaseCacheService } from '@/bases/base-cache.service';
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -317,41 +318,44 @@ export class RequestService extends BaseCacheService {
 			}
 
 			// Create all invite requests in a transaction
-			const requests = await this.prisma.$transaction(async (prisma) => {
-				const createdRequests: any[] = [];
-				for (const studentId of dto.studentIds) {
-					const request = await prisma.request.create({
-						data: {
-							type: RequestType.Invite,
-							status: RequestStatus.Pending,
-							studentId: studentId,
-							groupId: groupId,
-						},
-						include: {
-							student: {
-								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-											email: true,
+			const requests = await this.prisma.$transaction(
+				async (prisma) => {
+					const createdRequests: any[] = [];
+					for (const studentId of dto.studentIds) {
+						const request = await prisma.request.create({
+							data: {
+								type: RequestType.Invite,
+								status: RequestStatus.Pending,
+								studentId: studentId,
+								groupId: groupId,
+							},
+							include: {
+								student: {
+									include: {
+										user: {
+											select: {
+												id: true,
+												fullName: true,
+												email: true,
+											},
 										},
 									},
 								},
-							},
-							group: {
-								select: {
-									id: true,
-									code: true,
-									name: true,
+								group: {
+									select: {
+										id: true,
+										code: true,
+										name: true,
+									},
 								},
 							},
-						},
-					});
-					createdRequests.push(request);
-				}
-				return createdRequests;
-			});
+						});
+						createdRequests.push(request);
+					}
+					return createdRequests;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Group ${group.code} sent invite requests to ${dto.studentIds.length} students: ${dto.studentIds.join(', ')}`,
