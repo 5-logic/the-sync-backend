@@ -13,6 +13,9 @@ block content
     else if actionType === 'removed'
       h3 👥 Member Removed from Group
       p A member has been removed from your group.
+    else if actionType === 'left'
+      h3 👋 Member Left Group
+      p A member has decided to leave your group.
 
     .info-item
       .info-label Group:
@@ -29,6 +32,10 @@ block content
     else if actionType === 'removed'
       .info-item
         .info-label Removed Member:
+        .info-value #{targetStudentName} (#{targetStudentCode})
+    else if actionType === 'left'
+      .info-item
+        .info-label Student Who Left:
         .info-value #{targetStudentName} (#{targetStudentCode})
 
     .info-item
@@ -62,6 +69,20 @@ block content
       .info-box
         strong 📢 Group Update
         | #{targetStudentName} has been removed from your group "#{groupName}". Please adjust your project plans accordingly.
+
+  else if actionType === 'left'
+    if recipientType === 'target_student'
+      .success-box
+        strong ✅ Successfully Left Group
+        | You have successfully left group "#{groupName}". Your participation has been removed from the system and you are now available to join or create a new group during the current semester's preparation phase.
+    else if recipientType === 'group_leader'
+      .warning-box
+        strong 👨‍💼 Leader Notification
+        | As the group leader, please note that #{targetStudentName} has left your group "#{groupName}". You may want to consider recruiting new members or adjusting your group's project scope accordingly.
+    else
+      .info-box
+        strong 📢 Group Update
+        | Your group member #{targetStudentName} has decided to leave group "#{groupName}". The group will continue with the remaining members.
 
   p If you have any questions about this change or need assistance, please don't hesitate to contact our support team.
 
