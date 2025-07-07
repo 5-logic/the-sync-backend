@@ -18,6 +18,7 @@ import {
 	AssignStudentDto,
 	ChangeLeaderDto,
 	CreateGroupDto,
+	PickThesisDto,
 	RemoveStudentDto,
 	UpdateGroupDto,
 } from '@/groups/dto';
@@ -184,6 +185,36 @@ export class GroupController {
 	})
 	async findGroupSkillsAndResponsibilities(@Param('id') id: string) {
 		return await this.groupService.findGroupSkillsAndResponsibilities(id);
+	}
+
+	@Roles(Role.STUDENT)
+	@Put(':id/pick-thesis')
+	@ApiOperation({
+		summary: 'Pick thesis for group',
+		description:
+			'Allow group leader to pick a thesis for their group during the PICKING semester status. Only the group leader can pick thesis. The thesis must be published (isPublish=true), approved status, and not already assigned to another group. The group must not already have a thesis assigned. Sends email notifications to group members and thesis lecturer about the thesis assignment.',
+	})
+	async pickThesis(
+		@Req() req: Request,
+		@Param('id') id: string,
+		@Body() dto: PickThesisDto,
+	) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.pickThesis(id, user.id, dto);
+	}
+
+	@Roles(Role.STUDENT)
+	@Put(':id/unpick-thesis')
+	@ApiOperation({
+		summary: 'Unpick thesis from group',
+		description:
+			'Allow group leader to unpick (remove) the currently assigned thesis from their group during the PICKING semester status. Only the group leader can unpick thesis. The group must have a thesis currently assigned. Sends email notifications to group members and thesis lecturer about the thesis removal.',
+	})
+	async unpickThesis(@Req() req: Request, @Param('id') id: string) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.unpickThesis(id, user.id);
 	}
 
 	@Roles(Role.STUDENT)
