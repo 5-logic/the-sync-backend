@@ -1,6 +1,6 @@
 import { ApiOperationOptions } from '@nestjs/swagger';
 
-export const requestDocs: Record<string, ApiOperationOptions> = {
+export const RequestDocs: Record<string, ApiOperationOptions> = {
 	createJoinRequest: {
 		summary: 'Send a join request to a group',
 		description:
