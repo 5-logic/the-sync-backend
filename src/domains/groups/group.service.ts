@@ -2066,13 +2066,13 @@ export class GroupService extends BaseCacheService {
 				groupCode: group.code,
 				semesterName: group.semester.name,
 				targetStudentName: leavingStudent.user.fullName,
-				targetStudentCode: leavingStudent.studentCode || 'N/A',
+				targetStudentCode: leavingStudent.studentCode ?? 'N/A',
 				changeDate: leaveDate,
 				actionType: 'left',
 				currentGroupSize: remainingMembers.length,
 				groupLeaderName:
 					remainingMembers.find((member) => member.isLeader)?.student.user
-						.fullName || 'No leader assigned',
+						.fullName ?? 'No leader assigned',
 			};
 
 			// Send email to the leaving student
@@ -2585,8 +2585,8 @@ export class GroupService extends BaseCacheService {
 
 			// Send email notifications
 			await this.sendThesisAssignmentNotification(
-				group.id as string,
-				thesisInfo.id as string,
+				group.id,
+				thesisInfo.id,
 				'unpicked',
 			);
 
@@ -2685,19 +2685,21 @@ export class GroupService extends BaseCacheService {
 				leaderName: groupMembers.find((member) => member.isLeader)?.student.user
 					.fullName,
 				actionType,
-				assignDate: assignDate || currentDate,
+				assignDate: assignDate ?? currentDate,
 				pickDate: actionType === 'picked' ? currentDate : undefined,
 				unpickDate: actionType === 'unpicked' ? currentDate : undefined,
 			};
 
 			// Send email to thesis lecturer
 			if (thesis.lecturer.user.email) {
-				const lecturerSubject =
-					actionType === 'assigned'
-						? `Your thesis has been assigned to Group ${group.code}`
-						: actionType === 'picked'
-							? `Your thesis has been selected by Group ${group.code}`
-							: `Thesis removed from Group ${group.code}`;
+				let lecturerSubject: string;
+				if (actionType === 'assigned') {
+					lecturerSubject = `Your thesis has been assigned to Group ${group.code}`;
+				} else if (actionType === 'picked') {
+					lecturerSubject = `Your thesis has been selected by Group ${group.code}`;
+				} else {
+					lecturerSubject = `Thesis removed from Group ${group.code}`;
+				}
 
 				await this.emailQueueService.sendEmail(
 					EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
@@ -2716,12 +2718,14 @@ export class GroupService extends BaseCacheService {
 			// Send email to all group members
 			for (const member of groupMembers) {
 				if (member.student.user.email) {
-					const memberSubject =
-						actionType === 'assigned'
-							? `Thesis assigned to Group ${group.code}`
-							: actionType === 'picked'
-								? `Thesis selected for Group ${group.code}`
-								: `Thesis removed from Group ${group.code}`;
+					let memberSubject: string;
+					if (actionType === 'assigned') {
+						memberSubject = `Thesis assigned to Group ${group.code}`;
+					} else if (actionType === 'picked') {
+						memberSubject = `Thesis selected for Group ${group.code}`;
+					} else {
+						memberSubject = `Thesis removed from Group ${group.code}`;
+					}
 
 					await this.emailQueueService.sendEmail(
 						EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
@@ -2851,10 +2855,7 @@ export class GroupService extends BaseCacheService {
 		groupId: string,
 		leaderId: string,
 		operation: string,
-	): Promise<{
-		group: any; // TODO: Add proper Group type with relations
-		leaderParticipation: any; // TODO: Add proper StudentGroupParticipation type
-	}> {
+	) {
 		const [group, leaderParticipation] = await Promise.all([
 			this.prisma.group.findUnique({
 				where: { id: groupId },
