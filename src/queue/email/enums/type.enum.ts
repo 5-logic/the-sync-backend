@@ -13,4 +13,5 @@ export enum EmailJobType {
 	SEND_STUDENT_ACCOUNT = 'send-student-account',
 	SEND_SUPERVISION_NOTIFICATION = 'send-supervision-notification',
 	SEND_THESIS_STATUS_CHANGE = 'send-thesis-status-change',
+	SEND_THESIS_ASSIGNMENT_NOTIFICATION = 'send-thesis-assignment-notification',
 }
