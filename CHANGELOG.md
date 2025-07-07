@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2025-07-07
+
+### Added
+
+- **Checklist Management System**:
+  - `POST /checklists` - New endpoint for lecturers to create checklists (requires `CreateChecklistDto` with `name`, optional `description`, and optional `milestoneId`)
+  - `GET /checklists` - New endpoint for students and lecturers to view all checklists
+  - `GET /checklists/:id` - New endpoint for students and lecturers to view specific checklist details
+  - `PUT /checklists/:id` - New endpoint for lecturers to update checklists (requires `UpdateChecklistDto`)
+  - `DELETE /checklists/:id` - New endpoint for lecturers to remove checklists
+  - `CreateChecklistDto` - New DTO for checklist creation with name, optional description, and optional milestone association
+  - `UpdateChecklistDto` - New DTO for checklist updates based on CreateChecklistDto
+
+- **Enhanced Student Profile Management**:
+  - `PUT /students` - Enhanced self-update endpoint now supports managing student skills and responsibilities
+  - `StudentSkillDto` - New DTO for managing student skills with skillId and skill level validation
+  - `StudentExpectedResponsibilityDto` - New DTO for managing student expected responsibilities with responsibilityId validation
+  - Enhanced `SelfUpdateStudentDto` with optional `studentSkills` and `studentExpectedResponsibilities` arrays for comprehensive profile management
+
+- **Request Status Enhancement**:
+  - Added `cancelled` status to RequestStatus enum for better request lifecycle management
+  - Enhanced request cancellation capabilities for join and invite requests with proper permission validation
+
+- **Comprehensive API Documentation System**:
+  - `SwaggerDoc` decorator - New centralized decorator for consistent API documentation across all endpoints
+  - Created comprehensive documentation modules for all API endpoints: `AdminDocs`, `AuthDocs`, `ChecklistsDocs`, `GroupDocs`, `LecturerDocs`, `MajorDocs`, `MilestoneDocs`, `RequestDocs`, `ResponsibilityDocs`, `SemesterDocs`, `SkillSetDocs`, `StudentDocs`, `SupervisionDocs`, `ThesisDocs`
+  - Centralized documentation mapping system with `DOCS_MAP` for consistent API operation descriptions
+  - Enhanced Swagger documentation consistency across all controllers
+
+### Changed
+
+- **Database Schema Improvements**:
+  - **Checklist-Milestone Relationship**: Reversed relationship from milestone having one checklist to checklist optionally belonging to a milestone
+  - Made `milestone_id` optional in checklists table to allow standalone checklists
+  - Removed `checklist_id` foreign key constraint from milestones table for better flexibility
+
+- **API Documentation Standardization**:
+  - Replaced individual `@ApiOperation` decorators with unified `SwaggerDoc` decorator across all controllers
+  - Standardized API operation descriptions and documentation structure
+  - Enhanced consistency in API documentation with centralized documentation management
+
+- **Cache Management Optimization**:
+  - Implemented cache-aside pattern in `LecturerService` for improved performance
+  - Enhanced cache invalidation strategies for better data consistency
+  - Optimized cache management methods in `BaseCacheService` for efficient caching operations
+
+- **Request Permission Validation**:
+  - Streamlined cancellation permission checks for join and invite requests
+  - Implemented dedicated permission validation methods for request status updates
+  - Enhanced request management workflow with better validation logic
+
+- **Student Service Enhancements**:
+  - Added support for managing student skills and expected responsibilities in profile updates
+  - Enhanced student data handling with proper validation and relationship management
+  - Improved student profile update workflow with comprehensive skill and responsibility management
+
+### Fixed
+
+- **Code Organization**: Consolidated DTO imports across supervision service and controller for cleaner code structure
+- **Import Path Management**: Updated import paths in DTO index files for better module organization
+- **Validation Logic**: Enhanced checklist service with proper validation and error handling for milestone operations
+- **API Documentation**: Corrected casing and export consistency in documentation modules
+
+### Enhanced
+
+- **TypeScript Configuration**: Added checklist module path mapping in `tsconfig.json` for improved module resolution
+- **Module Structure**: Enhanced `DomainModule` to include `ChecklistsModule` for comprehensive domain management
+- **Service Architecture**: Improved service structure with better validation, error handling, and logging across checklist and student management
+
+### Database Migration
+
+- **Migration 20250707131611**: Update checklist item acceptance
+  - Removed `checklist_id` column from `milestones` table
+  - Made `milestone_id` optional in `checklists` table
+  - Updated foreign key relationships for better flexibility
+
+- **Migration 20250707134933**: Add cancelled status to request status enum
+  - Added `cancelled` value to `request_statuses` enum for enhanced request lifecycle management
+
+### Pull Requests
+
+- [#183](https://github.com/5-logic/the-sync-backend/pull/183) - Merge dev branch for v0.6.3 release
+- [#182](https://github.com/5-logic/the-sync-backend/pull/182) - Checklist management system, enhanced student profiles, and comprehensive API documentation improvements (task-146)
+
 ## [0.6.2] - 2025-07-07
 
 ### Added
