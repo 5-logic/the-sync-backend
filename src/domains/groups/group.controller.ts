@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -170,5 +171,18 @@ export class GroupController {
 	})
 	async findGroupSkillsAndResponsibilities(@Param('id') id: string) {
 		return await this.groupService.findGroupSkillsAndResponsibilities(id);
+	}
+
+	@Roles(Role.STUDENT)
+	@Delete(':id')
+	@ApiOperation({
+		summary: 'Delete group',
+		description:
+			'Delete a group permanently. Only the group leader can delete the group. Groups can only be deleted during the PREPARING semester status. Cannot delete groups that have assigned thesis, submitted work, or any milestone submissions. All pending requests will be automatically rejected. All group members will be notified via email about the group deletion. This action cannot be undone.',
+	})
+	async delete(@Req() req: Request, @Param('id') id: string) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.delete(id, user.id);
 	}
 }
