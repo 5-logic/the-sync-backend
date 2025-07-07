@@ -53,6 +53,7 @@ enum RequestType {
 }
 
 enum RequestStatus {
+	Cancelled @map("cancelled")
   Pending  @map("pending")
   Approved @map("approved")
   Rejected @map("rejected")
