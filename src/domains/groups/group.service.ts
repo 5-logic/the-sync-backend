@@ -100,34 +100,6 @@ export class GroupService extends BaseCacheService {
 		}
 	}
 
-	private async validateStudentNotInAnyGroup(
-		userId: string,
-		semesterId: string,
-	) {
-		const existingParticipation =
-			await this.prisma.studentGroupParticipation.findFirst({
-				where: {
-					studentId: userId,
-					semesterId: semesterId,
-				},
-				include: {
-					group: {
-						select: {
-							id: true,
-							code: true,
-							name: true,
-						},
-					},
-				},
-			});
-
-		if (existingParticipation) {
-			throw new ConflictException(
-				`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
-			);
-		}
-	}
-
 	private async getStudentCurrentSemester(userId: string) {
 		const enrollment = await this.prisma.enrollment.findFirst({
 			where: {
