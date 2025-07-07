@@ -8,7 +8,12 @@ import {
 import { Cache } from 'cache-manager';
 
 import { BaseCacheService } from '@/bases/base-cache.service';
-import { ChangeLeaderDto, CreateGroupDto, UpdateGroupDto } from '@/groups/dto';
+import {
+	ChangeLeaderDto,
+	CreateGroupDto,
+	PickThesisDto,
+	UpdateGroupDto,
+} from '@/groups/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -2409,6 +2414,493 @@ export class GroupService extends BaseCacheService {
 				'Failed to send group deletion notification emails',
 				emailError,
 			);
+		}
+	}
+
+	async pickThesis(groupId: string, leaderId: string, dto: PickThesisDto) {
+		try {
+			this.logger.log(
+				`Group leader ${leaderId} is picking thesis ${dto.thesisId} for group ${groupId}`,
+			);
+
+			// Validate inputs and get required data in parallel
+			const [group, leaderParticipation, thesis] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+						thesis: {
+							select: {
+								id: true,
+								englishName: true,
+								vietnameseName: true,
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: leaderId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+				this.prisma.thesis.findUnique({
+					where: { id: dto.thesisId },
+					include: {
+						lecturer: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+						semester: {
+							select: {
+								id: true,
+								name: true,
+							},
+						},
+						group: {
+							select: {
+								id: true,
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validations
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			if (!leaderParticipation) {
+				throw new NotFoundException(`You are not a member of this group`);
+			}
+
+			if (!leaderParticipation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can pick thesis for group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+				);
+			}
+
+			if (!thesis) {
+				throw new NotFoundException(`Thesis not found`);
+			}
+
+			// Check semester status - only allow picking during PICKING phase
+			if (group.semester.status !== SemesterStatus.Picking) {
+				throw new ConflictException(
+					`Cannot pick thesis. Thesis picking is only allowed during the PICKING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			// Check if group is in same semester as thesis
+			if (group.semesterId !== thesis.semesterId) {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis belongs to semester "${thesis.semester.name}" but your group is in semester "${group.semester.name}"`,
+				);
+			}
+
+			// Check if group already has a thesis
+			if (group.thesis) {
+				throw new ConflictException(
+					`Cannot pick thesis. Group already has thesis "${group.thesis.vietnameseName}" (${group.thesis.englishName}) assigned. Please unpick the current thesis first.`,
+				);
+			}
+
+			// Check if thesis is published
+			if (!thesis.isPublish) {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" is not published yet. Only published theses can be picked by groups.`,
+				);
+			}
+
+			// Check if thesis is approved
+			if (thesis.status !== 'Approved') {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" has status "${thesis.status}". Only approved theses can be picked by groups.`,
+				);
+			}
+
+			// Check if thesis is already assigned to another group
+			if (thesis.group) {
+				throw new ConflictException(
+					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" is already assigned to group "${thesis.group.name}" (${thesis.group.code})`,
+				);
+			}
+
+			// Perform thesis assignment in a transaction
+			await this.prisma.$transaction(async (prisma) => {
+				// Update group with thesis assignment
+				await prisma.group.update({
+					where: { id: groupId },
+					data: {
+						thesisId: dto.thesisId,
+					},
+				});
+
+				// Update thesis with group assignment
+				await prisma.thesis.update({
+					where: { id: dto.thesisId },
+					data: {
+						groupId: groupId,
+					},
+				});
+			});
+
+			this.logger.log(
+				`Thesis "${thesis.vietnameseName}" successfully assigned to group "${group.name}" (${group.code}) by leader`,
+			);
+
+			// Clear relevant caches
+			await Promise.all([
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+				this.clearCacheWithPattern(`cache:student:${leaderId}:groups`),
+				this.clearCacheWithPattern(`cache:student:${leaderId}:detailed-groups`),
+			]);
+
+			// Send email notifications
+			await this.sendThesisAssignmentNotification(
+				group.id,
+				thesis.id,
+				'picked',
+			);
+
+			// Return the updated group with thesis information
+			const completeGroup = await this.findOne(groupId);
+
+			return {
+				success: true,
+				message: `Thesis "${thesis.vietnameseName}" has been successfully assigned to group "${group.name}" (${group.code}). All group members and thesis lecturer have been notified.`,
+				group: completeGroup,
+				assignedThesis: {
+					id: thesis.id,
+					englishName: thesis.englishName,
+					vietnameseName: thesis.vietnameseName,
+					abbreviation: thesis.abbreviation,
+					lecturer: thesis.lecturer.user,
+				},
+			};
+		} catch (error) {
+			this.handleError('picking thesis for group', error);
+		}
+	}
+
+	async unpickThesis(groupId: string, leaderId: string) {
+		try {
+			this.logger.log(
+				`Group leader ${leaderId} is unpicking thesis for group ${groupId}`,
+			);
+
+			// Validate inputs and get required data
+			const [group, leaderParticipation] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: {
+								id: true,
+								name: true,
+								code: true,
+								status: true,
+							},
+						},
+						thesis: {
+							include: {
+								lecturer: {
+									include: {
+										user: {
+											select: {
+												id: true,
+												fullName: true,
+												email: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						studentId: leaderId,
+						groupId: groupId,
+					},
+					include: {
+						group: {
+							select: {
+								code: true,
+								name: true,
+							},
+						},
+					},
+				}),
+			]);
+
+			// Validations
+			if (!group) {
+				throw new NotFoundException(`Group not found`);
+			}
+
+			if (!leaderParticipation) {
+				throw new NotFoundException(`You are not a member of this group`);
+			}
+
+			if (!leaderParticipation.isLeader) {
+				throw new ConflictException(
+					`Access denied. Only the group leader can unpick thesis for group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+				);
+			}
+
+			// Check semester status - only allow unpicking during PICKING phase
+			if (group.semester.status !== SemesterStatus.Picking) {
+				throw new ConflictException(
+					`Cannot unpick thesis. Thesis unpicking is only allowed during the PICKING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			// Check if group has a thesis assigned
+			if (!group.thesis) {
+				throw new ConflictException(
+					`Cannot unpick thesis. Group "${group.name}" (${group.code}) does not have any thesis assigned.`,
+				);
+			}
+
+			// Store thesis info for notifications before removal
+			const thesisInfo = {
+				id: group.thesis.id,
+				englishName: group.thesis.englishName,
+				vietnameseName: group.thesis.vietnameseName,
+				abbreviation: group.thesis.abbreviation,
+				lecturer: group.thesis.lecturer.user,
+			};
+
+			// Perform thesis removal in a transaction
+			await this.prisma.$transaction(async (prisma) => {
+				// Remove thesis assignment from group
+				await prisma.group.update({
+					where: { id: groupId },
+					data: {
+						thesisId: null,
+					},
+				});
+
+				// Remove group assignment from thesis
+				await prisma.thesis.update({
+					where: { id: group.thesis!.id },
+					data: {
+						groupId: null,
+					},
+				});
+			});
+
+			this.logger.log(
+				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
+			);
+
+			// Clear relevant caches
+			await Promise.all([
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
+				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
+				this.clearCacheWithPattern(`cache:student:${leaderId}:groups`),
+				this.clearCacheWithPattern(`cache:student:${leaderId}:detailed-groups`),
+			]);
+
+			// Send email notifications
+			await this.sendThesisAssignmentNotification(
+				group.id,
+				thesisInfo.id,
+				'unpicked',
+			);
+
+			// Return the updated group without thesis
+			const completeGroup = await this.findOne(groupId);
+
+			return {
+				success: true,
+				message: `Thesis "${thesisInfo.vietnameseName}" has been successfully removed from group "${group.name}" (${group.code}). All group members and thesis lecturer have been notified.`,
+				group: completeGroup,
+				removedThesis: thesisInfo,
+			};
+		} catch (error) {
+			this.handleError('unpicking thesis from group', error);
+		}
+	}
+
+	// Public method for thesis assignment notification (can be called from thesis service)
+	async sendThesisAssignmentNotification(
+		groupId: string,
+		thesisId: string,
+		actionType: 'assigned' | 'picked' | 'unpicked',
+		assignDate?: string,
+	) {
+		try {
+			// Get group details with members
+			const group = await this.prisma.group.findUnique({
+				where: { id: groupId },
+				include: {
+					semester: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+				},
+			});
+
+			if (!group) {
+				throw new NotFoundException(`Group with ID ${groupId} not found`);
+			}
+
+			// Get thesis details
+			const thesis = await this.prisma.thesis.findUnique({
+				where: { id: thesisId },
+				include: {
+					lecturer: {
+						include: {
+							user: {
+								select: {
+									id: true,
+									fullName: true,
+									email: true,
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (!thesis) {
+				throw new NotFoundException(`Thesis with ID ${thesisId} not found`);
+			}
+
+			// Get group members
+			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
+				{
+					where: { groupId: groupId },
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			);
+
+			// Prepare base context for email
+			const currentDate = new Date().toLocaleDateString();
+			const baseContext = {
+				groupName: group.name,
+				groupCode: group.code,
+				semesterName: group.semester.name,
+				thesisEnglishName: thesis.englishName,
+				thesisVietnameseName: thesis.vietnameseName,
+				thesisAbbreviation: thesis.abbreviation,
+				lecturerName: thesis.lecturer.user.fullName,
+				leaderName: groupMembers.find((member) => member.isLeader)?.student.user
+					.fullName,
+				actionType,
+				assignDate: assignDate || currentDate,
+				pickDate: actionType === 'picked' ? currentDate : undefined,
+				unpickDate: actionType === 'unpicked' ? currentDate : undefined,
+			};
+
+			// Send email to thesis lecturer
+			if (thesis.lecturer.user.email) {
+				const lecturerSubject =
+					actionType === 'assigned'
+						? `Your thesis has been assigned to Group ${group.code}`
+						: actionType === 'picked'
+							? `Your thesis has been selected by Group ${group.code}`
+							: `Thesis removed from Group ${group.code}`;
+
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
+					{
+						to: thesis.lecturer.user.email,
+						subject: lecturerSubject,
+						context: {
+							...baseContext,
+							recipientName: thesis.lecturer.user.fullName,
+							recipientType: 'lecturer',
+						},
+					},
+				);
+			}
+
+			// Send email to all group members
+			for (const member of groupMembers) {
+				if (member.student.user.email) {
+					const memberSubject =
+						actionType === 'assigned'
+							? `Thesis assigned to Group ${group.code}`
+							: actionType === 'picked'
+								? `Thesis selected for Group ${group.code}`
+								: `Thesis removed from Group ${group.code}`;
+
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_THESIS_ASSIGNMENT_NOTIFICATION,
+						{
+							to: member.student.user.email,
+							subject: memberSubject,
+							context: {
+								...baseContext,
+								recipientName: member.student.user.fullName,
+								recipientType: member.isLeader
+									? 'group_leader'
+									: 'group_member',
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Thesis ${actionType} notifications sent for group ${group.code} and thesis ${thesis.abbreviation}`,
+			);
+
+			return {
+				success: true,
+				message: `Email notifications sent successfully for thesis ${actionType}`,
+			};
+		} catch (error) {
+			this.logger.error(
+				`Failed to send thesis ${actionType} notification emails`,
+				error,
+			);
+			throw error;
 		}
 	}
 }
