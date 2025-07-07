@@ -92,9 +92,9 @@ export class RequestController {
 
 	@Roles(Role.STUDENT)
 	@ApiOperation({
-		summary: 'Approve or reject a request',
+		summary: 'Update request status (approve/reject/cancel)',
 		description:
-			'Updates the status of a request (approve/reject). For join requests, only group leaders can respond. For invite requests, only the invited student can respond. Approved requests automatically add the student to the group.',
+			'Updates the status of a request. For join requests: group leaders can approve/reject, students can cancel their own requests. For invite requests: invited students can approve/reject, group leaders can cancel their own invites. Approved requests automatically add the student to the group.',
 	})
 	@Put(':requestId/status')
 	async updateRequestStatus(
@@ -112,9 +112,9 @@ export class RequestController {
 
 	@Roles(Role.STUDENT)
 	@ApiOperation({
-		summary: 'Cancel a pending request',
+		summary: 'Cancel a pending request (legacy endpoint)',
 		description:
-			'Allows a student to cancel their own pending request. Only the student who originally sent the request can cancel it. Only pending requests can be cancelled.',
+			'Allows a student to cancel their own pending request. Only the student who originally sent the request can cancel it. Only pending requests can be cancelled. Note: This is a legacy endpoint - you can also use PUT /:requestId/status with status "cancelled".',
 	})
 	@Delete(':requestId')
 	async cancelRequest(
