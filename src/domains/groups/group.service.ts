@@ -20,6 +20,9 @@ import { EmailJobType } from '@/queue/email/enums/type.enum';
 
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 
+// Define a type alias for thesis assignment actions
+export type ThesisAssignmentActionType = 'assigned' | 'picked' | 'unpicked';
+
 @Injectable()
 export class GroupService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:group';
@@ -2580,7 +2583,7 @@ export class GroupService extends BaseCacheService {
 				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
 			);
 
-			// Clear relevant caches
+			// // Clear relevant caches
 			await this.clearGroupRelatedCaches(groupId, [leaderId]);
 
 			// Send email notifications
@@ -2608,7 +2611,7 @@ export class GroupService extends BaseCacheService {
 	async sendThesisAssignmentNotification(
 		groupId: string,
 		thesisId: string,
-		actionType: 'assigned' | 'picked' | 'unpicked',
+		actionType: ThesisAssignmentActionType,
 		assignDate?: string,
 	) {
 		try {
@@ -2739,7 +2742,7 @@ export class GroupService extends BaseCacheService {
 	 * Generate subject line for lecturer email
 	 */
 	private getLecturerEmailSubject(
-		actionType: 'assigned' | 'picked' | 'unpicked',
+		actionType: ThesisAssignmentActionType,
 		groupCode: string,
 	): string {
 		switch (actionType) {
@@ -2758,7 +2761,7 @@ export class GroupService extends BaseCacheService {
 	 * Generate subject line for member email
 	 */
 	private getMemberEmailSubject(
-		actionType: 'assigned' | 'picked' | 'unpicked',
+		actionType: ThesisAssignmentActionType,
 		groupCode: string,
 	): string {
 		switch (actionType) {
@@ -2779,7 +2782,7 @@ export class GroupService extends BaseCacheService {
 	private async sendLecturerNotification(
 		lecturer: any,
 		baseContext: any,
-		actionType: 'assigned' | 'picked' | 'unpicked',
+		actionType: ThesisAssignmentActionType,
 		groupCode: string,
 	): Promise<void> {
 		if (!lecturer.user.email) {
@@ -2808,7 +2811,7 @@ export class GroupService extends BaseCacheService {
 	private async sendMemberNotification(
 		member: any,
 		baseContext: any,
-		actionType: 'assigned' | 'picked' | 'unpicked',
+		actionType: ThesisAssignmentActionType,
 		groupCode: string,
 	): Promise<void> {
 		if (!member.student.user.email) {
@@ -2838,7 +2841,7 @@ export class GroupService extends BaseCacheService {
 		group: any,
 		thesis: any,
 		groupMembers: any[],
-		actionType: 'assigned' | 'picked' | 'unpicked',
+		actionType: ThesisAssignmentActionType,
 		assignDate?: string,
 	) {
 		const currentDate = new Date().toLocaleDateString();
