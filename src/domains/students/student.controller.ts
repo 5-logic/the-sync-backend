@@ -97,7 +97,7 @@ export class StudentController {
 	@ApiOperation({
 		summary: 'Update my profile',
 		description:
-			'Allow students to update their own profile information including full name, gender, and phone number. Students can only update their own profile (authenticated user). Cannot modify student code, email, or major - those require administrator access.',
+			'Allow students to update their own profile information including full name, gender, phone number, skills, and expected responsibilities. Students can only update their own profile (authenticated user). Cannot modify student code, email, or major - those require administrator access. Skills and responsibilities are completely replaced when provided (not merged).',
 	})
 	async update(@Req() req: Request, @Body() dto: SelfUpdateStudentDto) {
 		const user = req.user as UserPayload;
