@@ -153,6 +153,19 @@ export class GroupController {
 		return await this.groupService.removeStudent(id, dto.studentId, user.id);
 	}
 
+	@Roles(Role.STUDENT)
+	@Put(':id/leave')
+	@ApiOperation({
+		summary: 'Leave group',
+		description:
+			'Allow a student to leave their current group. Only allowed during the PREPARING semester status. If the student is the group leader, they must transfer leadership to another member before leaving. Cannot leave if the student is the only member of the group - the group must be deleted instead. Sends email notifications to remaining group members about the departure.',
+	})
+	async leaveGroup(@Req() req: Request, @Param('id') id: string) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.leaveGroup(id, user.id);
+	}
+
 	@Get(':id/members')
 	@ApiOperation({
 		summary: 'Get group members',
