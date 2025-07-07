@@ -168,6 +168,97 @@ export class RequestService extends BaseCacheService {
 		}
 	}
 
+	/**
+	 * Validates permissions for updating request status based on request type and action
+	 */
+	private async validateUpdatePermissions(
+		userId: string,
+		request: { type: RequestType; studentId: string; groupId: string },
+		status: RequestStatus,
+	) {
+		if (request.type === RequestType.Join) {
+			await this.validateJoinRequestPermissions(userId, request, status);
+		} else if (request.type === RequestType.Invite) {
+			await this.validateInviteRequestPermissions(userId, request, status);
+		}
+	}
+
+	/**
+	 * Validates permissions for join request updates
+	 */
+	private async validateJoinRequestPermissions(
+		userId: string,
+		request: { studentId: string; groupId: string },
+		status: RequestStatus,
+	) {
+		if (status === RequestStatus.Cancelled) {
+			// For join requests, only the student who sent it can cancel
+			if (userId !== request.studentId) {
+				throw new ForbiddenException(
+					`Only the student who sent the join request can cancel it`,
+				);
+			}
+		} else {
+			// For join requests, only group leader can approve/reject
+			await this.validateStudentIsGroupLeader(userId, request.groupId);
+		}
+	}
+
+	/**
+	 * Validates permissions for invite request updates
+	 */
+	private async validateInviteRequestPermissions(
+		userId: string,
+		request: { studentId: string; groupId: string },
+		status: RequestStatus,
+	) {
+		if (status === RequestStatus.Cancelled) {
+			// For invite requests, only group leader can cancel
+			await this.validateStudentIsGroupLeader(userId, request.groupId);
+		} else {
+			// For invite requests, only the invited student can approve/reject
+			if (userId !== request.studentId) {
+				throw new ForbiddenException(
+					`Only the invited student can respond to this invitation`,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Performs all validations required for request approval
+	 */
+	private async validateRequestApproval(request: {
+		studentId: string;
+		groupId: string;
+		group: { semesterId: string };
+	}) {
+		// Validate semester status
+		await this.validateSemesterStatus(request.group.semesterId);
+
+		// Validate student is not already in a group
+		await this.validateStudentNotInGroup(
+			request.studentId,
+			request.group.semesterId,
+		);
+
+		// Validate group capacity
+		await this.validateGroupCapacity(request.groupId);
+	}
+
+	/**
+	 * Clears all relevant caches after request status update
+	 */
+	private async clearRequestCaches(
+		requestId: string,
+		studentId: string,
+		groupId: string,
+	) {
+		await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
+		await this.clearCache(`${RequestService.CACHE_KEY}:student:${studentId}`);
+		await this.clearCache(`${RequestService.CACHE_KEY}:group:${groupId}`);
+	}
+
 	// API Methods
 
 	/**
@@ -556,45 +647,11 @@ export class RequestService extends BaseCacheService {
 			}
 
 			// Validate permissions based on request type and action
-			if (request.type === RequestType.Join) {
-				if (dto.status === RequestStatus.Cancelled) {
-					// For join requests, only the student who sent it can cancel
-					if (userId !== request.studentId) {
-						throw new ForbiddenException(
-							`Only the student who sent the join request can cancel it`,
-						);
-					}
-				} else {
-					// For join requests, only group leader can approve/reject
-					await this.validateStudentIsGroupLeader(userId, request.groupId);
-				}
-			} else if (request.type === RequestType.Invite) {
-				if (dto.status === RequestStatus.Cancelled) {
-					// For invite requests, only group leader can cancel
-					await this.validateStudentIsGroupLeader(userId, request.groupId);
-				} else {
-					// For invite requests, only the invited student can approve/reject
-					if (userId !== request.studentId) {
-						throw new ForbiddenException(
-							`Only the invited student can respond to this invitation`,
-						);
-					}
-				}
-			}
+			await this.validateUpdatePermissions(userId, request, dto.status);
 
 			// If approving, perform additional validations
 			if (dto.status === RequestStatus.Approved) {
-				// Validate semester status
-				await this.validateSemesterStatus(request.group.semesterId);
-
-				// Validate student is not already in a group
-				await this.validateStudentNotInGroup(
-					request.studentId,
-					request.group.semesterId,
-				);
-
-				// Validate group capacity
-				await this.validateGroupCapacity(request.groupId);
+				await this.validateRequestApproval(request);
 			}
 
 			// Update request and potentially add student to group
@@ -655,12 +712,10 @@ export class RequestService extends BaseCacheService {
 			);
 
 			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
-			await this.clearCache(
-				`${RequestService.CACHE_KEY}:student:${request.studentId}`,
-			);
-			await this.clearCache(
-				`${RequestService.CACHE_KEY}:group:${request.groupId}`,
+			await this.clearRequestCaches(
+				requestId,
+				request.studentId,
+				request.groupId,
 			);
 
 			// Send email notification about request status update
