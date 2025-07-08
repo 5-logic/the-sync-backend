@@ -36,18 +36,6 @@ export class GroupService extends BaseCacheService {
 		super(cacheManager, GroupService.name);
 	}
 
-	private async clearCacheWithPattern(pattern?: string): Promise<void> {
-		try {
-			if (pattern) {
-				await this.cacheManager.del(pattern);
-			} else {
-				this.logger.warn('Cache reset not implemented for current store');
-			}
-		} catch (error) {
-			this.logger.warn(`Cache clear error:`, error);
-		}
-	}
-
 	private async validateSkills(skillIds: string[]) {
 		if (!skillIds || skillIds.length === 0) return;
 
@@ -247,14 +235,11 @@ export class GroupService extends BaseCacheService {
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
 			);
 
-			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
-			await this.clearCacheWithPattern(`cache:student:${userId}:groups`);
-			await this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${result.id}:members`,
-			);
-			await this.clearCacheWithPattern(
+			// Clear only specific cache that might be affected
+			await this.clearMultipleCache([
+				`${GroupService.CACHE_KEY}:${result.id}`,
 				`${GroupService.CACHE_KEY}:${result.id}:skills-responsibilities`,
-			);
+			]);
 
 			const completeGroup = await this.findOne(result.id);
 			return completeGroup;
@@ -464,13 +449,8 @@ export class GroupService extends BaseCacheService {
 
 	async findAll() {
 		try {
-			const cacheKey = `${GroupService.CACHE_KEY}:all`;
-			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
-			if (cachedGroups) {
-				this.logger.log(`Found ${cachedGroups.length} groups (from cache)`);
-				return cachedGroups;
-			}
-
+			// Removed caching for findAll() to ensure real-time data
+			// Group data changes frequently and needs to be up-to-date
 			const groups = await this.prisma.group.findMany({
 				select: {
 					id: true,
@@ -500,8 +480,6 @@ export class GroupService extends BaseCacheService {
 				leader: group.studentGroupParticipations[0] ?? null,
 			}));
 
-			await this.setCachedData(cacheKey, transformedGroups);
-
 			this.logger.log(`Found ${transformedGroups.length} groups`);
 
 			return transformedGroups;
@@ -512,6 +490,7 @@ export class GroupService extends BaseCacheService {
 
 	async findOne(id: string) {
 		try {
+			// Use short TTL cache for individual group data since it changes frequently
 			const cacheKey = `${GroupService.CACHE_KEY}:${id}`;
 			const cachedGroup = await this.getCachedData<any>(cacheKey);
 			if (cachedGroup) {
@@ -570,7 +549,8 @@ export class GroupService extends BaseCacheService {
 						?.student ?? null,
 			};
 
-			await this.setCachedData(cacheKey, transformedGroup);
+			// Cache for 2 minutes only since group data changes frequently
+			await this.setCachedData(cacheKey, transformedGroup, 120000); // 2 minutes TTL
 
 			this.logger.log(`Group found with ID: ${transformedGroup.id}`);
 
@@ -934,16 +914,7 @@ export class GroupService extends BaseCacheService {
 		try {
 			this.logger.log(`Finding groups for student ID: ${studentId}`);
 
-			// Check cache first
-			const cacheKey = `cache:student:${studentId}:groups`;
-			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
-			if (cachedGroups) {
-				this.logger.log(
-					`Found ${cachedGroups.length} groups for student (from cache)`,
-				);
-				return cachedGroups;
-			}
-
+			// Removed caching for real-time data - student group participation changes frequently
 			// Find all groups where the student is a participant
 			const participations =
 				await this.prisma.studentGroupParticipation.findMany({
@@ -1016,9 +987,6 @@ export class GroupService extends BaseCacheService {
 				},
 			}));
 
-			// Cache the result
-			await this.setCachedData(cacheKey, groupsWithParticipation);
-
 			this.logger.log(
 				`Found ${groupsWithParticipation.length} groups for student ID: ${studentId}`,
 			);
@@ -1033,16 +1001,7 @@ export class GroupService extends BaseCacheService {
 		try {
 			this.logger.log(`Finding detailed groups for student ID: ${studentId}`);
 
-			// Check cache first
-			const cacheKey = `cache:student:${studentId}:detailed-groups`;
-			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
-			if (cachedGroups) {
-				this.logger.log(
-					`Found ${cachedGroups.length} detailed groups for student (from cache)`,
-				);
-				return cachedGroups;
-			}
-
+			// Removed caching for real-time data - student group participation changes frequently
 			// Find all groups where the student is a participant with detailed data
 			const participations =
 				await this.prisma.studentGroupParticipation.findMany({
@@ -1124,9 +1083,6 @@ export class GroupService extends BaseCacheService {
 				}),
 			);
 
-			// Cache the result
-			await this.setCachedData(cacheKey, detailedGroupsWithParticipation);
-
 			this.logger.log(
 				`Found ${detailedGroupsWithParticipation.length} detailed groups for student ID: ${studentId}`,
 			);
@@ -1141,16 +1097,7 @@ export class GroupService extends BaseCacheService {
 		try {
 			this.logger.log(`Finding members for group ID: ${groupId}`);
 
-			// Check cache first
-			const cacheKey = `${GroupService.CACHE_KEY}:${groupId}:members`;
-			const cachedMembers = await this.getCachedData<any[]>(cacheKey);
-			if (cachedMembers) {
-				this.logger.log(
-					`Found ${cachedMembers.length} members for group (from cache)`,
-				);
-				return cachedMembers;
-			}
-
+			// Removed caching for real-time data - group membership changes frequently
 			const members = await this.prisma.studentGroupParticipation.findMany({
 				where: {
 					groupId: groupId,
@@ -1232,9 +1179,6 @@ export class GroupService extends BaseCacheService {
 				),
 			}));
 
-			// Cache the result
-			await this.setCachedData(cacheKey, transformedMembers);
-
 			this.logger.log(
 				`Found ${transformedMembers.length} members for group ID: ${groupId}`,
 			);
@@ -1251,7 +1195,7 @@ export class GroupService extends BaseCacheService {
 				`Finding skills and responsibilities for group ID: ${groupId}`,
 			);
 
-			// Check cache first
+			// Keep cache for skills/responsibilities as they change less frequently
 			const cacheKey = `${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`;
 			const cached = await this.getCachedData<any>(cacheKey);
 			if (cached) {
@@ -1295,8 +1239,8 @@ export class GroupService extends BaseCacheService {
 				responsibilities: groupResponsibilities.map((gr) => gr.responsibility),
 			};
 
-			// Cache the result
-			await this.setCachedData(cacheKey, result);
+			// Cache for 5 minutes since skills/responsibilities change less frequently
+			await this.setCachedData(cacheKey, result, 300000); // 5 minutes TTL
 
 			this.logger.log(
 				`Found ${result.skills.length} skills and ${result.responsibilities.length} responsibilities for group ID: ${groupId}`,
@@ -2865,43 +2809,38 @@ export class GroupService extends BaseCacheService {
 	}
 
 	/**
-	 * Clear multiple cache patterns related to group operations
+	 * Clear cache patterns related to group operations
+	 * Only clear essential caches to avoid over-clearing
 	 */
 	private async clearGroupRelatedCaches(
 		groupId: string,
 		studentIds?: string[],
-		clearAll = true,
+		clearAll = false, // Changed default to false
 	): Promise<void> {
-		const cachePromises: Promise<void>[] = [];
+		const keysToDelete: string[] = [];
 
+		// Only clear all groups cache if explicitly requested
 		if (clearAll) {
-			cachePromises.push(
-				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
-			);
+			keysToDelete.push(`${GroupService.CACHE_KEY}:all`);
 		}
 
-		cachePromises.push(
-			this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
-			this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${groupId}:members`,
-			),
-			this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`,
-			),
+		// Clear specific group caches
+		keysToDelete.push(
+			`${GroupService.CACHE_KEY}:${groupId}`,
+			`${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`,
 		);
 
+		// Clear student-specific caches only if student IDs are provided
 		if (studentIds?.length) {
 			for (const studentId of studentIds) {
-				cachePromises.push(
-					this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
-					this.clearCacheWithPattern(
-						`cache:student:${studentId}:detailed-groups`,
-					),
+				keysToDelete.push(
+					`cache:student:${studentId}:groups`,
+					`cache:student:${studentId}:detailed-groups`,
 				);
 			}
 		}
 
-		await Promise.all(cachePromises);
+		await this.clearMultipleCache(keysToDelete);
 	}
 
 	/**
