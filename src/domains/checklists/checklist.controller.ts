@@ -17,34 +17,34 @@ import { SwaggerDoc } from '@/common/docs';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
-@ApiTags('Checklists')
+@ApiTags('Checklist')
 @Controller('checklists')
 export class ChecklistController {
 	constructor(private readonly ChecklistService: ChecklistService) {}
 
 	@Roles(Role.LECTURER)
-	@SwaggerDoc('checklists', 'create')
+	@SwaggerDoc('checklist', 'create')
 	@Post()
 	create(@Body() createChecklistDto: CreateChecklistDto) {
 		return this.ChecklistService.create(createChecklistDto);
 	}
 
 	@Roles(Role.LECTURER, Role.STUDENT)
-	@SwaggerDoc('checklists', 'findAll')
+	@SwaggerDoc('checklist', 'findAll')
 	@Get()
 	findAll() {
 		return this.ChecklistService.findAll();
 	}
 
 	@Roles(Role.LECTURER, Role.STUDENT)
-	@SwaggerDoc('checklists', 'findOne')
+	@SwaggerDoc('checklist', 'findOne')
 	@Get(':id')
 	findOne(@Param('id') id: string) {
 		return this.ChecklistService.findOne(id);
 	}
 
 	@Roles(Role.LECTURER)
-	@SwaggerDoc('checklists', 'update')
+	@SwaggerDoc('checklist', 'update')
 	@Put(':id')
 	update(
 		@Param('id') id: string,
@@ -54,14 +54,14 @@ export class ChecklistController {
 	}
 
 	@Roles(Role.LECTURER)
-	@SwaggerDoc('checklists', 'remove')
+	@SwaggerDoc('checklist', 'remove')
 	@Delete(':id')
 	remove(@Param('id') id: string) {
 		return this.ChecklistService.remove(id);
 	}
 
 	@Roles(Role.LECTURER, Role.STUDENT)
-	@SwaggerDoc('checklists', 'findByMilestone')
+	@SwaggerDoc('checklist', 'findByMilestone')
 	@Get('milestone/:milestoneId')
 	findByMilestone(@Param('milestoneId') milestoneId: string) {
 		return this.ChecklistService.findByMilestone(milestoneId);
