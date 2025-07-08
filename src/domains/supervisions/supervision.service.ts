@@ -161,14 +161,10 @@ export class SupervisionService extends BaseCacheService {
 				`Successfully assigned supervision for thesis ${thesisId} to lecturer ${dto.lecturerId}`,
 			);
 
-			// Clear relevant caches
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:thesis:${thesisId}`,
+			// No cache to clear since we don't cache list operations
+			this.logger.debug(
+				'No cache invalidation needed for supervision assignment',
 			);
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:lecturer:${dto.lecturerId}`,
-			);
-			this.logger.debug('Cache invalidated for supervision assignment');
 
 			await this.sendSupervisionNotificationEmail(
 				supervision.lecturer.user.email,
@@ -259,17 +255,8 @@ export class SupervisionService extends BaseCacheService {
 				`Successfully updated supervision for thesis ${thesisId} from lecturer ${dto.currentSupervisorId} to lecturer ${dto.newSupervisorId}`,
 			);
 
-			// Clear relevant caches
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:thesis:${thesisId}`,
-			);
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:lecturer:${dto.currentSupervisorId}`,
-			);
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:lecturer:${dto.newSupervisorId}`,
-			);
-			this.logger.debug('Cache invalidated for supervision change');
+			// No cache to clear since we don't cache list operations
+			this.logger.debug('No cache invalidation needed for supervision change');
 
 			const oldLecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: dto.currentSupervisorId },
@@ -370,14 +357,8 @@ export class SupervisionService extends BaseCacheService {
 				`Successfully removed supervision for thesis ${thesisId} from lecturer ${lecturerId}`,
 			);
 
-			// Clear relevant caches
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:thesis:${thesisId}`,
-			);
-			await this.clearCache(
-				`${SupervisionService.CACHE_KEY}:lecturer:${lecturerId}`,
-			);
-			this.logger.debug('Cache invalidated for supervision removal');
+			// No cache to clear since we don't cache list operations
+			this.logger.debug('No cache invalidation needed for supervision removal');
 
 			if (supervisionToDelete) {
 				await this.sendSupervisionNotificationEmail(
@@ -405,20 +386,11 @@ export class SupervisionService extends BaseCacheService {
 		try {
 			this.logger.log(`Getting supervisions for thesis ${thesisId}`);
 
-			const cacheKey = `${SupervisionService.CACHE_KEY}:thesis:${thesisId}`;
-			const cachedData = await this.getCachedData(cacheKey);
-
-			if (cachedData) {
-				this.logger.log(`Found cached supervisions for thesis ${thesisId}`);
-				return cachedData;
-			}
-
+			// No cache for list operations to ensure real-time data
 			const supervisions = await this.prisma.supervision.groupBy({
 				where: { thesisId },
 				by: ['lecturerId'],
 			});
-
-			await this.setCachedData(cacheKey, supervisions);
 
 			this.logger.log(
 				`Found ${supervisions.length} supervisions for thesis ${thesisId}`,
@@ -438,20 +410,11 @@ export class SupervisionService extends BaseCacheService {
 		try {
 			this.logger.log(`Getting supervisions for lecturer ${lecturerId}`);
 
-			const cacheKey = `${SupervisionService.CACHE_KEY}:lecturer:${lecturerId}`;
-			const cachedData = await this.getCachedData(cacheKey);
-
-			if (cachedData) {
-				this.logger.log(`Found cached supervisions for lecturer ${lecturerId}`);
-				return cachedData;
-			}
-
+			// No cache for list operations to ensure real-time data
 			const supervisions = await this.prisma.supervision.groupBy({
 				where: { lecturerId },
 				by: ['thesisId'],
 			});
-
-			await this.setCachedData(cacheKey, supervisions);
 
 			this.logger.log(
 				`Found ${supervisions.length} supervisions for lecturer ${lecturerId}`,
