@@ -250,9 +250,12 @@ export class RequestService extends BaseCacheService {
 		studentId: string,
 		groupId: string,
 	) {
-		await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
-		await this.clearCache(`${RequestService.CACHE_KEY}:student:${studentId}`);
-		await this.clearCache(`${RequestService.CACHE_KEY}:group:${groupId}`);
+		const cacheKeys = [
+			`${RequestService.CACHE_KEY}:${requestId}`,
+			`${RequestService.CACHE_KEY}:student:${studentId}`,
+			`${RequestService.CACHE_KEY}:group:${groupId}`,
+		];
+		await this.clearMultipleCache(cacheKeys);
 	}
 
 	// API Methods
@@ -325,8 +328,11 @@ export class RequestService extends BaseCacheService {
 			);
 
 			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:student:${userId}`);
-			await this.clearCache(`${RequestService.CACHE_KEY}:group:${dto.groupId}`);
+			const cacheKeys = [
+				`${RequestService.CACHE_KEY}:student:${userId}`,
+				`${RequestService.CACHE_KEY}:group:${dto.groupId}`,
+			];
+			await this.clearMultipleCache(cacheKeys);
 
 			// Send email notification to group leader
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
@@ -449,13 +455,13 @@ export class RequestService extends BaseCacheService {
 			);
 
 			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:group:${groupId}`);
-			// Clear cache for all invited students
-			await Promise.all(
-				dto.studentIds.map((studentId) =>
-					this.clearCache(`${RequestService.CACHE_KEY}:student:${studentId}`),
+			const cacheKeys = [
+				`${RequestService.CACHE_KEY}:group:${groupId}`,
+				...dto.studentIds.map(
+					(studentId) => `${RequestService.CACHE_KEY}:student:${studentId}`,
 				),
-			);
+			];
+			await this.clearMultipleCache(cacheKeys);
 
 			// Get group leader info for email notifications
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
@@ -490,20 +496,11 @@ export class RequestService extends BaseCacheService {
 
 	/**
 	 * Get all requests for a student (both sent and received)
+	 * No caching for real-time updates
 	 */
 	async getStudentRequests(userId: string) {
 		try {
 			this.logger.log(`Fetching requests for student: ${userId}`);
-
-			// Check cache first
-			const cacheKey = `${RequestService.CACHE_KEY}:student:${userId}`;
-			const cachedRequests = await this.getCachedData<any[]>(cacheKey);
-			if (cachedRequests) {
-				this.logger.log(
-					`Found ${cachedRequests.length} requests for student (from cache)`,
-				);
-				return cachedRequests;
-			}
 
 			const requests = await this.prisma.request.findMany({
 				where: {
@@ -539,9 +536,6 @@ export class RequestService extends BaseCacheService {
 				orderBy: { createdAt: 'desc' },
 			});
 
-			// Cache the result
-			await this.setCachedData(cacheKey, requests);
-
 			this.logger.log(
 				`Found ${requests.length} requests for student ${userId}`,
 			);
@@ -554,6 +548,7 @@ export class RequestService extends BaseCacheService {
 
 	/**
 	 * Get all requests for a group (only accessible by group leader)
+	 * No caching for real-time updates
 	 */
 	async getGroupRequests(userId: string, groupId: string) {
 		try {
@@ -561,16 +556,6 @@ export class RequestService extends BaseCacheService {
 
 			// Validate user is group leader
 			await this.validateStudentIsGroupLeader(userId, groupId);
-
-			// Check cache first
-			const cacheKey = `${RequestService.CACHE_KEY}:group:${groupId}`;
-			const cachedRequests = await this.getCachedData<any[]>(cacheKey);
-			if (cachedRequests) {
-				this.logger.log(
-					`Found ${cachedRequests.length} requests for group (from cache)`,
-				);
-				return cachedRequests;
-			}
 
 			const requests = await this.prisma.request.findMany({
 				where: {
@@ -598,9 +583,6 @@ export class RequestService extends BaseCacheService {
 				},
 				orderBy: { createdAt: 'desc' },
 			});
-
-			// Cache the result
-			await this.setCachedData(cacheKey, requests);
 
 			this.logger.log(`Found ${requests.length} requests for group ${groupId}`);
 			return requests;
@@ -775,11 +757,12 @@ export class RequestService extends BaseCacheService {
 			});
 
 			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
-			await this.clearCache(`${RequestService.CACHE_KEY}:student:${userId}`);
-			await this.clearCache(
+			const cacheKeys = [
+				`${RequestService.CACHE_KEY}:${requestId}`,
+				`${RequestService.CACHE_KEY}:student:${userId}`,
 				`${RequestService.CACHE_KEY}:group:${request.groupId}`,
-			);
+			];
+			await this.clearMultipleCache(cacheKeys);
 
 			this.logger.log(`Request ${requestId} cancelled by student ${userId}`);
 			return cancelledRequest;
@@ -791,6 +774,7 @@ export class RequestService extends BaseCacheService {
 
 	/**
 	 * Get a specific request by ID
+	 * Cache individual requests with TTL for performance
 	 */
 	async findOne(userId: string, requestId: string) {
 		try {
@@ -875,8 +859,8 @@ export class RequestService extends BaseCacheService {
 				);
 			}
 
-			// Cache the result
-			await this.setCachedData(cacheKey, request);
+			// Cache the result with 5 minutes TTL
+			await this.setCachedData(cacheKey, request, 300000);
 
 			this.logger.log(`Request found with ID: ${requestId}`);
 			return request;
