@@ -1,6 +1,6 @@
 import { ApiOperationOptions } from '@nestjs/swagger';
 
-export const ChecklistsDocs: Record<string, ApiOperationOptions> = {
+export const ChecklistDocs: Record<string, ApiOperationOptions> = {
 	create: {
 		summary: 'Create a new checklist',
 		description:
