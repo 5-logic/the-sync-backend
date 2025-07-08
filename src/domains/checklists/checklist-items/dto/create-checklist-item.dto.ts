@@ -1,13 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-	IsBoolean,
-	IsEnum,
-	IsOptional,
-	IsString,
-	IsUUID,
-} from 'class-validator';
-
-import { ChecklistReviewAcceptance } from '~/generated/prisma';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class CreateChecklistItemDto {
 	@ApiProperty()
@@ -21,15 +13,6 @@ export class CreateChecklistItemDto {
 
 	@ApiPropertyOptional()
 	@IsOptional()
-	@IsEnum(ChecklistReviewAcceptance)
-	acceptance?: ChecklistReviewAcceptance;
-
-	@ApiPropertyOptional()
-	@IsOptional()
 	@IsBoolean()
 	isRequired?: boolean;
-
-	@ApiProperty()
-	@IsUUID()
-	checklistId: string;
 }
