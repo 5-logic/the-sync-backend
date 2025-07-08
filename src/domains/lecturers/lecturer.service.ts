@@ -101,8 +101,8 @@ export class LecturerService extends BaseCacheService {
 				500,
 			);
 
-			// Clear cache after successful creation using optimized invalidation
-			await this.invalidateEntityCache(LecturerService.CACHE_KEY, 'new');
+			// Clear specific cache after successful creation
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
@@ -119,36 +119,30 @@ export class LecturerService extends BaseCacheService {
 		this.logger.log('Fetching all lecturers');
 
 		try {
-			// Use cache-aside pattern
-			const cacheKey = `${LecturerService.CACHE_KEY}:all`;
-
-			return await this.getWithCacheAside(cacheKey, async () => {
-				const lecturers = await this.prisma.lecturer.findMany({
-					include: {
-						user: {
-							omit: {
-								password: true,
-							},
+			// Removed caching for real-time data - lecturer list may need frequent updates
+			const lecturers = await this.prisma.lecturer.findMany({
+				include: {
+					user: {
+						omit: {
+							password: true,
 						},
 					},
-					orderBy: {
-						user: {
-							createdAt: 'desc',
-						},
+				},
+				orderBy: {
+					user: {
+						createdAt: 'desc',
 					},
-				});
-
-				// Transform data
-				const formattedLecturers = lecturers.map((lecturer) => ({
-					...lecturer.user,
-					isModerator: lecturer.isModerator,
-				}));
-
-				this.logger.log(
-					`Found ${formattedLecturers.length} lecturers (from DB)`,
-				);
-				return formattedLecturers;
+				},
 			});
+
+			// Transform data
+			const formattedLecturers = lecturers.map((lecturer) => ({
+				...lecturer.user,
+				isModerator: lecturer.isModerator,
+			}));
+
+			this.logger.log(`Found ${formattedLecturers.length} lecturers`);
+			return formattedLecturers;
 		} catch (error) {
 			this.logger.error('Error fetching lecturers', error);
 			throw error;
@@ -159,34 +153,38 @@ export class LecturerService extends BaseCacheService {
 		this.logger.log(`Fetching lecturer with ID: ${id}`);
 
 		try {
-			// Use cache-aside pattern
+			// Use cache-aside pattern with short TTL for individual lecturer data
 			const cacheKey = `${LecturerService.CACHE_KEY}:${id}`;
 
-			return await this.getWithCacheAside(cacheKey, async () => {
-				const lecturer = await this.prisma.lecturer.findUnique({
-					where: { userId: id },
-					include: {
-						user: {
-							omit: {
-								password: true,
+			return await this.getWithCacheAside(
+				cacheKey,
+				async () => {
+					const lecturer = await this.prisma.lecturer.findUnique({
+						where: { userId: id },
+						include: {
+							user: {
+								omit: {
+									password: true,
+								},
 							},
 						},
-					},
-				});
+					});
 
-				if (!lecturer) {
-					this.logger.warn(`Lecturer with ID ${id} not found`);
-					throw new NotFoundException(`Lecturer not found`);
-				}
+					if (!lecturer) {
+						this.logger.warn(`Lecturer with ID ${id} not found`);
+						throw new NotFoundException(`Lecturer not found`);
+					}
 
-				const result = {
-					...lecturer.user,
-					isModerator: lecturer.isModerator,
-				};
+					const result = {
+						...lecturer.user,
+						isModerator: lecturer.isModerator,
+					};
 
-				this.logger.log(`Lecturer found with ID: ${id} (from DB)`);
-				return result;
-			});
+					this.logger.log(`Lecturer found with ID: ${id} (from DB)`);
+					return result;
+				},
+				300000, // 5 minutes TTL for individual lecturer data
+			);
 		} catch (error) {
 			this.logger.error(`Error fetching lecturer with ID ${id}`, error);
 			throw error;
@@ -224,8 +222,8 @@ export class LecturerService extends BaseCacheService {
 				};
 			});
 
-			// Clear cache after successful update using optimized invalidation
-			await this.invalidateEntityCache(LecturerService.CACHE_KEY, result.id);
+			// Clear specific cache after successful update
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -275,8 +273,8 @@ export class LecturerService extends BaseCacheService {
 				};
 			});
 
-			// Clear cache after successful admin update using optimized invalidation
-			await this.invalidateEntityCache(LecturerService.CACHE_KEY, result.id);
+			// Clear specific cache after successful admin update
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -374,8 +372,11 @@ export class LecturerService extends BaseCacheService {
 				);
 			}
 
-			// Clear cache after successful batch creation using optimized invalidation
-			await this.invalidateEntityCache(LecturerService.CACHE_KEY, 'batch');
+			// Clear cache after successful batch creation
+			const cacheKeys = results.map(
+				(lecturer) => `${LecturerService.CACHE_KEY}:${lecturer.id}`,
+			);
+			await this.clearMultipleCache(cacheKeys);
 
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
@@ -432,8 +433,8 @@ export class LecturerService extends BaseCacheService {
 				};
 			});
 
-			// Clear cache after successful status update using optimized invalidation
-			await this.invalidateEntityCache(LecturerService.CACHE_KEY, id);
+			// Clear specific cache after successful status update
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${id}`);
 
 			this.logger.log(
 				`Lecturer status updated - ID: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
@@ -527,8 +528,8 @@ export class LecturerService extends BaseCacheService {
 				return { ...deletedUser, isModerator: deletedLecturer.isModerator };
 			});
 
-			// Clear cache after successful deletion using optimized invalidation
-			await this.invalidateEntityCache(LecturerService.CACHE_KEY, id);
+			// Clear specific cache after successful deletion
+			await this.clearCache(`${LecturerService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {
