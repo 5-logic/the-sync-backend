@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2025-07-08
+
+### Added
+
+- **Checklist Items Management System**:
+  - `POST /checklist-items/create-list` - New endpoint for moderators to create multiple checklist items (requires `CreateManyChecklistItemsDto` with `checklistId` and array of `checklistItems`)
+  - `GET /checklist-items` - New endpoint for lecturers and moderators to view all checklist items with optional `checklistId` query parameter
+  - `GET /checklist-items/:id` - New endpoint for lecturers and moderators to view specific checklist item details
+  - `DELETE /checklist-items/:id` - New endpoint for moderators to remove checklist items
+  - `GET /checklist-items/checklist/:checklistId` - New endpoint for lecturers and moderators to view all items for a specific checklist
+  - `PUT /checklist-items/checklist/:checklistId/update-list` - New endpoint for moderators to bulk update checklist items (requires `UpdateManyChecklistItemsDto`)
+  - `CreateChecklistItemDto` - New DTO for individual checklist item creation with `name`, optional `description`, and optional `isRequired` boolean
+  - `CreateManyChecklistItemsDto` - New DTO for bulk checklist item creation with `checklistId` and array of checklist items
+  - `UpdateManyChecklistItemsDto` - New DTO for bulk checklist item updates
+
+- **Checklist Management API Restructuring**:
+  - Restructured checklist endpoints from `/checklists` to maintain same paths but with enhanced role-based access
+  - `GET /checklists/milestone/:milestoneId` - Enhanced endpoint for lecturers and moderators to view checklists by milestone
+
+### Changed
+
+- **Architecture Refactoring**:
+  - **Module Separation**: Split checklist functionality into separate `ChecklistModule` and `ChecklistItemModule` for better organization
+  - **Controller Restructuring**: Renamed `ChecklistsController` to `ChecklistController` and separated checklist item operations into dedicated `ChecklistItemController`
+  - **Service Architecture**: Renamed `ChecklistsService` to `ChecklistService` and created dedicated `ChecklistItemService` for item-specific operations
+
+- **Role Permission Updates**:
+  - **Checklist Operations**: Updated checklist creation and management permissions from `LECTURER` to `MODERATOR` only
+  - **Checklist Item Operations**: All checklist item creation, updates, and deletion operations restricted to `MODERATOR` role
+  - **View Permissions**: Lecturers and moderators can view checklists and checklist items, students no longer have direct access
+
+- **Cache Management Optimization**:
+  - **Streamlined Cache Clearing**: Removed generic cache pattern clearing methods (`clearCacheWithPattern`) across all services
+  - **Targeted Cache Management**: Implemented more efficient cache clearing strategies that only invalidate specific affected cache entries
+  - **Performance Enhancement**: Optimized cache management in `GroupService`, `LecturerService`, `MilestoneService`, `RequestService`, `SemesterService`, `StudentService`, `SupervisionService`, and `ThesisService`
+  - **Real-time Data Accuracy**: Enhanced cache invalidation to ensure more accurate real-time data retrieval
+
+- **API Documentation Enhancement**:
+  - **Comprehensive Documentation**: Enhanced Swagger documentation across all endpoints with detailed access requirements
+  - **Role-based Documentation**: Added clear documentation about which roles can access specific endpoints
+  - **Enhanced Descriptions**: Improved API operation descriptions for better developer experience across admin, auth, checklist, group, lecturer, major, milestone, request, responsibility, semester, skill-set, student, supervision, and thesis operations
+
+- **DTO Simplification**:
+  - **CreateChecklistDto**: Simplified API property documentation by removing verbose descriptions while maintaining validation
+  - **Cleaner Documentation**: Streamlined DTO documentation for better readability
+
+### Fixed
+
+- **Import Path Standardization**: Corrected import paths for checklist documentation and export names
+- **SwaggerDoc Tag Consistency**: Standardized SwaggerDoc tags for checklist endpoints to ensure consistent API documentation
+- **Module Integration**: Fixed import name for checklist module in domain module configuration
+
+### Enhanced
+
+- **TypeScript Configuration**: Added path mapping for checklist items (`@/checklists/checklist-items/*`) in `tsconfig.json` for improved module resolution
+- **Domain Module Structure**: Enhanced `DomainModule` to include both `ChecklistModule` and `ChecklistItemModule` for comprehensive checklist management
+- **Service Error Handling**: Improved error handling and validation in checklist item operations with enhanced logging
+- **Bulk Operations**: Added support for efficient bulk creation and updating of checklist items with proper validation
+
+### Technical Improvements
+
+- **Code Organization**: Better separation of concerns between checklist and checklist item management
+- **Validation Enhancement**: Improved validation for checklist item operations with proper UUID and nested object validation
+- **Service Architecture**: Enhanced service structure with dedicated functionality for checklist items separate from general checklist operations
+- **Performance Optimization**: Reduced unnecessary cache operations for better application performance
+
+### Pull Requests
+
+- [#185](https://github.com/5-logic/the-sync-backend/pull/185) - Merge dev branch for v0.6.4 release
+- [#184](https://github.com/5-logic/the-sync-backend/pull/184) - Checklist items management system and architecture refactoring (task-146)
+
 ## [0.6.3] - 2025-07-07
 
 ### Added
