@@ -4,12 +4,12 @@ export const ResponsibilityDocs = {
 	findAll: {
 		summary: 'Get all responsibilities',
 		description:
-			'Retrieve all responsibility definitions available in the system. Responsibilities define the expected roles and duties that group members should fulfill during project work.',
+			'Retrieve all responsibility definitions available in the system. Responsibilities define the expected roles and duties that group members should fulfill during project work. **Authenticated users only.**',
 	} as ApiOperationOptions,
 
 	findOne: {
 		summary: 'Get responsibility by ID',
 		description:
-			'Retrieve detailed information about a specific responsibility by its unique identifier. Returns comprehensive responsibility definition including name and description.',
+			'Retrieve detailed information about a specific responsibility by its unique identifier. Returns comprehensive responsibility definition including name and description. **Authenticated users only.**',
 	} as ApiOperationOptions,
 };
