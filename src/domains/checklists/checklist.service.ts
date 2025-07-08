@@ -9,8 +9,8 @@ import { CreateChecklistDto, UpdateChecklistDto } from '@/checklists/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
-export class ChecklistsService {
-	private readonly logger = new Logger(ChecklistsService.name);
+export class ChecklistService {
+	private readonly logger = new Logger(ChecklistService.name);
 
 	constructor(private readonly prisma: PrismaService) {}
 

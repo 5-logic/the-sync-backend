@@ -1,9 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
-export class CreateChecklistDto {
+export class CreateChecklistItemDto {
 	@ApiProperty()
-	@IsNotEmpty()
 	@IsString()
 	name: string;
 
@@ -14,6 +13,6 @@ export class CreateChecklistDto {
 
 	@ApiPropertyOptional()
 	@IsOptional()
-	@IsUUID()
-	milestoneId?: string;
+	@IsBoolean()
+	isRequired?: boolean;
 }

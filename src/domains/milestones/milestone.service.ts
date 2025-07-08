@@ -134,8 +134,7 @@ export class MilestoneService extends BaseCacheService {
 				},
 			});
 
-			// Clear cache after successful creation
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:all`);
+			// No need to clear cache since findAll() doesn't use cache anymore
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
 			this.logger.debug('Milestone detail', milestone);
@@ -152,22 +151,11 @@ export class MilestoneService extends BaseCacheService {
 		try {
 			this.logger.log('Fetching all milestones');
 
-			// Check cache first
-			const cacheKey = `${MilestoneService.CACHE_KEY}:all`;
-			const cachedMilestones = await this.getCachedData<any[]>(cacheKey);
-			if (cachedMilestones) {
-				this.logger.log(
-					`Found ${cachedMilestones.length} milestones (from cache)`,
-				);
-				return cachedMilestones;
-			}
-
+			// Removed caching for real-time data - milestone data may need frequent updates
+			// Milestones are critical schedule information that needs to be up-to-date
 			const milestones = await this.prisma.milestone.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
-
-			// Cache the result
-			await this.setCachedData(cacheKey, milestones);
 
 			this.logger.log(`Found ${milestones.length} milestones`);
 			this.logger.debug('Milestones detail', milestones);
@@ -184,7 +172,7 @@ export class MilestoneService extends BaseCacheService {
 		try {
 			this.logger.log(`Fetching milestone with ID: ${id}`);
 
-			// Check cache first
+			// Use cache with short TTL for individual milestone data
 			const cacheKey = `${MilestoneService.CACHE_KEY}:${id}`;
 			const cachedMilestone = await this.getCachedData<any>(cacheKey);
 			if (cachedMilestone) {
@@ -198,8 +186,8 @@ export class MilestoneService extends BaseCacheService {
 				throw new NotFoundException(`Milestone not found`);
 			}
 
-			// Cache the result
-			await this.setCachedData(cacheKey, milestone);
+			// Cache with 10 minutes TTL since milestones don't change very frequently
+			await this.setCachedData(cacheKey, milestone, 600000); // 10 minutes TTL
 
 			this.logger.log(`Milestone found with ID: ${id}`);
 			this.logger.debug('Milestone detail', milestone);
@@ -283,8 +271,7 @@ export class MilestoneService extends BaseCacheService {
 				},
 			});
 
-			// Clear cache after successful update
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:all`);
+			// Clear only specific milestone cache since findAll() doesn't use cache anymore
 			await this.clearCache(`${MilestoneService.CACHE_KEY}:${id}`);
 
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);
@@ -321,8 +308,7 @@ export class MilestoneService extends BaseCacheService {
 				where: { id },
 			});
 
-			// Clear cache after successful deletion
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:all`);
+			// Clear only specific milestone cache since findAll() doesn't use cache anymore
 			await this.clearCache(`${MilestoneService.CACHE_KEY}:${id}`);
 
 			this.logger.log(`Milestone deleted with ID: ${deleted.id}`);
