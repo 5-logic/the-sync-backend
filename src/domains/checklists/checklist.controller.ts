@@ -22,48 +22,48 @@ import { SwaggerDoc } from '@/common/docs';
 export class ChecklistController {
 	constructor(private readonly ChecklistService: ChecklistService) {}
 
-	@Roles(Role.LECTURER)
+	@Roles(Role.MODERATOR)
 	@SwaggerDoc('checklist', 'create')
 	@Post()
-	create(@Body() createChecklistDto: CreateChecklistDto) {
-		return this.ChecklistService.create(createChecklistDto);
+	async create(@Body() createChecklistDto: CreateChecklistDto) {
+		return await this.ChecklistService.create(createChecklistDto);
 	}
 
-	@Roles(Role.LECTURER, Role.STUDENT)
+	@Roles(Role.LECTURER, Role.MODERATOR)
 	@SwaggerDoc('checklist', 'findAll')
 	@Get()
-	findAll() {
-		return this.ChecklistService.findAll();
+	async findAll() {
+		return await this.ChecklistService.findAll();
 	}
 
-	@Roles(Role.LECTURER, Role.STUDENT)
+	@Roles(Role.LECTURER, Role.MODERATOR)
 	@SwaggerDoc('checklist', 'findOne')
 	@Get(':id')
-	findOne(@Param('id') id: string) {
-		return this.ChecklistService.findOne(id);
+	async findOne(@Param('id') id: string) {
+		return await this.ChecklistService.findOne(id);
 	}
 
-	@Roles(Role.LECTURER)
+	@Roles(Role.MODERATOR)
 	@SwaggerDoc('checklist', 'update')
 	@Put(':id')
-	update(
+	async update(
 		@Param('id') id: string,
 		@Body() updateChecklistDto: UpdateChecklistDto,
 	) {
-		return this.ChecklistService.update(id, updateChecklistDto);
+		return await this.ChecklistService.update(id, updateChecklistDto);
 	}
 
-	@Roles(Role.LECTURER)
+	@Roles(Role.MODERATOR)
 	@SwaggerDoc('checklist', 'remove')
 	@Delete(':id')
-	remove(@Param('id') id: string) {
-		return this.ChecklistService.remove(id);
+	async remove(@Param('id') id: string) {
+		return await this.ChecklistService.remove(id);
 	}
 
-	@Roles(Role.LECTURER, Role.STUDENT)
+	@Roles(Role.LECTURER, Role.MODERATOR)
 	@SwaggerDoc('checklist', 'findByMilestone')
 	@Get('milestone/:milestoneId')
-	findByMilestone(@Param('milestoneId') milestoneId: string) {
-		return this.ChecklistService.findByMilestone(milestoneId);
+	async findByMilestone(@Param('milestoneId') milestoneId: string) {
+		return await this.ChecklistService.findByMilestone(milestoneId);
 	}
 }
