@@ -1,6 +1,7 @@
 import { AdminDocs } from '@/common/docs/admin.docs';
 import { AuthDocs } from '@/common/docs/auth.docs';
-import { ChecklistsDocs } from '@/common/docs/checklists.docs';
+import { ChecklistItemDocs } from '@/common/docs/checklist-item.docs';
+import { ChecklistDocs } from '@/common/docs/checklist.docs';
 import { GroupDocs } from '@/common/docs/group.docs';
 import { LecturerDocs } from '@/common/docs/lecturer.docs';
 import { MajorDocs } from '@/common/docs/major.docs';
@@ -16,7 +17,8 @@ import { ThesisDocs } from '@/common/docs/thesis.docs';
 export {
 	AdminDocs,
 	AuthDocs,
-	ChecklistsDocs,
+	ChecklistItemDocs,
+	ChecklistDocs,
 	GroupDocs,
 	LecturerDocs,
 	MajorDocs,
@@ -33,7 +35,8 @@ export {
 export const DOCS_MAP = {
 	admin: AdminDocs,
 	auth: AuthDocs,
-	checklists: ChecklistsDocs,
+	checklistItem: ChecklistItemDocs,
+	checklist: ChecklistDocs,
 	group: GroupDocs,
 	lecturer: LecturerDocs,
 	major: MajorDocs,
@@ -49,5 +52,4 @@ export const DOCS_MAP = {
 
 export type DocsModules = keyof typeof DOCS_MAP;
 
-// Export SwaggerDoc decorator
-export { SwaggerDoc } from './swagger-docs.decorator';
+export { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
