@@ -85,8 +85,8 @@ export class SemesterService extends BaseCacheService {
 			);
 			this.logger.debug('New semester details', newSemester);
 
-			// Clear cache after creating new semester
-			await this.clearCache(`${SemesterService.CACHE_KEY}:all`);
+			// Clear cache after creating new semester - only clear individual caches
+			// No need to clear findAll cache as it's no longer cached
 
 			return newSemester;
 		} catch (error) {
@@ -96,22 +96,14 @@ export class SemesterService extends BaseCacheService {
 		}
 	}
 
+	/**
+	 * Get all semesters - no caching for real-time updates
+	 */
 	async findAll() {
 		try {
-			const cacheKey = `${SemesterService.CACHE_KEY}:all`;
-			const cachedSemesters = await this.getCachedData<any[]>(cacheKey);
-			if (cachedSemesters) {
-				this.logger.log(
-					`Found ${cachedSemesters.length} semesters (from cache)`,
-				);
-				return cachedSemesters;
-			}
-
 			const semesters = await this.prisma.semester.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
-
-			await this.setCachedData(cacheKey, semesters);
 
 			this.logger.log(`Found ${semesters.length} semesters`);
 
@@ -122,6 +114,9 @@ export class SemesterService extends BaseCacheService {
 		}
 	}
 
+	/**
+	 * Get semester by ID - cache with TTL for performance
+	 */
 	async findOne(id: string) {
 		try {
 			const cacheKey = `${SemesterService.CACHE_KEY}:${id}`;
@@ -141,7 +136,8 @@ export class SemesterService extends BaseCacheService {
 				throw new NotFoundException(`Semester not found`);
 			}
 
-			await this.setCachedData(cacheKey, semester);
+			// Cache with 10 minutes TTL
+			await this.setCachedData(cacheKey, semester, 600000);
 
 			this.logger.log(`Semester found with ID: ${semester.id}`);
 
@@ -181,8 +177,7 @@ export class SemesterService extends BaseCacheService {
 			);
 			this.logger.debug('Updated semester details', updatedSemester);
 
-			// Clear cache after updating semester
-			await this.clearCache(`${SemesterService.CACHE_KEY}:all`);
+			// Clear cache after updating semester - only clear individual semester
 			await this.clearCache(`${SemesterService.CACHE_KEY}:${id}`);
 
 			return updatedSemester;
@@ -251,8 +246,7 @@ export class SemesterService extends BaseCacheService {
 			);
 			this.logger.debug('Deleted semester details', deletedSemester);
 
-			// Clear cache after deleting semester
-			await this.clearCache(`${SemesterService.CACHE_KEY}:all`);
+			// Clear cache after deleting semester - only clear individual semester
 			await this.clearCache(`${SemesterService.CACHE_KEY}:${id}`);
 
 			return deletedSemester;
