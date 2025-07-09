@@ -11,6 +11,7 @@ import { ResponsibilityDocs } from '@/common/docs/responsibility.docs';
 import { SemesterDocs } from '@/common/docs/semester.docs';
 import { SkillSetDocs } from '@/common/docs/skill-set.docs';
 import { StudentDocs } from '@/common/docs/student.docs';
+import { SubmissionDocs } from '@/common/docs/submission.docs';
 import { SupervisionDocs } from '@/common/docs/supervision.docs';
 import { ThesisDocs } from '@/common/docs/thesis.docs';
 
@@ -28,6 +29,7 @@ export {
 	SemesterDocs,
 	SkillSetDocs,
 	StudentDocs,
+	SubmissionDocs,
 	SupervisionDocs,
 	ThesisDocs,
 };
@@ -46,6 +48,7 @@ export const DOCS_MAP = {
 	semester: SemesterDocs,
 	skillSet: SkillSetDocs,
 	student: StudentDocs,
+	submission: SubmissionDocs,
 	supervision: SupervisionDocs,
 	thesis: ThesisDocs,
 } as const;
