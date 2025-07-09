@@ -205,39 +205,11 @@ export class SubmissionService extends BaseCacheService {
 		};
 	}
 
-	async create(
+	// Helper method to validate group and milestone existence and relationship
+	private async validateGroupAndMilestoneExistence(
 		groupId: string,
 		milestoneId: string,
-		dto: CreateSubmissionDto,
-		userId?: string,
-	) {
-		this.logger.log('Creating new submission');
-
-		// If userId provided, validate group leadership
-		if (userId) {
-			await this.validateGroupLeadership(userId, groupId);
-		}
-
-		// Validate submission timeline
-		await this.validateSubmissionTimeline(milestoneId);
-
-		// Check if submission already exists
-		const existingSubmission = await this.prisma.submission.findUnique({
-			where: {
-				groupId_milestoneId: {
-					groupId: groupId,
-					milestoneId: milestoneId,
-				},
-			},
-		});
-
-		if (existingSubmission) {
-			throw new ConflictException(
-				'Submission already exists for this group and milestone',
-			);
-		}
-
-		// Validate group and milestone exist
+	): Promise<{ group: any; milestone: any }> {
 		const [group, milestone] = await Promise.all([
 			this.prisma.group.findUnique({
 				where: { id: groupId },
@@ -257,304 +229,350 @@ export class SubmissionService extends BaseCacheService {
 			throw new NotFoundException('Milestone not found');
 		}
 
-		// Ensure group and milestone are in the same semester
 		if (group.semesterId !== milestone.semesterId) {
 			throw new ConflictException(
 				'Group and milestone must be in the same semester',
 			);
 		}
 
-		// Validate documents if provided
-		if (dto.documents) {
-			this.validateDocuments(dto.documents);
+		return { group, milestone };
+	}
+
+	async create(
+		groupId: string,
+		milestoneId: string,
+		dto: CreateSubmissionDto,
+		userId?: string,
+	) {
+		try {
+			this.logger.log('Creating new submission');
+
+			if (userId) {
+				await this.validateGroupLeadership(userId, groupId);
+			}
+
+			await this.validateSubmissionTimeline(milestoneId);
+
+			const existingSubmission = await this.prisma.submission.findUnique({
+				where: {
+					groupId_milestoneId: {
+						groupId,
+						milestoneId,
+					},
+				},
+			});
+
+			if (existingSubmission) {
+				throw new ConflictException(
+					'Submission already exists for this group and milestone',
+				);
+			}
+
+			await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
+
+			if (dto.documents) {
+				this.validateDocuments(dto.documents);
+			}
+
+			const submission = await this.prisma.submission.create({
+				data: {
+					groupId,
+					milestoneId,
+					documents: dto.documents || [],
+				},
+				include: {
+					group: {
+						select: {
+							id: true,
+							code: true,
+							name: true,
+						},
+					},
+					milestone: {
+						select: {
+							id: true,
+							name: true,
+							startDate: true,
+							endDate: true,
+						},
+					},
+				},
+			});
+
+			this.logger.log(`Submission created with ID: ${submission.id}`);
+
+			await this.clearCache(`${SubmissionService.CACHE_KEY}:group:${groupId}`);
+
+			return submission;
+		} catch (error) {
+			this.logger.error('Error creating submission', error);
+			throw error;
 		}
-
-		const submission = await this.prisma.submission.create({
-			data: {
-				groupId: groupId,
-				milestoneId: milestoneId,
-				documents: dto.documents || [],
-			},
-			include: {
-				group: {
-					select: {
-						id: true,
-						code: true,
-						name: true,
-					},
-				},
-				milestone: {
-					select: {
-						id: true,
-						name: true,
-						startDate: true,
-						endDate: true,
-					},
-				},
-			},
-		});
-
-		this.logger.log(`Submission created with ID: ${submission.id}`);
-
-		// Clear group submissions cache only - no need to clear all cache
-		await this.clearCache(`${SubmissionService.CACHE_KEY}:group:${groupId}`);
-
-		return submission;
 	}
 
 	async findAll(userId?: string) {
-		this.logger.log('Finding all submissions');
+		try {
+			this.logger.log('Finding all submissions');
 
-		// If userId provided, check if admin or lecturer
-		if (userId) {
-			const isAuthorized = await this.validateUserRole(userId);
-			if (!isAuthorized) {
-				throw new ForbiddenException(
-					'Only admins and lecturers can view all submissions',
-				);
+			if (userId) {
+				const isAuthorized = await this.validateUserRole(userId);
+				if (!isAuthorized) {
+					throw new ForbiddenException(
+						'Only admins and lecturers can view all submissions',
+					);
+				}
 			}
+
+			const submissions = await this.prisma.submission.findMany({
+				include: {
+					group: {
+						select: {
+							id: true,
+							code: true,
+							name: true,
+							semester: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+								},
+							},
+						},
+					},
+					milestone: {
+						select: {
+							id: true,
+							name: true,
+							startDate: true,
+							endDate: true,
+						},
+					},
+					assignmentReviews: {
+						select: {
+							reviewerId: true,
+							submissionId: true,
+							reviewer: {
+								select: {
+									user: {
+										select: {
+											fullName: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					reviews: {
+						select: {
+							id: true,
+							feedback: true,
+							lecturer: {
+								select: {
+									user: {
+										select: {
+											fullName: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				orderBy: {
+					createdAt: 'desc',
+				},
+			});
+
+			this.logger.log(`Found ${submissions.length} submissions`);
+			return submissions;
+		} catch (error) {
+			this.logger.error('Error finding all submissions', error);
+			throw error;
 		}
-
-		// No cache for admin/lecturer queries as they need real-time data
-		const submissions = await this.prisma.submission.findMany({
-			include: {
-				group: {
-					select: {
-						id: true,
-						code: true,
-						name: true,
-						semester: {
-							select: {
-								id: true,
-								name: true,
-								code: true,
-							},
-						},
-					},
-				},
-				milestone: {
-					select: {
-						id: true,
-						name: true,
-						startDate: true,
-						endDate: true,
-					},
-				},
-				assignmentReviews: {
-					select: {
-						reviewerId: true,
-						submissionId: true,
-						reviewer: {
-							select: {
-								user: {
-									select: {
-										fullName: true,
-									},
-								},
-							},
-						},
-					},
-				},
-				reviews: {
-					select: {
-						id: true,
-						feedback: true,
-						lecturer: {
-							select: {
-								user: {
-									select: {
-										fullName: true,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			orderBy: {
-				createdAt: 'desc',
-			},
-		});
-
-		this.logger.log(`Found ${submissions.length} submissions`);
-		return submissions;
 	}
 
 	async findByGroupId(groupId: string, userId?: string) {
-		this.logger.log(`Finding submissions for group: ${groupId}`);
+		try {
+			this.logger.log(`Finding submissions for group: ${groupId}`);
 
-		// If userId provided, validate group membership
-		if (userId) {
-			await this.validateGroupMembership(userId, groupId);
-		}
+			if (userId) {
+				await this.validateGroupMembership(userId, groupId);
+			}
 
-		// Cache for group submissions as they are accessed frequently by students
-		const cacheKey = `${SubmissionService.CACHE_KEY}:group:${groupId}`;
-		const cached = await this.getCachedData<any[]>(cacheKey);
+			const cacheKey = `${SubmissionService.CACHE_KEY}:group:${groupId}`;
+			const cached = await this.getCachedData<any[]>(cacheKey);
 
-		if (cached) {
-			this.logger.log('Returning cached group submissions');
-			return cached;
-		}
+			if (cached) {
+				this.logger.log('Returning cached group submissions');
+				return cached;
+			}
 
-		const submissions = await this.prisma.submission.findMany({
-			where: { groupId },
-			include: {
-				milestone: {
-					select: {
-						id: true,
-						name: true,
-						startDate: true,
-						endDate: true,
+			const submissions = await this.prisma.submission.findMany({
+				where: { groupId },
+				include: {
+					milestone: {
+						select: {
+							id: true,
+							name: true,
+							startDate: true,
+							endDate: true,
+						},
 					},
-				},
-				assignmentReviews: {
-					select: {
-						reviewerId: true,
-						submissionId: true,
-						reviewer: {
-							select: {
-								user: {
-									select: {
-										fullName: true,
+					assignmentReviews: {
+						select: {
+							reviewerId: true,
+							submissionId: true,
+							reviewer: {
+								select: {
+									user: {
+										select: {
+											fullName: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					reviews: {
+						select: {
+							id: true,
+							feedback: true,
+							lecturer: {
+								select: {
+									user: {
+										select: {
+											fullName: true,
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-				reviews: {
-					select: {
-						id: true,
-						feedback: true,
-						lecturer: {
-							select: {
-								user: {
-									select: {
-										fullName: true,
-									},
-								},
-							},
-						},
-					},
+				orderBy: {
+					createdAt: 'desc',
 				},
-			},
-			orderBy: {
-				createdAt: 'desc',
-			},
-		});
+			});
 
-		// Cache with shorter TTL since submissions can be updated frequently
-		await this.setCachedData(cacheKey, submissions, 300000); // 5 minutes
+			await this.setCachedData(cacheKey, submissions, 300000);
 
-		this.logger.log(
-			`Found ${submissions.length} submissions for group ${groupId}`,
-		);
-		return submissions;
+			this.logger.log(
+				`Found ${submissions.length} submissions for group ${groupId}`,
+			);
+			return submissions;
+		} catch (error) {
+			this.logger.error('Error finding submissions by group ID', error);
+			throw error;
+		}
 	}
 
 	async findOne(groupId: string, milestoneId: string, userId?: string) {
-		this.logger.log(
-			`Finding submission for group: ${groupId}, milestone: ${milestoneId}`,
-		);
-
-		// If userId provided, validate group membership
-		if (userId) {
-			await this.validateGroupMembership(userId, groupId);
-		}
-
-		// No cache for individual submissions as they contain detailed review data
-		// that should be real-time for students and lecturers
-		const submission = await this.prisma.submission.findUnique({
-			where: {
-				groupId_milestoneId: {
-					groupId,
-					milestoneId,
-				},
-			},
-			include: {
-				group: {
-					select: {
-						id: true,
-						code: true,
-						name: true,
-						semester: {
-							select: {
-								id: true,
-								name: true,
-								code: true,
-								status: true,
-							},
-						},
-					},
-				},
-				milestone: {
-					select: {
-						id: true,
-						name: true,
-						startDate: true,
-						endDate: true,
-					},
-				},
-				assignmentReviews: {
-					include: {
-						reviewer: {
-							select: {
-								user: {
-									select: {
-										id: true,
-										fullName: true,
-									},
-								},
-							},
-						},
-					},
-				},
-				reviews: {
-					include: {
-						lecturer: {
-							select: {
-								user: {
-									select: {
-										id: true,
-										fullName: true,
-									},
-								},
-							},
-						},
-						checklist: {
-							select: {
-								id: true,
-								name: true,
-								description: true,
-							},
-						},
-						reviewItems: {
-							include: {
-								checklistItem: {
-									select: {
-										id: true,
-										name: true,
-										description: true,
-										isRequired: true,
-										acceptance: true,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		});
-
-		if (!submission) {
-			throw new NotFoundException(
-				`Submission not found for group ${groupId} and milestone ${milestoneId}`,
+		try {
+			this.logger.log(
+				`Finding submission for group: ${groupId}, milestone: ${milestoneId}`,
 			);
-		}
 
-		this.logger.log(`Found submission with ID: ${submission.id}`);
-		return submission;
+			if (userId) {
+				await this.validateGroupMembership(userId, groupId);
+			}
+
+			const submission = await this.prisma.submission.findUnique({
+				where: {
+					groupId_milestoneId: {
+						groupId,
+						milestoneId,
+					},
+				},
+				include: {
+					group: {
+						select: {
+							id: true,
+							code: true,
+							name: true,
+							semester: {
+								select: {
+									id: true,
+									name: true,
+									code: true,
+									status: true,
+								},
+							},
+						},
+					},
+					milestone: {
+						select: {
+							id: true,
+							name: true,
+							startDate: true,
+							endDate: true,
+						},
+					},
+					assignmentReviews: {
+						include: {
+							reviewer: {
+								select: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					reviews: {
+						include: {
+							lecturer: {
+								select: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+										},
+									},
+								},
+							},
+							checklist: {
+								select: {
+									id: true,
+									name: true,
+									description: true,
+								},
+							},
+							reviewItems: {
+								include: {
+									checklistItem: {
+										select: {
+											id: true,
+											name: true,
+											description: true,
+											isRequired: true,
+											acceptance: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (!submission) {
+				throw new NotFoundException(
+					`Submission not found for group ${groupId} and milestone ${milestoneId}`,
+				);
+			}
+
+			this.logger.log(`Found submission with ID: ${submission.id}`);
+			return submission;
+		} catch (error) {
+			this.logger.error(
+				'Error finding submission by group and milestone',
+				error,
+			);
+			throw error;
+		}
 	}
 
 	async update(
@@ -563,76 +581,78 @@ export class SubmissionService extends BaseCacheService {
 		updateSubmissionDto: UpdateSubmissionDto,
 		userId?: string,
 	) {
-		this.logger.log(
-			`Updating submission for group: ${groupId}, milestone: ${milestoneId}`,
-		);
-
-		// If userId provided, validate group leadership
-		if (userId) {
-			await this.validateGroupLeadership(userId, groupId);
-		}
-
-		// Validate submission timeline for updates
-		await this.validateSubmissionTimeline(milestoneId);
-
-		// Check if submission exists
-		const existingSubmission = await this.prisma.submission.findUnique({
-			where: {
-				groupId_milestoneId: {
-					groupId,
-					milestoneId,
-				},
-			},
-		});
-
-		if (!existingSubmission) {
-			throw new NotFoundException(
-				`Submission not found for group ${groupId} and milestone ${milestoneId}`,
+		try {
+			this.logger.log(
+				`Updating submission for group: ${groupId}, milestone: ${milestoneId}`,
 			);
-		}
 
-		const updateData: any = {
-			updatedAt: new Date(),
-		};
+			if (userId) {
+				await this.validateGroupLeadership(userId, groupId);
+			}
 
-		// Only update documents if provided
-		if (updateSubmissionDto.documents !== undefined) {
-			this.validateDocuments(updateSubmissionDto.documents);
-			updateData.documents = updateSubmissionDto.documents;
-		}
+			await this.validateSubmissionTimeline(milestoneId);
 
-		const updatedSubmission = await this.prisma.submission.update({
-			where: {
-				groupId_milestoneId: {
-					groupId,
-					milestoneId,
-				},
-			},
-			data: updateData,
-			include: {
-				group: {
-					select: {
-						id: true,
-						code: true,
-						name: true,
+			const existingSubmission = await this.prisma.submission.findUnique({
+				where: {
+					groupId_milestoneId: {
+						groupId,
+						milestoneId,
 					},
 				},
-				milestone: {
-					select: {
-						id: true,
-						name: true,
-						startDate: true,
-						endDate: true,
+			});
+
+			if (!existingSubmission) {
+				throw new NotFoundException(
+					`Submission not found for group ${groupId} and milestone ${milestoneId}`,
+				);
+			}
+
+			await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
+
+			const updateData: any = {
+				updatedAt: new Date(),
+			};
+
+			if (updateSubmissionDto.documents !== undefined) {
+				this.validateDocuments(updateSubmissionDto.documents);
+				updateData.documents = updateSubmissionDto.documents;
+			}
+
+			const updatedSubmission = await this.prisma.submission.update({
+				where: {
+					groupId_milestoneId: {
+						groupId,
+						milestoneId,
 					},
 				},
-			},
-		});
+				data: updateData,
+				include: {
+					group: {
+						select: {
+							id: true,
+							code: true,
+							name: true,
+						},
+					},
+					milestone: {
+						select: {
+							id: true,
+							name: true,
+							startDate: true,
+							endDate: true,
+						},
+					},
+				},
+			});
 
-		this.logger.log(`Submission updated with ID: ${updatedSubmission.id}`);
+			this.logger.log(`Submission updated with ID: ${updatedSubmission.id}`);
 
-		// Clear only group submissions cache - specific and minimal cache invalidation
-		await this.clearCache(`${SubmissionService.CACHE_KEY}:group:${groupId}`);
+			await this.clearCache(`${SubmissionService.CACHE_KEY}:group:${groupId}`);
 
-		return updatedSubmission;
+			return updatedSubmission;
+		} catch (error) {
+			this.logger.error('Error updating submission', error);
+			throw error;
+		}
 	}
 }
