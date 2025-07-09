@@ -28,6 +28,7 @@
 			"@/semesters/*": ["src/domains/semesters/*"],
 			"@/skill-sets/*": ["src/domains/skill-sets/*"],
 			"@/students/*": ["src/domains/students/*"],
+			"@/submissions/*": ["src/domains/submissions/*"],
 			"@/supervisions/*": ["src/domains/supervisions/*"],
 			"@/theses/*": ["src/domains/theses/*"],
 			"@/users/*": ["src/domains/users/*"]
