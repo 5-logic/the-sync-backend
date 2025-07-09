@@ -53,10 +53,10 @@ enum RequestType {
 }
 
 enum RequestStatus {
-	Cancelled @map("cancelled")
-  Pending  @map("pending")
-  Approved @map("approved")
-  Rejected @map("rejected")
+  Cancelled @map("cancelled")
+  Pending   @map("pending")
+  Approved  @map("approved")
+  Rejected  @map("rejected")
 
   @@map("request_statuses")
 }
@@ -273,9 +273,10 @@ model Milestone {
 }
 
 model Submission {
-  id          String @id @default(uuid())
-  groupId     String @map("group_id")
-  milestoneId String @map("milestone_id")
+  id          String   @id @default(uuid())
+  groupId     String   @map("group_id")
+  milestoneId String   @map("milestone_id")
+  documents   String[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
