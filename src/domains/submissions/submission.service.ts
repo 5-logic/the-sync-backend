@@ -238,6 +238,24 @@ export class SubmissionService extends BaseCacheService {
 		return { group, milestone };
 	}
 
+	private async validateSubmissionData(
+		groupId: string,
+		milestoneId: string,
+		documents?: string[],
+		userId?: string,
+	): Promise<void> {
+		if (userId) {
+			await this.validateGroupLeadership(userId, groupId);
+		}
+
+		await this.validateSubmissionTimeline(milestoneId);
+		await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
+
+		if (documents) {
+			this.validateDocuments(documents);
+		}
+	}
+
 	async create(
 		groupId: string,
 		milestoneId: string,
@@ -247,11 +265,12 @@ export class SubmissionService extends BaseCacheService {
 		try {
 			this.logger.log('Creating new submission');
 
-			if (userId) {
-				await this.validateGroupLeadership(userId, groupId);
-			}
-
-			await this.validateSubmissionTimeline(milestoneId);
+			await this.validateSubmissionData(
+				groupId,
+				milestoneId,
+				dto.documents,
+				userId,
+			);
 
 			const existingSubmission = await this.prisma.submission.findUnique({
 				where: {
@@ -266,12 +285,6 @@ export class SubmissionService extends BaseCacheService {
 				throw new ConflictException(
 					'Submission already exists for this group and milestone',
 				);
-			}
-
-			await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
-
-			if (dto.documents) {
-				this.validateDocuments(dto.documents);
 			}
 
 			const submission = await this.prisma.submission.create({
@@ -586,11 +599,12 @@ export class SubmissionService extends BaseCacheService {
 				`Updating submission for group: ${groupId}, milestone: ${milestoneId}`,
 			);
 
-			if (userId) {
-				await this.validateGroupLeadership(userId, groupId);
-			}
-
-			await this.validateSubmissionTimeline(milestoneId);
+			await this.validateSubmissionData(
+				groupId,
+				milestoneId,
+				updateSubmissionDto.documents,
+				userId,
+			);
 
 			const existingSubmission = await this.prisma.submission.findUnique({
 				where: {
@@ -607,14 +621,11 @@ export class SubmissionService extends BaseCacheService {
 				);
 			}
 
-			await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
-
 			const updateData: any = {
 				updatedAt: new Date(),
 			};
 
 			if (updateSubmissionDto.documents !== undefined) {
-				this.validateDocuments(updateSubmissionDto.documents);
 				updateData.documents = updateSubmissionDto.documents;
 			}
 
