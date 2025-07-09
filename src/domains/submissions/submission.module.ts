@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 
-import { SubmissionController } from '@/submissions/submission.controller';
+import {
+	GroupSubmissionController,
+	SubmissionController,
+} from '@/submissions/submission.controller';
 import { SubmissionService } from '@/submissions/submission.service';
 
 @Module({
-	controllers: [SubmissionController],
+	controllers: [SubmissionController, GroupSubmissionController],
 	providers: [SubmissionService],
 })
 export class SubmissionModule {}
