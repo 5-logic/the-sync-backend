@@ -4,7 +4,7 @@ export const SubmissionDocs = {
 	create: {
 		summary: 'Submit assignment for milestone',
 		description:
-			'Create a new submission for a specific group and milestone with optional document attachments. Group ID and milestone ID are extracted from URL parameters. Only group leaders can submit assignments for their group during the valid submission period (between milestone startDate and endDate). Validates that the submission period is active and the semester is in ONGOING status. Prevents duplicate submissions for the same group-milestone combination. Documents should be provided as an array of URLs or file paths in the request body. Automatically associates the submission with the group and milestone. **Student access only (group leaders only).**',
+			'Create a new submission for a specific group and milestone with optional document attachments. Group ID and milestone ID are extracted from URL parameters. Only group leaders can submit assignments for their group during the creation period (before milestone startDate). Validates that the current time is before the milestone start date and the semester is in ONGOING status. Prevents duplicate submissions for the same group-milestone combination. Documents should be provided as an array of URLs or file paths in the request body. Automatically associates the submission with the group and milestone. Note: Creation is only allowed before the milestone start date, updates can be made until the end date. **Student access only (group leaders only).**',
 	} as ApiOperationOptions,
 
 	findAll: {
@@ -28,7 +28,7 @@ export const SubmissionDocs = {
 	update: {
 		summary: 'Update submission',
 		description:
-			'Update an existing submission for a specific group and milestone, including document attachments. Group ID and milestone ID are extracted from URL parameters. Only group leaders can update their group submissions during the valid submission period (between milestone startDate and endDate). Validates submission timeline and semester status. Can update document files by providing a new documents array in the request body. Updates the submission timestamp and triggers cache invalidation. Useful for resubmitting or modifying assignment content and documents. **Student access only (group leaders only).**',
+			'Update an existing submission for a specific group and milestone, including document attachments. Group ID and milestone ID are extracted from URL parameters. Only group leaders can update their group submissions during the update period (before milestone endDate). Validates that the current time is before the milestone end date and semester status is ONGOING. Can update document files by providing a new documents array in the request body. Updates the submission timestamp and triggers cache invalidation. Useful for resubmitting or modifying assignment content and documents. Note: Updates are only allowed before the milestone end date, creation must be done before the start date. **Student access only (group leaders only).**',
 	} as ApiOperationOptions,
 
 	remove: {
