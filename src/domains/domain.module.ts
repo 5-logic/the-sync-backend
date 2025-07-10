@@ -26,6 +26,7 @@ import { ThesisModule } from '@/theses/thesis.module';
 		MilestoneModule,
 		ResponsibilityModule,
 		RequestModule,
+		ReviewModule,
 		SemesterModule,
 		SkillSetModule,
 		StudentModule,
