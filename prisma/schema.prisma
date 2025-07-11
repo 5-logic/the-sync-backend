@@ -334,12 +334,11 @@ model Checklist {
 }
 
 model ChecklistItem {
-  id          String                    @id @default(uuid())
-  name        String                    @map("name")
-  acceptance  ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
-  description String?                   @map("description")
-  isRequired  Boolean                   @default(false) @map("is_required")
-  checklistId String                    @map("checklist_id")
+  id          String  @id @default(uuid())
+  name        String  @map("name")
+  description String? @map("description")
+  isRequired  Boolean @default(false) @map("is_required")
+  checklistId String  @map("checklist_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -478,9 +477,10 @@ model Enrollment {
 }
 
 model ReviewItem {
-  reviewId        String  @map("review_id")
-  checklistItemId String  @map("checklistitem_id")
-  note            String? @map("note")
+  reviewId        String                    @map("review_id")
+  checklistItemId String                    @map("checklistitem_id")
+  acceptance      ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
+  note            String?                   @map("note")
 
   review        Review        @relation(fields: [reviewId], references: [id])
   checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id])
