@@ -3,32 +3,31 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 export const ChecklistDocs: Record<string, ApiOperationOptions> = {
 	create: {
 		summary: 'Create a new checklist',
-		description:
-			'Creates a new checklist with name and description. If milestoneId is provided, validates that the milestone has not started yet. Returns created checklist with milestone info and item counts. **Moderator access only.**',
+		description: `Create a new checklist with name, description, and optional milestone assignment.\n\n- **Moderator access only** (authentication and MODERATOR role required).\n- If milestoneId is provided, validates that the milestone exists and has not started yet.\n- Returns created checklist with milestone info, checklist items, and item/review counts.\n- Returns 409 error if milestone has started.\n- Returns 404 error if milestone does not exist.\n- Logs all creation attempts and errors.`,
 	},
+
 	findAll: {
 		summary: 'Get all checklists',
-		description:
-			'Retrieves all checklists with their associated milestone information, checklist items, and review/item counts. Results are ordered by creation date (newest first). **Lecturer/Moderator access only.**',
+		description: `Retrieve all checklists with their associated milestone information, checklist items, and review/item counts.\n\n- **Lecturer/Moderator access only**.\n- Results are ordered by creation date (newest first).\n- Logs all fetch attempts and errors.`,
 	},
+
 	findOne: {
 		summary: 'Get a specific checklist by ID',
-		description:
-			'Retrieves detailed information about a specific checklist including milestone details (with semester info), all checklist items, review history with lecturer and submission details, and item/review counts. **Lecturer/Moderator access only.**',
+		description: `Retrieve detailed information about a specific checklist.\n\n- **Lecturer/Moderator access only**.\n- Returns milestone details (with semester info), all checklist items, review history with lecturer and submission details, and item/review counts.\n- Returns 404 error if checklist does not exist.\n- Logs all fetch attempts and errors.`,
 	},
+
 	update: {
 		summary: 'Update a checklist',
-		description:
-			'Updates checklist name, description, and milestone assignment. If checklist is currently attached to a milestone, validates that milestone has not started. If updating to attach to a new milestone, validates that new milestone has not started either. **Moderator access only.**',
+		description: `Update checklist name, description, and milestone assignment.\n\n- **Moderator access only**.\n- If checklist is currently attached to a milestone, validates that milestone has not started.\n- If updating to attach to a new milestone, validates that new milestone exists and has not started.\n- Returns updated checklist with milestone info and item/review counts.\n- Returns 409 error if milestone has started.\n- Returns 404 error if checklist or milestone does not exist.\n- Logs all update attempts and errors.`,
 	},
+
 	remove: {
 		summary: 'Delete a checklist',
-		description:
-			'Permanently deletes a checklist. If attached to a milestone, validates that milestone has not started. Cannot delete if the checklist has been used in any reviews. Cascade deletes all associated checklist items. **Moderator access only.**',
+		description: `Permanently delete a checklist.\n\n- **Moderator access only**.\n- If attached to a milestone, validates that milestone has not started.\n- Cannot delete if the checklist has been used in any reviews.\n- Cascade deletes all associated checklist items.\n- Returns 409 error if milestone has started or checklist has reviews.\n- Returns 404 error if checklist does not exist.\n- Logs all deletion attempts and errors.`,
 	},
+
 	findByMilestone: {
 		summary: 'Get all checklists for a specific milestone',
-		description:
-			'Retrieves all checklists associated with a specific milestone, including their checklist items and counts. Validates that the milestone exists. Returns milestone details along with associated checklists ordered by creation date. **Lecturer/Moderator access only.**',
+		description: `Retrieve all checklists associated with a specific milestone, including their checklist items and counts.\n\n- **Lecturer/Moderator access only**.\n- Validates that the milestone exists.\n- Returns milestone details along with associated checklists ordered by creation date.\n- Returns 404 error if milestone does not exist.\n- Logs all fetch attempts and errors.`,
 	},
 };
