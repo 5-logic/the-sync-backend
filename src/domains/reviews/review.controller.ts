@@ -1,7 +1,6 @@
 import {
 	Body,
 	Controller,
-	Delete,
 	Get,
 	Param,
 	Post,
@@ -21,9 +20,10 @@ import {
 } from '@/auth';
 import { SwaggerDoc } from '@/common/docs';
 import {
-	AssignLecturerReviewerDto,
+	AssignBulkLecturerReviewerDto,
 	CreateReviewDto,
 	UpdateReviewDto,
+	UpdateReviewerAssignmentDto,
 } from '@/reviews/dto';
 import { ReviewService } from '@/reviews/review.service';
 
@@ -42,6 +42,36 @@ export class ReviewController {
 	}
 
 	@Roles(Role.MODERATOR)
+	@Get('semester/:semesterId')
+	@SwaggerDoc('review', 'findAll')
+	async getSubmissionsBySemester(@Param('semesterId') semesterId: string) {
+		return await this.reviewService.getSubmissionsForReview(semesterId);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Get('milestone/:milestoneId')
+	@SwaggerDoc('review', 'findAll')
+	async getSubmissionsByMilestone(@Param('milestoneId') milestoneId: string) {
+		return await this.reviewService.getSubmissionsForReview(
+			undefined,
+			milestoneId,
+		);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Get('semester/:semesterId/milestone/:milestoneId')
+	@SwaggerDoc('review', 'findAll')
+	async getSubmissionsBySemesterAndMilestone(
+		@Param('semesterId') semesterId: string,
+		@Param('milestoneId') milestoneId: string,
+	) {
+		return await this.reviewService.getSubmissionsForReview(
+			semesterId,
+			milestoneId,
+		);
+	}
+
+	@Roles(Role.MODERATOR)
 	@Get(':id/eligible-reviewers')
 	@SwaggerDoc('review', 'getEligibleReviewers')
 	async getEligibleReviewers(@Param('id') submissionId: string) {
@@ -49,20 +79,23 @@ export class ReviewController {
 	}
 
 	@Roles(Role.MODERATOR)
-	@Post(':id/assign-reviewer')
+	@Post('assign-reviewer')
 	@SwaggerDoc('review', 'create')
-	async assignReviewer(
-		@Param('id') submissionId: string,
-		@Body() assignDto: AssignLecturerReviewerDto,
-	) {
-		return await this.reviewService.assignReviewer(submissionId, assignDto);
+	async assignBulkReviewer(@Body() assignDto: AssignBulkLecturerReviewerDto) {
+		return await this.reviewService.assignBulkReviewer(assignDto);
 	}
 
 	@Roles(Role.MODERATOR)
-	@Delete(':id/assign-reviewer')
-	@SwaggerDoc('review', 'remove')
-	async unassignReviewer(@Param('id') submissionId: string) {
-		return await this.reviewService.unassignReviewer(submissionId);
+	@Put(':id/assign-reviewer')
+	@SwaggerDoc('review', 'update')
+	async updateReviewerAssignment(
+		@Param('id') submissionId: string,
+		@Body() updateDto: UpdateReviewerAssignmentDto,
+	) {
+		return await this.reviewService.updateReviewerAssignment(
+			submissionId,
+			updateDto,
+		);
 	}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
