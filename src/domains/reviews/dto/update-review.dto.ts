@@ -1,5 +1,17 @@
-import { PartialType } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsArray, IsString, ValidateNested } from 'class-validator';
 
-import { CreateReviewDto } from '@/reviews/dto';
+import { UpdateReviewItemDto } from './update-review-item.dto';
 
-export class UpdateReviewDto extends PartialType(CreateReviewDto) {}
+export class UpdateReviewDto {
+	@ApiPropertyOptional()
+	@IsString()
+	feedback?: string;
+
+	@ApiPropertyOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => UpdateReviewItemDto)
+	reviewItems?: UpdateReviewItemDto[];
+}
