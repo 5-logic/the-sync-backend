@@ -18,6 +18,12 @@ import {
 	ChangeSupervisionDto,
 } from '@/supervisions/dto';
 
+type AssignmentStatus =
+	| 'success'
+	| 'already_exists'
+	| 'max_supervisors_reached'
+	| 'error';
+
 @Injectable()
 export class SupervisionService extends BaseCacheService {
 	private static readonly CACHE_KEY = 'cache:supervision';
@@ -120,11 +126,7 @@ export class SupervisionService extends BaseCacheService {
 		results: Array<{
 			thesisId: string;
 			lecturerId: string;
-			status:
-				| 'success'
-				| 'already_exists'
-				| 'max_supervisors_reached'
-				| 'error';
+			status: AssignmentStatus;
 			error?: string;
 		}>,
 	) {
@@ -203,11 +205,7 @@ export class SupervisionService extends BaseCacheService {
 		results: Array<{
 			thesisId: string;
 			lecturerId: string;
-			status:
-				| 'success'
-				| 'already_exists'
-				| 'max_supervisors_reached'
-				| 'error';
+			status: AssignmentStatus;
 			error?: string;
 		}>,
 	) {
@@ -226,11 +224,7 @@ export class SupervisionService extends BaseCacheService {
 		const results: Array<{
 			thesisId: string;
 			lecturerId: string;
-			status:
-				| 'success'
-				| 'already_exists'
-				| 'max_supervisors_reached'
-				| 'error';
+			status: AssignmentStatus;
 			error?: string;
 		}> = [];
 
