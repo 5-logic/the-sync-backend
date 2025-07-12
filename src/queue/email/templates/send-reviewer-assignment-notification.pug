@@ -1,0 +1,39 @@
+extends layouts/email-layout
+
+block content
+	div.container
+		h1 Reviewer Assignment Notification
+		
+		p Dear #{lecturerName},
+		
+		p You have been assigned as a reviewer for the following submission(s):
+		
+		div.submission-details
+			each submission in submissions
+				div.submission-item
+					h3 Submission: #{submission.groupName} (#{submission.groupCode})
+					p
+						strong Milestone: 
+						| #{submission.milestoneName}
+					p
+						strong Submitted At: 
+						| #{submission.submittedAt}
+					if submission.documents && submission.documents.length > 0
+						p
+							strong Documents:
+						ul
+							each doc in submission.documents
+								li #{doc}
+					hr
+		
+		p Please log in to TheSync system to review the submissions and provide your feedback.
+		
+		div.action-section
+			p
+				a.button(href="#{loginUrl}") Login to TheSync
+		
+		p Thank you for your time and expertise in reviewing these submissions.
+		
+		p Best regards,
+		p
+			strong TheSync Team
