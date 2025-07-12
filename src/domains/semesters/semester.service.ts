@@ -155,7 +155,7 @@ export class SemesterService extends BaseCacheService {
 			const existingSemester = await this.findExistingSemester(id);
 
 			this.validateSemesterUpdatePermissions(existingSemester);
-			this.performUpdateValidations(existingSemester, dto);
+			await this.performUpdateValidations(existingSemester, dto);
 
 			const updateData = this.prepareUpdateData(existingSemester, dto);
 
@@ -257,9 +257,67 @@ export class SemesterService extends BaseCacheService {
 		}
 	}
 
-	private validateStatusTransition(
+	private async validatePreparingToPickingTransition(semesterId: string) {
+		this.logger.debug(
+			`Starting validation for Preparing to Picking transition for semester ${semesterId}`,
+		);
+
+		const studentsWithoutGroup = await this.prisma.student.findMany({
+			where: {
+				enrollments: {
+					some: {
+						semesterId: semesterId,
+						status: EnrollmentStatus.NotYet,
+					},
+				},
+				studentGroupParticipations: {
+					none: {
+						semesterId: semesterId,
+					},
+				},
+			},
+			include: {
+				user: true,
+				enrollments: {
+					where: {
+						semesterId: semesterId,
+					},
+				},
+			},
+		});
+
+		this.logger.debug(
+			`Found ${studentsWithoutGroup.length} students without groups in semester ${semesterId}`,
+		);
+
+		if (studentsWithoutGroup.length > 0) {
+			// Log chi tiết về những students chưa có group
+			const studentDetails = studentsWithoutGroup.map((student) => ({
+				id: student.userId,
+				email: student.user.email,
+				fullName: student.user.fullName,
+				enrollmentStatus: student.enrollments[0]?.status,
+			}));
+
+			this.logger.warn(
+				`Cannot transition from Preparing to Picking: ${studentsWithoutGroup.length} students do not have a group.`,
+				{ students: studentDetails },
+			);
+
+			throw new ConflictException(
+				`Cannot transition to Picking. There are ${studentsWithoutGroup.length} students without a group: ${studentDetails.map((s) => s.fullName).join(', ')}`,
+			);
+		}
+
+		this.logger.debug(
+			`Preparing to Picking transition validation passed. All students have groups.`,
+		);
+	}
+
+	private async validateStatusTransition(
 		currentStatus: SemesterStatus,
 		newStatus: SemesterStatus,
+		semesterId: string,
 	) {
 		const statusOrder = [
 			SemesterStatus.NotYet,
@@ -280,6 +338,13 @@ export class SemesterService extends BaseCacheService {
 			throw new ConflictException(
 				`Invalid status transition. Can only move from ${currentStatus} to ${statusOrder[currentIndex + 1] ?? 'nowhere'}`,
 			);
+		}
+
+		if (
+			currentStatus === SemesterStatus.Preparing &&
+			newStatus === SemesterStatus.Picking
+		) {
+			await this.validatePreparingToPickingTransition(semesterId);
 		}
 
 		this.logger.debug(
@@ -421,8 +486,9 @@ export class SemesterService extends BaseCacheService {
 		}
 	}
 
-	private performUpdateValidations(
+	private async performUpdateValidations(
 		existingSemester: {
+			id: string;
 			status: SemesterStatus;
 			maxGroup: number | null;
 			ongoingPhase: OngoingPhase | null;
@@ -433,9 +499,10 @@ export class SemesterService extends BaseCacheService {
 			updateSemesterDto.status &&
 			updateSemesterDto.status !== existingSemester.status
 		) {
-			this.validateStatusTransition(
+			await this.validateStatusTransition(
 				existingSemester.status,
 				updateSemesterDto.status,
+				existingSemester.id, // Truyền thêm semesterId
 			);
 		}
 
