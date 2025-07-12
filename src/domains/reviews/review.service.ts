@@ -1,21 +1,48 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
-	AssignLecturerReviewerDto,
+	AssignBulkLecturerReviewerDto,
 	CreateReviewDto,
 	UpdateReviewDto,
+	UpdateReviewerAssignmentDto,
 } from '@/reviews/dto';
 
 @Injectable()
 export class ReviewService {
 	private readonly logger = new Logger(ReviewService.name);
 
-	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+	constructor(
+		@Inject(PrismaService) private readonly prisma: PrismaService,
+		@Inject(EmailQueueService)
+		private readonly emailQueueService: EmailQueueService,
+	) {}
 
-	async getSubmissionsForReview() {
+	async getSubmissionsForReview(semesterId?: string, milestoneId?: string) {
 		try {
+			const where: any = {};
+
+			if (semesterId) {
+				where.milestone = {
+					semesterId: semesterId,
+				};
+			}
+
+			if (milestoneId) {
+				if (where.milestone) {
+					where.milestone = {
+						...where.milestone,
+						id: milestoneId,
+					};
+				} else {
+					where.milestoneId = milestoneId;
+				}
+			}
+
 			const submissions = await this.prisma.submission.findMany({
+				where,
 				include: {
 					group: {
 						select: { id: true, name: true, code: true },
@@ -110,97 +137,118 @@ export class ReviewService {
 	}
 
 	/**
-	 * Assign reviewers to a submission
+	 * Assign reviewers to multiple submissions
 	 */
-	async assignReviewer(
-		submissionId: string,
-		assignDto: AssignLecturerReviewerDto,
-	) {
+	async assignBulkReviewer(assignDto: AssignBulkLecturerReviewerDto) {
 		try {
-			const { lecturerIds } = assignDto;
+			const { assignments } = assignDto;
 
-			const submission = await this.prisma.submission.findUnique({
-				where: { id: submissionId },
+			// Validate all submissions exist
+			const submissionIds = assignments.map((a) => a.submissionId);
+			const submissions = await this.prisma.submission.findMany({
+				where: { id: { in: submissionIds } },
 			});
 
-			if (!submission) {
-				this.logger.warn(`Submission with ID ${submissionId} does not exist`);
-				throw new NotFoundException(
-					`Submission with ID ${submissionId} does not exist`,
-				);
-			}
-
-			const lecturers = await this.prisma.lecturer.findMany({
-				where: { userId: { in: lecturerIds } },
-			});
-
-			if (lecturers.length !== lecturerIds.length) {
+			if (submissions.length !== submissionIds.length) {
+				const foundIds = submissions.map((s) => s.id);
+				const missingIds = submissionIds.filter((id) => !foundIds.includes(id));
 				this.logger.warn(
-					`Some lecturers with IDs ${lecturerIds.join(
-						', ',
-					)} do not exist or are not lecturers`,
+					`Some submissions with IDs ${missingIds.join(', ')} do not exist`,
 				);
-				throw new NotFoundException('Some lecturers not found');
+				throw new NotFoundException('Some submissions not found');
 			}
 
-			const assignmentData = lecturerIds.map((lecturerId) => ({
-				reviewerId: lecturerId,
-				submissionId: submissionId,
-			}));
+			// Process each assignment
+			const results: Array<{
+				submissionId: string;
+				assignedCount: number;
+				lecturerIds: string[];
+			}> = [];
+			let totalAssignedCount = 0;
 
-			const assignments = await this.prisma.assignmentReview.createMany({
-				data: assignmentData,
-				skipDuplicates: true,
-			});
+			for (const assignment of assignments) {
+				const { submissionId, lecturerIds } = assignment;
+
+				if (lecturerIds && lecturerIds.length > 0) {
+					// Validate lecturers exist
+					const lecturers = await this.prisma.lecturer.findMany({
+						where: { userId: { in: lecturerIds } },
+					});
+
+					if (lecturers.length !== lecturerIds.length) {
+						const foundLecturerIds = lecturers.map((l) => l.userId);
+						const missingLecturerIds = lecturerIds.filter(
+							(id) => !foundLecturerIds.includes(id),
+						);
+						this.logger.warn(
+							`Some lecturers with IDs ${missingLecturerIds.join(', ')} do not exist or are not lecturers`,
+						);
+						throw new NotFoundException(
+							`Some lecturers not found for submission ${submissionId}`,
+						);
+					}
+
+					// Create assignment data
+					const assignmentData: Array<{
+						reviewerId: string;
+						submissionId: string;
+					}> = lecturerIds.map((lecturerId) => ({
+						reviewerId: lecturerId,
+						submissionId: submissionId,
+					}));
+
+					const submissionAssignments =
+						await this.prisma.assignmentReview.createMany({
+							data: assignmentData,
+							skipDuplicates: true,
+						});
+
+					totalAssignedCount += submissionAssignments.count;
+
+					results.push({
+						submissionId,
+						assignedCount: submissionAssignments.count,
+						lecturerIds,
+					});
+
+					this.logger.log(
+						`Assigned ${submissionAssignments.count} reviewer(s) to submission ${submissionId}`,
+					);
+				} else {
+					// No lecturers specified for this submission
+					results.push({
+						submissionId,
+						assignedCount: 0,
+						lecturerIds: [],
+					});
+
+					this.logger.log(
+						`No reviewers specified for submission ${submissionId}`,
+					);
+				}
+			}
 
 			this.logger.log(
-				`Assigned ${assignments.count} reviewer(s) to submission successfully`,
+				`Bulk assignment completed: ${totalAssignedCount} total assignments across ${assignments.length} submissions`,
 			);
-			this.logger.debug(`Assignments: ${JSON.stringify(assignments, null, 2)}`);
 
-			return assignments;
+			// Send email notifications to assigned reviewers
+			await this.sendReviewerAssignmentNotifications(assignments);
+
+			return {
+				totalAssignedCount,
+				submissionCount: assignments.length,
+				results,
+			};
 		} catch (error) {
 			this.logger.error(
-				`Error assigning reviewers for submission ID ${submissionId}`,
+				`Error bulk assigning reviewers for ${assignDto.assignments.length} submissions`,
 				error,
 			);
 			throw error;
 		}
 	}
 
-	/**
-	 * Unassign reviewers from a submission
-	 */
-	async unassignReviewer(submissionId: string) {
-		try {
-			const submission = await this.prisma.submission.findUnique({
-				where: { id: submissionId },
-			});
-
-			if (!submission) {
-				this.logger.warn(`Submission with ID ${submissionId} does not exist`);
-				throw new NotFoundException(
-					`Submission with ID ${submissionId} does not exist`,
-				);
-			}
-
-			const deleteResult = await this.prisma.assignmentReview.deleteMany({
-				where: { submissionId },
-			});
-
-			return deleteResult;
-		} catch (error) {
-			this.logger.error(
-				`Error unassigning reviewers for submission ID ${submissionId}`,
-				error,
-			);
-			throw error;
-		}
-	}
-
-	/**
-	 * Get assigned reviews for a lecturer
-	 */
 	async getAssignedReviews(lecturerId: string) {
 		try {
 			const assignments = await this.prisma.assignmentReview.findMany({
@@ -371,6 +419,13 @@ export class ReviewService {
 				`Review submitted successfully for submission ID ${submissionId} by lecturer ID ${lecturerId}`,
 			);
 			this.logger.debug(`Review: ${JSON.stringify(result, null, 2)}`);
+
+			// Send email notification for review completion
+			await this.sendReviewCompletedNotifications(
+				submissionId,
+				lecturerId,
+				result,
+			);
 
 			return result;
 		} catch (error) {
@@ -546,6 +601,304 @@ export class ReviewService {
 				error,
 			);
 			throw error;
+		}
+	}
+
+	/**
+	 * Update reviewer assignment for a submission (replace existing assignments)
+	 */
+	async updateReviewerAssignment(
+		submissionId: string,
+		updateDto: UpdateReviewerAssignmentDto,
+	) {
+		try {
+			const { lecturerIds } = updateDto;
+
+			const submission = await this.prisma.submission.findUnique({
+				where: { id: submissionId },
+			});
+
+			if (!submission) {
+				this.logger.warn(`Submission with ID ${submissionId} does not exist`);
+				throw new NotFoundException(
+					`Submission with ID ${submissionId} does not exist`,
+				);
+			}
+
+			// Validate lecturers exist
+			const lecturers = await this.prisma.lecturer.findMany({
+				where: { userId: { in: lecturerIds } },
+			});
+
+			if (lecturers.length !== lecturerIds.length) {
+				this.logger.warn(
+					`Some lecturers with IDs ${lecturerIds.join(', ')} do not exist or are not lecturers`,
+				);
+				throw new NotFoundException('Some lecturers not found');
+			}
+
+			// Use transaction to remove old assignments and create new ones
+			const result = await this.prisma.$transaction(async (prisma) => {
+				// Remove existing assignments
+				await prisma.assignmentReview.deleteMany({
+					where: { submissionId },
+				});
+
+				// Create new assignments
+				const assignmentData = lecturerIds.map((lecturerId) => ({
+					reviewerId: lecturerId,
+					submissionId: submissionId,
+				}));
+
+				const assignments = await prisma.assignmentReview.createMany({
+					data: assignmentData,
+				});
+
+				return assignments;
+			});
+
+			this.logger.log(
+				`Updated reviewer assignments for submission ID ${submissionId}: assigned ${result.count} reviewer(s)`,
+			);
+			this.logger.debug(
+				`Updated assignments: ${JSON.stringify(result, null, 2)}`,
+			);
+
+			// Send email notifications to newly assigned reviewers
+			if (lecturerIds.length > 0) {
+				await this.sendReviewerAssignmentNotifications([
+					{ submissionId, lecturerIds },
+				]);
+			}
+
+			return {
+				assignedCount: result.count,
+				submissionId,
+				lecturerIds,
+			};
+		} catch (error) {
+			this.logger.error(
+				`Error updating reviewer assignments for submission ID ${submissionId}`,
+				error,
+			);
+			throw error;
+		}
+	}
+
+	/**
+	 * Send email notifications to assigned reviewers
+	 */
+	private async sendReviewerAssignmentNotifications(
+		assignments: Array<{ submissionId: string; lecturerIds?: string[] }>,
+	) {
+		try {
+			// Group assignments by lecturer
+			const lecturerAssignments = new Map<string, string[]>();
+
+			for (const assignment of assignments) {
+				if (assignment.lecturerIds && assignment.lecturerIds.length > 0) {
+					for (const lecturerId of assignment.lecturerIds) {
+						if (!lecturerAssignments.has(lecturerId)) {
+							lecturerAssignments.set(lecturerId, []);
+						}
+						lecturerAssignments.get(lecturerId)!.push(assignment.submissionId);
+					}
+				}
+			}
+
+			// Send email to each lecturer
+			const emailPromises: Promise<void>[] = [];
+			for (const [lecturerId, submissionIds] of lecturerAssignments) {
+				const emailPromise = this.sendReviewerAssignmentEmail(
+					lecturerId,
+					submissionIds,
+				);
+				emailPromises.push(emailPromise);
+			}
+
+			await Promise.all(emailPromises);
+
+			this.logger.log(
+				`Successfully sent ${emailPromises.length} reviewer assignment email notifications`,
+			);
+		} catch (error) {
+			this.logger.error(
+				'Error sending reviewer assignment notifications',
+				error,
+			);
+			// Don't throw error to prevent assignment from failing
+		}
+	}
+
+	/**
+	 * Send email notification to a specific reviewer
+	 */
+	private async sendReviewerAssignmentEmail(
+		lecturerId: string,
+		submissionIds: string[],
+	) {
+		try {
+			// Get lecturer details
+			const lecturer = await this.prisma.lecturer.findUnique({
+				where: { userId: lecturerId },
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			});
+
+			if (!lecturer) {
+				this.logger.warn(
+					`Lecturer with ID ${lecturerId} not found for email notification`,
+				);
+				return;
+			}
+
+			// Get submission details
+			const submissions = await this.prisma.submission.findMany({
+				where: { id: { in: submissionIds } },
+				include: {
+					group: {
+						select: { id: true, name: true, code: true },
+					},
+					milestone: {
+						select: { id: true, name: true },
+					},
+				},
+			});
+
+			const submissionDetails = submissions.map((submission) => ({
+				groupName: submission.group.name,
+				groupCode: submission.group.code,
+				milestoneName: submission.milestone.name,
+				submittedAt: submission.createdAt.toISOString(),
+				documents: submission.documents || [],
+			}));
+
+			await this.emailQueueService.sendEmail(
+				EmailJobType.SEND_REVIEWER_ASSIGNMENT_NOTIFICATION,
+				{
+					to: lecturer.user.email,
+					subject: `New Review Assignment - TheSync`,
+					context: {
+						lecturerName: lecturer.user.fullName,
+						submissions: submissionDetails,
+						loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+					},
+				},
+			);
+
+			this.logger.log(
+				`Sent reviewer assignment email to ${lecturer.user.email} for ${submissionIds.length} submissions`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Error sending reviewer assignment email to lecturer ${lecturerId}`,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Send email notifications when a review is completed
+	 */
+	private async sendReviewCompletedNotifications(
+		submissionId: string,
+		reviewerId: string,
+		review: any,
+	) {
+		try {
+			// Get submission and group details
+			const submission = await this.prisma.submission.findUnique({
+				where: { id: submissionId },
+				include: {
+					group: {
+						include: {
+							studentGroupParticipations: {
+								include: {
+									student: {
+										include: {
+											user: {
+												select: { id: true, fullName: true, email: true },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					milestone: {
+						select: { id: true, name: true },
+					},
+				},
+			});
+
+			if (!submission) {
+				this.logger.warn(
+					`Submission with ID ${submissionId} not found for email notification`,
+				);
+				return;
+			}
+
+			// Get reviewer details
+			const reviewer = await this.prisma.lecturer.findUnique({
+				where: { userId: reviewerId },
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			});
+
+			if (!reviewer) {
+				this.logger.warn(
+					`Reviewer with ID ${reviewerId} not found for email notification`,
+				);
+				return;
+			}
+
+			// Send email to all group members
+			const emailPromises = submission.group.studentGroupParticipations.map(
+				(participation) => {
+					const reviewItems =
+						review.reviewItems?.map((item: any) => ({
+							checklistItemName: item.checklistItem.name,
+							acceptance: item.acceptance,
+							note: item.note,
+						})) || [];
+
+					return this.emailQueueService.sendEmail(
+						EmailJobType.SEND_REVIEW_COMPLETED_NOTIFICATION,
+						{
+							to: participation.student.user.email,
+							subject: `Review Completed for ${submission.group.name} - TheSync`,
+							context: {
+								studentName: participation.student.user.fullName,
+								groupName: submission.group.name,
+								groupCode: submission.group.code,
+								milestoneName: submission.milestone.name,
+								reviewerName: reviewer.user.fullName,
+								reviewSubmittedAt: review.createdAt.toISOString(),
+								feedback: review.feedback,
+								reviewItems,
+								loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+							},
+						},
+					);
+				},
+			);
+
+			await Promise.all(emailPromises);
+
+			this.logger.log(
+				`Successfully sent ${emailPromises.length} review completed email notifications for submission ${submissionId}`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Error sending review completed notifications for submission ${submissionId}`,
+				error,
+			);
 		}
 	}
 }
