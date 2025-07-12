@@ -107,7 +107,7 @@ export class ReviewController {
 		return await this.reviewService.updateReview(user.id, reviewId, updateDto);
 	}
 
-	@Roles(Role.STUDENT)
+	@Roles(Role.STUDENT, Role.LECTURER, Role.MODERATOR)
 	@Get('groups/:groupId/submissions/:submissionId/reviews')
 	@SwaggerDoc('review', 'findBySubmission')
 	async getSubmissionReviews(

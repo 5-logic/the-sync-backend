@@ -37,6 +37,6 @@ export const ReviewDocs = {
 	findBySubmission: {
 		summary: 'Get reviews for submission',
 		description:
-			'Retrieves all reviews for a submission within a group. Includes lecturer details, general feedback, and individual review items. **Student access only.**',
+			'Retrieves all reviews for a submission within a group. Includes lecturer details, general feedback, and individual review items. **Student, Lecturer, and Moderator access only.**',
 	},
 };
