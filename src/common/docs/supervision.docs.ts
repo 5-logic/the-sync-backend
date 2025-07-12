@@ -1,10 +1,10 @@
 import { ApiOperationOptions } from '@nestjs/swagger';
 
 export const SupervisionDocs: Record<string, ApiOperationOptions> = {
-	assignSupervisor: {
-		summary: 'Assign supervisor to thesis',
+	assignBulkSupervisor: {
+		summary: 'Assign supervisors to multiple theses',
 		description:
-			'Assigns a lecturer as supervisor to a thesis project. Creates a new supervision relationship between a lecturer and a thesis. Validates that both thesis and lecturer exist, checks if lecturer has capacity for additional supervisions, and ensures no duplicate supervision exists. Used in thesis management workflow when assigning academic supervisors to student thesis projects. **Moderator access only.**',
+			'Assigns one or more lecturers as supervisors to multiple theses. Validates that all theses and lecturers exist, checks if lecturers have capacity for additional supervisions, and ensures no duplicate supervision exists. Used in bulk thesis management workflows for assigning academic supervisors efficiently. **Moderator access only.**',
 	},
 	changeSupervisor: {
 		summary: 'Change thesis supervisor',
