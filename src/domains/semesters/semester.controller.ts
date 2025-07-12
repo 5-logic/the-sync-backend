@@ -12,7 +12,11 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
-import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
+import {
+	CreateSemesterDto,
+	UpdateEnrollmentsDto,
+	UpdateSemesterDto,
+} from '@/semesters/dto';
 import { SemesterService } from '@/semesters/semester.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -53,5 +57,19 @@ export class SemesterController {
 	@SwaggerDoc('semester', 'remove')
 	async remove(@Param('id') id: string) {
 		return await this.semesterService.remove(id);
+	}
+
+	@Roles(Role.ADMIN)
+	@Put(':id/enrollments')
+	async updateEnrollments(
+		@Param('id') id: string,
+		@Body() dto: UpdateEnrollmentsDto,
+	) {
+		return await this.semesterService.updateEnrollments(id, dto);
+	}
+
+	@Get(':id/students')
+	async getStudentsInSemester(@Param('id') id: string) {
+		return await this.semesterService.getStudentsInSemester(id);
 	}
 }
