@@ -25,6 +25,7 @@
 			"@/milestones/*": ["src/domains/milestones/*"],
 			"@/requests/*": ["src/domains/requests/*"],
 			"@/responsibilities/*": ["src/domains/responsibilities/*"],
+			"@/reviews/*": ["src/domains/reviews/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
 			"@/skill-sets/*": ["src/domains/skill-sets/*"],
 			"@/students/*": ["src/domains/students/*"],

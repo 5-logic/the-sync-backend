@@ -166,7 +166,7 @@ export class SemesterService extends BaseCacheService {
 
 			// Handle enrollment status update and email notifications when status changes to Ongoing
 			if (
-				existingSemester.status !== SemesterStatus.Ongoing &&
+				existingSemester.status === SemesterStatus.Picking &&
 				dto.status === SemesterStatus.Ongoing
 			) {
 				await this.handleSemesterOngoingTransition(updatedSemester);
@@ -601,7 +601,7 @@ export class SemesterService extends BaseCacheService {
 					EmailJobType.SEND_SEMESTER_ONGOING_NOTIFICATION,
 					{
 						to: enrollment.student.user.email,
-						subject: `Thông báo học kỳ ${semester.name} đã bắt đầu - TheSync`,
+						subject: `Announcement Semester ${semester.name} has started - TheSync`,
 						context: {
 							fullName: enrollment.student.user.fullName,
 							semesterName: semester.name,

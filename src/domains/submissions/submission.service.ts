@@ -248,8 +248,10 @@ export class SubmissionService extends BaseCacheService {
 		});
 	}
 
-	// Helper method to validate submission timeline
-	private async validateSubmissionTimeline(milestoneId: string): Promise<void> {
+	// Helper method to validate submission timeline for CREATE operations
+	private async validateCreateSubmissionTimeline(
+		milestoneId: string,
+	): Promise<void> {
 		const milestone = await this.findMilestoneWithSemester(milestoneId);
 
 		if (!milestone) {
@@ -258,17 +260,37 @@ export class SubmissionService extends BaseCacheService {
 
 		const now = new Date();
 
-		// Check if submission period has not started yet
-		if (now < milestone.startDate) {
+		// Check if submission creation is only allowed before startDate
+		if (now >= milestone.startDate) {
 			throw new ConflictException(
-				`Submission period has not started for this milestone. Submissions open on ${milestone.startDate.toISOString()}`,
+				`Submission creation is only allowed before the milestone start date. Start date: ${milestone.startDate.toISOString()}`,
 			);
 		}
 
-		// Check if submission period has ended
-		if (now > milestone.endDate) {
+		// Check if semester allows submissions
+		if (milestone.semester.status !== SemesterStatus.Ongoing) {
 			throw new ConflictException(
-				`Submission period has ended for this milestone. Deadline was ${milestone.endDate.toISOString()}`,
+				`Submissions are only allowed during ongoing semesters. Current semester status: ${milestone.semester.status}`,
+			);
+		}
+	}
+
+	// Helper method to validate submission timeline for UPDATE operations
+	private async validateUpdateSubmissionTimeline(
+		milestoneId: string,
+	): Promise<void> {
+		const milestone = await this.findMilestoneWithSemester(milestoneId);
+
+		if (!milestone) {
+			throw new NotFoundException('Milestone not found');
+		}
+
+		const now = new Date();
+
+		// Check if submission update is only allowed before endDate
+		if (now >= milestone.endDate) {
+			throw new ConflictException(
+				`Submission updates are only allowed before the milestone end date. End date: ${milestone.endDate.toISOString()}`,
 			);
 		}
 
@@ -292,7 +314,91 @@ export class SubmissionService extends BaseCacheService {
 		}
 	}
 
-	// Helper method to get submission window info
+	// Helper method to get submission creation window info
+	async getSubmissionCreationWindowInfo(milestoneId: string): Promise<{
+		isOpen: boolean;
+		milestone: any;
+		message: string;
+	}> {
+		const milestone = await this.findMilestoneWithSemester(milestoneId);
+
+		if (!milestone) {
+			return {
+				isOpen: false,
+				milestone: null,
+				message: 'Milestone not found',
+			};
+		}
+
+		const now = new Date();
+		const startDate = new Date(milestone.startDate);
+
+		if (now >= startDate) {
+			return {
+				isOpen: false,
+				milestone,
+				message: `Submission creation period has ended. Creation was only allowed before ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}`,
+			};
+		}
+
+		if (milestone.semester.status !== SemesterStatus.Ongoing) {
+			return {
+				isOpen: false,
+				milestone,
+				message: `Submissions not allowed - semester status: ${milestone.semester.status}`,
+			};
+		}
+
+		return {
+			isOpen: true,
+			milestone,
+			message: `Submission creation is allowed until ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}`,
+		};
+	}
+
+	// Helper method to get submission update window info
+	async getSubmissionUpdateWindowInfo(milestoneId: string): Promise<{
+		isOpen: boolean;
+		milestone: any;
+		message: string;
+	}> {
+		const milestone = await this.findMilestoneWithSemester(milestoneId);
+
+		if (!milestone) {
+			return {
+				isOpen: false,
+				milestone: null,
+				message: 'Milestone not found',
+			};
+		}
+
+		const now = new Date();
+		const endDate = new Date(milestone.endDate);
+
+		if (now >= endDate) {
+			return {
+				isOpen: false,
+				milestone,
+				message: `Submission update period has ended. Updates were only allowed before ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
+			};
+		}
+
+		if (milestone.semester.status !== SemesterStatus.Ongoing) {
+			return {
+				isOpen: false,
+				milestone,
+				message: `Submissions not allowed - semester status: ${milestone.semester.status}`,
+			};
+		}
+
+		return {
+			isOpen: true,
+			milestone,
+			message: `Submission updates are allowed until ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
+		};
+	}
+
+	// Helper method to get submission window info (kept for backward compatibility)
 	async getSubmissionWindowInfo(milestoneId: string): Promise<{
 		isOpen: boolean;
 		milestone: any;
@@ -316,15 +422,23 @@ export class SubmissionService extends BaseCacheService {
 			return {
 				isOpen: false,
 				milestone,
-				message: `Submission period opens on ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}`,
+				message: `Submission creation period opens before ${startDate.toLocaleDateString()} at ${startDate.toLocaleTimeString()}. Updates allowed until ${endDate.toLocaleDateString()}.`,
 			};
 		}
 
-		if (now > endDate) {
+		if (now >= startDate && now < endDate) {
+			return {
+				isOpen: true,
+				milestone,
+				message: `Submission creation period has ended, but updates are still allowed until ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
+			};
+		}
+
+		if (now >= endDate) {
 			return {
 				isOpen: false,
 				milestone,
-				message: `Submission period closed on ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
+				message: `Submission period has completely ended on ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
 			};
 		}
 
@@ -339,7 +453,7 @@ export class SubmissionService extends BaseCacheService {
 		return {
 			isOpen: true,
 			milestone,
-			message: `Submission period is open until ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
+			message: `Submission update period is open until ${endDate.toLocaleDateString()} at ${endDate.toLocaleTimeString()}`,
 		};
 	}
 
@@ -410,7 +524,7 @@ export class SubmissionService extends BaseCacheService {
 		await this.clearCache(`${SubmissionService.CACHE_KEY}:group:${groupId}`);
 	}
 
-	private async validateSubmissionData(
+	private async validateCreateSubmissionData(
 		groupId: string,
 		milestoneId: string,
 		documents?: string[],
@@ -420,7 +534,25 @@ export class SubmissionService extends BaseCacheService {
 			await this.validateGroupLeadership(userId, groupId);
 		}
 
-		await this.validateSubmissionTimeline(milestoneId);
+		await this.validateCreateSubmissionTimeline(milestoneId);
+		await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
+
+		if (documents) {
+			this.validateDocuments(documents);
+		}
+	}
+
+	private async validateUpdateSubmissionData(
+		groupId: string,
+		milestoneId: string,
+		documents?: string[],
+		userId?: string,
+	): Promise<void> {
+		if (userId) {
+			await this.validateGroupLeadership(userId, groupId);
+		}
+
+		await this.validateUpdateSubmissionTimeline(milestoneId);
 		await this.validateGroupAndMilestoneExistence(groupId, milestoneId);
 
 		if (documents) {
@@ -437,7 +569,7 @@ export class SubmissionService extends BaseCacheService {
 		return this.executeWithErrorHandling(
 			'Creating new submission',
 			async () => {
-				await this.validateSubmissionData(
+				await this.validateCreateSubmissionData(
 					groupId,
 					milestoneId,
 					dto.documents,
@@ -496,6 +628,82 @@ export class SubmissionService extends BaseCacheService {
 				return submissions;
 			},
 		);
+	}
+
+	async getSubmissionsForReview(semesterId?: string, milestoneId?: string) {
+		try {
+			// Create cache key based on parameters
+			const cacheKey = `${SubmissionService.CACHE_KEY}:submissions:${semesterId || 'all'}:${milestoneId || 'all'}`;
+
+			// Check cache first
+			const cachedSubmissions = await this.getCachedData<any[]>(cacheKey);
+			if (cachedSubmissions) {
+				this.logger.log(
+					`Found ${cachedSubmissions.length} submissions for review (from cache)`,
+				);
+				return cachedSubmissions;
+			}
+
+			const where: any = {};
+
+			if (semesterId) {
+				where.milestone = {
+					semesterId: semesterId,
+				};
+			}
+
+			if (milestoneId) {
+				if (where.milestone) {
+					where.milestone = {
+						...where.milestone,
+						id: milestoneId,
+					};
+				} else {
+					where.milestoneId = milestoneId;
+				}
+			}
+
+			const submissions = await this.prisma.submission.findMany({
+				where,
+				include: {
+					group: {
+						select: { id: true, name: true, code: true },
+					},
+					milestone: {
+						select: { id: true, name: true },
+					},
+					_count: {
+						select: {
+							assignmentReviews: true,
+							reviews: true,
+						},
+					},
+				},
+				orderBy: { createdAt: 'desc' },
+			});
+
+			const mappedSubmissions = submissions.map((submission) => ({
+				id: submission.id,
+				status: submission.status,
+				documents: submission.documents,
+				createdAt: submission.createdAt,
+				group: submission.group,
+				milestone: submission.milestone,
+				assignedReviewers: submission._count.assignmentReviews,
+				completedReviews: submission._count.reviews,
+			}));
+
+			// Cache for 5 minutes since submission status can change frequently
+			await this.setCachedData(cacheKey, mappedSubmissions, 300000);
+
+			this.logger.log(`Fetched ${submissions.length} submissions for review`);
+			this.logger.debug(`Submissions: ${JSON.stringify(submissions, null, 2)}`);
+
+			return mappedSubmissions;
+		} catch (error) {
+			this.logger.error('Error fetching submissions for review', error);
+			throw error;
+		}
 	}
 
 	async findByGroupId(groupId: string, userId?: string) {
@@ -577,7 +785,7 @@ export class SubmissionService extends BaseCacheService {
 		return this.executeWithErrorHandling(
 			`Updating submission for group: ${groupId}, milestone: ${milestoneId}`,
 			async () => {
-				await this.validateSubmissionData(
+				await this.validateUpdateSubmissionData(
 					groupId,
 					milestoneId,
 					updateSubmissionDto.documents,

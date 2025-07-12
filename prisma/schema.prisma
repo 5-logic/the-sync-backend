@@ -71,6 +71,13 @@ enum SemesterStatus {
   @@map("semester_statuses")
 }
 
+enum SubmissionStatus {
+  NotSubmitted @map("not_submitted")
+  Submitted    @map("submitted")
+
+  @@map("submission_statuses")
+}
+
 enum OngoingPhase {
   ScopeAdjustable @map("scope_adjustable")
   ScopeLocked     @map("scope_locked")
@@ -267,16 +274,17 @@ model Milestone {
 
   semester    Semester     @relation(fields: [semesterId], references: [id])
   submissions Submission[]
-  Checklist   Checklist[]
+  checklist   Checklist[]
 
   @@map("milestones")
 }
 
 model Submission {
-  id          String   @id @default(uuid())
-  groupId     String   @map("group_id")
-  milestoneId String   @map("milestone_id")
-  documents   String[] @default([])
+  id          String           @id @default(uuid())
+  groupId     String           @map("group_id")
+  milestoneId String           @map("milestone_id")
+  documents   String[]         @default([])
+  status      SubmissionStatus @default(NotSubmitted) @map("status")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -326,12 +334,11 @@ model Checklist {
 }
 
 model ChecklistItem {
-  id          String                    @id @default(uuid())
-  name        String                    @map("name")
-  acceptance  ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
-  description String?                   @map("description")
-  isRequired  Boolean                   @default(false) @map("is_required")
-  checklistId String                    @map("checklist_id")
+  id          String  @id @default(uuid())
+  name        String  @map("name")
+  description String? @map("description")
+  isRequired  Boolean @default(false) @map("is_required")
+  checklistId String  @map("checklist_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -470,9 +477,10 @@ model Enrollment {
 }
 
 model ReviewItem {
-  reviewId        String  @map("review_id")
-  checklistItemId String  @map("checklistitem_id")
-  note            String? @map("note")
+  reviewId        String                    @map("review_id")
+  checklistItemId String                    @map("checklistitem_id")
+  acceptance      ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
+  note            String?                   @map("note")
 
   review        Review        @relation(fields: [reviewId], references: [id])
   checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id])

@@ -8,6 +8,7 @@ import { MajorDocs } from '@/common/docs/major.docs';
 import { MilestoneDocs } from '@/common/docs/milestone.docs';
 import { RequestDocs } from '@/common/docs/request.docs';
 import { ResponsibilityDocs } from '@/common/docs/responsibility.docs';
+import { ReviewDocs } from '@/common/docs/review.docs';
 import { SemesterDocs } from '@/common/docs/semester.docs';
 import { SkillSetDocs } from '@/common/docs/skill-set.docs';
 import { StudentDocs } from '@/common/docs/student.docs';
@@ -26,6 +27,7 @@ export {
 	MilestoneDocs,
 	RequestDocs,
 	ResponsibilityDocs,
+	ReviewDocs,
 	SemesterDocs,
 	SkillSetDocs,
 	StudentDocs,
@@ -45,6 +47,7 @@ export const DOCS_MAP = {
 	milestone: MilestoneDocs,
 	request: RequestDocs,
 	responsibility: ResponsibilityDocs,
+	review: ReviewDocs,
 	semester: SemesterDocs,
 	skillSet: SkillSetDocs,
 	student: StudentDocs,
