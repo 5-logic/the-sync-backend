@@ -11,7 +11,11 @@ import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
+import {
+	CreateSemesterDto,
+	UpdateEnrollmentsDto,
+	UpdateSemesterDto,
+} from '@/semesters/dto';
 
 import {
 	EnrollmentStatus,
@@ -440,7 +444,10 @@ export class SemesterService extends BaseCacheService {
 		);
 	}
 
-	private validateOngoingToEndTransition(ongoingPhase: OngoingPhase | null) {
+	private async validateOngoingToEndTransition(
+		ongoingPhase: OngoingPhase | null,
+		semesterId: string,
+	) {
 		if (ongoingPhase !== OngoingPhase.ScopeLocked) {
 			this.logger.warn(
 				`Cannot transition from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}: ongoingPhase must be ${OngoingPhase.ScopeLocked}, current: ${ongoingPhase}`,
@@ -448,6 +455,44 @@ export class SemesterService extends BaseCacheService {
 
 			throw new ConflictException(
 				`Cannot transition from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}: ongoingPhase must be ${OngoingPhase.ScopeLocked}`,
+			);
+		}
+
+		// Validate that all students have completed their enrollment (Passed or Failed)
+		const studentsWithIncompleteEnrollment = await this.prisma.student.findMany(
+			{
+				where: {
+					enrollments: {
+						some: {
+							semesterId: semesterId,
+							status: {
+								in: [EnrollmentStatus.NotYet, EnrollmentStatus.Ongoing],
+							},
+						},
+					},
+				},
+				include: {
+					user: true,
+					enrollments: {
+						where: {
+							semesterId: semesterId,
+						},
+					},
+				},
+			},
+		);
+
+		this.logger.debug(
+			`Found ${studentsWithIncompleteEnrollment.length} students with incomplete enrollment in semester ${semesterId}`,
+		);
+
+		if (studentsWithIncompleteEnrollment.length > 0) {
+			this.logger.warn(
+				`Cannot transition from Ongoing to End: ${studentsWithIncompleteEnrollment.length} students have incomplete enrollment.`,
+			);
+
+			throw new ConflictException(
+				`Cannot transition to End. There are ${studentsWithIncompleteEnrollment.length} students with incomplete enrollment (NotYet or Ongoing)`,
 			);
 		}
 
@@ -520,7 +565,10 @@ export class SemesterService extends BaseCacheService {
 			existingSemester.status === SemesterStatus.Ongoing &&
 			updateSemesterDto.status === SemesterStatus.End
 		) {
-			this.validateOngoingToEndTransition(existingSemester.ongoingPhase);
+			await this.validateOngoingToEndTransition(
+				existingSemester.ongoingPhase,
+				existingSemester.id,
+			);
 		}
 	}
 
@@ -687,6 +735,273 @@ export class SemesterService extends BaseCacheService {
 			this.logger.error('Error handling semester ongoing transition', error);
 			// Don't throw error to prevent semester update from failing
 			// The main semester update should succeed even if notifications fail
+		}
+	}
+
+	async updateEnrollments(semesterId: string, dto: UpdateEnrollmentsDto) {
+		try {
+			this.logger.log(
+				`Starting enrollment update process for semester ${semesterId}`,
+			);
+
+			// Validate semester exists
+			const semester = await this.findOne(semesterId);
+
+			// Validate semester status - only allow updates when status is Ongoing
+			if (semester.status !== SemesterStatus.Ongoing) {
+				this.logger.warn(
+					`Cannot update enrollments for semester ${semesterId}: status is ${semester.status}, must be ${SemesterStatus.Ongoing}`,
+				);
+
+				throw new ConflictException(
+					`Cannot update enrollments: semester status must be ${SemesterStatus.Ongoing}`,
+				);
+			}
+
+			// Validate all students belong to this semester
+			const studentIds = dto.enrollments.map((e) => e.studentId);
+			const existingEnrollments = await this.prisma.enrollment.findMany({
+				where: {
+					semesterId: semesterId,
+					studentId: { in: studentIds },
+				},
+				include: {
+					student: {
+						include: {
+							user: true,
+						},
+					},
+				},
+			});
+
+			if (existingEnrollments.length !== studentIds.length) {
+				const foundStudentIds = existingEnrollments.map((e) => e.studentId);
+				const missingStudentIds = studentIds.filter(
+					(id) => !foundStudentIds.includes(id),
+				);
+
+				this.logger.warn(
+					`Some students not found in semester ${semesterId}:`,
+					missingStudentIds,
+				);
+
+				throw new NotFoundException(
+					`Some students are not enrolled in this semester: ${missingStudentIds.join(', ')}`,
+				);
+			}
+
+			// Validate status transitions
+			for (const update of dto.enrollments) {
+				const existingEnrollment = existingEnrollments.find(
+					(e) => e.studentId === update.studentId,
+				);
+
+				if (existingEnrollment) {
+					this.validateEnrollmentStatusTransition(
+						existingEnrollment.status,
+						update.status,
+						existingEnrollment.student.user.fullName,
+					);
+				}
+			}
+
+			// Perform batch update
+			const updatePromises = dto.enrollments.map((update) =>
+				this.prisma.enrollment.update({
+					where: {
+						studentId_semesterId: {
+							studentId: update.studentId,
+							semesterId: semesterId,
+						},
+					},
+					data: {
+						status: update.status,
+					},
+					include: {
+						student: {
+							include: {
+								user: true,
+							},
+						},
+					},
+				}),
+			);
+
+			const updatedEnrollments = await Promise.all(updatePromises);
+
+			this.logger.log(
+				`Successfully updated ${updatedEnrollments.length} enrollments in semester ${semesterId}`,
+			);
+
+			// Send email notifications for enrollment result updates
+			await this.sendEnrollmentResultNotifications(
+				{
+					id: semester.id,
+					name: semester.name,
+					code: semester.code,
+				},
+				updatedEnrollments,
+			);
+
+			// Clear cache after updating enrollments
+			await this.clearCache(`${SemesterService.CACHE_KEY}:${semesterId}`);
+
+			return updatedEnrollments;
+		} catch (error) {
+			this.logger.error('Error updating enrollments', error);
+			throw error;
+		}
+	}
+
+	private validateEnrollmentStatusTransition(
+		currentStatus: EnrollmentStatus,
+		newStatus: EnrollmentStatus,
+		studentName: string,
+	) {
+		// Define allowed transitions
+		const allowedTransitions: Record<EnrollmentStatus, EnrollmentStatus[]> = {
+			[EnrollmentStatus.NotYet]: [
+				EnrollmentStatus.Ongoing,
+				EnrollmentStatus.Failed,
+				EnrollmentStatus.Passed,
+			],
+			[EnrollmentStatus.Ongoing]: [
+				EnrollmentStatus.Failed,
+				EnrollmentStatus.Passed,
+			],
+			[EnrollmentStatus.Failed]: [], // No transitions allowed from Failed
+			[EnrollmentStatus.Passed]: [], // No transitions allowed from Passed
+		};
+
+		const allowedNewStatuses = allowedTransitions[currentStatus] || [];
+
+		if (!allowedNewStatuses.includes(newStatus)) {
+			this.logger.warn(
+				`Invalid enrollment status transition for student ${studentName}: ${currentStatus} -> ${newStatus}`,
+			);
+
+			throw new ConflictException(
+				`Invalid enrollment status transition for student ${studentName}: cannot change from ${currentStatus} to ${newStatus}`,
+			);
+		}
+
+		this.logger.debug(
+			`Enrollment status transition validation passed for ${studentName}: ${currentStatus} -> ${newStatus}`,
+		);
+	}
+
+	private async sendEnrollmentResultNotifications(
+		semester: { id: string; name: string; code: string },
+		updatedEnrollments: any[],
+	) {
+		this.logger.log(
+			`Sending enrollment result notifications for semester ${semester.id}`,
+		);
+
+		try {
+			const emailPromises = updatedEnrollments.map((enrollment) => {
+				const enrollmentStatusText = this.getEnrollmentStatusText(
+					enrollment.status as EnrollmentStatus,
+				);
+
+				return this.emailQueueService.sendEmail(
+					EmailJobType.SEND_ENROLLMENT_RESULT_NOTIFICATION,
+					{
+						to: enrollment.student.user.email,
+						subject: `📋TheSync - Graduation Thesis Result Notification - ${semester.name}`,
+						context: {
+							fullName: enrollment.student.user.fullName,
+							studentEmail: enrollment.student.user.email,
+							semesterName: semester.name,
+							semesterCode: semester.code,
+							enrollmentStatus: enrollment.status,
+							enrollmentStatusText,
+							updateDate: new Date().toLocaleDateString('vi-VN', {
+								year: 'numeric',
+								month: 'long',
+								day: 'numeric',
+							}),
+						},
+					},
+				);
+			});
+
+			await Promise.all(emailPromises);
+
+			this.logger.log(
+				`Successfully sent ${emailPromises.length} enrollment result notification emails`,
+			);
+		} catch (error) {
+			this.logger.error('Error sending enrollment result notifications', error);
+			throw error;
+		}
+	}
+
+	private getEnrollmentStatusText(status: EnrollmentStatus): string {
+		const statusMap = {
+			[EnrollmentStatus.NotYet]: 'NotYet',
+			[EnrollmentStatus.Ongoing]: 'Ongoing',
+			[EnrollmentStatus.Passed]: 'Passed',
+			[EnrollmentStatus.Failed]: 'Failed',
+		};
+
+		return statusMap[status] || status;
+	}
+
+	async getStudentsInSemester(semesterId: string) {
+		try {
+			this.logger.log(`Getting students in semester ${semesterId}`);
+
+			// Validate semester exists
+			const semester = await this.findOne(semesterId);
+
+			// Get all students enrolled in this semester
+			const enrollments = await this.prisma.enrollment.findMany({
+				where: {
+					semesterId: semesterId,
+				},
+				include: {
+					student: {
+						include: {
+							user: true,
+							major: true,
+						},
+					},
+				},
+				orderBy: {
+					student: {
+						user: {
+							fullName: 'asc',
+						},
+					},
+				},
+			});
+
+			this.logger.log(
+				`Found ${enrollments.length} students in semester ${semesterId}`,
+			);
+
+			return {
+				semester: {
+					id: semester.id,
+					name: semester.name,
+					code: semester.code,
+					status: semester.status,
+				},
+				students: enrollments.map((enrollment) => ({
+					studentId: enrollment.studentId,
+					studentCode: enrollment.student.studentCode,
+					fullName: enrollment.student.user.fullName,
+					email: enrollment.student.user.email,
+					major: enrollment.student.major.name,
+					enrollmentStatus: enrollment.status,
+					enrollmentStatusText: this.getEnrollmentStatusText(enrollment.status),
+				})),
+				totalStudents: enrollments.length,
+			};
+		} catch (error) {
+			this.logger.error('Error getting students in semester', error);
+			throw error;
 		}
 	}
 }
