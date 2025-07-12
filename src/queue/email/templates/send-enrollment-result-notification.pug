@@ -1,0 +1,63 @@
+
+extends layouts/email-layout
+
+block content
+  .greeting
+	| Dear
+	strong= fullName
+	| ,
+
+  if enrollmentStatus === 'passed'
+	p(style="color: #155724;")
+	  | 🎉 Congratulations! You have PASSED your graduation thesis in the semester
+	  strong= semesterName
+	  | .
+  else if enrollmentStatus === 'failed'
+	p(style="color: #721c24;")
+	  | ❌ Unfortunately, you did NOT PASS your graduation thesis in the semester
+	  strong= semesterName
+	  | .
+  else
+	p(style="color: #495057;")
+	  | ℹ️ Your thesis status:
+	  strong= enrollmentStatusText
+
+  .info-box
+	h3 📋 Details
+	.info-item
+	  span.info-label Semester:
+	  span.info-value= semesterName + " (" + semesterCode + ")"
+	.info-item
+	  span.info-label Student:
+	  span.info-value= fullName
+	.info-item
+	  span.info-label Email:
+	  span.info-value= studentEmail
+	.info-item
+	  span.info-label Updated at:
+	  span.info-value= updateDate
+	.info-item
+	  span.info-label Result:
+	  if enrollmentStatus === 'passed'
+		span.info-value(style="color: #28a745;") PASSED
+	  else if enrollmentStatus === 'failed'
+		span.info-value(style="color: #dc3545;") NOT PASSED
+	  else
+		span.info-value= enrollmentStatusText
+
+  if enrollmentStatus === 'passed'
+	.success-box
+	  strong 🌟 Congratulations:
+	  |  We are proud to announce that you have successfully completed your graduation thesis! This is the result of your effort, dedication, and knowledge accumulated throughout your studies. We are proud of your achievement and wish you great success in your future career.
+  else if enrollmentStatus === 'failed'
+	.warning-box
+	  strong 📚 Next steps:
+	  |  You can contact your supervisor for detailed feedback, prepare for the next semester, or refer to supporting materials from the faculty.
+
+  .footer
+	p(style="color: #6c757d; margin: 0; font-size: 14px;")
+	  | Best regards,
+	  br
+	  strong TheSync System
+	p(style="color: #6c757d; margin: 10px 0 0 0; font-size: 12px;")
+	  | This email was sent automatically from the system. Please do not reply directly.
