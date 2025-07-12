@@ -31,6 +31,36 @@ export class SubmissionController {
 		const user = req.user as UserPayload;
 		return await this.submissionService.findAll(user.id);
 	}
+
+	@Roles(Role.MODERATOR)
+	@Get('semester/:semesterId')
+	@SwaggerDoc('submission', 'findAll')
+	async getSubmissionsBySemester(@Param('semesterId') semesterId: string) {
+		return await this.submissionService.getSubmissionsForReview(semesterId);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Get('milestone/:milestoneId')
+	@SwaggerDoc('submission', 'findAll')
+	async getSubmissionsByMilestone(@Param('milestoneId') milestoneId: string) {
+		return await this.submissionService.getSubmissionsForReview(
+			undefined,
+			milestoneId,
+		);
+	}
+
+	@Roles(Role.MODERATOR)
+	@Get('semester/:semesterId/milestone/:milestoneId')
+	@SwaggerDoc('submission', 'findAll')
+	async getSubmissionsBySemesterAndMilestone(
+		@Param('semesterId') semesterId: string,
+		@Param('milestoneId') milestoneId: string,
+	) {
+		return await this.submissionService.getSubmissionsForReview(
+			semesterId,
+			milestoneId,
+		);
+	}
 }
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

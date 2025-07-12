@@ -10,19 +10,19 @@ export const SubmissionDocs = {
 	findAll: {
 		summary: 'Get all submissions (Admin/Lecturer)',
 		description:
-			'Retrieve all submissions across all groups and milestones with comprehensive details including group information, milestone details, document attachments, and review status. Only accessible to administrators and lecturers for monitoring and evaluation purposes. Results include assignment reviews and feedback from lecturers. Data is cached for performance optimization. **Admin and Lecturer access only.**',
+			'Retrieve all submissions across all groups and milestones with comprehensive details including group information, milestone details, document attachments, and review status. Only accessible to administrators and lecturers for monitoring and evaluation purposes. Results include assignment reviews and feedback from lecturers. **Accessible by Admin and Lecturer roles only.**',
 	} as ApiOperationOptions,
 
 	findByGroupId: {
 		summary: 'Get group submissions',
 		description:
-			'Retrieve all submissions for a specific group across all milestones including document attachments. Group members can view their own group submissions, while administrators and lecturers can view any group submissions. Returns submission history with milestone information, document files, and review details. Useful for tracking group progress throughout the semester. **Group members, Admin, and Lecturer access.**',
+			'Retrieve all submissions for a specific group across all milestones including document attachments. Group members can view their own group submissions, while administrators and lecturers can view any group submissions. Returns submission history with milestone information, document files, and review details. Useful for tracking group progress throughout the semester. **Accessible by Group members, Admin, and Lecturer roles.**',
 	} as ApiOperationOptions,
 
 	findOne: {
 		summary: 'Get submission for specific milestone',
 		description:
-			'Get detailed submission information for a specific group and milestone combination including all document attachments. Returns comprehensive data including group details, milestone information, document files, assignment reviews, and lecturer feedback. Group members can view their own submissions, while administrators and lecturers can view any submission. Includes checklist reviews and evaluation details. **Group members, Admin, and Lecturer access.**',
+			'Get detailed submission information for a specific group and milestone combination including all document attachments. Returns comprehensive data including group details, milestone information, document files, assignment reviews, and lecturer feedback. Group members can view their own submissions, while administrators and lecturers can view any submission. Includes checklist reviews and evaluation details. **Accessible by Group members, Admin, and Lecturer roles.**',
 	} as ApiOperationOptions,
 
 	update: {

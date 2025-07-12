@@ -7,17 +7,17 @@ export const ReviewDocs = {
 	getEligibleReviewers: {
 		summary: 'Get eligible reviewers for submission',
 		description:
-			'Lists lecturers eligible to review a specific submission. Excludes already assigned reviewers. Includes lecturer details like name, email, and moderator status. **Moderator access only.**',
+			'Lists lecturers eligible to review a specific submission. Excludes already assigned reviewers. Includes lecturer details like name, email, and moderator status. **Accessible by Moderator role only.**',
 	},
 	create: {
 		summary: 'Assign bulk reviewers to submissions',
 		description:
-			'Assigns multiple lecturers as reviewers for multiple submissions in bulk. Validates lecturer eligibility and prevents duplicate assignments. Sends email notifications to assigned reviewers. **Moderator access only.**',
+			'Assigns multiple lecturers as reviewers for multiple submissions in bulk. Validates lecturer eligibility and prevents duplicate assignments. Sends email notifications to assigned reviewers. **Accessible by Moderator role only.**',
 	},
 	update: {
 		summary: 'Update reviewer assignment for submission',
 		description:
-			'Updates reviewer assignments for a specific submission. Allows adding or removing reviewers. Sends email notifications to newly assigned reviewers. **Moderator access only.**',
+			'Updates reviewer assignments for a specific submission. Allows adding or removing reviewers. Sends email notifications to newly assigned reviewers. **Accessible by Moderator role only.**',
 	},
 	getAssignedReviews: {
 		summary: 'Get assigned reviews for lecturer',

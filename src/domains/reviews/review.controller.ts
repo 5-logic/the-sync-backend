@@ -35,43 +35,6 @@ export class ReviewController {
 	constructor(private readonly reviewService: ReviewService) {}
 
 	@Roles(Role.MODERATOR)
-	@Get('')
-	@SwaggerDoc('review', 'findAll')
-	async getSubmissionsForReview() {
-		return await this.reviewService.getSubmissionsForReview();
-	}
-
-	@Roles(Role.MODERATOR)
-	@Get('semester/:semesterId')
-	@SwaggerDoc('review', 'findAll')
-	async getSubmissionsBySemester(@Param('semesterId') semesterId: string) {
-		return await this.reviewService.getSubmissionsForReview(semesterId);
-	}
-
-	@Roles(Role.MODERATOR)
-	@Get('milestone/:milestoneId')
-	@SwaggerDoc('review', 'findAll')
-	async getSubmissionsByMilestone(@Param('milestoneId') milestoneId: string) {
-		return await this.reviewService.getSubmissionsForReview(
-			undefined,
-			milestoneId,
-		);
-	}
-
-	@Roles(Role.MODERATOR)
-	@Get('semester/:semesterId/milestone/:milestoneId')
-	@SwaggerDoc('review', 'findAll')
-	async getSubmissionsBySemesterAndMilestone(
-		@Param('semesterId') semesterId: string,
-		@Param('milestoneId') milestoneId: string,
-	) {
-		return await this.reviewService.getSubmissionsForReview(
-			semesterId,
-			milestoneId,
-		);
-	}
-
-	@Roles(Role.MODERATOR)
 	@Get(':id/eligible-reviewers')
 	@SwaggerDoc('review', 'getEligibleReviewers')
 	async getEligibleReviewers(@Param('id') submissionId: string) {
