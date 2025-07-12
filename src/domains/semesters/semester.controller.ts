@@ -61,6 +61,7 @@ export class SemesterController {
 
 	@Roles(Role.ADMIN)
 	@Put(':id/enrollments')
+	@SwaggerDoc('semester', 'updateEnrollments')
 	async updateEnrollments(
 		@Param('id') id: string,
 		@Body() dto: UpdateEnrollmentsDto,
