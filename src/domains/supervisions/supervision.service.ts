@@ -114,6 +114,114 @@ export class SupervisionService extends BaseCacheService {
 		this.logger.log(`Supervision ${action} email sent to ${lecturerEmail}`);
 	}
 
+	private async processLecturerAssignment(
+		thesisId: string,
+		lecturerId: string,
+		results: Array<{
+			thesisId: string;
+			lecturerId: string;
+			status:
+				| 'success'
+				| 'already_exists'
+				| 'max_supervisors_reached'
+				| 'error';
+			error?: string;
+		}>,
+	) {
+		try {
+			await this.validateLecturer(lecturerId);
+
+			const existingSupervision = await this.checkExistingSupervision(
+				thesisId,
+				lecturerId,
+			);
+
+			if (existingSupervision) {
+				this.logger.warn(
+					`Supervision for thesis ${thesisId} already exists for lecturer ${lecturerId}`,
+				);
+				results.push({ thesisId, lecturerId, status: 'already_exists' });
+				return;
+			}
+
+			const currentSupervisionsCount = await this.getSupervisionCount(thesisId);
+
+			if (currentSupervisionsCount >= 2) {
+				this.logger.warn(
+					`Thesis ${thesisId} has already reached the maximum number of supervisors (2)`,
+				);
+				results.push({
+					thesisId,
+					lecturerId,
+					status: 'max_supervisors_reached',
+				});
+				return;
+			}
+
+			const supervision = await this.prisma.supervision.create({
+				data: {
+					thesisId,
+					lecturerId,
+				},
+				include: {
+					lecturer: {
+						include: {
+							user: true,
+						},
+					},
+					thesis: true,
+				},
+			});
+
+			await this.sendSupervisionNotificationEmail(
+				supervision.lecturer.user.email,
+				supervision.lecturer.user.fullName,
+				supervision.thesis.englishName,
+				supervision.thesis.vietnameseName,
+				supervision.thesis.abbreviation,
+				supervision.thesis.domain ?? undefined,
+				'assigned',
+			);
+
+			results.push({ thesisId, lecturerId, status: 'success' });
+		} catch (error) {
+			this.logger.error(
+				`Failed to assign supervisor for thesis ${thesisId} and lecturer ${lecturerId}`,
+				error,
+			);
+			results.push({
+				thesisId,
+				lecturerId,
+				status: 'error',
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async processAssignment(
+		assignment: { thesisId: string; lecturerIds?: string[] },
+		results: Array<{
+			thesisId: string;
+			lecturerId: string;
+			status:
+				| 'success'
+				| 'already_exists'
+				| 'max_supervisors_reached'
+				| 'error';
+			error?: string;
+		}>,
+	) {
+		const { thesisId, lecturerIds } = assignment;
+
+		if (!lecturerIds || lecturerIds.length === 0) {
+			return;
+		}
+
+		for (const lecturerId of lecturerIds) {
+			await this.processLecturerAssignment(thesisId, lecturerId, results);
+		}
+	}
+
 	async assignBulkSupervisor(dto: AssignBulkSupervisionDto) {
 		const results: Array<{
 			thesisId: string;
@@ -127,86 +235,7 @@ export class SupervisionService extends BaseCacheService {
 		}> = [];
 
 		for (const assignment of dto.assignments) {
-			const { thesisId, lecturerIds } = assignment as {
-				thesisId: string;
-				lecturerIds?: string[];
-			};
-
-			if (!lecturerIds || lecturerIds.length === 0) {
-				continue;
-			}
-
-			for (const lecturerId of lecturerIds) {
-				try {
-					await this.validateLecturer(lecturerId);
-
-					const existingSupervision = await this.checkExistingSupervision(
-						thesisId,
-						lecturerId,
-					);
-
-					if (existingSupervision) {
-						this.logger.warn(
-							`Supervision for thesis ${thesisId} already exists for lecturer ${lecturerId}`,
-						);
-						results.push({ thesisId, lecturerId, status: 'already_exists' });
-						continue;
-					}
-
-					const currentSupervisionsCount =
-						await this.getSupervisionCount(thesisId);
-
-					if (currentSupervisionsCount >= 2) {
-						this.logger.warn(
-							`Thesis ${thesisId} has already reached the maximum number of supervisors (2)`,
-						);
-						results.push({
-							thesisId,
-							lecturerId,
-							status: 'max_supervisors_reached',
-						});
-						continue;
-					}
-
-					const supervision = await this.prisma.supervision.create({
-						data: {
-							thesisId,
-							lecturerId,
-						},
-						include: {
-							lecturer: {
-								include: {
-									user: true,
-								},
-							},
-							thesis: true,
-						},
-					});
-
-					await this.sendSupervisionNotificationEmail(
-						supervision.lecturer.user.email,
-						supervision.lecturer.user.fullName,
-						supervision.thesis.englishName,
-						supervision.thesis.vietnameseName,
-						supervision.thesis.abbreviation,
-						supervision.thesis.domain ?? undefined,
-						'assigned',
-					);
-
-					results.push({ thesisId, lecturerId, status: 'success' });
-				} catch (error) {
-					this.logger.error(
-						`Failed to assign supervisor for thesis ${thesisId} and lecturer ${lecturerId}`,
-						error,
-					);
-					results.push({
-						thesisId,
-						lecturerId,
-						status: 'error',
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
-			}
+			await this.processAssignment(assignment, results);
 		}
 
 		return results;
