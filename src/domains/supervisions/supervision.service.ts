@@ -13,7 +13,10 @@ import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { AssignSupervisionDto, ChangeSupervisionDto } from '@/supervisions/dto';
+import {
+	AssignBulkSupervisionDto,
+	ChangeSupervisionDto,
+} from '@/supervisions/dto';
 
 @Injectable()
 export class SupervisionService extends BaseCacheService {
@@ -111,88 +114,102 @@ export class SupervisionService extends BaseCacheService {
 		this.logger.log(`Supervision ${action} email sent to ${lecturerEmail}`);
 	}
 
-	async assignSupervisor(thesisId: string, dto: AssignSupervisionDto) {
-		try {
-			this.logger.log(
-				`Assigning supervision for thesis ${thesisId} to lecturer ${dto.lecturerId}`,
-			);
+	async assignBulkSupervisor(dto: AssignBulkSupervisionDto) {
+		const results: Array<{
+			thesisId: string;
+			lecturerId: string;
+			status:
+				| 'success'
+				| 'already_exists'
+				| 'max_supervisors_reached'
+				| 'error';
+			error?: string;
+		}> = [];
 
-			await this.validateLecturer(dto.lecturerId);
-
-			const existingSupervision = await this.checkExistingSupervision(
-				thesisId,
-				dto.lecturerId,
-			);
-
-			if (existingSupervision) {
-				this.logger.warn(
-					`Supervision for thesis ${thesisId} already exists for lecturer ${dto.lecturerId}`,
-				);
-				throw new ConflictException(`Thesis was supervised by this lecturer.`);
-			}
-
-			const currentSupervisionsCount = await this.getSupervisionCount(thesisId);
-
-			if (currentSupervisionsCount >= 2) {
-				this.logger.warn(
-					`Thesis ${thesisId} has already reached the maximum number of supervisors (2)`,
-				);
-				throw new BadRequestException(
-					`Thesis has already reached the maximum number of supervisors (2)`,
-				);
-			}
-
-			const supervision = await this.prisma.supervision.create({
-				data: {
-					thesisId,
-					lecturerId: dto.lecturerId,
-				},
-				include: {
-					lecturer: {
-						include: {
-							user: true,
-						},
-					},
-					thesis: true,
-				},
-			});
-
-			this.logger.log(
-				`Successfully assigned supervision for thesis ${thesisId} to lecturer ${dto.lecturerId}`,
-			);
-
-			// No cache to clear since we don't cache list operations
-			this.logger.debug(
-				'No cache invalidation needed for supervision assignment',
-			);
-
-			await this.sendSupervisionNotificationEmail(
-				supervision.lecturer.user.email,
-				supervision.lecturer.user.fullName,
-				supervision.thesis.englishName,
-				supervision.thesis.vietnameseName,
-				supervision.thesis.abbreviation,
-				supervision.thesis.domain ?? undefined,
-				'assigned',
-			);
-
-			this.logger.debug(
-				`Supervision assignment email sent to ${supervision.lecturer.user.email}`,
-			);
-
-			this.logger.log(`Supervision assignment email sent successfully.`);
-
-			return {
-				lecturerId: supervision.lecturerId,
-				thesisId: supervision.thesisId,
+		for (const assignment of dto.assignments) {
+			const { thesisId, lecturerIds } = assignment as {
+				thesisId: string;
+				lecturerIds?: string[];
 			};
-		} catch (error) {
-			this.logger.error(
-				`Failed to assign supervision for thesis ${thesisId}`,
-				error,
-			);
-			throw error;
+
+			if (!lecturerIds || lecturerIds.length === 0) {
+				continue;
+			}
+
+			for (const lecturerId of lecturerIds) {
+				try {
+					await this.validateLecturer(lecturerId);
+
+					const existingSupervision = await this.checkExistingSupervision(
+						thesisId,
+						lecturerId,
+					);
+
+					if (existingSupervision) {
+						this.logger.warn(
+							`Supervision for thesis ${thesisId} already exists for lecturer ${lecturerId}`,
+						);
+						results.push({ thesisId, lecturerId, status: 'already_exists' });
+						continue;
+					}
+
+					const currentSupervisionsCount =
+						await this.getSupervisionCount(thesisId);
+
+					if (currentSupervisionsCount >= 2) {
+						this.logger.warn(
+							`Thesis ${thesisId} has already reached the maximum number of supervisors (2)`,
+						);
+						results.push({
+							thesisId,
+							lecturerId,
+							status: 'max_supervisors_reached',
+						});
+						continue;
+					}
+
+					const supervision = await this.prisma.supervision.create({
+						data: {
+							thesisId,
+							lecturerId,
+						},
+						include: {
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
+							thesis: true,
+						},
+					});
+
+					await this.sendSupervisionNotificationEmail(
+						supervision.lecturer.user.email,
+						supervision.lecturer.user.fullName,
+						supervision.thesis.englishName,
+						supervision.thesis.vietnameseName,
+						supervision.thesis.abbreviation,
+						supervision.thesis.domain ?? undefined,
+						'assigned',
+					);
+
+					results.push({ thesisId, lecturerId, status: 'success' });
+				} catch (error) {
+					this.logger.error(
+						`Failed to assign supervisor for thesis ${thesisId} and lecturer ${lecturerId}`,
+						error,
+					);
+					results.push({
+						thesisId,
+						lecturerId,
+						status: 'error',
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
 		}
+
+		return results;
 	}
 
 	async changeSupervisor(thesisId: string, dto: ChangeSupervisionDto) {
@@ -324,9 +341,7 @@ export class SupervisionService extends BaseCacheService {
 				this.logger.warn(
 					`Cannot remove supervisor: thesis ${thesisId} must have at least 1 supervisor`,
 				);
-				throw new BadRequestException(
-					`Cannot remove supervisor of thesis because thesis must have at least 1 supervisor`,
-				);
+				throw new BadRequestException();
 			}
 
 			const supervisionToDelete = await this.prisma.supervision.findFirst({

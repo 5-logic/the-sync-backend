@@ -13,7 +13,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { SwaggerDoc } from '@/common/docs';
 import { SupervisionService } from '@/domains/supervisions/supervision.service';
-import { AssignSupervisionDto, ChangeSupervisionDto } from '@/supervisions/dto';
+import {
+	AssignBulkSupervisionDto,
+	ChangeSupervisionDto,
+} from '@/supervisions/dto';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
@@ -22,17 +25,11 @@ import { AssignSupervisionDto, ChangeSupervisionDto } from '@/supervisions/dto';
 export class SupervisionController {
 	constructor(private readonly supervisionsService: SupervisionService) {}
 
-	@SwaggerDoc('supervision', 'assignSupervisor')
+	@SwaggerDoc('supervision', 'assignBulkSupervisor')
 	@Roles(Role.MODERATOR)
-	@Post('assign/:thesisId')
-	async assignSupervisor(
-		@Param('thesisId') thesisId: string,
-		@Body() assignSupervisionDto: AssignSupervisionDto,
-	) {
-		return await this.supervisionsService.assignSupervisor(
-			thesisId,
-			assignSupervisionDto,
-		);
+	@Post('assign-supervisors')
+	async assignBulkSupervisor(@Body() dto: AssignBulkSupervisionDto) {
+		return await this.supervisionsService.assignBulkSupervisor(dto);
 	}
 
 	@SwaggerDoc('supervision', 'changeSupervisor')
