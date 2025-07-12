@@ -67,9 +67,4 @@ export class SemesterController {
 	) {
 		return await this.semesterService.updateEnrollments(id, dto);
 	}
-
-	@Get(':id/students')
-	async getStudentsInSemester(@Param('id') id: string) {
-		return await this.semesterService.getStudentsInSemester(id);
-	}
 }
