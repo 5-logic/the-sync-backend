@@ -1,5 +1,8 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
+import { BaseCacheService } from '@/domains/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -11,17 +14,33 @@ import {
 } from '@/reviews/dto';
 
 @Injectable()
-export class ReviewService {
-	private readonly logger = new Logger(ReviewService.name);
+export class ReviewService extends BaseCacheService {
+	private static readonly CACHE_KEY = 'cache:review';
+	protected readonly logger = new Logger(ReviewService.name);
 
 	constructor(
 		@Inject(PrismaService) private readonly prisma: PrismaService,
+		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {}
+	) {
+		super(cacheManager, ReviewService.name);
+	}
 
 	async getSubmissionsForReview(semesterId?: string, milestoneId?: string) {
 		try {
+			// Create cache key based on parameters
+			const cacheKey = `${ReviewService.CACHE_KEY}:submissions:${semesterId || 'all'}:${milestoneId || 'all'}`;
+
+			// Check cache first
+			const cachedSubmissions = await this.getCachedData<any[]>(cacheKey);
+			if (cachedSubmissions) {
+				this.logger.log(
+					`Found ${cachedSubmissions.length} submissions for review (from cache)`,
+				);
+				return cachedSubmissions;
+			}
+
 			const where: any = {};
 
 			if (semesterId) {
@@ -60,10 +79,7 @@ export class ReviewService {
 				orderBy: { createdAt: 'desc' },
 			});
 
-			this.logger.log(`Fetched ${submissions.length} submissions for review`);
-			this.logger.debug(`Submissions: ${JSON.stringify(submissions, null, 2)}`);
-
-			return submissions.map((submission) => ({
+			const mappedSubmissions = submissions.map((submission) => ({
 				id: submission.id,
 				status: submission.status,
 				documents: submission.documents,
@@ -73,6 +89,14 @@ export class ReviewService {
 				assignedReviewers: submission._count.assignmentReviews,
 				completedReviews: submission._count.reviews,
 			}));
+
+			// Cache for 5 minutes since submission status can change frequently
+			await this.setCachedData(cacheKey, mappedSubmissions, 300000);
+
+			this.logger.log(`Fetched ${submissions.length} submissions for review`);
+			this.logger.debug(`Submissions: ${JSON.stringify(submissions, null, 2)}`);
+
+			return mappedSubmissions;
 		} catch (error) {
 			this.logger.error('Error fetching submissions for review', error);
 			throw error;
@@ -84,6 +108,18 @@ export class ReviewService {
 	 */
 	async getEligibleReviewers(submissionId: string) {
 		try {
+			// Create cache key for eligible reviewers
+			const cacheKey = `${ReviewService.CACHE_KEY}:eligible-reviewers:${submissionId}`;
+
+			// Check cache first
+			const cachedReviewers = await this.getCachedData<any[]>(cacheKey);
+			if (cachedReviewers) {
+				this.logger.log(
+					`Found ${cachedReviewers.length} eligible reviewers for submission ID ${submissionId} (from cache)`,
+				);
+				return cachedReviewers;
+			}
+
 			const submission = await this.prisma.submission.findUnique({
 				where: { id: submissionId },
 			});
@@ -114,6 +150,16 @@ export class ReviewService {
 				},
 			});
 
+			const mappedReviewers = lecturers.map((lecturer) => ({
+				id: lecturer.userId,
+				name: lecturer.user.fullName,
+				email: lecturer.user.email,
+				isModerator: lecturer.isModerator,
+			}));
+
+			// Cache for 10 minutes since reviewer assignments can change
+			await this.setCachedData(cacheKey, mappedReviewers, 600000);
+
 			this.logger.log(
 				`Found ${lecturers.length} eligible reviewers for submission ID ${submissionId}`,
 			);
@@ -121,12 +167,7 @@ export class ReviewService {
 				`Eligible reviewers: ${JSON.stringify(lecturers, null, 2)}`,
 			);
 
-			return lecturers.map((lecturer) => ({
-				id: lecturer.userId,
-				name: lecturer.user.fullName,
-				email: lecturer.user.email,
-				isModerator: lecturer.isModerator,
-			}));
+			return mappedReviewers;
 		} catch (error) {
 			this.logger.error(
 				`Error fetching eligible reviewers for submission ID ${submissionId}`,
@@ -232,6 +273,9 @@ export class ReviewService {
 				`Bulk assignment completed: ${totalAssignedCount} total assignments across ${assignments.length} submissions`,
 			);
 
+			// Clear relevant caches after bulk assignment
+			await this.clearSubmissionRelatedCaches(assignments);
+
 			// Send email notifications to assigned reviewers
 			await this.sendReviewerAssignmentNotifications(assignments);
 
@@ -251,6 +295,18 @@ export class ReviewService {
 
 	async getAssignedReviews(lecturerId: string) {
 		try {
+			// Create cache key for assigned reviews
+			const cacheKey = `${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`;
+
+			// Check cache first
+			const cachedAssignments = await this.getCachedData<any[]>(cacheKey);
+			if (cachedAssignments) {
+				this.logger.log(
+					`Found ${cachedAssignments.length} assigned reviews for lecturer ID ${lecturerId} (from cache)`,
+				);
+				return cachedAssignments;
+			}
+
 			const assignments = await this.prisma.assignmentReview.findMany({
 				where: { reviewerId: lecturerId },
 				include: {
@@ -267,15 +323,20 @@ export class ReviewService {
 				},
 			});
 
+			const mappedAssignments = assignments.map((assignment) => ({
+				submissionId: assignment.submissionId,
+				submission: assignment.submission,
+			}));
+
+			// Cache for 5 minutes since assignments can change
+			await this.setCachedData(cacheKey, mappedAssignments, 300000);
+
 			this.logger.log(
 				`Fetched ${assignments.length} assigned reviews for lecturer ID ${lecturerId}`,
 			);
 			this.logger.debug(`Assignments: ${JSON.stringify(assignments, null, 2)}`);
 
-			return assignments.map((assignment) => ({
-				submissionId: assignment.submissionId,
-				submission: assignment.submission,
-			}));
+			return mappedAssignments;
 		} catch (error) {
 			this.logger.error('Error fetching assigned reviews', error);
 			throw error;
@@ -287,6 +348,18 @@ export class ReviewService {
 	 */
 	async getReviewForm(submissionId: string) {
 		try {
+			// Create cache key for review form
+			const cacheKey = `${ReviewService.CACHE_KEY}:review-form:${submissionId}`;
+
+			// Check cache first
+			const cachedForm = await this.getCachedData<any>(cacheKey);
+			if (cachedForm) {
+				this.logger.log(
+					`Retrieved review form for submission ID ${submissionId} (from cache)`,
+				);
+				return cachedForm;
+			}
+
 			const submission = await this.prisma.submission.findUnique({
 				where: { id: submissionId },
 				include: {
@@ -311,6 +384,9 @@ export class ReviewService {
 					`Submission with ID ${submissionId} does not exist`,
 				);
 			}
+
+			// Cache for 15 minutes since review forms rarely change
+			await this.setCachedData(cacheKey, submission, 900000);
 
 			this.logger.log(`Fetched review form for submission ID ${submissionId}`);
 			this.logger.debug(`Submission: ${JSON.stringify(submission, null, 2)}`);
@@ -419,6 +495,9 @@ export class ReviewService {
 				`Review submitted successfully for submission ID ${submissionId} by lecturer ID ${lecturerId}`,
 			);
 			this.logger.debug(`Review: ${JSON.stringify(result, null, 2)}`);
+
+			// Clear submission caches since review count has changed
+			await this.clearSubmissionRelatedCaches([{ submissionId }]);
 
 			// Send email notification for review completion
 			await this.sendReviewCompletedNotifications(
@@ -664,6 +743,9 @@ export class ReviewService {
 				`Updated assignments: ${JSON.stringify(result, null, 2)}`,
 			);
 
+			// Clear relevant caches after updating assignments
+			await this.clearSubmissionRelatedCaches([{ submissionId, lecturerIds }]);
+
 			// Send email notifications to newly assigned reviewers
 			if (lecturerIds.length > 0) {
 				await this.sendReviewerAssignmentNotifications([
@@ -899,6 +981,107 @@ export class ReviewService {
 				`Error sending review completed notifications for submission ${submissionId}`,
 				error,
 			);
+		}
+	}
+
+	/**
+	 * Clear caches related to submissions and assignments
+	 */
+	private async clearSubmissionRelatedCaches(
+		assignments: Array<{ submissionId: string; lecturerIds?: string[] }>,
+	) {
+		try {
+			const cacheKeysToInvalidate: string[] = [];
+
+			// Clear submission list caches (all variants)
+			cacheKeysToInvalidate.push(
+				`${ReviewService.CACHE_KEY}:submissions:all:all`,
+			);
+
+			// For each assignment, clear related caches
+			for (const assignment of assignments) {
+				const { submissionId, lecturerIds } = assignment;
+
+				// Clear eligible reviewers cache for this submission
+				cacheKeysToInvalidate.push(
+					`${ReviewService.CACHE_KEY}:eligible-reviewers:${submissionId}`,
+				);
+
+				// Clear review form cache for this submission
+				cacheKeysToInvalidate.push(
+					`${ReviewService.CACHE_KEY}:review-form:${submissionId}`,
+				);
+
+				// Clear assigned reviews cache for each affected lecturer
+				if (lecturerIds && lecturerIds.length > 0) {
+					for (const lecturerId of lecturerIds) {
+						cacheKeysToInvalidate.push(
+							`${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`,
+						);
+					}
+				}
+
+				// Get submission to clear semester/milestone specific caches
+				const submission = await this.prisma.submission.findUnique({
+					where: { id: submissionId },
+					include: {
+						milestone: {
+							select: { id: true, semesterId: true },
+						},
+					},
+				});
+
+				if (submission) {
+					// Clear semester-specific cache
+					cacheKeysToInvalidate.push(
+						`${ReviewService.CACHE_KEY}:submissions:${submission.milestone.semesterId}:all`,
+					);
+
+					// Clear milestone-specific cache
+					cacheKeysToInvalidate.push(
+						`${ReviewService.CACHE_KEY}:submissions:all:${submission.milestone.id}`,
+					);
+
+					// Clear semester+milestone specific cache
+					cacheKeysToInvalidate.push(
+						`${ReviewService.CACHE_KEY}:submissions:${submission.milestone.semesterId}:${submission.milestone.id}`,
+					);
+				}
+			}
+
+			// Clear all cache keys
+			await Promise.all(
+				cacheKeysToInvalidate.map((key) => this.clearCache(key)),
+			);
+
+			this.logger.log(
+				`Cleared ${cacheKeysToInvalidate.length} cache keys for ${assignments.length} assignments`,
+			);
+		} catch (error) {
+			this.logger.warn('Error clearing submission-related caches', error);
+			// Don't throw error to prevent main operation from failing
+		}
+	}
+
+	/**
+	 * Clear all lecturer assignment caches
+	 */
+	private async clearLecturerAssignmentCaches(lecturerIds: string[]) {
+		try {
+			const cacheKeysToInvalidate = lecturerIds.map(
+				(lecturerId) =>
+					`${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`,
+			);
+
+			await Promise.all(
+				cacheKeysToInvalidate.map((key) => this.clearCache(key)),
+			);
+
+			this.logger.log(
+				`Cleared assignment caches for ${lecturerIds.length} lecturers`,
+			);
+		} catch (error) {
+			this.logger.warn('Error clearing lecturer assignment caches', error);
 		}
 	}
 }
