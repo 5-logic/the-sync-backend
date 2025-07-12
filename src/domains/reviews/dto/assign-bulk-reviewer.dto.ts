@@ -15,7 +15,21 @@ export class SingleSubmissionAssignmentDto {
 }
 
 export class AssignBulkLecturerReviewerDto {
-	@ApiProperty()
+	@ApiProperty({
+		example: [
+			{
+				submissionId: '123e4567-e89b-12d3-a456-426614174000',
+				lecturerIds: [
+					'123e4567-e89b-12d3-a456-426614174001',
+					'123e4567-e89b-12d3-a456-426614174002',
+				],
+			},
+			{
+				submissionId: '123e4567-e89b-12d3-a456-426614174003',
+				lecturerIds: ['123e4567-e89b-12d3-a456-426614174004'],
+			},
+		],
+	})
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => SingleSubmissionAssignmentDto)
