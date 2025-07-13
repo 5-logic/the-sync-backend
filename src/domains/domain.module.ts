@@ -9,9 +9,11 @@ import { GroupModule } from '@/groups/group.module';
 import { LecturerModule } from '@/lecturers/lecturer.module';
 import { MajorModule } from '@/majors/major.module';
 import { MilestoneModule } from '@/milestones/milestone.module';
-import { ReponsibilityModule } from '@/responsibilities/responsibility.module';
+import { ResponsibilityModule } from '@/responsibilities/responsibility.module';
+import { ReviewModule } from '@/reviews/review.module';
 import { SemesterModule } from '@/semesters/semester.module';
 import { StudentModule } from '@/students/student.module';
+import { SubmissionModule } from '@/submissions/submission.module';
 import { ThesisModule } from '@/theses/thesis.module';
 
 @Module({
@@ -22,11 +24,13 @@ import { ThesisModule } from '@/theses/thesis.module';
 		LecturerModule,
 		MajorModule,
 		MilestoneModule,
-		ReponsibilityModule,
 		RequestModule,
+		ResponsibilityModule,
+		ReviewModule,
 		SemesterModule,
 		SkillSetModule,
 		StudentModule,
+		SubmissionModule,
 		SupervisionModule,
 		ThesisModule,
 	],

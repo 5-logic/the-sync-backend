@@ -7,4 +7,4 @@ import { ResponsibilityService } from '@/responsibilities/responsibility.service
 	controllers: [ResponsibilityController],
 	providers: [ResponsibilityService],
 })
-export class ReponsibilityModule {}
+export class ResponsibilityModule {}

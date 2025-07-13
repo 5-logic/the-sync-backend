@@ -540,10 +540,19 @@ export class GroupService extends BaseCacheService {
 				responsibilities: group.groupExpectedResponsibilities.map(
 					(ger) => ger.responsibility,
 				),
-				members: group.studentGroupParticipations.map((sgp) => ({
-					...sgp.student,
-					isLeader: sgp.isLeader,
-				})),
+				members: group.studentGroupParticipations
+					.sort((a, b) => {
+						// Sort by isLeader desc (leader first), then by fullName asc
+						if (a.isLeader && !b.isLeader) return -1;
+						if (!a.isLeader && b.isLeader) return 1;
+						return a.student.user.fullName.localeCompare(
+							b.student.user.fullName,
+						);
+					})
+					.map((sgp) => ({
+						...sgp.student,
+						isLeader: sgp.isLeader,
+					})),
 				leader:
 					group.studentGroupParticipations.find((sgp) => sgp.isLeader)
 						?.student ?? null,
@@ -1066,12 +1075,19 @@ export class GroupService extends BaseCacheService {
 						participation.group.groupExpectedResponsibilities.map(
 							(ger) => ger.responsibility,
 						),
-					members: participation.group.studentGroupParticipations.map(
-						(sgp) => ({
+					members: participation.group.studentGroupParticipations
+						.sort((a, b) => {
+							// Sort by isLeader desc (leader first), then by fullName asc
+							if (a.isLeader && !b.isLeader) return -1;
+							if (!a.isLeader && b.isLeader) return 1;
+							return a.student.user.fullName.localeCompare(
+								b.student.user.fullName,
+							);
+						})
+						.map((sgp) => ({
 							...sgp.student,
 							isLeader: sgp.isLeader,
-						}),
-					),
+						})),
 					leader:
 						participation.group.studentGroupParticipations.find(
 							(sgp) => sgp.isLeader,

@@ -1534,7 +1534,7 @@ const seedStudents = async () => {
 			email: 'chuongdqqe170097@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
-			studentCode: 'QE170092',
+			studentCode: 'QE170097',
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
