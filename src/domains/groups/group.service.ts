@@ -1518,14 +1518,14 @@ export class GroupService extends BaseCacheService {
 
 			const assignmentDate = new Date().toLocaleDateString();
 			const groupLeader = groupMembers.find((member) => member.isLeader);
-			const currentGroupSize = groupMembers.length + 1; // Include the newly assigned student
+			const currentGroupSize = groupMembers.length;
 
 			const baseContext = {
 				groupName: group.name,
 				groupCode: group.code,
 				semesterName: group.semester.name,
 				targetStudentName: assignedStudent.user.fullName,
-				targetStudentCode: assignedStudent.code,
+				targetStudentCode: assignedStudent.studentCode,
 				groupLeaderName:
 					groupLeader?.student.user.fullName ?? 'No leader assigned',
 				changeDate: assignmentDate,

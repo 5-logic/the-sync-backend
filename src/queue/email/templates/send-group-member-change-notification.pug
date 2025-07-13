@@ -50,7 +50,9 @@ block content
     if recipientType === 'target_student'
       .success-box
         strong 🎉 Welcome to the Group!
-        | You have been assigned to group "#{groupName}" by a moderator. Please coordinate with your group leader and team members to get started on your project.
+        | You have been assigned to group "
+        strong #{groupName}
+        | " by a moderator. Please coordinate with your group leader and team members to get started on your project.
         
         .info-item
           .info-label Group Leader:
@@ -58,35 +60,40 @@ block content
     else
       .info-box
         strong 📢 Group Update
-        | #{targetStudentName} has been assigned to your group "#{groupName}" by a moderator. Please welcome them to the team and help them get up to speed with your project.
+        | #{targetStudentName} has been assigned to your group "
+        strong #{groupName}
+        | " by a moderator. Please welcome them to the team and help them get up to speed with your project.
 
   else if actionType === 'removed'
     if recipientType === 'target_student'
       .info-box
         strong ℹ️ Group Membership Update
-        | You have been removed from group "#{groupName}". If you have any questions about this change, please contact your instructor or the system moderator.
+        | You have been removed from group "
+        strong #{groupName}
+        | ". If you have any questions about this change, please contact your instructor or the system moderator.
     else
       .info-box
         strong 📢 Group Update
-        | #{targetStudentName} has been removed from your group "#{groupName}". Please adjust your project plans accordingly.
+        | #{targetStudentName} has been removed from your group "
+        strong #{groupName}
+        | ". Please adjust your project plans accordingly.
 
   else if actionType === 'left'
     if recipientType === 'target_student'
       .success-box
         strong ✅ Successfully Left Group
-        | You have successfully left group "#{groupName}". Your participation has been removed from the system and you are now available to join or create a new group during the current semester's preparation phase.
+        | You have successfully left group "
+        strong #{groupName}
+        | ". Your participation has been removed from the system and you are now available to join or create a new group during the current semester's preparation phase.
     else if recipientType === 'group_leader'
       .warning-box
         strong 👨‍💼 Leader Notification
-        | As the group leader, please note that #{targetStudentName} has left your group "#{groupName}". You may want to consider recruiting new members or adjusting your group's project scope accordingly.
+        | As the group leader, please note that #{targetStudentName} has left your group "
+        strong #{groupName}
+        | ". You may want to consider recruiting new members or adjusting your group's project scope accordingly.
     else
       .info-box
         strong 📢 Group Update
-        | Your group member #{targetStudentName} has decided to leave group "#{groupName}". The group will continue with the remaining members.
-
-  p If you have any questions about this change or need assistance, please don't hesitate to contact our support team.
-
-  p
-    | Best regards,
-    br
-    | The TheSync Team
+        | Your group member #{targetStudentName} has decided to leave group "
+        strong #{groupName}
+        | ". The group will continue with the remaining members.

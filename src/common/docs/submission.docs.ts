@@ -3,37 +3,46 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 export const SubmissionDocs = {
 	create: {
 		summary: 'Submit assignment for milestone',
-		description:
-			'Create a new submission for a specific group and milestone with optional document attachments. Group ID and milestone ID are extracted from URL parameters. Only group leaders can submit assignments for their group during the creation period (before milestone startDate). Validates that the current time is before the milestone start date and the semester is in ONGOING status. Prevents duplicate submissions for the same group-milestone combination. Documents should be provided as an array of URLs or file paths in the request body. Automatically associates the submission with the group and milestone. Note: Creation is only allowed before the milestone start date, updates can be made until the end date. **Student access only (group leaders only).**',
+		description: `Create a new submission for a specific group and milestone, with optional document attachments.\n\n- **Authorization:** Student (group leader) only.\n- **Validations:**\n  - Only group leaders can submit.\n  - Submission is only allowed before the milestone start date.\n  - Semester must be in ONGOING status.\n  - Prevents duplicate submissions for the same group-milestone.\n  - Documents must be non-empty strings.\n- **Business logic:**\n  - Associates submission with group and milestone.\n  - Uses transactions for consistency.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 403 if not group leader.\n  - 404 if group or milestone not found.\n  - 409 if submission already exists or outside allowed period.\n- **Logging:** Logs all creation attempts and errors.`,
 	} as ApiOperationOptions,
 
 	findAll: {
 		summary: 'Get all submissions (Admin/Lecturer)',
-		description:
-			'Retrieve all submissions across all groups and milestones with comprehensive details including group information, milestone details, document attachments, and review status. Only accessible to administrators and lecturers for monitoring and evaluation purposes. Results include assignment reviews and feedback from lecturers. **Accessible by Admin and Lecturer roles only.**',
+		description: `Retrieve all submissions across all groups and milestones, including group info, milestone details, document attachments, and review status.\n\n- **Authorization:** Admin and Lecturer only.\n- **Business logic:**\n  - Returns all submissions with assignment reviews and lecturer feedback.\n  - Results are cached for performance.\n- **Error handling:**\n  - 403 if unauthorized.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
+	} as ApiOperationOptions,
+
+	findAllBySemester: {
+		summary: 'Get submissions by semester (Moderator)',
+		description: `Retrieve all submissions for a specific semester, including group and milestone info, review counts, and document attachments.\n\n- **Authorization:** Moderator only.\n- **Business logic:**\n  - Returns submissions for review, with reviewer and review counts.\n  - Results are cached for performance.\n- **Error handling:**\n  - 404 if semester not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
+	} as ApiOperationOptions,
+
+	findAllByMilestone: {
+		summary: 'Get submissions by milestone (Moderator)',
+		description: `Retrieve all submissions for a specific milestone, including group info, review counts, and document attachments.\n\n- **Authorization:** Moderator only.\n- **Business logic:**\n  - Returns submissions for review, with reviewer and review counts.\n  - Results are cached for performance.\n- **Error handling:**\n  - 404 if milestone not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
+	} as ApiOperationOptions,
+
+	findAllBySemesterAndMilestone: {
+		summary: 'Get submissions by semester and milestone (Moderator)',
+		description: `Retrieve all submissions for a specific semester and milestone, including group info, review counts, and document attachments.\n\n- **Authorization:** Moderator only.\n- **Business logic:**\n  - Returns submissions for review, with reviewer and review counts.\n  - Results are cached for performance.\n- **Error handling:**\n  - 404 if semester or milestone not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
 	} as ApiOperationOptions,
 
 	findByGroupId: {
 		summary: 'Get group submissions',
-		description:
-			'Retrieve all submissions for a specific group across all milestones including document attachments. Group members can view their own group submissions, while administrators and lecturers can view any group submissions. Returns submission history with milestone information, document files, and review details. Useful for tracking group progress throughout the semester. **Accessible by Group members, Admin, and Lecturer roles.**',
+		description: `Retrieve all submissions for a specific group across all milestones, including document attachments.\n\n- **Authorization:** Group members, Admin, and Lecturer.\n- **Business logic:**\n  - Returns submission history with milestone info, document files, and review details.\n  - Results are cached for performance.\n- **Error handling:**\n  - 403 if not a group member.\n  - 404 if group not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
 	} as ApiOperationOptions,
 
 	findOne: {
 		summary: 'Get submission for specific milestone',
-		description:
-			'Get detailed submission information for a specific group and milestone combination including all document attachments. Returns comprehensive data including group details, milestone information, document files, assignment reviews, and lecturer feedback. Group members can view their own submissions, while administrators and lecturers can view any submission. Includes checklist reviews and evaluation details. **Accessible by Group members, Admin, and Lecturer roles.**',
+		description: `Get detailed submission information for a specific group and milestone, including all document attachments.\n\n- **Authorization:** Group members, Admin, and Lecturer.\n- **Business logic:**\n  - Returns group details, milestone info, document files, assignment reviews, and lecturer feedback.\n  - Includes checklist reviews and evaluation details.\n- **Error handling:**\n  - 403 if not a group member.\n  - 404 if submission, group, or milestone not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
 	} as ApiOperationOptions,
 
 	update: {
 		summary: 'Update submission',
-		description:
-			'Update an existing submission for a specific group and milestone, including document attachments. Group ID and milestone ID are extracted from URL parameters. Only group leaders can update their group submissions during the update period (before milestone endDate). Validates that the current time is before the milestone end date and semester status is ONGOING. Can update document files by providing a new documents array in the request body. Updates the submission timestamp and triggers cache invalidation. Useful for resubmitting or modifying assignment content and documents. Note: Updates are only allowed before the milestone end date, creation must be done before the start date. **Student access only (group leaders only).**',
+		description: `Update an existing submission for a specific group and milestone, including document attachments.\n\n- **Authorization:** Student (group leader) only.\n- **Validations:**\n  - Only group leaders can update.\n  - Update is only allowed before the milestone end date.\n  - Semester must be in ONGOING status.\n  - Documents must be non-empty strings.\n- **Business logic:**\n  - Updates submission timestamp and document files.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 403 if not group leader.\n  - 404 if submission, group, or milestone not found.\n  - 409 if update outside allowed period.\n- **Logging:** Logs all update attempts and errors.`,
 	} as ApiOperationOptions,
 
 	remove: {
 		summary: 'Delete submission (Admin/Lecturer)',
-		description:
-			'Delete a submission by ID. Only administrators and lecturers can remove submissions, typically for administrative purposes or in case of violations. Removes all associated data including reviews and feedback. This action is irreversible and should be used with caution. Triggers cache invalidation for affected group and milestone data. **Admin and Lecturer access only.**',
+		description: `Delete a submission by ID.\n\n- **Authorization:** Admin and Lecturer only.\n- **Business logic:**\n  - Removes all associated data, including reviews and feedback.\n  - Triggers cache invalidation for affected group and milestone.\n- **Error handling:**\n  - 403 if unauthorized.\n  - 404 if submission not found.\n  - 500 on database errors.\n- **Logging:** Logs all deletion attempts and errors.`,
 	} as ApiOperationOptions,
 };

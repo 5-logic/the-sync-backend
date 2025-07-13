@@ -902,13 +902,6 @@ export class StudentService extends BaseCacheService {
 							password: true,
 						},
 					},
-					major: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-						},
-					},
 				},
 				orderBy: {
 					user: {
@@ -921,7 +914,7 @@ export class StudentService extends BaseCacheService {
 			const formattedStudents = studentsWithoutGroup.map((student) => ({
 				...student.user,
 				studentCode: student.studentCode,
-				major: student.major,
+				majorId: student.majorId,
 			}));
 
 			this.logger.log(
