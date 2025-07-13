@@ -805,29 +805,37 @@ export class SemesterService extends BaseCacheService {
 				}
 			}
 
-			// Perform batch update
-			const updatePromises = dto.enrollments.map((update) =>
-				this.prisma.enrollment.update({
+			// Tối ưu: updateMany cho từng trạng thái, sau đó findMany lấy lại enrollments đã update
+			// Gom các update theo status
+			const statusMap = new Map();
+			for (const update of dto.enrollments) {
+				if (!statusMap.has(update.status)) statusMap.set(update.status, []);
+				statusMap.get(update.status).push(update.studentId);
+			}
+			// Update theo từng status
+			for (const [status, studentIds] of statusMap.entries()) {
+				await this.prisma.enrollment.updateMany({
 					where: {
-						studentId_semesterId: {
-							studentId: update.studentId,
-							semesterId: semesterId,
+						semesterId: semesterId,
+						studentId: { in: studentIds },
+					},
+					data: { status },
+				});
+			}
+			// Lấy lại enrollments đã update (kèm student + user)
+			const updatedEnrollments = await this.prisma.enrollment.findMany({
+				where: {
+					semesterId: semesterId,
+					studentId: { in: dto.enrollments.map((e) => e.studentId) },
+				},
+				include: {
+					student: {
+						include: {
+							user: true,
 						},
 					},
-					data: {
-						status: update.status,
-					},
-					include: {
-						student: {
-							include: {
-								user: true,
-							},
-						},
-					},
-				}),
-			);
-
-			const updatedEnrollments = await Promise.all(updatePromises);
+				},
+			});
 
 			this.logger.log(
 				`Successfully updated ${updatedEnrollments.length} enrollments in semester ${semesterId}`,
@@ -899,45 +907,40 @@ export class SemesterService extends BaseCacheService {
 		);
 
 		try {
-			const emailPromises = updatedEnrollments.map(async (enrollment) => {
-				const enrollmentStatusText = this.getEnrollmentStatusText(
-					enrollment.status as EnrollmentStatus,
-				);
-
-				let thesisEnglishName = 'N/A';
-				let thesisAbbreviation = 'N/A';
-				try {
-					const groupParticipation =
-						await this.prisma.studentGroupParticipation.findFirst({
-							where: {
-								studentId: enrollment.studentId,
-								semesterId: semester.id,
-							},
+			const studentIds = updatedEnrollments.map((e) => e.studentId);
+			const groupParticipations =
+				await this.prisma.studentGroupParticipation.findMany({
+					where: {
+						studentId: { in: studentIds },
+						semesterId: semester.id,
+					},
+					select: {
+						studentId: true,
+						group: {
 							select: {
-								group: {
+								thesis: {
 									select: {
-										thesis: {
-											select: {
-												englishName: true,
-												abbreviation: true,
-											},
-										},
+										englishName: true,
+										abbreviation: true,
 									},
 								},
 							},
-						});
-					if (groupParticipation?.group?.thesis) {
-						thesisEnglishName =
-							groupParticipation.group.thesis.englishName || 'N/A';
-						thesisAbbreviation =
-							groupParticipation.group.thesis.abbreviation || 'N/A';
-					}
-				} catch (err) {
-					this.logger.warn('Could not fetch thesis info for student', {
-						studentId: enrollment.studentId,
-						error: err,
-					});
-				}
+						},
+					},
+				});
+			// Tạo map studentId -> thesis
+			const thesisMap = new Map();
+			for (const gp of groupParticipations) {
+				thesisMap.set(gp.studentId, gp.group?.thesis || null);
+			}
+
+			const emailPromises = updatedEnrollments.map((enrollment) => {
+				const enrollmentStatusText = this.getEnrollmentStatusText(
+					enrollment.status as EnrollmentStatus,
+				);
+				const thesis = thesisMap.get(enrollment.studentId);
+				const thesisEnglishName = thesis?.englishName || 'N/A';
+				const thesisAbbreviation = thesis?.abbreviation || 'N/A';
 				return this.emailQueueService.sendEmail(
 					EmailJobType.SEND_ENROLLMENT_RESULT_NOTIFICATION,
 					{
