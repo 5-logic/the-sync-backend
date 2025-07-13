@@ -899,11 +899,45 @@ export class SemesterService extends BaseCacheService {
 		);
 
 		try {
-			const emailPromises = updatedEnrollments.map((enrollment) => {
+			const emailPromises = updatedEnrollments.map(async (enrollment) => {
 				const enrollmentStatusText = this.getEnrollmentStatusText(
 					enrollment.status as EnrollmentStatus,
 				);
 
+				let thesisEnglishName = 'N/A';
+				let thesisAbbreviation = 'N/A';
+				try {
+					const groupParticipation =
+						await this.prisma.studentGroupParticipation.findFirst({
+							where: {
+								studentId: enrollment.studentId,
+								semesterId: semester.id,
+							},
+							select: {
+								group: {
+									select: {
+										thesis: {
+											select: {
+												englishName: true,
+												abbreviation: true,
+											},
+										},
+									},
+								},
+							},
+						});
+					if (groupParticipation?.group?.thesis) {
+						thesisEnglishName =
+							groupParticipation.group.thesis.englishName || 'N/A';
+						thesisAbbreviation =
+							groupParticipation.group.thesis.abbreviation || 'N/A';
+					}
+				} catch (err) {
+					this.logger.warn('Could not fetch thesis info for student', {
+						studentId: enrollment.studentId,
+						error: err,
+					});
+				}
 				return this.emailQueueService.sendEmail(
 					EmailJobType.SEND_ENROLLMENT_RESULT_NOTIFICATION,
 					{
@@ -914,13 +948,10 @@ export class SemesterService extends BaseCacheService {
 							studentEmail: enrollment.student.user.email,
 							semesterName: semester.name,
 							semesterCode: semester.code,
+							thesisEnglishName,
+							thesisAbbreviation,
 							enrollmentStatus: enrollment.status,
 							enrollmentStatusText,
-							updateDate: new Date().toLocaleDateString('vi-VN', {
-								year: 'numeric',
-								month: 'long',
-								day: 'numeric',
-							}),
 						},
 					},
 				);
