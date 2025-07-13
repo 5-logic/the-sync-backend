@@ -134,6 +134,8 @@ export class MilestoneService extends BaseCacheService {
 				},
 			});
 
+			await this.createSubmission(milestone.id, dto.semesterId);
+
 			// No need to clear cache since findAll() doesn't use cache anymore
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
@@ -143,6 +145,34 @@ export class MilestoneService extends BaseCacheService {
 		} catch (error) {
 			this.logger.error('Failed to create milestone', error);
 
+			throw error;
+		}
+	}
+
+	private async createSubmission(milestoneId: string, semesterId: string) {
+		try {
+			this.logger.log(`Creating submission for milestone ${milestoneId}...`);
+
+			const listGroups = await this.prisma.group.findMany({
+				where: { semesterId },
+			});
+
+			await this.prisma.submission.createMany({
+				data: listGroups.map((group) => ({
+					groupId: group.id,
+					milestoneId,
+					status: 'NotSubmitted',
+				})),
+			});
+
+			this.logger.log(
+				`Submission created for milestone ${milestoneId} successfully`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to create submission for milestone ${milestoneId}`,
+				error,
+			);
 			throw error;
 		}
 	}
