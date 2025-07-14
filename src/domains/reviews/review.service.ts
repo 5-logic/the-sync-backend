@@ -789,7 +789,6 @@ export class ReviewService extends BaseCacheService {
 					context: {
 						lecturerName: lecturer.user.fullName,
 						submissions: submissionDetails,
-						loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 					},
 				},
 			);
@@ -887,7 +886,6 @@ export class ReviewService extends BaseCacheService {
 								reviewSubmittedAt: review.createdAt.toISOString(),
 								feedback: review.feedback,
 								reviewItems,
-								loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 							},
 						},
 					);
