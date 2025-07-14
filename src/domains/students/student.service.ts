@@ -1,13 +1,11 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
@@ -25,17 +23,16 @@ import { generateStrongPassword, hash } from '@/utils';
 import { SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
-export class StudentService extends BaseCacheService {
+export class StudentService {
+	private readonly logger = new Logger(StudentService.name);
+
 	private static readonly CACHE_KEY = 'cache:student';
 
 	constructor(
 		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {
-		super(cacheManager, StudentService.name);
-	}
+	) {}
 
 	/**
 	 * Validate that a semester exists and is in the correct status for student enrollment
@@ -241,9 +238,6 @@ export class StudentService extends BaseCacheService {
 				500,
 			);
 
-			// Clear specific cache after successful creation
-			await this.clearCache(`${StudentService.CACHE_KEY}:${String(result.id)}`);
-
 			this.logger.log(`Student operation completed with userId: ${result.id}`);
 			this.logger.debug('Student detail', result);
 
@@ -296,61 +290,43 @@ export class StudentService extends BaseCacheService {
 		this.logger.log(`Fetching student with ID: ${id}`);
 
 		try {
-			// Use cache-aside pattern with short TTL for individual student data
-			const cacheKey = `${StudentService.CACHE_KEY}:${id}`;
-
-			return await this.getWithCacheAside(
-				cacheKey,
-				async () => {
-					const student = await this.prisma.student.findUnique({
-						where: { userId: id },
+			const student = await this.prisma.student.findUnique({
+				where: { userId: id },
+				include: {
+					user: {
+						omit: {
+							password: true,
+						},
+					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
+					enrollments: {
 						include: {
-							user: {
-								omit: {
-									password: true,
-								},
-							},
-							major: {
+							semester: {
 								select: {
 									id: true,
 									name: true,
 									code: true,
+									status: true,
 								},
 							},
-							enrollments: {
-								include: {
-									semester: {
-										select: {
-											id: true,
-											name: true,
-											code: true,
-											status: true,
-										},
-									},
-								},
-								orderBy: {
-									status: 'asc', // Failed status will be last (alphabetically)
-								},
-							},
-							studentSkills: {
-								include: {
-									skill: {
-										select: {
-											id: true,
-											name: true,
-											skillSet: {
-												select: {
-													id: true,
-													name: true,
-												},
-											},
-										},
-									},
-								},
-							},
-							studentExpectedResponsibilities: {
-								include: {
-									responsibility: {
+						},
+						orderBy: {
+							status: 'asc', // Failed status will be last (alphabetically)
+						},
+					},
+					studentSkills: {
+						include: {
+							skill: {
+								select: {
+									id: true,
+									name: true,
+									skillSet: {
 										select: {
 											id: true,
 											name: true,
@@ -359,55 +335,64 @@ export class StudentService extends BaseCacheService {
 								},
 							},
 						},
-					});
-
-					if (!student) {
-						this.logger.warn(`Student with ID ${id} not found`);
-						throw new NotFoundException(`Student not found`);
-					}
-
-					// Filter out failed enrollments if there are multiple enrollments
-					let currentEnrollments = student.enrollments;
-					if (student.enrollments.length >= 2) {
-						const nonFailedEnrollments = student.enrollments.filter(
-							(enrollment) => enrollment.status !== 'Failed',
-						);
-						// If there are non-failed enrollments, use them; otherwise use all enrollments
-						if (nonFailedEnrollments.length > 0) {
-							currentEnrollments = nonFailedEnrollments;
-						}
-					}
-
-					const formattedStudent = {
-						...student.user,
-						studentCode: student.studentCode,
-						major: student.major,
-						enrollments: currentEnrollments.map((enrollment) => ({
-							status: enrollment.status,
-							semester: enrollment.semester,
-						})),
-						studentSkills: student.studentSkills.map((studentSkill) => ({
-							skillId: studentSkill.skill.id,
-							skillName: studentSkill.skill.name,
-							level: studentSkill.level,
-							skillSet: studentSkill.skill.skillSet,
-						})),
-						studentExpectedResponsibilities:
-							student.studentExpectedResponsibilities.map(
-								(studentResponsibility) => ({
-									responsibilityId: studentResponsibility.responsibility.id,
-									responsibilityName: studentResponsibility.responsibility.name,
-								}),
-							),
-						// For backward compatibility, keep majorId
-						majorId: student.majorId,
-					};
-
-					this.logger.log(`Student found with ID: ${id} (from DB)`);
-					return formattedStudent;
+					},
+					studentExpectedResponsibilities: {
+						include: {
+							responsibility: {
+								select: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
 				},
-				300, // 5 minutes TTL for individual student data
-			);
+			});
+
+			if (!student) {
+				this.logger.warn(`Student with ID ${id} not found`);
+				throw new NotFoundException(`Student not found`);
+			}
+
+			// Filter out failed enrollments if there are multiple enrollments
+			let currentEnrollments = student.enrollments;
+			if (student.enrollments.length >= 2) {
+				const nonFailedEnrollments = student.enrollments.filter(
+					(enrollment) => enrollment.status !== 'Failed',
+				);
+				// If there are non-failed enrollments, use them; otherwise use all enrollments
+				if (nonFailedEnrollments.length > 0) {
+					currentEnrollments = nonFailedEnrollments;
+				}
+			}
+
+			const formattedStudent = {
+				...student.user,
+				studentCode: student.studentCode,
+				major: student.major,
+				enrollments: currentEnrollments.map((enrollment) => ({
+					status: enrollment.status,
+					semester: enrollment.semester,
+				})),
+				studentSkills: student.studentSkills.map((studentSkill) => ({
+					skillId: studentSkill.skill.id,
+					skillName: studentSkill.skill.name,
+					level: studentSkill.level,
+					skillSet: studentSkill.skill.skillSet,
+				})),
+				studentExpectedResponsibilities:
+					student.studentExpectedResponsibilities.map(
+						(studentResponsibility) => ({
+							responsibilityId: studentResponsibility.responsibility.id,
+							responsibilityName: studentResponsibility.responsibility.name,
+						}),
+					),
+				// For backward compatibility, keep majorId
+				majorId: student.majorId,
+			};
+
+			this.logger.log(`Student found with ID: ${id} (from DB)`);
+			return formattedStudent;
 		} catch (error) {
 			this.logger.error(`Error fetching student with ID ${id}`, error);
 			throw error;
@@ -491,9 +476,6 @@ export class StudentService extends BaseCacheService {
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', result);
 
-			// Clear specific cache after successful update
-			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
-
 			return result;
 		} catch (error) {
 			this.logger.error(`Error updating student with ID ${id}`, error);
@@ -544,9 +526,6 @@ export class StudentService extends BaseCacheService {
 
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', result);
-
-			// Clear specific cache after successful admin update
-			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {
@@ -733,12 +712,6 @@ export class StudentService extends BaseCacheService {
 
 			this.logger.log(`Successfully processed ${results.length} students`);
 
-			// Clear cache after successful batch creation
-			const cacheKeys = results.map(
-				(student) => `${StudentService.CACHE_KEY}:${student.id}`,
-			);
-			await this.clearMultipleCache(cacheKeys);
-
 			return results;
 		} catch (error) {
 			this.logger.error('Error creating students in batch', error);
@@ -791,9 +764,6 @@ export class StudentService extends BaseCacheService {
 			);
 
 			this.logger.debug('Updated student status', result);
-
-			// Clear specific cache after successful status update
-			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {
@@ -1029,9 +999,6 @@ export class StudentService extends BaseCacheService {
 					majorId: existingStudent.majorId,
 				};
 			});
-
-			// Clear specific cache after successful deletion
-			await this.clearCache(`${StudentService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {

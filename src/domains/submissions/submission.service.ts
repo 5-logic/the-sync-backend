@@ -1,21 +1,21 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	ForbiddenException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/domains/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { CreateSubmissionDto, UpdateSubmissionDto } from '@/submissions/dto';
 
 import { SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
-export class SubmissionService extends BaseCacheService {
+export class SubmissionService {
+	private readonly logger = new Logger(SubmissionService.name);
+
 	private static readonly CACHE_KEY = 'cache:submission';
 
 	// Reusable include objects to eliminate duplication
@@ -164,12 +164,7 @@ export class SubmissionService extends BaseCacheService {
 		reviews: this.basicReviewInclude,
 	};
 
-	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
-	) {
-		super(cacheManager, SubmissionService.name);
-	}
+	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
 	// Generic method to find group participation
 	private async findGroupParticipation(
@@ -519,11 +514,6 @@ export class SubmissionService extends BaseCacheService {
 		}
 	}
 
-	// Helper method to clear group cache
-	private async clearGroupCache(groupId: string): Promise<void> {
-		await this.clearCache(`${SubmissionService.CACHE_KEY}:group:${groupId}`);
-	}
-
 	private async validateCreateSubmissionData(
 		groupId: string,
 		milestoneId: string,
@@ -597,7 +587,6 @@ export class SubmissionService extends BaseCacheService {
 				});
 
 				this.logger.log(`Submission created with ID: ${submission.id}`);
-				await this.clearGroupCache(groupId);
 
 				return submission;
 			},
@@ -632,18 +621,6 @@ export class SubmissionService extends BaseCacheService {
 
 	async getSubmissionsForReview(semesterId?: string, milestoneId?: string) {
 		try {
-			// Create cache key based on parameters
-			const cacheKey = `${SubmissionService.CACHE_KEY}:submissions:${semesterId || 'all'}:${milestoneId || 'all'}`;
-
-			// Check cache first
-			const cachedSubmissions = await this.getCachedData<any[]>(cacheKey);
-			if (cachedSubmissions) {
-				this.logger.log(
-					`Found ${cachedSubmissions.length} submissions for review (from cache)`,
-				);
-				return cachedSubmissions;
-			}
-
 			const where: any = {};
 
 			if (semesterId) {
@@ -693,9 +670,6 @@ export class SubmissionService extends BaseCacheService {
 				completedReviews: submission._count.reviews,
 			}));
 
-			// Cache for 5 minutes since submission status can change frequently
-			await this.setCachedData(cacheKey, mappedSubmissions, 300000);
-
 			this.logger.log(`Fetched ${submissions.length} submissions for review`);
 			this.logger.debug(`Submissions: ${JSON.stringify(submissions, null, 2)}`);
 
@@ -714,14 +688,6 @@ export class SubmissionService extends BaseCacheService {
 					await this.validateGroupMembership(userId, groupId);
 				}
 
-				const cacheKey = `${SubmissionService.CACHE_KEY}:group:${groupId}`;
-				const cached = await this.getCachedData<any[]>(cacheKey);
-
-				if (cached) {
-					this.logger.log('Returning cached group submissions');
-					return cached;
-				}
-
 				const submissions = await this.prisma.submission.findMany({
 					where: { groupId },
 					include: {
@@ -735,8 +701,6 @@ export class SubmissionService extends BaseCacheService {
 						createdAt: 'desc',
 					},
 				});
-
-				await this.setCachedData(cacheKey, submissions, 300000);
 
 				this.logger.log(
 					`Found ${submissions.length} submissions for group ${groupId}`,
@@ -823,7 +787,6 @@ export class SubmissionService extends BaseCacheService {
 				});
 
 				this.logger.log(`Submission updated with ID: ${updatedSubmission.id}`);
-				await this.clearGroupCache(groupId);
 
 				return updatedSubmission;
 			},

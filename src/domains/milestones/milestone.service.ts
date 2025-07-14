@@ -1,28 +1,23 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dto';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 import { SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
-export class MilestoneService extends BaseCacheService {
+export class MilestoneService {
+	private readonly logger = new Logger(MilestoneService.name);
+
 	private static readonly CACHE_KEY = 'cache:milestone';
 
-	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
-	) {
-		super(cacheManager, MilestoneService.name);
-	}
+	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({
@@ -202,22 +197,11 @@ export class MilestoneService extends BaseCacheService {
 		try {
 			this.logger.log(`Fetching milestone with ID: ${id}`);
 
-			// Use cache with short TTL for individual milestone data
-			const cacheKey = `${MilestoneService.CACHE_KEY}:${id}`;
-			const cachedMilestone = await this.getCachedData<any>(cacheKey);
-			if (cachedMilestone) {
-				this.logger.log(`Milestone found with ID: ${id} (from cache)`);
-				return cachedMilestone;
-			}
-
 			const milestone = await this.validateMilestone(id);
 
 			if (!milestone) {
 				throw new NotFoundException(`Milestone not found`);
 			}
-
-			// Cache with 10 minutes TTL since milestones don't change very frequently
-			await this.setCachedData(cacheKey, milestone, 600000); // 10 minutes TTL
 
 			this.logger.log(`Milestone found with ID: ${id}`);
 			this.logger.debug('Milestone detail', milestone);
@@ -301,9 +285,6 @@ export class MilestoneService extends BaseCacheService {
 				},
 			});
 
-			// Clear only specific milestone cache since findAll() doesn't use cache anymore
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:${id}`);
-
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);
 			this.logger.debug('Updated Milestone', updated);
 
@@ -337,9 +318,6 @@ export class MilestoneService extends BaseCacheService {
 			const deleted = await this.prisma.milestone.delete({
 				where: { id },
 			});
-
-			// Clear only specific milestone cache since findAll() doesn't use cache anymore
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:${id}`);
 
 			this.logger.log(`Milestone deleted with ID: ${deleted.id}`);
 			this.logger.debug('Deleted Milestone', deleted);

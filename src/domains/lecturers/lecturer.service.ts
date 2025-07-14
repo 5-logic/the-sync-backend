@@ -1,13 +1,11 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
@@ -18,17 +16,16 @@ import { CreateUserDto, UpdateUserDto } from '@/users/dto';
 import { generateStrongPassword, hash } from '@/utils';
 
 @Injectable()
-export class LecturerService extends BaseCacheService {
+export class LecturerService {
+	private readonly logger = new Logger(LecturerService.name);
+
 	private static readonly CACHE_KEY = 'cache:lecturer';
 
 	constructor(
 		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {
-		super(cacheManager, LecturerService.name);
-	}
+	) {}
 
 	async create(dto: CreateUserDto) {
 		this.logger.log(`Creating lecturer with email: ${dto.email}`);
@@ -101,9 +98,6 @@ export class LecturerService extends BaseCacheService {
 				500,
 			);
 
-			// Clear specific cache after successful creation
-			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
-
 			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', result);
 
@@ -153,38 +147,29 @@ export class LecturerService extends BaseCacheService {
 		this.logger.log(`Fetching lecturer with ID: ${id}`);
 
 		try {
-			// Use cache-aside pattern with short TTL for individual lecturer data
-			const cacheKey = `${LecturerService.CACHE_KEY}:${id}`;
-
-			return await this.getWithCacheAside(
-				cacheKey,
-				async () => {
-					const lecturer = await this.prisma.lecturer.findUnique({
-						where: { userId: id },
-						include: {
-							user: {
-								omit: {
-									password: true,
-								},
-							},
+			const lecturer = await this.prisma.lecturer.findUnique({
+				where: { userId: id },
+				include: {
+					user: {
+						omit: {
+							password: true,
 						},
-					});
-
-					if (!lecturer) {
-						this.logger.warn(`Lecturer with ID ${id} not found`);
-						throw new NotFoundException(`Lecturer not found`);
-					}
-
-					const result = {
-						...lecturer.user,
-						isModerator: lecturer.isModerator,
-					};
-
-					this.logger.log(`Lecturer found with ID: ${id} (from DB)`);
-					return result;
+					},
 				},
-				300000, // 5 minutes TTL for individual lecturer data
-			);
+			});
+
+			if (!lecturer) {
+				this.logger.warn(`Lecturer with ID ${id} not found`);
+				throw new NotFoundException(`Lecturer not found`);
+			}
+
+			const result = {
+				...lecturer.user,
+				isModerator: lecturer.isModerator,
+			};
+
+			this.logger.log(`Lecturer found with ID: ${id} (from DB)`);
+			return result;
 		} catch (error) {
 			this.logger.error(`Error fetching lecturer with ID ${id}`, error);
 			throw error;
@@ -221,9 +206,6 @@ export class LecturerService extends BaseCacheService {
 					isModerator: existingLecturer.isModerator,
 				};
 			});
-
-			// Clear specific cache after successful update
-			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -272,9 +254,6 @@ export class LecturerService extends BaseCacheService {
 					isModerator: updatedLecturer.lecturer!.isModerator,
 				};
 			});
-
-			// Clear specific cache after successful admin update
-			await this.clearCache(`${LecturerService.CACHE_KEY}:${result.id}`);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', result);
@@ -372,12 +351,6 @@ export class LecturerService extends BaseCacheService {
 				);
 			}
 
-			// Clear cache after successful batch creation
-			const cacheKeys = results.map(
-				(lecturer) => `${LecturerService.CACHE_KEY}:${lecturer.id}`,
-			);
-			await this.clearMultipleCache(cacheKeys);
-
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
 			return results;
@@ -432,9 +405,6 @@ export class LecturerService extends BaseCacheService {
 					isModerator: updatedLecturer.isModerator,
 				};
 			});
-
-			// Clear specific cache after successful status update
-			await this.clearCache(`${LecturerService.CACHE_KEY}:${id}`);
 
 			this.logger.log(
 				`Lecturer status updated - ID: ${id}, isActive: ${isActive}, isModerator: ${isModerator}`,
@@ -527,9 +497,6 @@ export class LecturerService extends BaseCacheService {
 
 				return { ...deletedUser, isModerator: deletedLecturer.isModerator };
 			});
-
-			// Clear specific cache after successful deletion
-			await this.clearCache(`${LecturerService.CACHE_KEY}:${id}`);
 
 			return result;
 		} catch (error) {
