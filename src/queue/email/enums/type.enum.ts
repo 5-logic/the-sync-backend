@@ -33,7 +33,4 @@ export enum EmailJobType {
 	// Reviews in Submissions
 	SEND_REVIEWER_ASSIGNMENT_NOTIFICATION = 'send-reviewer-assignment-notification',
 	SEND_REVIEW_COMPLETED_NOTIFICATION = 'send-review-completed-notification',
-
-	// Others
-	SEND_NOTIFICATION = 'send-notification',
 }
