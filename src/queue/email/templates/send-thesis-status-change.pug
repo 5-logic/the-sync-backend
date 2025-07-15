@@ -1,84 +1,86 @@
+//- Data to be rendered in the email template
+//- + lecturerName: Name of the lecturer
+//- + theses: Array of thesis objects (if bulk update)
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= lecturerName
-    | ,
+    | Hello #[strong #{lecturerName}],
 
-  // Check if this is bulk or single thesis update
+  //- Check if this is bulk or single thesis update
   if theses && theses.length > 1
-    // Bulk thesis update
+    //- Bulk thesis update
     p
-      | We are writing to inform you about status changes for 
-      strong= theses.length
-      |  of your theses on the TheSync system.
+      | We are writing to inform you about status changes for #[strong #{theses.length}] of your theses on the TheSync system.
 
-    // Show action type
+    //- Show action type
     if isPublicationChange
       .info-box
+      br
         h3 📢 Publication Status Update
         p
-          | The following theses have been 
-          strong= (actionType === 'Published') ? 'published and are now visible to students' : 'unpublished and are no longer visible to students'
-          | :
+          | The following theses have been #[strong #{(actionType === 'Published') ? 'published and are now visible to students' : 'unpublished and are no longer visible to students'}]:
     else
       .info-box
         h3 📝 Review Status Update
         p
-          | The following theses have been updated to 
-          strong= actionType
-          | status:
+          | The following theses have been updated to #[strong= #{actionType}] status:
 
-    // List all affected theses
+    //- List all affected theses
     each thesis in theses
       .info-box(style="margin: 15px 0; padding: 15px; border-left: 4px solid #667eea;")
         h4(style="margin-top: 0; color: #495057;")= thesis.englishName
         .info-item
           span.info-label Vietnamese Title:
-          span.info-value= thesis.vietnameseName
+          span.info-value #{thesis.vietnameseName}
         .info-item
           span.info-label Abbreviation:
-          span.info-value= thesis.abbreviation
+          span.info-value #{thesis.abbreviation}
         if thesis.domain
           .info-item
             span.info-label Domain:
-            span.info-value= thesis.domain
+            span.info-value #{thesis.domain}
 
-    // Status-specific messages for bulk
+    //- Status-specific messages for bulk
     if actionType === 'Published'
       .success-box
         strong 🌟 Great News!
+        br
         | Your approved theses have been published and are now visible to students for selection in their capstone projects.
       p
         | Students can now view and select these theses for their capstone projects. You may start receiving student applications and group formation requests soon.
     else if actionType === 'Unpublished'
       .info-box
         strong 📝 Publication Update:
+        br
         | Your theses have been unpublished and are no longer visible to students for selection.
       p
         | These theses are no longer visible to students. You can republish them at any time through the TheSync system.
     else if actionType === 'Approved'
       .success-box
         strong 🎉 Congratulations!
+        br
         | Your theses have been approved by the review committee. They are now awaiting publication by the system moderator.
       p
         | Your theses have passed the review process. The system moderator will review and publish them to make them available for students to select for their capstone projects.
     else if actionType === 'Rejected'
       .warning-box
         strong ❌ Thesis Review Results:
+        br
         | Unfortunately, these theses have not been approved by the review committee. Please review the feedback and make necessary improvements before resubmitting.
       p
         | You can edit these theses and submit them for review again once you have addressed the feedback provided by the review committee.
     else if actionType === 'Pending'
       .info-box
         strong 📝 Review Status Update:
+        br
         | Your theses have been submitted for review and are now pending approval from the review committee.
       p
         | Please wait for the review committee to evaluate your theses. You will receive another notification once the reviews are complete.
 
   else
-    // Single thesis update
+    //- Single thesis update
     p
       | We are writing to inform you about a status change for your thesis on the TheSync system.
 
@@ -86,46 +88,51 @@ block content
       h3 📋 Thesis Information
       
       .info-item
-        span.info-label Thesis Title (English):
-        span.info-value= englishName
+        span.info-label Thesis Name (English):
+        span.info-value #{englishName}
       
       .info-item
-        span.info-label Thesis Title (Vietnamese):
-        span.info-value= vietnameseName
+        span.info-label Thesis Name (Vietnamese):
+        span.info-value #{vietnameseName}
       
       .info-item
         span.info-label Abbreviation:
-        span.info-value= abbreviation
+        span.info-value #{abbreviation}
       
       .info-item
         span.info-label Domain:
-        span.info-value= domain
+        span.info-value #{domain}
 
-    // Review status changes (New → Pending → Approved/Rejected)
+    //- Review status changes (New → Pending → Approved/Rejected)
     if status === 'Pending'
       .info-box
         strong 📝 Review Status Update:
+        br
         | Your thesis has been submitted for review and is now pending approval from the review committee.
     else if status === 'Approved'
       .success-box
         strong 🎉 Congratulations!
+        br
         | Your thesis has been approved by the review committee. It is now awaiting publication by the system moderator.
     else if status === 'Rejected'
       .warning-box
         strong ❌ Thesis Review Result:
+        br
         | Unfortunately, your thesis has not been approved by the review committee. Please review the feedback and make necessary improvements before resubmitting.
 
-    // Publication status changes (only for approved theses)
+    //- Publication status changes (only for approved theses)
     if status === 'Published'
       .success-box
         strong 🌟 Great News!
+        br
         | Your approved thesis has been published and is now visible to students for selection in their capstone projects.
     else if status === 'Unpublished'
       .info-box
         strong 📝 Publication Update:
+        br
         | Your thesis has been unpublished and is no longer visible to students for selection.
 
-    // Action guidance based on status
+    //- Action guidance based on status
     if status === 'Pending'
       p
         | Please wait for the review committee to evaluate your thesis. You will receive another notification once the review is complete.
