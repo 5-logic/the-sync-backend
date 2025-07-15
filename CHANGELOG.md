@@ -5,6 +5,125 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2025-07-15
+
+### Changed
+
+- **Service Architecture Refactoring**:
+  - **Removed BaseCacheService**: Eliminated the `BaseCacheService` abstract class and all caching logic from domain services to simplify architecture and improve maintainability.
+  - **Direct Service Implementation**: All domain services (GroupService, LecturerService, MajorService, MilestoneService, RequestService, ResponsibilityService, ReviewService, SemesterService, SkillSetService, StudentService, SubmissionService, SupervisionService, ThesisService) now extend directly from base classes without caching dependencies.
+  - **Simplified Dependencies**: Removed `@Inject(CACHE_MANAGER)` and Cache dependencies from all service constructors.
+
+- **Cache Utilities Refactoring**:
+  - **New Utility Functions**: Added `createCacheStores()` and Redis configuration utilities in `src/utils/cache.util.ts` and `src/utils/redis.util.ts`.
+  - **Centralized Configuration**: Extracted Redis and BullMQ configuration logic into reusable utility functions (`getRedisConfigOrThrow`, `getBullBoardAuthOrThrow`).
+  - **App Module Simplification**: Simplified `AppModule` configuration by using utility functions for cache store creation and configuration validation.
+
+- **Email Job Type Organization**:
+  - **Restructured Email Enums**: Reorganized `EmailJobType` enum with logical grouping by categories (Authentication, Accounts, Semesters, Groups, Theses, Enrollment, Invitations/Requests, Supervisions, Reviews).
+  - **Removed Unused Types**: Eliminated `SEND_NOTIFICATION` job type for cleaner email system.
+  - **Better Documentation**: Added comments to categorize email job types for improved readability.
+
+- **Email Template Improvements**:
+  - **Enhanced Thesis Assignment**: Updated thesis assignment notification templates with improved clarity and language.
+  - **Fixed Group Size Calculation**: Corrected current group size calculation in thesis assignment notifications.
+  - **Better Formatting**: Enhanced group membership notification formatting for improved clarity.
+
+### Removed
+
+- **BaseCacheService Class**: Completely removed the abstract base cache service class and all its methods (`getCachedData`, `setCachedData`, `clearCache`, `clearMultipleCache`, `getWithCacheAside`, `invalidateEntityCache`, `setCachedDataWithTags`).
+- **Cache Logic**: Removed all caching logic from domain services including cache key management, TTL handling, and cache invalidation patterns.
+- **Cache Dependencies**: Eliminated cache manager dependencies from service constructors across all domain modules.
+- **Redundant Configuration**: Removed duplicate Redis configuration code from AppModule.
+
+### Fixed
+
+- **Configuration Validation**: Enhanced error handling for missing Redis and BullMQ configurations with more descriptive error messages.
+- **Import Organization**: Cleaned up imports across all service files by removing cache-related dependencies.
+- **Code Simplification**: Streamlined service implementations by removing cache-aside patterns and related complexity.
+
+### Performance
+
+- **Reduced Complexity**: Simplified service architecture reduces memory overhead and improves application startup time.
+- **Direct Database Access**: Services now directly access database without cache layer, ensuring real-time data consistency.
+- **Cleaner Architecture**: Eliminated cache-related abstractions for more straightforward service implementations.
+
+### Pull Requests
+
+- [#192](https://github.com/5-logic/the-sync-backend/pull/192) - Merge dev branch for v0.6.6 release
+
+---
+
+## [0.6.5] - 2025-07-13
+
+### Added
+
+- **Review Management System**:
+  - Introduced `ReviewModule` with full CRUD and assignment APIs for submission reviews.
+  - New endpoints:
+    - `GET /:id/eligible-reviewers` (MODERATOR): List eligible reviewers for a submission.
+    - `POST /assign-reviewer` (MODERATOR): Bulk assign reviewers to submissions (`AssignBulkLecturerReviewerDto`).
+    - `PUT /:id/assign-reviewer` (MODERATOR): Update reviewer assignment for a submission (`UpdateReviewerAssignmentDto`).
+    - `GET /reviews/assigned` (LECTURER, MODERATOR): List reviews assigned to the current user.
+    - `GET /reviews/:submissionId/form` (LECTURER, MODERATOR): Get review form for a submission.
+    - `POST /reviews/:submissionId` (LECTURER): Submit a review for a submission (`CreateReviewDto`).
+    - `PUT /reviews/:id` (LECTURER): Update a review (`UpdateReviewDto`).
+    - `GET /groups/:groupId/submissions/:submissionId/reviews` (STUDENT, LECTURER, MODERATOR): List all reviews for a group submission.
+  - Added DTOs: `AssignBulkLecturerReviewerDto`, `CreateReviewDto`, `UpdateReviewDto`, `UpdateReviewerAssignmentDto`, `CreateReviewItemDto`, `UpdateReviewItemDto`.
+
+- **Submission Management System**:
+  - Introduced `SubmissionModule` with endpoints for group and milestone submissions.
+  - New endpoints:
+    - `GET /submissions` (ADMIN, LECTURER): List all submissions for the user.
+    - `GET /submissions/semester/:semesterId` (MODERATOR): List submissions for a semester.
+    - `GET /submissions/milestone/:milestoneId` (MODERATOR): List submissions for a milestone.
+    - `GET /submissions/semester/:semesterId/milestone/:milestoneId` (MODERATOR): List submissions for a semester and milestone.
+    - `GET /groups/:groupId/submissions` (all roles): List all submissions for a group.
+    - `GET /groups/:groupId/milestones/:milestoneId` (all roles): Get a submission for a group and milestone.
+    - `POST /groups/:groupId/milestones/:milestoneId` (STUDENT): Create a submission for a group and milestone (`CreateSubmissionDto`).
+    - `PUT /groups/:groupId/milestones/:milestoneId` (STUDENT): Update a submission for a group and milestone (`UpdateSubmissionDto`).
+  - Added DTOs: `CreateSubmissionDto`, `UpdateSubmissionDto`, `SubmissionServiceDto`.
+
+- **Bulk Supervision Assignment**:
+  - Replaced single supervision assignment with bulk assignment endpoint:
+    - `POST /supervisions/assign-supervisors` (MODERATOR): Bulk assign supervisors to theses (`AssignBulkSupervisionDto`).
+  - Added DTO: `AssignBulkSupervisionDto` (removes `AssignSupervisionDto`).
+
+- **Semester Enrollment Update**:
+  - New endpoint:
+    - `PUT /semesters/:id/enrollments` (ADMIN): Bulk update student enrollments in a semester (`UpdateEnrollmentsDto`).
+  - Added DTO: `UpdateEnrollmentsDto`.
+
+- **Email Notification Enhancements**:
+  - Added new email templates and job types for reviewer assignment, review completion, and enrollment result notifications.
+
+### Changed
+
+- **API Documentation**:
+  - Enhanced and unified Swagger documentation for new and existing endpoints.
+  - Improved DTO documentation with examples and property descriptions.
+
+- **Service Refactoring**:
+  - Refactored review, submission, and supervision services for bulk operations and improved error handling.
+  - Improved caching for review submissions and eligible reviewers.
+
+### Fixed
+
+- Minor bug fixes and optimizations in group, milestone, and student services.
+
+### Database
+
+- Added new migrations for submission attributes, submission status enum, and review item acceptance.
+
+### Pull Requests
+
+- [#191](https://github.com/5-logic/the-sync-backend/pull/191) - Merge dev branch for v0.6.5 release
+- [#190](https://github.com/5-logic/the-sync-backend/pull/190) - Bulk reviewer assignment and review management (task-187, task-188)
+- [#189](https://github.com/5-logic/the-sync-backend/pull/189) - Submission management system (task-144)
+- [#186](https://github.com/5-logic/the-sync-backend/pull/186) - Bulk supervision assignment (task-150)
+
+---
+
 ## [0.6.4] - 2025-07-08
 
 ### Added
