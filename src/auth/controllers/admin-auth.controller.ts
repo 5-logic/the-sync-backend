@@ -1,9 +1,10 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AUTH_API_TAGS, AUTH_CONSTANTS } from '@/auth/constants';
 import { Roles } from '@/auth/decorators';
+import { AdminAuthDocs } from '@/auth/docs';
 import { AdminLoginDto, RefreshDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
@@ -19,11 +20,13 @@ export class AdminAuthController {
 	) {}
 
 	@Post('login')
+	@ApiOperation(AdminAuthDocs.login)
 	async login(@Body() dto: AdminLoginDto) {
 		return await this.adminAuthService.login(dto);
 	}
 
 	@Post('refresh')
+	@ApiOperation(AdminAuthDocs.refresh)
 	async refresh(@Body() dto: RefreshDto) {
 		return await this.adminAuthService.refresh(dto);
 	}
@@ -32,6 +35,7 @@ export class AdminAuthController {
 	@UseGuards(JwtAccessAuthGuard, RoleGuard)
 	@Roles(Role.ADMIN)
 	@Post('logout')
+	@ApiOperation(AdminAuthDocs.logout)
 	async logout(@Req() req: Request) {
 		const user = req.user as UserPayload;
 

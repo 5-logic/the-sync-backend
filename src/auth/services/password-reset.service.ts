@@ -27,7 +27,7 @@ export class PasswordResetService {
 		private readonly email: EmailQueueService,
 	) {}
 
-	async requestPasswordReset(dto: RequestPasswordResetDto) {
+	async request(dto: RequestPasswordResetDto) {
 		this.logger.log(`Password reset requested for email: ${dto.email}`);
 
 		try {
@@ -65,7 +65,7 @@ export class PasswordResetService {
 		}
 	}
 
-	async verifyOtpAndResetPassword(dto: VerifyOtpAndResetPasswordDto) {
+	async verify(dto: VerifyOtpAndResetPasswordDto) {
 		this.logger.log(
 			`Verifying OTP and resetting password for email: ${dto.email}`,
 		);

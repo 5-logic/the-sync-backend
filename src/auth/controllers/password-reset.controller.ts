@@ -1,7 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AUTH_API_TAGS, AUTH_CONSTANTS } from '@/auth/constants';
+import { PasswordResetDocs } from '@/auth/docs';
 import {
 	RequestPasswordResetDto,
 	VerifyOtpAndResetPasswordDto,
@@ -14,12 +15,14 @@ export class PasswordResetController {
 	constructor(private readonly service: PasswordResetService) {}
 
 	@Post('request')
+	@ApiOperation(PasswordResetDocs.request)
 	async request(@Body() dto: RequestPasswordResetDto) {
-		return await this.service.requestPasswordReset(dto);
+		return await this.service.request(dto);
 	}
 
 	@Post('verify')
+	@ApiOperation(PasswordResetDocs.verify)
 	async verify(@Body() dto: VerifyOtpAndResetPasswordDto) {
-		return await this.service.verifyOtpAndResetPassword(dto);
+		return await this.service.verify(dto);
 	}
 }

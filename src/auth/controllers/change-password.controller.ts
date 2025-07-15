@@ -1,8 +1,9 @@
 import { Body, Controller, Put, Req, UseGuards } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AUTH_API_TAGS, AUTH_CONSTANTS } from '@/auth/constants';
+import { ChangePasswordDocs } from '@/auth/docs';
 import { ChangePasswordDto } from '@/auth/dto';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
@@ -15,6 +16,7 @@ export class ChangePasswordController {
 
 	@UseGuards(JwtAccessAuthGuard, RoleGuard)
 	@Put()
+	@ApiOperation(ChangePasswordDocs.changePassword)
 	async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
 		const user = req.user as UserPayload;
 
