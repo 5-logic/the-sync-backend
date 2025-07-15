@@ -1,8 +1,5 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/domains/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -14,35 +11,21 @@ import {
 } from '@/reviews/dto';
 
 @Injectable()
-export class ReviewService extends BaseCacheService {
-	private static readonly CACHE_KEY = 'cache:review';
+export class ReviewService {
 	protected readonly logger = new Logger(ReviewService.name);
+
+	private static readonly CACHE_KEY = 'cache:review';
 
 	constructor(
 		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {
-		super(cacheManager, ReviewService.name);
-	}
+	) {}
 	/**
 	 * Get the list of eligible lecturers for review
 	 */
 	async getEligibleReviewers(submissionId: string) {
 		try {
-			// Create cache key for eligible reviewers
-			const cacheKey = `${ReviewService.CACHE_KEY}:eligible-reviewers:${submissionId}`;
-
-			// Check cache first
-			const cachedReviewers = await this.getCachedData<any[]>(cacheKey);
-			if (cachedReviewers) {
-				this.logger.log(
-					`Found ${cachedReviewers.length} eligible reviewers for submission ID ${submissionId} (from cache)`,
-				);
-				return cachedReviewers;
-			}
-
 			const submission = await this.prisma.submission.findUnique({
 				where: { id: submissionId },
 			});
@@ -79,9 +62,6 @@ export class ReviewService extends BaseCacheService {
 				email: lecturer.user.email,
 				isModerator: lecturer.isModerator,
 			}));
-
-			// Cache for 10 minutes since reviewer assignments can change
-			await this.setCachedData(cacheKey, mappedReviewers, 600000);
 
 			this.logger.log(
 				`Found ${lecturers.length} eligible reviewers for submission ID ${submissionId}`,
@@ -218,18 +198,6 @@ export class ReviewService extends BaseCacheService {
 
 	async getAssignedReviews(lecturerId: string) {
 		try {
-			// Create cache key for assigned reviews
-			const cacheKey = `${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`;
-
-			// Check cache first
-			const cachedAssignments = await this.getCachedData<any[]>(cacheKey);
-			if (cachedAssignments) {
-				this.logger.log(
-					`Found ${cachedAssignments.length} assigned reviews for lecturer ID ${lecturerId} (from cache)`,
-				);
-				return cachedAssignments;
-			}
-
 			const assignments = await this.prisma.assignmentReview.findMany({
 				where: { reviewerId: lecturerId },
 				include: {
@@ -251,9 +219,6 @@ export class ReviewService extends BaseCacheService {
 				submission: assignment.submission,
 			}));
 
-			// Cache for 5 minutes since assignments can change
-			await this.setCachedData(cacheKey, mappedAssignments, 300000);
-
 			this.logger.log(
 				`Fetched ${assignments.length} assigned reviews for lecturer ID ${lecturerId}`,
 			);
@@ -271,18 +236,6 @@ export class ReviewService extends BaseCacheService {
 	 */
 	async getReviewForm(submissionId: string) {
 		try {
-			// Create cache key for review form
-			const cacheKey = `${ReviewService.CACHE_KEY}:review-form:${submissionId}`;
-
-			// Check cache first
-			const cachedForm = await this.getCachedData<any>(cacheKey);
-			if (cachedForm) {
-				this.logger.log(
-					`Retrieved review form for submission ID ${submissionId} (from cache)`,
-				);
-				return cachedForm;
-			}
-
 			const submission = await this.prisma.submission.findUnique({
 				where: { id: submissionId },
 				include: {
@@ -307,9 +260,6 @@ export class ReviewService extends BaseCacheService {
 					`Submission with ID ${submissionId} does not exist`,
 				);
 			}
-
-			// Cache for 15 minutes since review forms rarely change
-			await this.setCachedData(cacheKey, submission, 900000);
 
 			this.logger.log(`Fetched review form for submission ID ${submissionId}`);
 			this.logger.debug(`Submission: ${JSON.stringify(submission, null, 2)}`);
@@ -789,7 +739,6 @@ export class ReviewService extends BaseCacheService {
 					context: {
 						lecturerName: lecturer.user.fullName,
 						submissions: submissionDetails,
-						loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 					},
 				},
 			);
@@ -887,7 +836,6 @@ export class ReviewService extends BaseCacheService {
 								reviewSubmittedAt: review.createdAt.toISOString(),
 								feedback: review.feedback,
 								reviewItems,
-								loginUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 							},
 						},
 					);
@@ -972,39 +920,12 @@ export class ReviewService extends BaseCacheService {
 				}
 			}
 
-			// Clear all cache keys
-			await Promise.all(
-				cacheKeysToInvalidate.map((key) => this.clearCache(key)),
-			);
-
 			this.logger.log(
 				`Cleared ${cacheKeysToInvalidate.length} cache keys for ${assignments.length} assignments`,
 			);
 		} catch (error) {
 			this.logger.warn('Error clearing submission-related caches', error);
 			// Don't throw error to prevent main operation from failing
-		}
-	}
-
-	/**
-	 * Clear all lecturer assignment caches
-	 */
-	private async clearLecturerAssignmentCaches(lecturerIds: string[]) {
-		try {
-			const cacheKeysToInvalidate = lecturerIds.map(
-				(lecturerId) =>
-					`${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`,
-			);
-
-			await Promise.all(
-				cacheKeysToInvalidate.map((key) => this.clearCache(key)),
-			);
-
-			this.logger.log(
-				`Cleared assignment caches for ${lecturerIds.length} lecturers`,
-			);
-		} catch (error) {
-			this.logger.warn('Error clearing lecturer assignment caches', error);
 		}
 	}
 }

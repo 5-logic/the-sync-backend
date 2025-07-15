@@ -1,32 +1,17 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Cache } from 'cache-manager';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
-export class SkillSetService extends BaseCacheService {
+export class SkillSetService {
+	private readonly logger = new Logger(SkillSetService.name);
+
 	private static readonly CACHE_KEY = 'cache:skill-set';
 
-	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
-	) {
-		super(cacheManager, SkillSetService.name);
-	}
+	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
 	async findAll() {
 		try {
-			const cacheKey = `${SkillSetService.CACHE_KEY}:all`;
-			const cachedSkillSets = await this.getCachedData<any[]>(cacheKey);
-			if (cachedSkillSets) {
-				this.logger.log(
-					`Found ${cachedSkillSets.length} skill sets (from cache)`,
-				);
-				return cachedSkillSets;
-			}
-
 			const skillSets = await this.prisma.skillSet.findMany({
 				include: {
 					skills: {
@@ -40,8 +25,6 @@ export class SkillSetService extends BaseCacheService {
 				},
 			});
 
-			await this.setCachedData(cacheKey, skillSets);
-
 			this.logger.log(`Found ${skillSets.length} skill sets`);
 
 			return skillSets;
@@ -53,15 +36,6 @@ export class SkillSetService extends BaseCacheService {
 
 	async findOne(id: string) {
 		try {
-			const cacheKey = `${SkillSetService.CACHE_KEY}:${id}`;
-			const cachedSkillSet = await this.getCachedData<any>(cacheKey);
-			if (cachedSkillSet) {
-				this.logger.log(
-					`Skill set found with ID: ${cachedSkillSet.id} (from cache)`,
-				);
-				return cachedSkillSet;
-			}
-
 			const skillSet = await this.prisma.skillSet.findUnique({
 				where: { id },
 				include: {
@@ -76,8 +50,6 @@ export class SkillSetService extends BaseCacheService {
 			if (!skillSet) {
 				throw new NotFoundException(`SkillSet not found`);
 			}
-
-			await this.setCachedData(cacheKey, skillSet);
 
 			this.logger.log(`Skill set found with ID: ${skillSet.id}`);
 

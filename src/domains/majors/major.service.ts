@@ -1,38 +1,22 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Cache } from 'cache-manager';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 
 @Injectable()
-export class MajorService extends BaseCacheService {
+export class MajorService {
+	private readonly logger = new Logger(MajorService.name);
+
 	private static readonly CACHE_KEY = 'cache:major';
 
-	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
-	) {
-		super(cacheManager, MajorService.name);
-	}
+	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
 	async findAll() {
 		this.logger.log('Fetching all majors');
 
 		try {
-			const cacheKey = `${MajorService.CACHE_KEY}:all`;
-			const cachedMajors = await this.getCachedData<any[]>(cacheKey);
-
-			if (cachedMajors) {
-				this.logger.log(`Found ${cachedMajors.length} majors (from cache)`);
-				return cachedMajors;
-			}
-
 			const majors = await this.prisma.major.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
-
-			await this.setCachedData(cacheKey, majors);
 
 			this.logger.log(`Fetched ${majors.length} majors`);
 			this.logger.debug('Majors:', majors);
@@ -49,14 +33,6 @@ export class MajorService extends BaseCacheService {
 		this.logger.log(`Fetching major with id: ${id}`);
 
 		try {
-			const cacheKey = `${MajorService.CACHE_KEY}:${id}`;
-			const cachedMajor = await this.getCachedData<any>(cacheKey);
-
-			if (cachedMajor) {
-				this.logger.log(`Major found with id: ${id} (from cache)`);
-				return cachedMajor;
-			}
-
 			const major = await this.prisma.major.findUnique({ where: { id } });
 
 			if (!major) {
@@ -64,8 +40,6 @@ export class MajorService extends BaseCacheService {
 
 				throw new NotFoundException(`Major not found`);
 			}
-
-			await this.setCachedData(cacheKey, major);
 
 			this.logger.log(`Major found with id: ${id}`);
 			this.logger.debug('Major detail', major);
