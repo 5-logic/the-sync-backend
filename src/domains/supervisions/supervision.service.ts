@@ -1,14 +1,12 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	BadRequestException,
 	ConflictException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -25,17 +23,16 @@ type AssignmentStatus =
 	| 'error';
 
 @Injectable()
-export class SupervisionService extends BaseCacheService {
+export class SupervisionService {
+	private readonly logger = new Logger(SupervisionService.name);
+
 	private static readonly CACHE_KEY = 'cache:supervision';
 
 	constructor(
 		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {
-		super(cacheManager, SupervisionService.name);
-	}
+	) {}
 
 	/**
 	 * Helper method để validate lecturer tồn tại và active

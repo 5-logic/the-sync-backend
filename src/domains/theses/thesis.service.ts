@@ -1,14 +1,12 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	ForbiddenException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { GroupService } from '@/groups/group.service';
 import { PrismaService } from '@/providers/prisma/prisma.service';
@@ -25,19 +23,18 @@ import {
 import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
-export class ThesisService extends BaseCacheService {
+export class ThesisService {
+	private readonly logger = new Logger(ThesisService.name);
+
 	private static readonly INITIAL_VERSION = 1;
 	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
 		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 		@Inject(GroupService) private readonly groupService: GroupService,
-	) {
-		super(cacheManager, ThesisService.name);
-	}
+	) {}
 
 	/**
 	 * Helper method to send thesis status change email notification
@@ -322,9 +319,6 @@ export class ThesisService extends BaseCacheService {
 				throw new ConflictException('Failed to create thesis');
 			}
 
-			// Clear specific cache after successful creation
-			await this.clearCache(`${ThesisService.CACHE_KEY}:${newThesis.id}`);
-
 			this.logger.log(`Thesis created with ID: ${newThesis.id}`);
 			this.logger.debug('Thesis detail', newThesis);
 
@@ -376,43 +370,34 @@ export class ThesisService extends BaseCacheService {
 		try {
 			this.logger.log(`Fetching thesis with id: ${id}`);
 
-			// Use cache-aside pattern with short TTL for individual thesis data
-			const cacheKey = `${ThesisService.CACHE_KEY}:${id}`;
-
-			return await this.getWithCacheAside(
-				cacheKey,
-				async () => {
-					const thesis = await this.prisma.thesis.findUnique({
-						where: { id },
+			const thesis = await this.prisma.thesis.findUnique({
+				where: { id },
+				include: {
+					thesisVersions: {
+						select: { id: true, version: true, supportingDocument: true },
+						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
 						include: {
-							thesisVersions: {
-								select: { id: true, version: true, supportingDocument: true },
-								orderBy: { version: 'desc' },
-							},
-							thesisRequiredSkills: {
-								include: {
-									skill: {
-										select: {
-											id: true,
-											name: true,
-										},
-									},
+							skill: {
+								select: {
+									id: true,
+									name: true,
 								},
 							},
 						},
-					});
-
-					if (!thesis) {
-						this.logger.warn(`Thesis with ID ${id} not found`);
-						throw new NotFoundException(`Thesis not found`);
-					}
-
-					this.logger.log(`Thesis found with ID: ${id} (from DB)`);
-					this.logger.debug('Thesis detail', thesis);
-					return thesis;
+					},
 				},
-				300000, // 5 minutes TTL for individual thesis data
-			);
+			});
+
+			if (!thesis) {
+				this.logger.warn(`Thesis with ID ${id} not found`);
+				throw new NotFoundException(`Thesis not found`);
+			}
+
+			this.logger.log(`Thesis found with ID: ${id} (from DB)`);
+			this.logger.debug('Thesis detail', thesis);
+			return thesis;
 		} catch (error) {
 			this.logger.error(`Error fetching thesis with ID ${id}`, error);
 			throw error;
@@ -538,13 +523,6 @@ export class ThesisService extends BaseCacheService {
 
 			// Send notifications
 			this.sendPublicationNotifications(dto.thesesIds, dto.isPublish);
-
-			// Clear cache for updated theses
-			await Promise.all(
-				dto.thesesIds.map((id) =>
-					this.clearCache(`${ThesisService.CACHE_KEY}:${id}`),
-				),
-			);
 
 			// Return updated theses
 			return await this.fetchUpdatedTheses(dto.thesesIds);
@@ -848,9 +826,6 @@ export class ThesisService extends BaseCacheService {
 			this.logger.log(`Thesis updated with ID: ${updatedThesis.id}`);
 			this.logger.debug('Updated thesis detail', updatedThesis);
 
-			// Clear specific cache after successful update
-			await this.clearCache(`${ThesisService.CACHE_KEY}:${updatedThesis.id}`);
-
 			return updatedThesis;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
@@ -931,9 +906,6 @@ export class ThesisService extends BaseCacheService {
 				`Thesis with ID: ${id} successfully submitted for review. Status changed to Pending`,
 			);
 			this.logger.debug('Updated thesis detail', updatedThesis);
-
-			// Clear specific cache after successful status update
-			await this.clearCache(`${ThesisService.CACHE_KEY}:${id}`);
 
 			// Send notification email about submission (review status change)
 			this.sendThesisStatusChangeEmail(id, 'Pending', false).catch((error) => {
@@ -1017,9 +989,6 @@ export class ThesisService extends BaseCacheService {
 
 			this.logger.debug('Reviewed thesis detail', updatedThesis);
 
-			// Clear specific cache after successful review
-			await this.clearCache(`${ThesisService.CACHE_KEY}:${id}`);
-
 			// Send status change email (review status change)
 			await this.sendThesisStatusChangeEmail(id, dto.status, false);
 
@@ -1075,9 +1044,6 @@ export class ThesisService extends BaseCacheService {
 
 			this.logger.log(`Thesis with ID: ${id} successfully deleted`);
 			this.logger.debug('Deleted thesis detail', deletedThesis);
-
-			// Clear specific cache after successful deletion
-			await this.clearCache(`${ThesisService.CACHE_KEY}:${id}`);
 
 			return deletedThesis;
 		} catch (error) {
@@ -1220,9 +1186,6 @@ export class ThesisService extends BaseCacheService {
 				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
 			);
 			this.logger.debug('Assignment result', updatedGroup);
-
-			// Clear specific cache after successful assignment
-			await this.clearCache(`${ThesisService.CACHE_KEY}:${id}`);
 
 			// Send email notifications
 			try {
