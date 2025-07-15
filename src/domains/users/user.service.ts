@@ -18,9 +18,9 @@ export class UserService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	async findOne(params: { id?: string; email?: string }) {
-		try {
-			this.logger.log(`Fetching user with params: ${JSON.stringify(params)}`);
+		this.logger.log(`Fetching user with params: ${JSON.stringify(params)}`);
 
+		try {
 			const user = await this.prisma.user.findFirst({
 				where: {
 					OR: [{ id: params.id }, { email: params.email }],
@@ -33,7 +33,7 @@ export class UserService {
 			if (!user) {
 				this.logger.warn(`User not found with provided parameters`);
 
-				return null;
+				throw new NotFoundException('User not found');
 			}
 
 			return user;
@@ -45,9 +45,9 @@ export class UserService {
 	}
 
 	async validateUser(email: string, password: string) {
-		try {
-			this.logger.log(`Validating user with email: ${email}`);
+		this.logger.log(`Validating user with email: ${email}`);
 
+		try {
 			const user = await this.prisma.user.findUnique({
 				where: { email: email, isActive: true },
 			});
@@ -78,9 +78,9 @@ export class UserService {
 	}
 
 	async checkRole(id: string): Promise<Role | null> {
-		try {
-			this.logger.log(`Checking role for user with ID: ${id}`);
+		this.logger.log(`Checking role for user with ID: ${id}`);
 
+		try {
 			const user = await this.prisma.user.findUnique({
 				where: { id: id },
 				include: {
@@ -104,6 +104,7 @@ export class UserService {
 
 			if (user.student) {
 				this.logger.log(`User with ID ${id} is a ${Role.STUDENT}`);
+
 				return Role.STUDENT;
 			}
 
