@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2025-07-15
+
+### Changed
+
+- **Service Architecture Refactoring**:
+  - **Removed BaseCacheService**: Eliminated the `BaseCacheService` abstract class and all caching logic from domain services to simplify architecture and improve maintainability.
+  - **Direct Service Implementation**: All domain services (GroupService, LecturerService, MajorService, MilestoneService, RequestService, ResponsibilityService, ReviewService, SemesterService, SkillSetService, StudentService, SubmissionService, SupervisionService, ThesisService) now extend directly from base classes without caching dependencies.
+  - **Simplified Dependencies**: Removed `@Inject(CACHE_MANAGER)` and Cache dependencies from all service constructors.
+
+- **Cache Utilities Refactoring**:
+  - **New Utility Functions**: Added `createCacheStores()` and Redis configuration utilities in `src/utils/cache.util.ts` and `src/utils/redis.util.ts`.
+  - **Centralized Configuration**: Extracted Redis and BullMQ configuration logic into reusable utility functions (`getRedisConfigOrThrow`, `getBullBoardAuthOrThrow`).
+  - **App Module Simplification**: Simplified `AppModule` configuration by using utility functions for cache store creation and configuration validation.
+
+- **Email Job Type Organization**:
+  - **Restructured Email Enums**: Reorganized `EmailJobType` enum with logical grouping by categories (Authentication, Accounts, Semesters, Groups, Theses, Enrollment, Invitations/Requests, Supervisions, Reviews).
+  - **Removed Unused Types**: Eliminated `SEND_NOTIFICATION` job type for cleaner email system.
+  - **Better Documentation**: Added comments to categorize email job types for improved readability.
+
+- **Email Template Improvements**:
+  - **Enhanced Thesis Assignment**: Updated thesis assignment notification templates with improved clarity and language.
+  - **Fixed Group Size Calculation**: Corrected current group size calculation in thesis assignment notifications.
+  - **Better Formatting**: Enhanced group membership notification formatting for improved clarity.
+
+### Removed
+
+- **BaseCacheService Class**: Completely removed the abstract base cache service class and all its methods (`getCachedData`, `setCachedData`, `clearCache`, `clearMultipleCache`, `getWithCacheAside`, `invalidateEntityCache`, `setCachedDataWithTags`).
+- **Cache Logic**: Removed all caching logic from domain services including cache key management, TTL handling, and cache invalidation patterns.
+- **Cache Dependencies**: Eliminated cache manager dependencies from service constructors across all domain modules.
+- **Redundant Configuration**: Removed duplicate Redis configuration code from AppModule.
+
+### Fixed
+
+- **Configuration Validation**: Enhanced error handling for missing Redis and BullMQ configurations with more descriptive error messages.
+- **Import Organization**: Cleaned up imports across all service files by removing cache-related dependencies.
+- **Code Simplification**: Streamlined service implementations by removing cache-aside patterns and related complexity.
+
+### Performance
+
+- **Reduced Complexity**: Simplified service architecture reduces memory overhead and improves application startup time.
+- **Direct Database Access**: Services now directly access database without cache layer, ensuring real-time data consistency.
+- **Cleaner Architecture**: Eliminated cache-related abstractions for more straightforward service implementations.
+
+### Pull Requests
+
+- [#192](https://github.com/5-logic/the-sync-backend/pull/192) - Merge dev branch for v0.6.6 release
+
+---
+
 ## [0.6.5] - 2025-07-13
 
 ### Added
