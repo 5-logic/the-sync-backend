@@ -3,13 +3,24 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
 import { AdminModule } from '@/admins/admin.module';
-import { AuthController } from '@/auth/auth.controller';
-import { AuthService } from '@/auth/auth.service';
-import { JwtAccessStrategy } from '@/auth/strategies/jwt-access.strategy';
-import { jwtAccessConfig } from '@/configs/jwt-access.config';
-import { jwtRefreshConfig } from '@/configs/jwt-refresh.config';
-import { EmailModule } from '@/queue/email/email.module';
-import { UserModule } from '@/users/user.module';
+import {
+	AdminAuthController,
+	ChangePasswordController,
+	PasswordResetController,
+	UserAuthController,
+} from '@/auth/controllers';
+import {
+	AdminAuthService,
+	BaseAuthService,
+	ChangePasswordService,
+	PasswordResetService,
+	TokenAuthService,
+	UserAuthService,
+} from '@/auth/services';
+import { JwtAccessStrategy } from '@/auth/strategies';
+import { jwtAccessConfig, jwtRefreshConfig } from '@/configs';
+import { EmailModule } from '@/queue';
+import { UserModule } from '@/users/index';
 
 @Module({
 	imports: [
@@ -20,7 +31,20 @@ import { UserModule } from '@/users/user.module';
 		EmailModule,
 		JwtModule,
 	],
-	controllers: [AuthController],
-	providers: [AuthService, JwtAccessStrategy],
+	controllers: [
+		AdminAuthController,
+		ChangePasswordController,
+		PasswordResetController,
+		UserAuthController,
+	],
+	providers: [
+		AdminAuthService,
+		BaseAuthService,
+		ChangePasswordService,
+		PasswordResetService,
+		TokenAuthService,
+		UserAuthService,
+		JwtAccessStrategy,
+	],
 })
 export class AuthModule {}
