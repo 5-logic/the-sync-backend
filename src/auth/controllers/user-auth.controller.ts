@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	HttpCode,
+	HttpStatus,
+	Post,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
@@ -9,7 +17,9 @@ import { RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
+import { LoginResponse, RefreshResponse } from '@/auth/responses';
 import { BaseAuthService, UserAuthService } from '@/auth/services';
+import { ApiBaseResponse } from '@/common';
 
 @ApiTags(AUTH_API_TAGS)
 @Controller(AUTH_CONSTANTS.USER_AUTH)
@@ -19,15 +29,19 @@ export class UserAuthController {
 		private readonly baseAuthService: BaseAuthService,
 	) {}
 
+	@HttpCode(HttpStatus.OK)
 	@Post('login')
 	@ApiOperation(UserAuthDocs.login)
-	async login(@Body() dto: UserLoginDto) {
+	@ApiBaseResponse(LoginResponse, HttpStatus.OK)
+	async login(@Body() dto: UserLoginDto): Promise<LoginResponse> {
 		return await this.userAuthService.login(dto);
 	}
 
+	@HttpCode(HttpStatus.OK)
 	@Post('refresh')
 	@ApiOperation(UserAuthDocs.refresh)
-	async refres(@Body() dto: RefreshDto) {
+	@ApiBaseResponse(RefreshResponse, HttpStatus.OK)
+	async refres(@Body() dto: RefreshDto): Promise<RefreshResponse> {
 		return await this.userAuthService.refresh(dto);
 	}
 

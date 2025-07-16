@@ -11,6 +11,7 @@ import { CACHE_KEY, TOKEN_CACHE_TTL } from '@/auth/constants';
 import { RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
+import { LoginResponse, RefreshResponse } from '@/auth/responses';
 import { TokenAuthService } from '@/auth/services/token-auth.service';
 import { UserService } from '@/users/index';
 import { generateIdentifier } from '@/utils';
@@ -25,7 +26,7 @@ export class UserAuthService {
 		private readonly tokenService: TokenAuthService,
 	) {}
 
-	async login(dto: UserLoginDto) {
+	async login(dto: UserLoginDto): Promise<LoginResponse> {
 		try {
 			const user = await this.userService.validateUser(dto.email, dto.password);
 
@@ -66,10 +67,12 @@ export class UserAuthService {
 				TOKEN_CACHE_TTL,
 			);
 
-			return {
+			const result: LoginResponse = {
 				accessToken,
 				refreshToken,
 			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error during user login', error);
 
@@ -77,7 +80,7 @@ export class UserAuthService {
 		}
 	}
 
-	async refresh(dto: RefreshDto) {
+	async refresh(dto: RefreshDto): Promise<RefreshResponse> {
 		try {
 			const decoded: JwtPayload = await this.tokenService.verifyAccessToken(
 				dto.refreshToken,
@@ -128,7 +131,11 @@ export class UserAuthService {
 				TOKEN_CACHE_TTL,
 			);
 
-			return { accessToken };
+			const result: RefreshResponse = {
+				accessToken,
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error during user refresh', error);
 
