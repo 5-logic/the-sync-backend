@@ -305,14 +305,12 @@ export class GroupService {
 		skillIds?: string[],
 	) {
 		if (skillIds !== undefined) {
-			await Promise.all([
-				prisma.groupRequiredSkill.deleteMany({
-					where: { groupId: groupId },
-				}),
-				skillIds.length > 0
-					? this.createGroupSkills(prisma, groupId, skillIds)
-					: Promise.resolve(),
-			]);
+			await prisma.groupRequiredSkill.deleteMany({
+				where: { groupId: groupId },
+			});
+			if (skillIds.length > 0) {
+				await this.createGroupSkills(prisma, groupId, skillIds);
+			}
 		}
 	}
 
@@ -322,14 +320,16 @@ export class GroupService {
 		responsibilityIds?: string[],
 	) {
 		if (responsibilityIds !== undefined) {
-			await Promise.all([
-				prisma.groupExpectedResponsibility.deleteMany({
-					where: { groupId: groupId },
-				}),
-				responsibilityIds.length > 0
-					? this.createGroupResponsibilities(prisma, groupId, responsibilityIds)
-					: Promise.resolve(),
-			]);
+			await prisma.groupExpectedResponsibility.deleteMany({
+				where: { groupId: groupId },
+			});
+			if (responsibilityIds.length > 0) {
+				await this.createGroupResponsibilities(
+					prisma,
+					groupId,
+					responsibilityIds,
+				);
+			}
 		}
 	}
 
