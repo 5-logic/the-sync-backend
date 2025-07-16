@@ -227,7 +227,13 @@ export class SupervisionService {
 
 		const notApproved = theses.filter((t) => t.status !== 'Approved');
 		if (notApproved.length > 0) {
-			const errorMessage = `The following theses are not approved: ${notApproved.map((t) => `${t.englishName || t.id}`).join(', ')}`;
+			const thesisNames = notApproved
+				.map(function (t) {
+					return t.englishName ? t.englishName : t.id;
+				})
+				.join(', ');
+			const errorMessage =
+				'The following theses are not approved: ' + thesisNames;
 			throw new BadRequestException(errorMessage);
 		}
 
