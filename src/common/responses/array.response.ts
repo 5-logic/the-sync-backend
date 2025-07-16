@@ -5,7 +5,7 @@ export class ArrayResponse<T = any> {
 	success: boolean;
 
 	@ApiProperty()
-	message: string;
+	statusCode: number;
 
 	@ApiProperty({ type: Object, isArray: true })
 	data: T[];

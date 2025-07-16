@@ -19,7 +19,7 @@ import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
 import { LoginResponse, RefreshResponse } from '@/auth/responses';
 import { BaseAuthService, UserAuthService } from '@/auth/services';
-import { ApiBaseResponse } from '@/common';
+import { ApiBaseResponse, ApiEmptyResponse } from '@/common';
 
 @ApiTags(AUTH_API_TAGS)
 @Controller(AUTH_CONSTANTS.USER_AUTH)
@@ -48,9 +48,11 @@ export class UserAuthController {
 	@ApiBearerAuth()
 	@UseGuards(JwtAccessAuthGuard, RoleGuard)
 	@Roles(Role.STUDENT, Role.MODERATOR, Role.LECTURER)
+	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('logout')
 	@ApiOperation(UserAuthDocs.logout)
-	async logout(@Req() req: Request) {
+	@ApiEmptyResponse(HttpStatus.NO_CONTENT)
+	async logout(@Req() req: Request): Promise<void> {
 		const user = req.user as UserPayload;
 
 		return await this.baseAuthService.logout(user.id);

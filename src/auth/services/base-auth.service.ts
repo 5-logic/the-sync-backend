@@ -10,7 +10,7 @@ export class BaseAuthService {
 
 	constructor(@Inject(CACHE_MANAGER) private readonly cache: Cache) {}
 
-	async logout(id: string) {
+	async logout(id: string): Promise<void> {
 		try {
 			const key = `${CACHE_KEY}:${id}`;
 			await this.cache.del(key);

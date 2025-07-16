@@ -5,7 +5,7 @@ export class BaseResponse<T = any> {
 	success: boolean;
 
 	@ApiProperty()
-	message: string;
+	statusCode: number;
 
 	@ApiProperty({ type: Object, isArray: false })
 	data: T;
