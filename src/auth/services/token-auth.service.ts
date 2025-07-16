@@ -33,9 +33,15 @@ export class TokenAuthService {
 		});
 	}
 
-	async verifyToken(token: string): Promise<JwtPayload> {
+	async verifyAccessToken(token: string): Promise<JwtPayload> {
 		return await this.jwtService.verifyAsync<JwtPayload>(token, {
 			secret: this.jwtAccessConfiguration.secret,
+		});
+	}
+
+	async verifyRefreshToken(token: string): Promise<JwtPayload> {
+		return await this.jwtService.verifyAsync<JwtPayload>(token, {
+			secret: this.jwtRefreshConfiguration.secret,
 		});
 	}
 }

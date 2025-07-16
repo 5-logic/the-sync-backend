@@ -5,6 +5,7 @@ export * from '@/auth/dto';
 export * from '@/auth/enums';
 export * from '@/auth/guards';
 export * from '@/auth/interfaces';
+export * from '@/auth/responses';
 export * from '@/auth/services';
 export * from '@/auth/strategies';
 export * from '@/auth/auth.module';

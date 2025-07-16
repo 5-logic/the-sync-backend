@@ -6,13 +6,11 @@ import { ArrayResponse } from '@/common/responses';
 export const ApiArrayResponse = <TModel extends Type<unknown>>(
 	model: TModel,
 	status: number,
-	description: string,
 ) =>
 	applyDecorators(
 		ApiExtraModels(ArrayResponse, model),
 		ApiResponse({
 			status,
-			description,
 			schema: {
 				allOf: [
 					{ $ref: getSchemaPath(ArrayResponse) },
