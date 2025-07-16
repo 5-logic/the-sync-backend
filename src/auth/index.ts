@@ -1,6 +1,7 @@
 export * from '@/auth/constants';
 export * from '@/auth/controllers';
 export * from '@/auth/decorators';
+export * from '@/auth/docs';
 export * from '@/auth/dto';
 export * from '@/auth/enums';
 export * from '@/auth/guards';
