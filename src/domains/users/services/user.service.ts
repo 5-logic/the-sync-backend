@@ -6,10 +6,9 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { ChangePasswordDto } from '@/auth/dto';
-import { Role } from '@/auth/enums/role.enum';
-import { PrismaService } from '@/providers/prisma/prisma.service';
-import { hash, verify } from '@/utils/hash.util';
+import { ChangePasswordDto, Role } from '@/auth';
+import { PrismaService } from '@/providers';
+import { hash, verify } from '@/utils';
 
 @Injectable()
 export class UserService {
@@ -157,15 +156,6 @@ export class UserService {
 			await this.prisma.user.update({
 				where: { id: userId },
 				data: { password: hashedNewPassword },
-				include: {
-					student: {
-						omit: { userId: true },
-					},
-					lecturer: {
-						omit: { userId: true },
-					},
-				},
-				omit: { password: true },
 			});
 
 			this.logger.log(`Password changed successfully for user: ${userId}`);
