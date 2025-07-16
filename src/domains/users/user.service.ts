@@ -154,7 +154,7 @@ export class UserService {
 
 			const hashedNewPassword = await hash(dto.newPassword);
 
-			const updatedUser = await this.prisma.user.update({
+			await this.prisma.user.update({
 				where: { id: userId },
 				data: { password: hashedNewPassword },
 				include: {
@@ -168,11 +168,9 @@ export class UserService {
 				omit: { password: true },
 			});
 
-			const response = this.flattenUserData(updatedUser);
-
 			this.logger.log(`Password changed successfully for user: ${userId}`);
 
-			return response;
+			return;
 		} catch (error) {
 			if (
 				error instanceof ConflictException ||
@@ -204,21 +202,5 @@ export class UserService {
 
 			throw error;
 		}
-	}
-
-	private flattenUserData(user: any) {
-		const { student, lecturer, ...baseUser } = user;
-
-		return {
-			...baseUser,
-			...(student && {
-				studentCode: student.studentCode,
-				majorId: student.majorId,
-				major: student.major,
-			}),
-			...(lecturer && {
-				isModerator: lecturer.isModerator,
-			}),
-		};
 	}
 }

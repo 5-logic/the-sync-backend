@@ -11,9 +11,9 @@ export class ChangePasswordService {
 
 	async changePassword(userId: string, dto: ChangePasswordDto) {
 		try {
-			const result = await this.userService.changePassword(userId, dto);
+			await this.userService.changePassword(userId, dto);
 
-			return result;
+			return;
 		} catch (error) {
 			this.logger.error('Error during password change', error);
 
