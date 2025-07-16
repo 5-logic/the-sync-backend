@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { UpdateAdminDto } from '@/admins/dto';
+import { AdminResponse } from '@/admins/responses';
 import { PrismaService } from '@/providers';
 import { hash, verify } from '@/utils';
 
@@ -15,7 +16,7 @@ export class AdminService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async findOne(id: string) {
+	async findOne(id: string): Promise<AdminResponse> {
 		try {
 			const admin = await this.prisma.admin.findUnique({
 				where: { id: id },
@@ -32,7 +33,15 @@ export class AdminService {
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
 
-			return admin;
+			const result: AdminResponse = {
+				id: admin.id,
+				username: admin.username,
+				email: admin.email ?? '',
+				createdAt: admin.createdAt.toISOString(),
+				updatedAt: admin.updatedAt.toISOString(),
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching admin', error);
 
@@ -40,7 +49,7 @@ export class AdminService {
 		}
 	}
 
-	async update(id: string, dto: UpdateAdminDto) {
+	async update(id: string, dto: UpdateAdminDto): Promise<AdminResponse> {
 		try {
 			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { id },
@@ -70,7 +79,9 @@ export class AdminService {
 			if (Object.keys(updateData).length === 0) {
 				this.logger.warn('No valid fields provided for update');
 
-				return { ...existingAdmin, password: undefined };
+				throw new BadRequestException(
+					'No valid fields provided for update. Please provide at least one field to update.',
+				);
 			}
 
 			const updatedAdmin = await this.prisma.admin.update({
@@ -81,7 +92,15 @@ export class AdminService {
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
 
-			return updatedAdmin;
+			const result: AdminResponse = {
+				id: updatedAdmin.id,
+				username: updatedAdmin.username,
+				email: updatedAdmin.email ?? '',
+				createdAt: updatedAdmin.createdAt.toISOString(),
+				updatedAt: updatedAdmin.updatedAt.toISOString(),
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error updating admin', error);
 
