@@ -1728,29 +1728,42 @@ export class GroupService {
 		leaderParticipation: any,
 		remainingMembers: any[],
 	) {
+		const user = await this.prisma.user.findUnique({
+			where: { id: leaderParticipation.studentId },
+		});
+
+		if (!user) {
+			this.logger.warn(
+				`Leader user with ID ${leaderParticipation.student.userId} not found`,
+			);
+			return;
+		}
+
 		try {
-			const removalDate = new Date().toLocaleDateString();
+			const changeDate = new Date().toLocaleDateString();
 			const baseContext = {
 				groupName: group.name,
 				groupCode: group.code,
 				semesterName: group.semester.name,
-				removedStudentName: removedStudent.user.fullName,
-				removedStudentEmail: removedStudent.user.email,
-				leaderName: `Group Leader`,
-				removalDate,
+				targetStudentName: removedStudent.user.fullName,
+				targetStudentCode: removedStudent.studentCode,
+				groupLeaderName: user.fullName,
+				changeDate,
+				actionType: 'removed',
+				currentGroupSize: remainingMembers.length + 1, // before removal
 			};
 
 			// Send email to the removed student
 			if (removedStudent.user.email) {
 				await this.emailQueueService.sendEmail(
-					EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION, // Reuse existing email type or create new one
+					EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
 					{
 						to: removedStudent.user.email,
 						subject: `You have been removed from Group ${group.code}`,
 						context: {
 							...baseContext,
 							recipientName: removedStudent.user.fullName,
-							recipientType: 'removed_student',
+							recipientType: 'target_student',
 						},
 					},
 				);
@@ -1760,7 +1773,7 @@ export class GroupService {
 			for (const member of remainingMembers) {
 				if (member.student.user.email) {
 					await this.emailQueueService.sendEmail(
-						EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION, // Reuse existing email type or create new one
+						EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
 						{
 							to: member.student.user.email,
 							subject: `Member removed from Group ${group.code}`,
