@@ -537,7 +537,10 @@ export class SemesterService {
 			);
 		}
 
-		this.validatePickingToOngoingFlow(existingSemester, updateSemesterDto);
+		await this.validatePickingToOngoingFlowAsync(
+			existingSemester,
+			updateSemesterDto,
+		);
 		this.validateOngoingPhaseFlow(existingSemester, updateSemesterDto);
 
 		if (
@@ -551,13 +554,46 @@ export class SemesterService {
 		}
 	}
 
-	private validatePickingToOngoingFlow(
+	private async validatePickingToOngoingFlowAsync(
 		existingSemester: {
+			id: string;
 			status: SemesterStatus;
 			maxGroup: number | null;
 		},
 		updateSemesterDto: UpdateSemesterDto,
 	) {
+		// Check transition from Preparing to Picking: enough public theses for all groups
+		if (
+			existingSemester.status === SemesterStatus.Preparing &&
+			updateSemesterDto.status === SemesterStatus.Picking
+		) {
+			// Check public thesis count >= total group count
+			const [publicThesisCount, groupCount] = await Promise.all([
+				this.prisma.thesis.count({
+					where: {
+						semesterId: existingSemester.id,
+						isPublish: true,
+					},
+				}),
+				this.prisma.group.count({
+					where: {
+						semesterId: existingSemester.id,
+					},
+				}),
+			]);
+			this.logger.debug(
+				`Public thesis count: ${publicThesisCount}, group count: ${groupCount} in semester ${existingSemester.id}`,
+			);
+			if (publicThesisCount < groupCount) {
+				this.logger.warn(
+					`Cannot transition from Preparing to Picking: Not enough public theses. Required: ${groupCount}, Available: ${publicThesisCount}`,
+				);
+				throw new ConflictException(
+					`Cannot transition to Picking. There are only ${publicThesisCount} public theses, but ${groupCount} groups. Please publish more theses.`,
+				);
+			}
+		}
+		// Check transition from Picking to Ongoing: all groups have picked a thesis
 		if (
 			existingSemester.status === SemesterStatus.Picking &&
 			updateSemesterDto.status === SemesterStatus.Ongoing
@@ -566,14 +602,34 @@ export class SemesterService {
 				existingSemester.maxGroup,
 				updateSemesterDto,
 			);
-
 			if (updateSemesterDto.ongoingPhase === OngoingPhase.ScopeLocked) {
 				this.logger.warn(
 					`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} with ongoingPhase set to ${OngoingPhase.ScopeLocked}`,
 				);
-
 				throw new ConflictException(
 					`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} with ongoingPhase set to ${OngoingPhase.ScopeLocked}. ongoingPhase will be automatically set to ${OngoingPhase.ScopeAdjustable}`,
+				);
+			}
+			// Check all groups in this semester have picked a thesis
+			const groupsWithoutThesis = await this.prisma.group.findMany({
+				where: {
+					semesterId: existingSemester.id,
+					thesisId: null,
+				},
+			});
+			if (groupsWithoutThesis.length > 0) {
+				this.logger.warn(
+					`Cannot transition from Picking to Ongoing: ${groupsWithoutThesis.length} groups have not picked a thesis.`,
+					{
+						groups: groupsWithoutThesis.map((g) => ({
+							id: g.id,
+							name: g.name,
+							code: g.code,
+						})),
+					},
+				);
+				throw new ConflictException(
+					`Cannot transition to Ongoing. There are ${groupsWithoutThesis.length} groups without a thesis. All groups must pick a thesis before continuing.`,
 				);
 			}
 		}

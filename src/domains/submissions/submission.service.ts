@@ -571,17 +571,35 @@ export class SubmissionService {
 					milestoneId,
 				);
 
-				if (existingSubmission) {
-					throw new ConflictException(
-						'Submission already exists for this group and milestone',
-					);
+				if (!existingSubmission) {
+					const submission = await this.prisma.submission.create({
+						data: {
+							groupId,
+							milestoneId,
+							documents: dto.documents,
+							status: 'Submitted',
+							createdAt: new Date(),
+							updatedAt: new Date(),
+						},
+						include: this.basicSubmissionInclude,
+					});
+
+					this.logger.log(`Submission created with ID: ${submission.id}`);
+					return submission;
 				}
 
-				const submission = await this.prisma.submission.create({
+				const submission = await this.prisma.submission.update({
+					where: {
+						groupId_milestoneId: {
+							groupId,
+							milestoneId,
+						},
+					},
 					data: {
-						groupId,
-						milestoneId,
-						documents: dto.documents || [],
+						documents: dto.documents,
+						status: 'Submitted',
+						createdAt: new Date(),
+						updatedAt: new Date(),
 					},
 					include: this.basicSubmissionInclude,
 				});
