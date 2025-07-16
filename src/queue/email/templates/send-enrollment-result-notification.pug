@@ -1,47 +1,46 @@
+//- Data to be rendered in the email template
+//- + fullName: The full name of the student
+//- + enrollmentStatus: The status of the enrollment (e.g., 'Passed', 'Failed', or a custom status)
+//- + semesterName: The name of the semester
+//- + semesterCode: The code of the semester
+//- + studentEmail: The email address of the student
+//- + thesisEnglishName: The English name of the thesis
+//- + thesisAbbreviation: The abbreviation of the thesis
+//- + enrollmentStatusText: A custom text for the enrollment status if not 'Passed' or 'Failed'
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Dear 
-    strong= fullName
-    | ,
+    | Dear #[strong #{fullName}],
 
   if enrollmentStatus === 'Passed'
     p(style="color: #155724;")
-      | 🎉 Congratulations! You have 
-      strong PASSED
-      |  your capstone project in the semester 
-      strong= semesterName
-      | .
+      | 🎉 Congratulations! You have #[strong PASSED] your capstone project in the semester #[strong #{semesterName}].
   else if enrollmentStatus === 'Failed'
     p(style="color: #721c24;")
-      | ❌ Unfortunately, you did 
-      strong NOT PASS
-      |  your capstone project in the semester
-      strong= semesterName
-      | .
+      | ❌ Unfortunately, you did #[strong NOT PASS] your capstone project in the semester #[strong #{semesterName}].
   else
     p(style="color: #495057;")
-      | ℹ️ Your Capstone Project:
-      strong= enrollmentStatusText
+      | ℹ️ Your Capstone Project: #[strong #{enrollmentStatusText}]
 
   .info-box
     h3 📋 Details
     .info-item
       span.info-label Semester:
-      span.info-value= semesterName + " (" + semesterCode + ")"
+      span.info-value #{semesterName} (#{semesterCode})
     .info-item
       span.info-label Student:
-      span.info-value= fullName
+      span.info-value #{fullName}
     .info-item
       span.info-label Email:
-      span.info-value= studentEmail
+      span.info-value #{studentEmail}
     .info-item
-      span.info-label Thesis English Name:
-      span.info-value= thesisEnglishName
+      span.info-label Thesis Name:
+      span.info-value #{thesisEnglishName}
     .info-item
-      span.info-label Thesis Abbreviation:
-      span.info-value= thesisAbbreviation
+      span.info-label Abbreviation:
+      span.info-value #{thesisAbbreviation}
     .info-item
       span.info-label Result:
       if enrollmentStatus === 'Passed'
@@ -49,13 +48,15 @@ block content
       else if enrollmentStatus === 'Failed'
         span.info-value(style="color: #dc3545; font-weight: bold;") NOT PASSED
       else
-        span.info-value= enrollmentStatusText
+        span.info-value #{enrollmentStatusText}
 
   if enrollmentStatus === 'Passed'
     .success-box
       strong 🌟 Congratulations:
+      br
       |  We are proud to announce that you have successfully completed your capstone project! This is the result of your effort, dedication, and knowledge accumulated throughout your studies. We are proud of your achievement and wish you great success in your future career.
   else if enrollmentStatus === 'Failed'
     .warning-box
       strong 📚 Next steps:
+      br
       |  You can contact your supervisor for detailed feedback, prepare for the next semester, or refer to supporting materials from the faculty.

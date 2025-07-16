@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 
 import { UpdateAdminDto } from '@/admins/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
-import { hash, verify } from '@/utils/hash.util';
+import { PrismaService } from '@/providers';
+import { hash, verify } from '@/utils';
 
 @Injectable()
 export class AdminService {
@@ -48,6 +48,7 @@ export class AdminService {
 
 			if (!existingAdmin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
+
 				throw new NotFoundException(`Admin not found`);
 			}
 
@@ -61,12 +62,14 @@ export class AdminService {
 			// Handle password change
 			if (dto.newPassword || dto.oldPassword) {
 				await this.validatePasswordChange(dto, existingAdmin.password, id);
+
 				updateData.password = await hash(dto.newPassword!);
 			}
 
 			// Check if there's anything to update
 			if (Object.keys(updateData).length === 0) {
 				this.logger.warn('No valid fields provided for update');
+
 				return { ...existingAdmin, password: undefined };
 			}
 
@@ -77,9 +80,11 @@ export class AdminService {
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
+
 			return updatedAdmin;
 		} catch (error) {
 			this.logger.error('Error updating admin', error);
+
 			throw error;
 		}
 	}
@@ -107,6 +112,7 @@ export class AdminService {
 		const isOldPasswordValid = await verify(currentPassword, dto.oldPassword);
 		if (!isOldPasswordValid) {
 			this.logger.warn(`Invalid old password for admin with ID ${adminId}`);
+
 			throw new BadRequestException('Current password is incorrect');
 		}
 

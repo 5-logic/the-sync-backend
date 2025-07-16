@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 
 import { CONFIG_QUEUES } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
+import { EmailJobType } from '@/email/enums/type.enum';
 
 @Injectable()
 export class EmailQueueService {

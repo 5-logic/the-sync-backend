@@ -1,17 +1,22 @@
+//- Data to be rendered in the email template
+//- + fullName: Name of the student
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+
 extends layouts/email-layout.pug
 
 block content
   p.greeting 
-    | Hello #{fullName},
+    | Hello #[strong #{fullName}],
 
   .info-box
     h3
       span 🎯 Semester Start Notification
-    p We are pleased to inform you that the semester <strong>#{semesterName}</strong> (code: <strong>#{semesterCode}</strong>) has officially started.
+    p We are pleased to inform you that the semester #[strong #{semesterName}] (code: #[strong #{semesterCode}]) has officially started.
 
   .success-box
     strong ✅ Your Registration Status
-    p Your registration status has been updated to <strong>"Ongoing"</strong>.
+    p Your registration status has been updated to #[strong "Ongoing"].
 
   .info-box
     h3
@@ -32,6 +37,7 @@ block content
 
   .warning-box
     strong ⚠️ Important Note
+    br
     p The capstone project has officially started. Please make sure to participate actively and comply with the semester regulations.
 
   p
