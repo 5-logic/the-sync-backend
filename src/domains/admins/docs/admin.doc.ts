@@ -2,8 +2,8 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 
 export const AdminDocs = {
 	findOne: {
-		summary: 'Get admin by ID',
-		description: `Retrieve admin details by ID.\n\n- **Admin only** (requires authentication and ADMIN role).\n- Returns admin information with password field omitted.\n- Returns 404 error if admin is not found.\n- Logs all access and errors.`,
+		summary: 'Get current admin profile',
+		description: `Retrieve the current authenticated admin's profile information.\n\n- **Admin only** (requires authentication and ADMIN role).\n- Automatically uses the admin ID from the JWT token (no need to provide ID parameter).\n- Returns admin information with password field omitted for security.\n- Returns 404 error if the authenticated admin is not found in database.\n- Logs all profile access attempts and errors.\n\n**Response includes:**\n- Admin ID, username, email\n- Created/updated timestamps\n- All fields except password`,
 	} as ApiOperationOptions,
 
 	update: {

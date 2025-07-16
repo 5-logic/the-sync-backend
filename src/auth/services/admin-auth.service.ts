@@ -12,6 +12,7 @@ import { CACHE_KEY, TOKEN_CACHE_TTL } from '@/auth/constants';
 import { AdminLoginDto, RefreshDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
+import { LoginResponse, RefreshResponse } from '@/auth/responses';
 import { TokenAuthService } from '@/auth/services/token-auth.service';
 import { generateIdentifier } from '@/utils';
 
@@ -25,7 +26,7 @@ export class AdminAuthService {
 		private readonly tokenService: TokenAuthService,
 	) {}
 
-	async login(dto: AdminLoginDto) {
+	async login(dto: AdminLoginDto): Promise<LoginResponse> {
 		try {
 			const admin = await this.adminService.validateAdmin(
 				dto.username,
@@ -67,10 +68,12 @@ export class AdminAuthService {
 				TOKEN_CACHE_TTL,
 			);
 
-			return {
+			const result: LoginResponse = {
 				accessToken,
 				refreshToken,
 			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error during admin login', error);
 
@@ -78,9 +81,9 @@ export class AdminAuthService {
 		}
 	}
 
-	async refresh(dto: RefreshDto) {
+	async refresh(dto: RefreshDto): Promise<RefreshResponse> {
 		try {
-			const decoded: JwtPayload = await this.tokenService.verifyToken(
+			const decoded: JwtPayload = await this.tokenService.verifyRefreshToken(
 				dto.refreshToken,
 			);
 
@@ -126,7 +129,11 @@ export class AdminAuthService {
 				TOKEN_CACHE_TTL,
 			);
 
-			return { accessToken };
+			const result: RefreshResponse = {
+				accessToken,
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error during admin refresh', error);
 

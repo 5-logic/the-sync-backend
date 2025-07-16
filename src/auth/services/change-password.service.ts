@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ChangePasswordDto } from '@/auth/dto';
-import { UserService } from '@/users/user.service';
+import { UserService } from '@/users/index';
 
 @Injectable()
 export class ChangePasswordService {
@@ -11,9 +11,9 @@ export class ChangePasswordService {
 
 	async changePassword(userId: string, dto: ChangePasswordDto) {
 		try {
-			const result = await this.userService.changePassword(userId, dto);
+			await this.userService.changePassword(userId, dto);
 
-			return result;
+			return;
 		} catch (error) {
 			this.logger.error('Error during password change', error);
 

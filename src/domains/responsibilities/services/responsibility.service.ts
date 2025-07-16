@@ -3,8 +3,9 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 
 import { CONSTANTS } from '@/configs';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { CACHE_KEY } from '@/responsibilities/constants';
+import { ResponsibilityResponse } from '@/responsibilities/responses';
 
 @Injectable()
 export class ResponsibilityService {
@@ -15,12 +16,12 @@ export class ResponsibilityService {
 		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {}
 
-	async findAll() {
+	async findAll(): Promise<ResponsibilityResponse[]> {
 		this.logger.log('Fetching all responsibilities');
 
 		try {
 			const cacheKey = `${CACHE_KEY}/`;
-			const cache = await this.cache.get(cacheKey);
+			const cache = await this.cache.get<ResponsibilityResponse[]>(cacheKey);
 			if (cache) {
 				this.logger.log('Returning cached responsibilities');
 
@@ -35,7 +36,16 @@ export class ResponsibilityService {
 
 			await this.cache.set(cacheKey, responsibilities, CONSTANTS.TTL);
 
-			return responsibilities;
+			const result: ResponsibilityResponse[] = responsibilities.map(
+				(responsibility) => ({
+					id: responsibility.id,
+					name: responsibility.name,
+					createdAt: responsibility.createdAt.toISOString(),
+					updatedAt: responsibility.updatedAt.toISOString(),
+				}),
+			);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching responsibilities:', error);
 
@@ -43,12 +53,12 @@ export class ResponsibilityService {
 		}
 	}
 
-	async findOne(id: string) {
+	async findOne(id: string): Promise<ResponsibilityResponse> {
 		this.logger.log(`Fetching responsibility with ID: ${id}`);
 
 		try {
 			const cacheKey = `${CACHE_KEY}/${id}`;
-			const cache = await this.cache.get(cacheKey);
+			const cache = await this.cache.get<ResponsibilityResponse>(cacheKey);
 			if (cache) {
 				this.logger.log(`Returning cached responsibility with ID: ${id}`);
 
@@ -67,7 +77,14 @@ export class ResponsibilityService {
 
 			await this.cache.set(cacheKey, responsibility, CONSTANTS.TTL);
 
-			return responsibility;
+			const result: ResponsibilityResponse = {
+				id: responsibility.id,
+				name: responsibility.name,
+				createdAt: responsibility.createdAt.toISOString(),
+				updatedAt: responsibility.updatedAt.toISOString(),
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching responsibility:', error);
 
