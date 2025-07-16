@@ -43,7 +43,7 @@ export const GroupDocs = {
 
 	removeStudent: {
 		summary: 'Remove student from group',
-		description: `Remove a member from the group.\n\n- **Student access only (group leader)**.\n- Only the group leader can remove other members.\n- The leader cannot remove themselves - leadership must be transferred first.\n- Only allowed during PREPARING semester status.\n- Sends email notification to the removed student.\n- Returns error if removal rules are violated.\n- Logs all removal attempts and errors.`,
+		description: `Remove a member from the group.\n\n- **Student access only (group leader)**.\n- Only the group leader can remove other members.\n- The leader cannot remove themselves - leadership must be transferred first.\n- Only allowed during PREPARING semester status.\n- Validates group existence, leader permissions, and member eligibility before removal.\n- Checks that the group is in a valid state for member removal (e.g., not the only member, not violating business rules).\n- Sends email notification to the removed student.\n- Returns error if validation or removal rules are violated.\n- Logs all removal attempts and errors.`,
 	} as ApiOperationOptions,
 
 	leaveGroup: {

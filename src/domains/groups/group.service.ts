@@ -305,14 +305,12 @@ export class GroupService {
 		skillIds?: string[],
 	) {
 		if (skillIds !== undefined) {
-			await Promise.all([
-				prisma.groupRequiredSkill.deleteMany({
-					where: { groupId: groupId },
-				}),
-				skillIds.length > 0
-					? this.createGroupSkills(prisma, groupId, skillIds)
-					: Promise.resolve(),
-			]);
+			await prisma.groupRequiredSkill.deleteMany({
+				where: { groupId: groupId },
+			});
+			if (skillIds.length > 0) {
+				await this.createGroupSkills(prisma, groupId, skillIds);
+			}
 		}
 	}
 
@@ -322,14 +320,16 @@ export class GroupService {
 		responsibilityIds?: string[],
 	) {
 		if (responsibilityIds !== undefined) {
-			await Promise.all([
-				prisma.groupExpectedResponsibility.deleteMany({
-					where: { groupId: groupId },
-				}),
-				responsibilityIds.length > 0
-					? this.createGroupResponsibilities(prisma, groupId, responsibilityIds)
-					: Promise.resolve(),
-			]);
+			await prisma.groupExpectedResponsibility.deleteMany({
+				where: { groupId: groupId },
+			});
+			if (responsibilityIds.length > 0) {
+				await this.createGroupResponsibilities(
+					prisma,
+					groupId,
+					responsibilityIds,
+				);
+			}
 		}
 	}
 
@@ -1608,14 +1608,28 @@ export class GroupService {
 
 			// Validations
 			if (!group) {
+				this.logger.warn(`Group with ID ${groupId} not found`);
 				throw new NotFoundException(`Group not found`);
 			}
 
+			if (group.thesisId) {
+				this.logger.warn(
+					`Cannot remove student from group with thesis. Group ID: ${groupId}`,
+				);
+				throw new ConflictException(
+					`Cannot remove student from group with thesis. Please contact a moderator for assistance.`,
+				);
+			}
+
 			if (!student) {
+				this.logger.warn(`Student with ID ${studentId} not found`);
 				throw new NotFoundException(`Student not found`);
 			}
 
 			if (!leaderParticipation) {
+				this.logger.warn(
+					`Leader with ID ${leaderId} is not a member of group ${groupId}`,
+				);
 				throw new NotFoundException(`You are not a member of this group`);
 			}
 
@@ -1714,29 +1728,42 @@ export class GroupService {
 		leaderParticipation: any,
 		remainingMembers: any[],
 	) {
+		const user = await this.prisma.user.findUnique({
+			where: { id: leaderParticipation.studentId },
+		});
+
+		if (!user) {
+			this.logger.warn(
+				`Leader user with ID ${leaderParticipation.student.userId} not found`,
+			);
+			return;
+		}
+
 		try {
-			const removalDate = new Date().toLocaleDateString();
+			const changeDate = new Date().toLocaleDateString();
 			const baseContext = {
 				groupName: group.name,
 				groupCode: group.code,
 				semesterName: group.semester.name,
-				removedStudentName: removedStudent.user.fullName,
-				removedStudentEmail: removedStudent.user.email,
-				leaderName: `Group Leader`,
-				removalDate,
+				targetStudentName: removedStudent.user.fullName,
+				targetStudentCode: removedStudent.studentCode,
+				groupLeaderName: user.fullName,
+				changeDate,
+				actionType: 'removed',
+				currentGroupSize: remainingMembers.length + 1, // before removal
 			};
 
 			// Send email to the removed student
 			if (removedStudent.user.email) {
 				await this.emailQueueService.sendEmail(
-					EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION, // Reuse existing email type or create new one
+					EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
 					{
 						to: removedStudent.user.email,
 						subject: `You have been removed from Group ${group.code}`,
 						context: {
 							...baseContext,
 							recipientName: removedStudent.user.fullName,
-							recipientType: 'removed_student',
+							recipientType: 'target_student',
 						},
 					},
 				);
@@ -1746,7 +1773,7 @@ export class GroupService {
 			for (const member of remainingMembers) {
 				if (member.student.user.email) {
 					await this.emailQueueService.sendEmail(
-						EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION, // Reuse existing email type or create new one
+						EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
 						{
 							to: member.student.user.email,
 							subject: `Member removed from Group ${group.code}`,

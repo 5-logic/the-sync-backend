@@ -252,6 +252,33 @@ export class ThesisService {
 				await this.validateSkillIds(skillIds);
 			}
 
+			// Check maxThesesPerLecturer for this semester
+			const semester = await this.prisma.semester.findUnique({
+				where: { id: semesterId },
+				select: {
+					maxThesesPerLecturer: true,
+					name: true,
+				},
+			});
+			if (!semester) {
+				this.logger.debug(`Semester with ID ${semesterId} not found`);
+				throw new NotFoundException('Semester not found');
+			}
+			const currentThesesCount = await this.prisma.thesis.count({
+				where: {
+					lecturerId,
+					semesterId,
+				},
+			});
+			if (currentThesesCount >= semester.maxThesesPerLecturer) {
+				this.logger.warn(
+					`Lecturer ${lecturerId} has reached the maximum number of theses (${semester.maxThesesPerLecturer}) in semester ${semester.name}`,
+				);
+				throw new ConflictException(
+					`You have reached the maximum number of theses (${semester.maxThesesPerLecturer}) allowed in semester ${semester.name}`,
+				);
+			}
+
 			const newThesis = await this.prisma.$transaction(async (prisma) => {
 				// Create thesis
 				const thesis = await prisma.thesis.create({
@@ -511,7 +538,7 @@ export class ThesisService {
 			this.validateThesesExist(theses, dto.thesesIds);
 
 			// Validate business rules
-			this.validateThesesForPublishing(theses);
+			await this.validateThesesForPublishingAndSupervisors(theses);
 			if (dto.isPublish) {
 				this.validateCanPublishTheses(theses);
 			} else {
@@ -568,17 +595,38 @@ export class ThesisService {
 	}
 
 	/**
-	 * Validate theses meet publishing requirements
+	 * Validate theses meet publishing requirements and have 2 supervisors
 	 */
-	private validateThesesForPublishing(theses: any[]) {
+	private async validateThesesForPublishingAndSupervisors(theses: any[]) {
 		const notApproved = theses.filter(
 			(t) => t.status !== ThesisStatus.Approved,
 		);
-
 		if (notApproved.length > 0) {
 			this.logger.warn('Some theses are not approved and cannot be published');
 			throw new ConflictException(
 				'All theses must be approved before publishing',
+			);
+		}
+
+		// Collect theses lacking exactly 2 supervisors
+		const thesesWithoutEnoughSupervisors: {
+			id: string;
+			supervisorCount: number;
+		}[] = [];
+		for (const thesis of theses) {
+			const supervisorCount = await this.prisma.supervision.count({
+				where: { thesisId: thesis.id },
+			});
+			if (supervisorCount !== 2) {
+				thesesWithoutEnoughSupervisors.push({ id: thesis.id, supervisorCount });
+			}
+		}
+		if (thesesWithoutEnoughSupervisors.length > 0) {
+			this.logger.warn(
+				`${thesesWithoutEnoughSupervisors.length} thesis(es) do not have exactly 2 supervisors and cannot be published.`,
+			);
+			throw new ConflictException(
+				`${thesesWithoutEnoughSupervisors.length} thesis(es) do not have exactly 2 supervisors and cannot be published.`,
 			);
 		}
 	}
