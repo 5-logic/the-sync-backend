@@ -1,12 +1,4 @@
-import {
-	Body,
-	Controller,
-	Get,
-	Param,
-	Put,
-	Req,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
@@ -30,10 +22,12 @@ export class AdminController {
 	constructor(private readonly adminService: AdminService) {}
 
 	@Roles(Role.ADMIN)
-	@Get(':id')
+	@Get()
 	@ApiOperation(AdminDocs.findOne)
-	async findOne(@Param('id') id: string) {
-		return await this.adminService.findOne(id);
+	async findOne(@Req() req: Request) {
+		const user = req.user as UserPayload;
+
+		return await this.adminService.findOne(user.id);
 	}
 
 	@Roles(Role.ADMIN)
