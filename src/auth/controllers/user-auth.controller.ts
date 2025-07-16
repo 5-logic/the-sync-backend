@@ -48,10 +48,10 @@ export class UserAuthController {
 	@ApiBearerAuth()
 	@UseGuards(JwtAccessAuthGuard, RoleGuard)
 	@Roles(Role.STUDENT, Role.MODERATOR, Role.LECTURER)
-	@HttpCode(HttpStatus.NO_CONTENT)
+	@HttpCode(HttpStatus.OK)
 	@Post('logout')
 	@ApiOperation(UserAuthDocs.logout)
-	@ApiEmptyResponse(HttpStatus.NO_CONTENT)
+	@ApiEmptyResponse(HttpStatus.OK)
 	async logout(@Req() req: Request): Promise<void> {
 		const user = req.user as UserPayload;
 

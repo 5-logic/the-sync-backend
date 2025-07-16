@@ -48,10 +48,10 @@ export class AdminAuthController {
 	@ApiBearerAuth()
 	@UseGuards(JwtAccessAuthGuard, RoleGuard)
 	@Roles(Role.ADMIN)
-	@HttpCode(HttpStatus.NO_CONTENT)
+	@HttpCode(HttpStatus.OK)
 	@Post('logout')
 	@ApiOperation(AdminAuthDocs.logout)
-	@ApiEmptyResponse(HttpStatus.NO_CONTENT)
+	@ApiEmptyResponse(HttpStatus.OK)
 	async logout(@Req() req: Request): Promise<void> {
 		const user = req.user as UserPayload;
 
