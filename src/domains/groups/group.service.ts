@@ -1608,14 +1608,28 @@ export class GroupService {
 
 			// Validations
 			if (!group) {
+				this.logger.warn(`Group with ID ${groupId} not found`);
 				throw new NotFoundException(`Group not found`);
 			}
 
+			if (group.thesisId) {
+				this.logger.warn(
+					`Cannot remove student from group with thesis. Group ID: ${groupId}`,
+				);
+				throw new ConflictException(
+					`Cannot remove student from group with thesis. Please contact a moderator for assistance.`,
+				);
+			}
+
 			if (!student) {
+				this.logger.warn(`Student with ID ${studentId} not found`);
 				throw new NotFoundException(`Student not found`);
 			}
 
 			if (!leaderParticipation) {
+				this.logger.warn(
+					`Leader with ID ${leaderId} is not a member of group ${groupId}`,
+				);
 				throw new NotFoundException(`You are not a member of this group`);
 			}
 
