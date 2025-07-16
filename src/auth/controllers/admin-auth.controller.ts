@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	HttpCode,
+	HttpStatus,
+	Post,
+	Req,
+	UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
@@ -9,7 +17,9 @@ import { AdminLoginDto, RefreshDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
+import { LoginResponse, RefreshResponse } from '@/auth/responses';
 import { AdminAuthService, BaseAuthService } from '@/auth/services';
+import { ApiBaseResponse, ApiEmptyResponse } from '@/common';
 
 @ApiTags(AUTH_API_TAGS)
 @Controller(AUTH_CONSTANTS.ADMIN_AUTH)
@@ -19,24 +29,30 @@ export class AdminAuthController {
 		private readonly baseAuthSerivce: BaseAuthService,
 	) {}
 
+	@HttpCode(HttpStatus.OK)
 	@Post('login')
 	@ApiOperation(AdminAuthDocs.login)
-	async login(@Body() dto: AdminLoginDto) {
+	@ApiBaseResponse(LoginResponse, HttpStatus.OK)
+	async login(@Body() dto: AdminLoginDto): Promise<LoginResponse> {
 		return await this.adminAuthService.login(dto);
 	}
 
+	@HttpCode(HttpStatus.OK)
 	@Post('refresh')
 	@ApiOperation(AdminAuthDocs.refresh)
-	async refresh(@Body() dto: RefreshDto) {
+	@ApiBaseResponse(RefreshResponse, HttpStatus.OK)
+	async refresh(@Body() dto: RefreshDto): Promise<RefreshResponse> {
 		return await this.adminAuthService.refresh(dto);
 	}
 
 	@ApiBearerAuth()
 	@UseGuards(JwtAccessAuthGuard, RoleGuard)
 	@Roles(Role.ADMIN)
+	@HttpCode(HttpStatus.OK)
 	@Post('logout')
 	@ApiOperation(AdminAuthDocs.logout)
-	async logout(@Req() req: Request) {
+	@ApiEmptyResponse(HttpStatus.OK)
+	async logout(@Req() req: Request): Promise<void> {
 		const user = req.user as UserPayload;
 
 		return await this.baseAuthSerivce.logout(user.id);
