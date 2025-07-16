@@ -66,7 +66,14 @@ export class AdminService {
 			// Handle email update
 			if (dto.email) {
 				if (dto.email === existingAdmin.email) {
-					return;
+					const admin = {
+						id: existingAdmin.id,
+						username: existingAdmin.username,
+						email: existingAdmin.email ?? '',
+						createdAt: existingAdmin.createdAt.toISOString(),
+						updatedAt: existingAdmin.updatedAt.toISOString(),
+					};
+					return admin;
 				}
 				updateData.email = dto.email;
 			}
