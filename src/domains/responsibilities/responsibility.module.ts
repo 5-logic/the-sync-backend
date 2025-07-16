@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { ResponsibilityController } from '@/responsibilities/responsibility.controller';
-import { ResponsibilityService } from '@/responsibilities/responsibility.service';
+import { ResponsibilityController } from '@/responsibilities/controllers';
+import { ResponsibilityService } from '@/responsibilities/services';
 
 @Module({
 	controllers: [ResponsibilityController],

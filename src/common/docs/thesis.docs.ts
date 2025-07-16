@@ -3,7 +3,7 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 export const ThesisDocs = {
 	create: {
 		summary: 'Create new thesis',
-		description: `Create a new thesis project proposal.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Validations:**\n  - All required fields (title, description, domain, skills, etc.) must be provided.\n  - Title must be unique within the semester.\n  - Skill IDs must exist.\n- **Business logic:**\n  - Creates thesis record, initial version, and required skills.\n  - Assigns the creator as the first supervisor.\n  - Uses transactions for consistency.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 409 if title is not unique or creation fails.\n  - 404 if skill IDs do not exist.\n- **Logging:** Logs all creation attempts and errors.`,
+		description: `Create a new thesis project proposal.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Validations:**\n  - All required fields (title, description, domain, skills, etc.) must be provided.\n  - Title must be unique within the semester.\n  - Skill IDs must exist.\n  - Lecturer cannot create more than the maximum allowed theses in the semester (maxThesesPerLecturer).\n- **Business logic:**\n  - Checks current thesis count for lecturer in the semester before creation.\n  - Creates thesis record, initial version, and required skills.\n  - Assigns the creator as the first supervisor.\n  - Uses transactions for consistency.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 409 if title is not unique, creation fails, or maxThesesPerLecturer is reached.\n  - 404 if skill IDs or semester do not exist.\n- **Logging:** Logs all creation attempts and errors.`,
 	} as ApiOperationOptions,
 
 	findAll: {
@@ -28,7 +28,7 @@ export const ThesisDocs = {
 
 	publishTheses: {
 		summary: 'Publish theses for student selection',
-		description: `Publish or unpublish a batch of thesis projects, making them available or unavailable for student selection.\n\n- **Authorization:** Moderator only.\n- **Validations:**\n  - All thesis IDs must exist.\n  - Only approved theses can be published.\n  - Cannot unpublish theses already selected by groups.\n- **Business logic:**\n  - Updates publication status for each thesis.\n  - Sends notification emails to lecturers.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 404 if thesis not found.\n  - 409 if not approved, already published/unpublished, or selected by group.\n- **Logging:** Logs all publish/unpublish attempts, notifications, and errors.`,
+		description: `Publish or unpublish a batch of thesis projects, making them available or unavailable for student selection.\n\n- **Authorization:** Moderator only.\n- **Validations:**\n  - All thesis IDs must exist.\n  - Only approved theses can be published.\n  - Each thesis must have exactly 2 supervisors to be published.\n  - Cannot unpublish theses already selected by groups.\n- **Business logic:**\n  - Updates publication status for each thesis.\n  - Checks supervisor count for each thesis before publishing.\n  - Sends notification emails to lecturers.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 404 if thesis not found.\n  - 409 if not approved, does not have 2 supervisors, already published/unpublished, or selected by group.\n- **Logging:** Logs all publish/unpublish attempts, notifications, and errors.`,
 	} as ApiOperationOptions,
 
 	update: {

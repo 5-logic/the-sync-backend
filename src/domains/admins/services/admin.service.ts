@@ -6,8 +6,9 @@ import {
 } from '@nestjs/common';
 
 import { UpdateAdminDto } from '@/admins/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
-import { hash, verify } from '@/utils/hash.util';
+import { AdminResponse } from '@/admins/responses';
+import { PrismaService } from '@/providers';
+import { hash, verify } from '@/utils';
 
 @Injectable()
 export class AdminService {
@@ -15,7 +16,7 @@ export class AdminService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async findOne(id: string) {
+	async findOne(id: string): Promise<AdminResponse> {
 		try {
 			const admin = await this.prisma.admin.findUnique({
 				where: { id: id },
@@ -32,7 +33,15 @@ export class AdminService {
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
 
-			return admin;
+			const result: AdminResponse = {
+				id: admin.id,
+				username: admin.username,
+				email: admin.email ?? '',
+				createdAt: admin.createdAt.toISOString(),
+				updatedAt: admin.updatedAt.toISOString(),
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching admin', error);
 
@@ -40,7 +49,7 @@ export class AdminService {
 		}
 	}
 
-	async update(id: string, dto: UpdateAdminDto) {
+	async update(id: string, dto: UpdateAdminDto): Promise<AdminResponse> {
 		try {
 			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { id },
@@ -48,6 +57,7 @@ export class AdminService {
 
 			if (!existingAdmin) {
 				this.logger.warn(`Admin with ID ${id} not found`);
+
 				throw new NotFoundException(`Admin not found`);
 			}
 
@@ -55,19 +65,33 @@ export class AdminService {
 
 			// Handle email update
 			if (dto.email) {
+				if (dto.email === existingAdmin.email) {
+					const admin = {
+						id: existingAdmin.id,
+						username: existingAdmin.username,
+						email: existingAdmin.email ?? '',
+						createdAt: existingAdmin.createdAt.toISOString(),
+						updatedAt: existingAdmin.updatedAt.toISOString(),
+					};
+					return admin;
+				}
 				updateData.email = dto.email;
 			}
 
 			// Handle password change
 			if (dto.newPassword || dto.oldPassword) {
 				await this.validatePasswordChange(dto, existingAdmin.password, id);
+
 				updateData.password = await hash(dto.newPassword!);
 			}
 
 			// Check if there's anything to update
 			if (Object.keys(updateData).length === 0) {
 				this.logger.warn('No valid fields provided for update');
-				return { ...existingAdmin, password: undefined };
+
+				throw new BadRequestException(
+					'No valid fields provided for update. Please provide at least one field to update.',
+				);
 			}
 
 			const updatedAdmin = await this.prisma.admin.update({
@@ -77,9 +101,19 @@ export class AdminService {
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
-			return updatedAdmin;
+
+			const result: AdminResponse = {
+				id: updatedAdmin.id,
+				username: updatedAdmin.username,
+				email: updatedAdmin.email ?? '',
+				createdAt: updatedAdmin.createdAt.toISOString(),
+				updatedAt: updatedAdmin.updatedAt.toISOString(),
+			};
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error updating admin', error);
+
 			throw error;
 		}
 	}
@@ -107,6 +141,7 @@ export class AdminService {
 		const isOldPasswordValid = await verify(currentPassword, dto.oldPassword);
 		if (!isOldPasswordValid) {
 			this.logger.warn(`Invalid old password for admin with ID ${adminId}`);
+
 			throw new BadRequestException('Current password is incorrect');
 		}
 

@@ -1,10 +1,16 @@
+//- Data to be rendered in the email template
+//- + lecturerName: Name of the lecturer
+//- + thesisName: Title of the thesis in English
+//- + thesisVietnameseName: Title of the thesis in Vietnamese
+//- + thesisAbbreviation: Abbreviation of the thesis (optional)
+//- + thesisDomain: Domain of the thesis (optional)
+//- + action: Action taken ('assigned' or 'removed')
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= lecturerName
-    | ,
+    | Hello #[strong #{lecturerName}],
 
   p
     | We are writing to inform you about a supervision change for one of the theses on the TheSync system.
@@ -13,27 +19,28 @@ block content
     h3 📋 Thesis Information
     
     .info-item
-      span.info-label Thesis Title (English):
-      span.info-value= thesisName
+      span.info-label Thesis Name (English):
+      span.info-value #{thesisName}
     
     .info-item
-      span.info-label Thesis Title (Vietnamese):
-      span.info-value= thesisVietnameseName
+      span.info-label Thesis Name (Vietnamese):
+      span.info-value #{thesisVietnameseName}
     
     if thesisAbbreviation
       .info-item
         span.info-label Abbreviation:
-        span.info-value= thesisAbbreviation
+        span.info-value #{thesisAbbreviation}
     
     if thesisDomain
       .info-item
         span.info-label Domain:
-        span.info-value= thesisDomain
+        span.info-value #{thesisDomain}
 
   // Supervision action notification
   if action === 'assigned'
     .success-box
       strong 🎉 Supervision Assignment
+      br
       | You have been assigned as a supervisor for this thesis.
     
     p
@@ -57,6 +64,7 @@ block content
   else if action === 'removed'
     .warning-box
       strong 📝 Supervision Removal
+      br
       | You have been removed as a supervisor for this thesis.
     
     p

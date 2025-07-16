@@ -6,10 +6,9 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { ChangePasswordDto } from '@/auth/dto';
-import { Role } from '@/auth/enums/role.enum';
-import { PrismaService } from '@/providers/prisma/prisma.service';
-import { hash, verify } from '@/utils/hash.util';
+import { ChangePasswordDto, Role } from '@/auth';
+import { PrismaService } from '@/providers';
+import { hash, verify } from '@/utils';
 
 @Injectable()
 export class UserService {
@@ -18,9 +17,9 @@ export class UserService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	async findOne(params: { id?: string; email?: string }) {
-		try {
-			this.logger.log(`Fetching user with params: ${JSON.stringify(params)}`);
+		this.logger.log(`Fetching user with params: ${JSON.stringify(params)}`);
 
+		try {
 			const user = await this.prisma.user.findFirst({
 				where: {
 					OR: [{ id: params.id }, { email: params.email }],
@@ -33,7 +32,7 @@ export class UserService {
 			if (!user) {
 				this.logger.warn(`User not found with provided parameters`);
 
-				return null;
+				throw new NotFoundException('User not found');
 			}
 
 			return user;
@@ -45,9 +44,9 @@ export class UserService {
 	}
 
 	async validateUser(email: string, password: string) {
-		try {
-			this.logger.log(`Validating user with email: ${email}`);
+		this.logger.log(`Validating user with email: ${email}`);
 
+		try {
 			const user = await this.prisma.user.findUnique({
 				where: { email: email, isActive: true },
 			});
@@ -78,9 +77,9 @@ export class UserService {
 	}
 
 	async checkRole(id: string): Promise<Role | null> {
-		try {
-			this.logger.log(`Checking role for user with ID: ${id}`);
+		this.logger.log(`Checking role for user with ID: ${id}`);
 
+		try {
 			const user = await this.prisma.user.findUnique({
 				where: { id: id },
 				include: {
@@ -104,6 +103,7 @@ export class UserService {
 
 			if (user.student) {
 				this.logger.log(`User with ID ${id} is a ${Role.STUDENT}`);
+
 				return Role.STUDENT;
 			}
 
@@ -153,25 +153,14 @@ export class UserService {
 
 			const hashedNewPassword = await hash(dto.newPassword);
 
-			const updatedUser = await this.prisma.user.update({
+			await this.prisma.user.update({
 				where: { id: userId },
 				data: { password: hashedNewPassword },
-				include: {
-					student: {
-						omit: { userId: true },
-					},
-					lecturer: {
-						omit: { userId: true },
-					},
-				},
-				omit: { password: true },
 			});
-
-			const response = this.flattenUserData(updatedUser);
 
 			this.logger.log(`Password changed successfully for user: ${userId}`);
 
-			return response;
+			return;
 		} catch (error) {
 			if (
 				error instanceof ConflictException ||
@@ -203,21 +192,5 @@ export class UserService {
 
 			throw error;
 		}
-	}
-
-	private flattenUserData(user: any) {
-		const { student, lecturer, ...baseUser } = user;
-
-		return {
-			...baseUser,
-			...(student && {
-				studentCode: student.studentCode,
-				majorId: student.majorId,
-				major: student.major,
-			}),
-			...(lecturer && {
-				isModerator: lecturer.isModerator,
-			}),
-		};
 	}
 }

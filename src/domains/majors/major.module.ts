@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { MajorController } from '@/majors/major.controller';
-import { MajorService } from '@/majors/major.service';
+import { MajorController } from '@/majors/controllers';
+import { MajorService } from '@/majors/services';
 
 @Module({
 	controllers: [MajorController],
