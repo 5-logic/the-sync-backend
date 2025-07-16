@@ -56,6 +56,9 @@ export class AdminService {
 
 			// Handle email update
 			if (dto.email) {
+				if (dto.email === existingAdmin.email) {
+					return;
+				}
 				updateData.email = dto.email;
 			}
 
@@ -81,7 +84,7 @@ export class AdminService {
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
 
-			return updatedAdmin;
+			return;
 		} catch (error) {
 			this.logger.error('Error updating admin', error);
 
