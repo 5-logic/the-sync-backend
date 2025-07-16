@@ -7,11 +7,13 @@ import {
 	Req,
 	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { AdminService } from '@/admins/admin.service';
+import { ADMIN_API_TAGS, ADMIN_CONSTANTS } from '@/admins/constants';
+import { AdminDocs } from '@/admins/docs';
 import { UpdateAdminDto } from '@/admins/dto';
+import { AdminService } from '@/admins/services';
 import {
 	JwtAccessAuthGuard,
 	Role,
@@ -19,25 +21,24 @@ import {
 	Roles,
 	UserPayload,
 } from '@/auth';
-import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
-@ApiTags('Admin')
-@Controller('admins')
+@ApiTags(ADMIN_API_TAGS)
+@Controller(ADMIN_CONSTANTS.BASE)
 export class AdminController {
 	constructor(private readonly adminService: AdminService) {}
 
 	@Roles(Role.ADMIN)
 	@Get(':id')
-	@SwaggerDoc('admin', 'findOne')
+	@ApiOperation(AdminDocs.findOne)
 	async findOne(@Param('id') id: string) {
 		return await this.adminService.findOne(id);
 	}
 
 	@Roles(Role.ADMIN)
 	@Put()
-	@SwaggerDoc('admin', 'update')
+	@ApiOperation(AdminDocs.update)
 	async update(@Req() req: Request, @Body() dto: UpdateAdminDto) {
 		const user = req.user as UserPayload;
 

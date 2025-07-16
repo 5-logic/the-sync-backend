@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Cache } from 'cache-manager';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import { AuthService } from '@/auth/auth.service';
+import { CACHE_KEY } from '@/auth/constants';
 import { CachePayload, JwtPayload, UserPayload } from '@/auth/interfaces';
 import { CONFIG_TOKENS, JWTAccessConfig, jwtAccessConfig } from '@/configs';
 
@@ -29,7 +29,7 @@ export class JwtAccessStrategy extends PassportStrategy(
 			throw new UnauthorizedException('Invalid access token payload');
 		}
 
-		const key = `${AuthService.CACHE_KEY}:${payload.sub}`;
+		const key = `${CACHE_KEY}:${payload.sub}`;
 		const cache = await this.cache.get<CachePayload>(key);
 
 		if (cache?.accessIdentifier !== payload.identifier) {

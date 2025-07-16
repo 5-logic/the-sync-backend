@@ -1,10 +1,13 @@
+//- Data to be rendered in the email template
+//- + fullName: Name of the lecturer
+//- + email: Email address of the lecturer
+//- + password: Temporary password for the lecturer account
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= fullName
-    | ,
+    | Hello #[strong #{fullName}],
 
   p
     | We are pleased to inform you that your lecturer account has been successfully created on the TheSync.
@@ -14,21 +17,23 @@ block content
     
     .info-item
       span.info-label Full Name:
-      span.info-value= fullName
+      span.info-value #{fullName}
     
     .info-item
       span.info-label Email:
-      span.info-value= email
+      span.info-value #{email}
     
     .info-item
       span.info-label Password:
-      span.info-value.password-highlight= password
+      span.info-value.password-highlight #{password}
     
 
   .success-box
     strong 🎯 Lecturer Privileges:
+    br
     | As a lecturer, you have access to thesis supervision, student management, and evaluation features within the TheSync system.
 
   .warning-box
     strong 🔒 Security Notice:
+    br
     | Please change your password immediately after your first login to ensure the security of your account.

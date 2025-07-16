@@ -1,39 +1,43 @@
+//- Data to be rendered in the email template
+//- + fullName: The full name of the student
+//- + studentCode: The unique student code
+//- + email: The student's email address
+//- + password: The temporary password for the student
+//- + semesterName: The name of the semester for which the account is created
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= fullName
-    | ,
+    | Hello #[strong #{fullName}],
 
   p
-    | We are pleased to inform you that your account has been successfully created on the TheSync system for semester 
-    strong= semesterName
-    | .
+    | We are pleased to inform you that your account has been successfully created on the TheSync system for semester #[strong #{semesterName}].
 
   .info-box
     h3 Student Account Information
     
     .info-item
       span.info-label Full Name:
-      span.info-value= fullName
+      span.info-value #{fullName}
     
     .info-item
       span.info-label Student Code:
-      span.info-value= studentCode
+      span.info-value #{studentCode}
     
     .info-item
       span.info-label Email:
-      span.info-value= email
+      span.info-value #{email}
     
     .info-item
       span.info-label Password:
-      span.info-value.password-highlight= password
+      span.info-value.password-highlight #{password}
     
     .info-item
       span.info-label Semester:
-      span.info-value= semesterName
+      span.info-value #{semesterName}
 
   .warning-box
     strong 🔒 Security Notice:
+    br
     | Please change your password immediately after your first login to ensure the security of your account.
