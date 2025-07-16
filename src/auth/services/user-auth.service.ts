@@ -82,7 +82,7 @@ export class UserAuthService {
 
 	async refresh(dto: RefreshDto): Promise<RefreshResponse> {
 		try {
-			const decoded: JwtPayload = await this.tokenService.verifyAccessToken(
+			const decoded: JwtPayload = await this.tokenService.verifyRefreshToken(
 				dto.refreshToken,
 			);
 

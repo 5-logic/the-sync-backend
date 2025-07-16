@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ChangePasswordDto } from '@/auth/dto';
-
-import { UserService } from '~/src/domains/users/services/user.service';
+import { UserService } from '@/users/index';
 
 @Injectable()
 export class ChangePasswordService {
