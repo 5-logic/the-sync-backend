@@ -78,6 +78,9 @@ export class SemesterService {
 				data: {
 					code: dto.code,
 					name: dto.name,
+					maxGroup: dto.maxGroup,
+					defaultThesesPerLecturer: dto.defaultThesesPerLecturer,
+					maxThesesPerLecturer: dto.maxThesesPerLecturer,
 				},
 			});
 
