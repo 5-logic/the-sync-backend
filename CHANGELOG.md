@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2025-07-16
+
+### Added
+
+- **Modular Authentication System**:
+  - **Admin Authentication**: New `POST /auth/admin/login`, `POST /auth/admin/refresh`, and `POST /auth/admin/logout` endpoints for admin-specific authentication flow
+  - **User Authentication**: New `POST /auth/user/login`, `POST /auth/user/refresh`, and `POST /auth/user/logout` endpoints for student/lecturer authentication
+  - **Password Management**: New `PUT /auth/change-password` endpoint for authenticated users to change passwords (requires `ChangePasswordDto` with `currentPassword` and `newPassword`)
+  - **Password Reset System**: Enhanced password reset with `POST /auth/password-reset/request` (requires `RequestPasswordResetDto` with `email`) and `POST /auth/password-reset/verify` (requires `VerifyOtpAndResetPasswordDto` with `email`, `otp`, and `newPassword`)
+
+- **Structured API Response System**:
+  - **Response Classes**: Added `BaseResponse<T>`, `ArrayResponse<T>`, and `EmptyResponse` classes for consistent API responses
+  - **Response Decorators**: New `@ApiBaseResponse()`, `@ApiArrayResponse()`, and `@ApiEmptyResponse()` decorators for enhanced Swagger documentation
+  - **Type-Safe Responses**: All authentication endpoints now return structured responses with `success`, `statusCode`, and `data` fields
+
+- **Enhanced Business Validation**:
+  - **Thesis Creation Limits**: Added validation for maximum theses per lecturer per semester based on `semester.maxThesesPerLecturer` configuration
+  - **Supervisor Requirements**: Enhanced thesis publishing validation to ensure exactly 2 supervisors are assigned before publication
+  - **Approval Validation**: Added validation in bulk supervisor assignment to ensure only approved theses can have supervisors assigned
+
+### Changed
+
+- **Authentication Architecture Refactoring**:
+  - **Service Separation**: Split authentication into specialized services: `AdminAuthService`, `UserAuthService`, `BaseAuthService`, `ChangePasswordService`, `PasswordResetService`, and `TokenAuthService`
+  - **Controller Reorganization**: Replaced single `AuthController` with dedicated controllers: `AdminAuthController`, `UserAuthController`, `ChangePasswordController`, and `PasswordResetController`
+  - **Consolidated Endpoints**: Moved password change functionality from individual domain controllers to centralized auth controller
+
+- **Module Structure Improvements**:
+  - **Domain Reorganization**: Restructured `AdminModule`, `MajorModule`, `ResponsibilityModule`, and `UserModule` with organized subfolder structure (controllers/, services/, docs/, responses/, constants/)
+  - **Enhanced Documentation**: Added comprehensive API documentation with operation descriptions and response schemas
+  - **Barrel Exports**: Implemented index.ts files across modules for cleaner imports and better code organization
+
+- **Service Layer Enhancements**:
+  - **Error Handling**: Improved error message formatting in supervision service for unapproved thesis validation
+  - **Group Management**: Enhanced student removal from groups with proper thesis assignment validation and conflict handling
+  - **Validation Logic**: Streamlined skill and responsibility deletion logic in GroupService with better error handling
+
+### Fixed
+
+- **Import Path Optimization**: Updated import statements across modules to use barrel exports and relative paths for better maintainability
+- **Type Safety**: Enhanced TypeScript configuration with proper response type definitions
+- **Service Dependencies**: Fixed service injection and dependency management across refactored modules
+- **Validation Messages**: Improved error message formatting for thesis approval validation with clearer descriptions
+
+### Enhanced
+
+- **Code Organization**: Better separation of concerns with dedicated folders for controllers, services, docs, and responses
+- **API Documentation**: Comprehensive Swagger documentation with detailed operation descriptions and response schemas
+- **Authentication Flow**: More secure and maintainable authentication system with role-based access control
+- **Business Logic**: Enhanced validation rules for thesis management and supervision assignment
+
+### Pull Requests
+
+- [#199](https://github.com/5-logic/the-sync-backend/pull/199) - Merge dev branch for v0.6.7 release
+- [#200](https://github.com/5-logic/the-sync-backend/pull/200) - Authentication system refactoring and structured responses (feature/issue-196)
+- [#197](https://github.com/5-logic/the-sync-backend/pull/197) - Enhanced business validation and error handling (feature/issue-193)
+- [#194](https://github.com/5-logic/the-sync-backend/pull/194) - Module restructuring and code organization improvements (feature/refactor)
+
+---
+
 ## [0.6.6] - 2025-07-15
 
 ### Changed
