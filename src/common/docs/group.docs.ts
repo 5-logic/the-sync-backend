@@ -48,7 +48,7 @@ export const GroupDocs = {
 
 	leaveGroup: {
 		summary: 'Leave group',
-		description: `Allow a student to leave their current group.\n\n- **Student access only**.\n- Only allowed during the PREPARING semester status.\n- If the student is the group leader, they must transfer leadership to another member before leaving.\n- Cannot leave if the student is the only member of the group - the group must be deleted instead.\n- Sends email notifications to remaining group members.\n- Returns error if leave rules are violated.\n- Logs all leave attempts and errors.`,
+		description: `Allow a student to leave their current group.\n\n- **Student access only**.\n- Only allowed during the PREPARING semester status.\n - If group is assigned to a thesis, they cannot leave the group until the thesis is unassigned.\n- If the student is the group leader, they must transfer leadership to another member before leaving.\n- Cannot leave if the student is the only member of the group - the group must be deleted instead.\n- Sends email notifications to remaining group members.\n- Returns error if leave rules are violated.\n- Logs all leave attempts and errors.`,
 	} as ApiOperationOptions,
 
 	findGroupMembers: {

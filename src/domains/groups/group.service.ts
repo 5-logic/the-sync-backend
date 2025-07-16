@@ -1817,6 +1817,13 @@ export class GroupService {
 								status: true,
 							},
 						},
+						thesis: {
+							select: {
+								id: true,
+								englishName: true,
+								abbreviation: true,
+							},
+						},
 						_count: {
 							select: {
 								studentGroupParticipations: true,
@@ -1853,6 +1860,12 @@ export class GroupService {
 			if (group.semester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
 					`Cannot leave group. You can only leave groups during the PREPARING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			if (group.thesis) {
+				throw new ConflictException(
+					`Cannot leave group. Your group is assigned to a thesis "${group.thesis.englishName}" (${group.thesis.abbreviation}). Please contact your thesis supervisor for assistance.`,
 				);
 			}
 
