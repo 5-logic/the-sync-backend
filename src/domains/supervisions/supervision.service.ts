@@ -218,6 +218,19 @@ export class SupervisionService {
 	}
 
 	async assignBulkSupervisor(dto: AssignBulkSupervisionDto) {
+		// Lấy tất cả thesisId cần kiểm tra
+		const thesisIds = dto.assignments.map((a) => a.thesisId);
+		const theses = await this.prisma.thesis.findMany({
+			where: { id: { in: thesisIds } },
+			select: { id: true, englishName: true, status: true },
+		});
+
+		const notApproved = theses.filter((t) => t.status !== 'Approved');
+		if (notApproved.length > 0) {
+			const errorMessage = `The following theses are not approved: ${notApproved.map((t) => `${t.englishName || t.id}`).join(', ')}`;
+			throw new BadRequestException(errorMessage);
+		}
+
 		const results: Array<{
 			thesisId: string;
 			lecturerId: string;
