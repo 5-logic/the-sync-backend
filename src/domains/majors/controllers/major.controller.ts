@@ -15,8 +15,7 @@ import { MajorDocs } from '@/majors/docs';
 import { MajorResponse } from '@/majors/responses';
 import { MajorService } from '@/majors/services';
 
-@UseGuards(RoleGuard)
-@UseGuards(JwtAccessAuthGuard)
+@UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags(MAJOR_API_TAGS)
 @Controller(MAJOR_CONSTANTS.BASE)

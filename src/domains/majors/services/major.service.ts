@@ -1,19 +1,16 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cache } from 'cache-manager';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CONSTANTS } from '@/configs';
 import { CACHE_KEY } from '@/majors/constants';
 import { MajorResponse } from '@/majors/responses';
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
 
 @Injectable()
 export class MajorService {
 	private readonly logger = new Logger(MajorService.name);
 
 	constructor(
+		private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {}
 
 	async findAll(): Promise<MajorResponse[]> {
@@ -21,7 +18,7 @@ export class MajorService {
 
 		try {
 			const cacheKey = `${CACHE_KEY}/`;
-			const cache = await this.cache.get<MajorResponse[]>(cacheKey);
+			const cache = await this.cache.getFromCache<MajorResponse[]>(cacheKey);
 			if (cache) {
 				this.logger.log('Returning cached majors');
 
@@ -35,8 +32,6 @@ export class MajorService {
 			this.logger.log(`Fetched ${majors.length} majors`);
 			this.logger.debug('Majors:', majors);
 
-			await this.cache.set(cacheKey, majors, CONSTANTS.TTL);
-
 			const result: MajorResponse[] = majors.map((major) => ({
 				id: major.id,
 				name: major.name,
@@ -44,6 +39,8 @@ export class MajorService {
 				createdAt: major.createdAt.toISOString(),
 				updatedAt: major.updatedAt.toISOString(),
 			}));
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -58,7 +55,7 @@ export class MajorService {
 
 		try {
 			const cacheKey = `${CACHE_KEY}/${id}`;
-			const cache = await this.cache.get<MajorResponse>(cacheKey);
+			const cache = await this.cache.getFromCache<MajorResponse>(cacheKey);
 			if (cache) {
 				this.logger.log(`Returning cached major with id: ${id}`);
 
@@ -76,8 +73,6 @@ export class MajorService {
 			this.logger.log(`Major found with id: ${id}`);
 			this.logger.debug('Major detail', major);
 
-			await this.cache.set(cacheKey, major, CONSTANTS.TTL);
-
 			const result: MajorResponse = {
 				id: major.id,
 				name: major.name,
@@ -85,6 +80,8 @@ export class MajorService {
 				createdAt: major.createdAt.toISOString(),
 				updatedAt: major.updatedAt.toISOString(),
 			};
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
