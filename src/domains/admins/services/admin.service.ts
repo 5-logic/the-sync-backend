@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { UpdateAdminDto } from '@/admins/dto';
+import { mapAdmin } from '@/admins/mappers';
 import { AdminResponse } from '@/admins/responses';
 import { PrismaService } from '@/providers';
 import { hash, verify } from '@/utils';
@@ -20,9 +21,6 @@ export class AdminService {
 		try {
 			const admin = await this.prisma.admin.findUnique({
 				where: { id: id },
-				omit: {
-					password: true,
-				},
 			});
 
 			if (!admin) {
@@ -32,14 +30,9 @@ export class AdminService {
 			}
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
+			this.logger.debug('Admin details:', JSON.stringify(admin));
 
-			const result: AdminResponse = {
-				id: admin.id,
-				username: admin.username,
-				email: admin.email ?? '',
-				createdAt: admin.createdAt.toISOString(),
-				updatedAt: admin.updatedAt.toISOString(),
-			};
+			const result: AdminResponse = mapAdmin(admin);
 
 			return result;
 		} catch (error) {
@@ -66,13 +59,8 @@ export class AdminService {
 			// Handle email update
 			if (dto.email) {
 				if (dto.email === existingAdmin.email) {
-					const admin = {
-						id: existingAdmin.id,
-						username: existingAdmin.username,
-						email: existingAdmin.email ?? '',
-						createdAt: existingAdmin.createdAt.toISOString(),
-						updatedAt: existingAdmin.updatedAt.toISOString(),
-					};
+					const admin = mapAdmin(existingAdmin);
+
 					return admin;
 				}
 				updateData.email = dto.email;
@@ -97,18 +85,12 @@ export class AdminService {
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id },
 				data: updateData,
-				omit: { password: true },
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
+			this.logger.debug('Updated admin details:', JSON.stringify(updatedAdmin));
 
-			const result: AdminResponse = {
-				id: updatedAdmin.id,
-				username: updatedAdmin.username,
-				email: updatedAdmin.email ?? '',
-				createdAt: updatedAdmin.createdAt.toISOString(),
-				updatedAt: updatedAdmin.updatedAt.toISOString(),
-			};
+			const result: AdminResponse = mapAdmin(updatedAdmin);
 
 			return result;
 		} catch (error) {
