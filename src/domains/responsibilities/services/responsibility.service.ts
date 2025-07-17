@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { CacheHelperService, PrismaService } from '@/providers';
 import { CACHE_KEY } from '@/responsibilities/constants';
+import { mapResponsibility } from '@/responsibilities/mappers';
 import { ResponsibilityResponse } from '@/responsibilities/responses';
 
 @Injectable()
@@ -31,16 +32,10 @@ export class ResponsibilityService {
 			});
 
 			this.logger.log(`Fetched ${responsibilities.length} responsibilities`);
-			this.logger.debug('Responsibilities:', responsibilities);
+			this.logger.debug('Responsibilities:', JSON.stringify(responsibilities));
 
-			const result: ResponsibilityResponse[] = responsibilities.map(
-				(responsibility) => ({
-					id: responsibility.id,
-					name: responsibility.name,
-					createdAt: responsibility.createdAt.toISOString(),
-					updatedAt: responsibility.updatedAt.toISOString(),
-				}),
-			);
+			const result: ResponsibilityResponse[] =
+				responsibilities.map(mapResponsibility);
 
 			await this.cache.saveToCache(cacheKey, result);
 
@@ -76,14 +71,12 @@ export class ResponsibilityService {
 			}
 
 			this.logger.log(`Responsibility found with ID: ${id}`);
-			this.logger.debug('Responsibility detail:', responsibility);
+			this.logger.debug(
+				'Responsibility detail:',
+				JSON.stringify(responsibility),
+			);
 
-			const result: ResponsibilityResponse = {
-				id: responsibility.id,
-				name: responsibility.name,
-				createdAt: responsibility.createdAt.toISOString(),
-				updatedAt: responsibility.updatedAt.toISOString(),
-			};
+			const result: ResponsibilityResponse = mapResponsibility(responsibility);
 
 			await this.cache.saveToCache(cacheKey, result);
 
