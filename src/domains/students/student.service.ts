@@ -8,7 +8,7 @@ import {
 
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {

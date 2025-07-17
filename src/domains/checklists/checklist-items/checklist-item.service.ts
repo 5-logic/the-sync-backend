@@ -8,7 +8,7 @@ import {
 	CreateManyChecklistItemsDto,
 	UpdateManyChecklistItemsDto,
 } from '@/checklists/checklist-items/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 
 @Injectable()
 export class ChecklistItemService {

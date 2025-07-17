@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 
 import { SemesterStatus } from '~/generated/prisma';
 

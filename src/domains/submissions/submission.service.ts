@@ -7,7 +7,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { CreateSubmissionDto, UpdateSubmissionDto } from '@/submissions/dto';
 
 import { SemesterStatus } from '~/generated/prisma';
