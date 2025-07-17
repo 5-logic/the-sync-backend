@@ -2,7 +2,8 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { CacheHelperService, PrismaService } from '@/providers';
 import { CACHE_KEY } from '@/skill-sets/constants';
-import { SkillReponse, SkillSetReponse } from '@/skill-sets/responses';
+import { mapSkillSet } from '@/skill-sets/mappers';
+import { SkillSetReponse } from '@/skill-sets/responses';
 
 @Injectable()
 export class SkillSetService {
@@ -41,21 +42,7 @@ export class SkillSetService {
 			this.logger.log(`Found ${skillSets.length} skill sets`);
 			this.logger.debug('Skill sets:', skillSets);
 
-			const result: SkillSetReponse[] = skillSets.map((skillSet) => ({
-				id: skillSet.id,
-				name: skillSet.name,
-				skills: skillSet.skills.map(
-					(skill): SkillReponse => ({
-						id: skill.id,
-						name: skill.name,
-						skillSetId: skill.skillSetId,
-						createdAt: skill.createdAt.toISOString(),
-						updatedAt: skill.updatedAt.toISOString(),
-					}),
-				),
-				createdAt: skillSet.createdAt.toISOString(),
-				updatedAt: skillSet.updatedAt.toISOString(),
-			}));
+			const result: SkillSetReponse[] = skillSets.map(mapSkillSet);
 
 			await this.cache.saveToCache(cacheKey, result);
 
@@ -99,21 +86,7 @@ export class SkillSetService {
 			this.logger.log(`Skill set found with ID: ${skillSet.id}`);
 			this.logger.debug('Skill set detail:', skillSet);
 
-			const result: SkillSetReponse = {
-				id: skillSet.id,
-				name: skillSet.name,
-				skills: skillSet.skills.map(
-					(skill): SkillReponse => ({
-						id: skill.id,
-						name: skill.name,
-						skillSetId: skill.skillSetId,
-						createdAt: skill.createdAt.toISOString(),
-						updatedAt: skill.updatedAt.toISOString(),
-					}),
-				),
-				createdAt: skillSet.createdAt.toISOString(),
-				updatedAt: skillSet.updatedAt.toISOString(),
-			};
+			const result: SkillSetReponse = mapSkillSet(skillSet);
 
 			await this.cache.saveToCache(cacheKey, result);
 
