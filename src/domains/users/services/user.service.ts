@@ -35,6 +35,9 @@ export class UserService {
 				throw new NotFoundException('User not found');
 			}
 
+			this.logger.log(`User found: ${user.id}`);
+			this.logger.debug('User details:', JSON.stringify(user));
+
 			return user;
 		} catch (error) {
 			this.logger.error('Error fetching user', error);
@@ -115,7 +118,7 @@ export class UserService {
 		}
 	}
 
-	async changePassword(userId: string, dto: ChangePasswordDto) {
+	async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
 		this.logger.log(`Changing password for user: ${userId}`);
 
 		try {
