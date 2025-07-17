@@ -5,20 +5,34 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CACHE_KEY } from '@/admins/constants';
 import { UpdateAdminDto } from '@/admins/dto';
 import { mapAdmin } from '@/admins/mappers';
 import { AdminResponse } from '@/admins/responses';
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
 import { hash, verify } from '@/utils';
 
 @Injectable()
 export class AdminService {
 	private readonly logger = new Logger(AdminService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly cache: CacheHelperService,
+		private readonly prisma: PrismaService,
+	) {}
 
 	async findOne(id: string): Promise<AdminResponse> {
+		this.logger.log(`Fetching admin with ID: ${id}`);
+
 		try {
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			const cache = await this.cache.getFromCache<AdminResponse>(cacheKey);
+			if (cache) {
+				this.logger.log(`Returning cached admin with ID: ${id}`);
+
+				return cache;
+			}
+
 			const admin = await this.prisma.admin.findUnique({
 				where: { id: id },
 			});
@@ -34,6 +48,8 @@ export class AdminService {
 
 			const result: AdminResponse = mapAdmin(admin);
 
+			await this.cache.saveToCache(cacheKey, result);
+
 			return result;
 		} catch (error) {
 			this.logger.error('Error fetching admin', error);
@@ -43,6 +59,8 @@ export class AdminService {
 	}
 
 	async update(id: string, dto: UpdateAdminDto): Promise<AdminResponse> {
+		this.logger.log(`Updating admin with ID: ${id}`);
+
 		try {
 			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { id },
@@ -91,6 +109,14 @@ export class AdminService {
 			this.logger.debug('Updated admin details:', JSON.stringify(updatedAdmin));
 
 			const result: AdminResponse = mapAdmin(updatedAdmin);
+
+			// Clear cache for this admin after update
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			await this.cache.delete(cacheKey);
+			this.logger.log(`Cache cleared for admin with ID: ${id}`);
+
+			// Save updated admin to cache
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
