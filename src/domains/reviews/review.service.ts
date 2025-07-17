@@ -697,8 +697,6 @@ export class ReviewService {
 				'New reviewer cannot be a supervisor of the submission',
 			);
 		}
-
-		return;
 	}
 	/**
 	 * Send email notifications to assigned reviewers
