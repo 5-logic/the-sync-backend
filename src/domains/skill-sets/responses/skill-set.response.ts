@@ -13,8 +13,8 @@ export class SkillSetReponse {
 	skills: SkillReponse[];
 
 	@ApiProperty()
-	createdAt: Date;
+	createdAt: string;
 
 	@ApiProperty()
-	updatedAt: Date;
+	updatedAt: string;
 }
