@@ -35,6 +35,12 @@ export class MilestoneController {
 		return await this.milestoneService.findAll();
 	}
 
+	@Get('/semester/:semesterId')
+	@SwaggerDoc('milestone', 'findBySemester')
+	async findBySemester(@Param('semesterId') semesterId: string) {
+		return await this.milestoneService.findBySemester(semesterId);
+	}
+
 	@Get(':id')
 	@SwaggerDoc('milestone', 'findOne')
 	async findOne(@Param('id') id: string) {
