@@ -1,9 +1,6 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cache } from 'cache-manager';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CONSTANTS } from '@/configs';
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
 import { CACHE_KEY } from '@/skill-sets/constants';
 import { SkillReponse, SkillSetReponse } from '@/skill-sets/responses';
 
@@ -12,8 +9,8 @@ export class SkillSetService {
 	private readonly logger = new Logger(SkillSetService.name);
 
 	constructor(
+		private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {}
 
 	async findAll(): Promise<SkillSetReponse[]> {
@@ -21,7 +18,7 @@ export class SkillSetService {
 
 		try {
 			const cacheKey = `${CACHE_KEY}/`;
-			const cache = await this.cache.get<SkillSetReponse[]>(cacheKey);
+			const cache = await this.cache.getFromCache<SkillSetReponse[]>(cacheKey);
 			if (cache) {
 				this.logger.log('Returning cached skill sets');
 
@@ -42,8 +39,7 @@ export class SkillSetService {
 			});
 
 			this.logger.log(`Found ${skillSets.length} skill sets`);
-
-			await this.cache.set(cacheKey, skillSets, CONSTANTS.TTL);
+			this.logger.debug('Skill sets:', skillSets);
 
 			const result: SkillSetReponse[] = skillSets.map((skillSet) => ({
 				id: skillSet.id,
@@ -61,21 +57,24 @@ export class SkillSetService {
 				updatedAt: skillSet.updatedAt.toISOString(),
 			}));
 
+			await this.cache.saveToCache(cacheKey, result);
+
 			return result;
 		} catch (error) {
-			this.logger.error('Error fetching skill sets:', error);
+			this.logger.error('Error fetching skill sets', error);
+
 			throw error;
 		}
 	}
 
 	async findOne(id: string): Promise<SkillSetReponse> {
-		this.logger.log(`Fetching skill set with id: ${id}`);
+		this.logger.log(`Fetching skill set with ID: ${id}`);
 
 		try {
 			const cacheKey = `${CACHE_KEY}/${id}`;
-			const cache = await this.cache.get<SkillSetReponse>(cacheKey);
+			const cache = await this.cache.getFromCache<SkillSetReponse>(cacheKey);
 			if (cache) {
-				this.logger.log(`Returning cached skill set with id: ${id}`);
+				this.logger.log(`Returning cached skill set with ID: ${id}`);
 
 				return cache;
 			}
@@ -92,13 +91,13 @@ export class SkillSetService {
 			});
 
 			if (!skillSet) {
+				this.logger.warn(`Skill set with ID ${id} not found`);
+
 				throw new NotFoundException(`SkillSet not found`);
 			}
 
 			this.logger.log(`Skill set found with ID: ${skillSet.id}`);
 			this.logger.debug('Skill set detail:', skillSet);
-
-			await this.cache.set(cacheKey, skillSet, CONSTANTS.TTL);
 
 			const result: SkillSetReponse = {
 				id: skillSet.id,
@@ -116,9 +115,12 @@ export class SkillSetService {
 				updatedAt: skillSet.updatedAt.toISOString(),
 			};
 
+			await this.cache.saveToCache(cacheKey, result);
+
 			return result;
 		} catch (error) {
-			this.logger.error('Error fetching skill set:', error);
+			this.logger.error(`Error fetching skill set with ID ${id}`, error);
+
 			throw error;
 		}
 	}
