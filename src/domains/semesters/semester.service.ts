@@ -28,7 +28,7 @@ export class SemesterService {
 	private static readonly CACHE_KEY = 'cache:semester';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 	) {}

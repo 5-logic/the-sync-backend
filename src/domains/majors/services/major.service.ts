@@ -12,7 +12,7 @@ export class MajorService {
 	private readonly logger = new Logger(MajorService.name);
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(CACHE_MANAGER) private readonly cache: Cache,
 	) {}
 

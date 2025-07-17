@@ -164,7 +164,7 @@ export class SubmissionService {
 		reviews: this.basicReviewInclude,
 	};
 
-	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService) {}
 
 	// Generic method to find group participation
 	private async findGroupParticipation(

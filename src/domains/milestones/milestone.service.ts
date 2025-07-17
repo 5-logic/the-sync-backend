@@ -17,7 +17,7 @@ export class MilestoneService {
 
 	private static readonly CACHE_KEY = 'cache:milestone';
 
-	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService) {}
 
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({

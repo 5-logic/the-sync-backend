@@ -28,7 +28,7 @@ export class GroupService {
 	private static readonly CACHE_KEY = 'cache:group';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 	) {}

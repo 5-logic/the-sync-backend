@@ -30,7 +30,7 @@ export class ThesisService {
 	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 		@Inject(GroupService) private readonly groupService: GroupService,
