@@ -43,7 +43,7 @@ export class ReviewController {
 
 	@Roles(Role.MODERATOR)
 	@Post('assign-reviewer')
-	@SwaggerDoc('review', 'create')
+	@SwaggerDoc('review', 'assignBulkReviewer')
 	async assignBulkReviewer(@Body() assignDto: AssignBulkLecturerReviewerDto) {
 		return await this.reviewService.assignBulkReviewer(assignDto);
 	}
