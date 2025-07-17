@@ -23,6 +23,10 @@ export const ReviewDocs = {
 		summary: 'Get review form for submission',
 		description: `Retrieves the review form for a submission, including milestone checklist and checklist items.\n\n- **Authorization:** Lecturer or Moderator role required.\n- **Business logic:**\n  - Returns the review form structure for conducting the review.\n  - Uses cache-aside pattern for performance (15 min TTL).\n- **Error handling:**\n  - Returns 404 if submission not found.\n  - Returns error if database or cache fails.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
 	},
+	getGroupReviewers: {
+		summary: 'Get reviewers for a group',
+		description: `Retrieves all reviewers assigned to a specific group.\n\n- **Authorization:** No authentication required.\n- **Business logic:**\n  - Returns lecturer details for each reviewer in the group.\n  - Uses cache-aside pattern for performance (10 min TTL).\n- **Error handling:**\n  - Returns 404 if group not found.\n  - Returns error if database or cache fails.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
+	},
 	submitReview: {
 		summary: 'Submit review for submission',
 		description: `Submits a review for a submission.\n\n- **Authorization:** Lecturer role required; must be assigned as reviewer.\n- **Validations:**\n  - Lecturer must be assigned to the submission.\n  - Prevents duplicate reviews for the same submission and checklist.\n- **Business logic:**\n  - Creates review and review items in a transaction.\n  - Sends email notification to group members when review is completed.\n  - Clears relevant caches after submission.\n- **Error handling:**\n  - Returns 404 if not assigned or already reviewed.\n  - Returns error if database or cache fails.\n- **Logging:** Logs all submission attempts, notifications, and errors.`,
