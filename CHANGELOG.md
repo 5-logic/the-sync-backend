@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.8] - 2025-07-17
+
+### Added
+
+- **Milestone API**:
+  - New endpoint: `GET /milestones/semester/:semesterId` to retrieve all milestones for a specific semester. Requires authenticated user and a valid semester ID. Returns an array of milestones ordered by start date. [See implementation](https://github.com/5-logic/the-sync-backend/pull/205)
+
+- **Review API**:
+  - New endpoint: `GET /reviews/groups/:groupId` to retrieve all reviewers assigned to a specific group. No authentication required. Returns lecturer details for each reviewer. [See implementation](https://github.com/5-logic/the-sync-backend/pull/205)
+
+### Changed
+
+- **Review API Refactor**:
+  - Refactored review assignment update logic:
+    - Replaced `PUT /reviews/:id/assign-reviewer` (bulk update) with `PUT /reviews/:id/change-reviewer` (change a single reviewer for a submission).
+    - `UpdateReviewerAssignmentDto` changed: now requires `currentReviewerId` and `newReviewerId` (both UUIDs), instead of an array of lecturer IDs.
+    - Enhanced validation: prevents assigning a supervisor as a reviewer and ensures the new reviewer is not the same as the current reviewer.
+    - Improved error handling and logging for reviewer assignment changes.
+  - Renamed and clarified controller routes for consistency:
+    - `POST /reviews/assign-reviewer` (bulk assign)
+    - `PUT /reviews/:id/change-reviewer` (change one reviewer)
+    - `GET /reviews/assigned` (get assigned reviews for lecturer)
+    - `GET /reviews/:submissionId/form` (get review form)
+    - `POST /reviews/:submissionId` (submit review)
+    - `PUT /reviews/:id` (update review)
+  - Updated API documentation for all affected endpoints and business logic. [See implementation](https://github.com/5-logic/the-sync-backend/pull/204)
+
+### Fixed
+
+- Improved reviewer validation logic to prevent supervisors from being assigned as reviewers.
+- Enhanced error messages and logging for reviewer assignment and milestone queries.
+
+### Pull Requests
+
+- [#204](https://github.com/5-logic/the-sync-backend/pull/204) - Update Logic Reviewer Assignment Validation & Update
+- [#205](https://github.com/5-logic/the-sync-backend/pull/205) - Implement API: Get Reviewer by Group ID & Get Milestones by Semester ID
+- [#206](https://github.com/5-logic/the-sync-backend/pull/206) - dev: release api v0.6.8
+
 ## [0.6.7] - 2025-07-16
 
 ### Added
