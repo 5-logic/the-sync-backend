@@ -9,7 +9,7 @@ import basicAuth from 'basic-auth-connect';
 import { AuthModule } from '@/auth/auth.module';
 import { CONFIG_MOUNTS, corsConfig, redisConfig } from '@/configs';
 import { DomainModule } from '@/domains/domain.module';
-import { PrismaModule } from '@/providers/prisma/prisma.module';
+import { CacheHelperModule, PrismaModule } from '@/providers';
 import { QueueModule } from '@/queue/queue.module';
 import {
 	createCacheStores,
@@ -61,6 +61,7 @@ import {
 			},
 		}),
 
+		CacheHelperModule,
 		PrismaModule,
 		AuthModule,
 		DomainModule,
