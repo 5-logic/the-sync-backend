@@ -49,16 +49,13 @@ export class ReviewController {
 	}
 
 	@Roles(Role.MODERATOR)
-	@Put(':id/assign-reviewer')
-	@SwaggerDoc('review', 'update')
-	async updateReviewerAssignment(
+	@Put(':id/change-reviewer')
+	@SwaggerDoc('review', 'changeReviewer')
+	async changeReviewer(
 		@Param('id') submissionId: string,
 		@Body() updateDto: UpdateReviewerAssignmentDto,
 	) {
-		return await this.reviewService.updateReviewerAssignment(
-			submissionId,
-			updateDto,
-		);
+		return await this.reviewService.changeReviewer(submissionId, updateDto);
 	}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
@@ -96,7 +93,7 @@ export class ReviewController {
 
 	@Roles(Role.LECTURER)
 	@Put('reviews/:id')
-	@SwaggerDoc('review', 'update')
+	@SwaggerDoc('review', 'updateReview')
 	async updateReview(
 		@Req() req: Request,
 		@Param('id') reviewId: string,
