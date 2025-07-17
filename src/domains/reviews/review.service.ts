@@ -138,6 +138,11 @@ export class ReviewService {
 						);
 					}
 
+					// Validate supervisor không được là reviewer
+					for (const lecturerId of lecturerIds) {
+						await this.validateReviewer(lecturerId, submissionId);
+					}
+
 					// Create assignment data
 					const assignmentData: Array<{
 						reviewerId: string;
@@ -577,6 +582,7 @@ export class ReviewService {
 			await this.validateReviewer(
 				updateDto.currentReviewerId,
 				updateDto.newReviewerId,
+				submissionId,
 			);
 
 			const existingReviewers = await this.prisma.assignmentReview.findFirst({
@@ -625,8 +631,9 @@ export class ReviewService {
 	}
 
 	private async validateReviewer(
-		currentReviewerId: string,
 		newReviewerId: string,
+		submissionId: string,
+		currentReviewerId?: string,
 	) {
 		if (currentReviewerId === newReviewerId) {
 			this.logger.warn(
@@ -637,15 +644,17 @@ export class ReviewService {
 			);
 		}
 
-		const currentReviewer = await this.prisma.lecturer.findUnique({
-			where: { userId: currentReviewerId },
-		});
+		if (currentReviewerId) {
+			const currentReviewer = await this.prisma.lecturer.findUnique({
+				where: { userId: currentReviewerId },
+			});
 
-		if (!currentReviewer) {
-			this.logger.warn(
-				`Current reviewer with ID ${currentReviewerId} does not exist`,
-			);
-			throw new NotFoundException('Current reviewer does not exist');
+			if (!currentReviewer) {
+				this.logger.warn(
+					`Current reviewer with ID ${currentReviewerId} does not exist`,
+				);
+				throw new NotFoundException('Current reviewer does not exist');
+			}
 		}
 
 		const newReviewer = await this.prisma.lecturer.findUnique({
@@ -655,6 +664,38 @@ export class ReviewService {
 		if (!newReviewer) {
 			this.logger.warn(`New reviewer with ID ${newReviewerId} does not exist`);
 			throw new NotFoundException('New reviewer does not exist');
+		}
+
+		const supervisorIds = await this.prisma.submission.findUnique({
+			where: { id: submissionId },
+			select: {
+				group: {
+					select: {
+						thesis: {
+							select: {
+								supervisions: {
+									select: {
+										lecturerId: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		});
+
+		if (
+			supervisorIds?.group?.thesis?.supervisions.some(
+				(s) => s.lecturerId === newReviewerId,
+			)
+		) {
+			this.logger.warn(
+				`New reviewer with ID ${newReviewerId} is a supervisor of the submission`,
+			);
+			throw new BadRequestException(
+				'New reviewer cannot be a supervisor of the submission',
+			);
 		}
 
 		return;
