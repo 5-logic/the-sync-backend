@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { CACHE_KEY } from '@/majors/constants';
+import { mapMajor } from '@/majors/mappers';
 import { MajorResponse } from '@/majors/responses';
 import { CacheHelperService, PrismaService } from '@/providers';
 
@@ -32,13 +33,7 @@ export class MajorService {
 			this.logger.log(`Fetched ${majors.length} majors`);
 			this.logger.debug('Majors:', majors);
 
-			const result: MajorResponse[] = majors.map((major) => ({
-				id: major.id,
-				name: major.name,
-				code: major.code,
-				createdAt: major.createdAt.toISOString(),
-				updatedAt: major.updatedAt.toISOString(),
-			}));
+			const result: MajorResponse[] = majors.map(mapMajor);
 
 			await this.cache.saveToCache(cacheKey, result);
 
@@ -73,13 +68,7 @@ export class MajorService {
 			this.logger.log(`Major found with id: ${id}`);
 			this.logger.debug('Major detail', major);
 
-			const result: MajorResponse = {
-				id: major.id,
-				name: major.name,
-				code: major.code,
-				createdAt: major.createdAt.toISOString(),
-				updatedAt: major.updatedAt.toISOString(),
-			};
+			const result: MajorResponse = mapMajor(major);
 
 			await this.cache.saveToCache(cacheKey, result);
 
