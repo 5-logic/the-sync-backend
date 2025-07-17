@@ -31,7 +31,7 @@ export class MajorService {
 			});
 
 			this.logger.log(`Fetched ${majors.length} majors`);
-			this.logger.debug('Majors:', majors);
+			this.logger.debug('Majors:', JSON.stringify(majors));
 
 			const result: MajorResponse[] = majors.map(mapMajor);
 
@@ -66,7 +66,7 @@ export class MajorService {
 			}
 
 			this.logger.log(`Major found with id: ${id}`);
-			this.logger.debug('Major detail', major);
+			this.logger.debug('Major detail', JSON.stringify(major));
 
 			const result: MajorResponse = mapMajor(major);
 
