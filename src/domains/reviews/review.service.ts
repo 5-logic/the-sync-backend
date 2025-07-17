@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+	BadRequestException,
+	Inject,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '@/providers/prisma/prisma.service';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
@@ -130,6 +136,11 @@ export class ReviewService {
 						throw new NotFoundException(
 							`Some lecturers not found for submission ${submissionId}`,
 						);
+					}
+
+					// Validate supervisor không được là reviewer
+					for (const lecturerId of lecturerIds) {
+						await this.validateReviewer(lecturerId, submissionId);
 					}
 
 					// Create assignment data
@@ -559,78 +570,57 @@ export class ReviewService {
 	/**
 	 * Update reviewer assignment for a submission (replace existing assignments)
 	 */
-	async updateReviewerAssignment(
+	async changeReviewer(
 		submissionId: string,
 		updateDto: UpdateReviewerAssignmentDto,
 	) {
 		try {
-			const { lecturerIds } = updateDto;
+			this.logger.log(
+				`Updating reviewer assignments for submission ID ${submissionId}`,
+			);
 
-			const submission = await this.prisma.submission.findUnique({
-				where: { id: submissionId },
-			});
+			await this.validateReviewer(
+				updateDto.currentReviewerId,
+				updateDto.newReviewerId,
+				submissionId,
+			);
 
-			if (!submission) {
-				this.logger.warn(`Submission with ID ${submissionId} does not exist`);
-				throw new NotFoundException(
-					`Submission with ID ${submissionId} does not exist`,
-				);
-			}
-
-			// Validate lecturers exist
-			const lecturers = await this.prisma.lecturer.findMany({
-				where: { userId: { in: lecturerIds } },
-			});
-
-			if (lecturers.length !== lecturerIds.length) {
-				this.logger.warn(
-					`Some lecturers with IDs ${lecturerIds.join(', ')} do not exist or are not lecturers`,
-				);
-				throw new NotFoundException('Some lecturers not found');
-			}
-
-			// Use transaction to remove old assignments and create new ones
-			const result = await this.prisma.$transaction(async (prisma) => {
-				// Remove existing assignments
-				await prisma.assignmentReview.deleteMany({
-					where: { submissionId },
-				});
-
-				// Create new assignments
-				const assignmentData = lecturerIds.map((lecturerId) => ({
-					reviewerId: lecturerId,
+			const existingReviewers = await this.prisma.assignmentReview.findFirst({
+				where: {
 					submissionId: submissionId,
-				}));
+					reviewerId: updateDto.currentReviewerId,
+				},
+			});
 
-				const assignments = await prisma.assignmentReview.createMany({
-					data: assignmentData,
-				});
+			if (!existingReviewers) {
+				this.logger.warn(
+					`No existing reviewer assignment found for submission ID ${submissionId} and reviewer ID ${updateDto.currentReviewerId}`,
+				);
+				throw new NotFoundException(
+					'No existing reviewer assignment found for group',
+				);
+			}
 
-				return assignments;
+			const changeReviewer = await this.prisma.assignmentReview.update({
+				where: {
+					submissionId_reviewerId: {
+						submissionId: submissionId,
+						reviewerId: updateDto.currentReviewerId,
+					},
+				},
+				data: {
+					reviewerId: updateDto.newReviewerId,
+				},
 			});
 
 			this.logger.log(
-				`Updated reviewer assignments for submission ID ${submissionId}: assigned ${result.count} reviewer(s)`,
+				`Reviewer assignment updated successfully for submission ID ${submissionId}`,
 			);
 			this.logger.debug(
-				`Updated assignments: ${JSON.stringify(result, null, 2)}`,
+				`Updated assignment: ${JSON.stringify(changeReviewer, null, 2)}`,
 			);
 
-			// Clear relevant caches after updating assignments
-			await this.clearSubmissionRelatedCaches([{ submissionId, lecturerIds }]);
-
-			// Send email notifications to newly assigned reviewers
-			if (lecturerIds.length > 0) {
-				await this.sendReviewerAssignmentNotifications([
-					{ submissionId, lecturerIds },
-				]);
-			}
-
-			return {
-				assignedCount: result.count,
-				submissionId,
-				lecturerIds,
-			};
+			return changeReviewer;
 		} catch (error) {
 			this.logger.error(
 				`Error updating reviewer assignments for submission ID ${submissionId}`,
@@ -640,6 +630,74 @@ export class ReviewService {
 		}
 	}
 
+	private async validateReviewer(
+		newReviewerId: string,
+		submissionId: string,
+		currentReviewerId?: string,
+	) {
+		if (currentReviewerId === newReviewerId) {
+			this.logger.warn(
+				'Current reviewer and new reviewer are the same, no update needed',
+			);
+			throw new BadRequestException(
+				'Current reviewer and new reviewer are the same',
+			);
+		}
+
+		if (currentReviewerId) {
+			const currentReviewer = await this.prisma.lecturer.findUnique({
+				where: { userId: currentReviewerId },
+			});
+
+			if (!currentReviewer) {
+				this.logger.warn(
+					`Current reviewer with ID ${currentReviewerId} does not exist`,
+				);
+				throw new NotFoundException('Current reviewer does not exist');
+			}
+		}
+
+		const newReviewer = await this.prisma.lecturer.findUnique({
+			where: { userId: newReviewerId },
+		});
+
+		if (!newReviewer) {
+			this.logger.warn(`New reviewer with ID ${newReviewerId} does not exist`);
+			throw new NotFoundException('New reviewer does not exist');
+		}
+
+		const supervisorIds = await this.prisma.submission.findUnique({
+			where: { id: submissionId },
+			select: {
+				group: {
+					select: {
+						thesis: {
+							select: {
+								supervisions: {
+									select: {
+										lecturerId: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		});
+
+		if (
+			supervisorIds?.group?.thesis?.supervisions.some(
+				(s) => s.lecturerId === newReviewerId,
+			)
+		) {
+			this.logger.warn(
+				`New reviewer with ID ${newReviewerId} is a supervisor of the submission`,
+			);
+			throw new BadRequestException(
+				'New reviewer cannot be a supervisor of the submission',
+			);
+		}
+	}
 	/**
 	 * Send email notifications to assigned reviewers
 	 */
@@ -926,6 +984,52 @@ export class ReviewService {
 		} catch (error) {
 			this.logger.warn('Error clearing submission-related caches', error);
 			// Don't throw error to prevent main operation from failing
+		}
+	}
+
+	async getGroupReviewers(groupId: string) {
+		try {
+			const group = await this.prisma.group.findUnique({
+				where: { id: groupId },
+				include: {
+					submissions: {
+						select: { id: true },
+					},
+				},
+			});
+
+			if (!group) {
+				this.logger.warn(`Group with ID ${groupId} does not exist`);
+				throw new NotFoundException(`Group with ID ${groupId} does not exist`);
+			}
+
+			const reviewers = await this.prisma.lecturer.findMany({
+				where: {
+					assignmentReviews: {
+						some: {
+							submissionId: { in: group.submissions.map((s) => s.id) },
+						},
+					},
+				},
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			});
+
+			this.logger.log(
+				`Found ${reviewers.length} reviewers for group ID ${groupId}`,
+			);
+			this.logger.debug(`Reviewers: ${JSON.stringify(reviewers, null, 2)}`);
+
+			return reviewers;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching group reviewers for group ID ${groupId}`,
+				error,
+			);
+			throw error;
 		}
 	}
 }
