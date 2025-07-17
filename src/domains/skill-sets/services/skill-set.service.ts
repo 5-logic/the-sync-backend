@@ -40,7 +40,7 @@ export class SkillSetService {
 			});
 
 			this.logger.log(`Found ${skillSets.length} skill sets`);
-			this.logger.debug('Skill sets:', skillSets);
+			this.logger.debug('Skill sets:', JSON.stringify(skillSets));
 
 			const result: SkillSetReponse[] = skillSets.map(mapSkillSet);
 
@@ -84,7 +84,7 @@ export class SkillSetService {
 			}
 
 			this.logger.log(`Skill set found with ID: ${skillSet.id}`);
-			this.logger.debug('Skill set detail:', skillSet);
+			this.logger.debug('Skill set detail:', JSON.stringify(skillSet));
 
 			const result: SkillSetReponse = mapSkillSet(skillSet);
 
