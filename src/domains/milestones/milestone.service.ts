@@ -193,6 +193,35 @@ export class MilestoneService {
 		}
 	}
 
+	async findBySemester(semesterId: string) {
+		try {
+			this.logger.log(`Fetching milestones for semester ${semesterId}`);
+
+			const semester = await this.validateSemester(semesterId);
+
+			const milestones = await this.prisma.milestone.findMany({
+				where: { semesterId: semester.id },
+				orderBy: { startDate: 'asc' },
+			});
+
+			if (milestones.length === 0) {
+				this.logger.warn(`No milestones found for semester ${semesterId}`);
+			} else {
+				this.logger.log(
+					`Found ${milestones.length} milestones for semester ${semesterId}`,
+				);
+			}
+
+			return milestones;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching milestones for semester ${semesterId}`,
+				error,
+			);
+			throw error;
+		}
+	}
+
 	async findOne(id: string) {
 		try {
 			this.logger.log(`Fetching milestone with ID: ${id}`);

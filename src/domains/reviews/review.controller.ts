@@ -30,7 +30,7 @@ import { ReviewService } from '@/reviews/review.service';
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Review')
-@Controller()
+@Controller('reviews')
 export class ReviewController {
 	constructor(private readonly reviewService: ReviewService) {}
 
@@ -43,26 +43,23 @@ export class ReviewController {
 
 	@Roles(Role.MODERATOR)
 	@Post('assign-reviewer')
-	@SwaggerDoc('review', 'create')
+	@SwaggerDoc('review', 'assignBulkReviewer')
 	async assignBulkReviewer(@Body() assignDto: AssignBulkLecturerReviewerDto) {
 		return await this.reviewService.assignBulkReviewer(assignDto);
 	}
 
 	@Roles(Role.MODERATOR)
-	@Put(':id/assign-reviewer')
-	@SwaggerDoc('review', 'update')
-	async updateReviewerAssignment(
+	@Put(':id/change-reviewer')
+	@SwaggerDoc('review', 'changeReviewer')
+	async changeReviewer(
 		@Param('id') submissionId: string,
 		@Body() updateDto: UpdateReviewerAssignmentDto,
 	) {
-		return await this.reviewService.updateReviewerAssignment(
-			submissionId,
-			updateDto,
-		);
+		return await this.reviewService.changeReviewer(submissionId, updateDto);
 	}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
-	@Get('reviews/assigned')
+	@Get('assigned')
 	@SwaggerDoc('review', 'getAssignedReviews')
 	async getAssignedReviews(@Req() req: Request) {
 		const user = req.user as UserPayload;
@@ -71,14 +68,20 @@ export class ReviewController {
 	}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
-	@Get('reviews/:submissionId/form')
+	@Get(':submissionId/form')
 	@SwaggerDoc('review', 'findOne')
 	async getReviewForm(@Param('submissionId') submissionId: string) {
 		return await this.reviewService.getReviewForm(submissionId);
 	}
 
+	@Get('groups/:groupId')
+	@SwaggerDoc('review', 'getGroupReviewers')
+	async getGroupReviewers(@Param('groupId') groupId: string) {
+		return await this.reviewService.getGroupReviewers(groupId);
+	}
+
 	@Roles(Role.LECTURER)
-	@Post('reviews/:submissionId')
+	@Post(':submissionId')
 	@SwaggerDoc('review', 'submitReview')
 	async submitReview(
 		@Req() req: Request,
@@ -95,8 +98,8 @@ export class ReviewController {
 	}
 
 	@Roles(Role.LECTURER)
-	@Put('reviews/:id')
-	@SwaggerDoc('review', 'update')
+	@Put(':id')
+	@SwaggerDoc('review', 'updateReview')
 	async updateReview(
 		@Req() req: Request,
 		@Param('id') reviewId: string,
