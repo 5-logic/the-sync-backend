@@ -5,7 +5,7 @@ import { Admin } from '~/generated/prisma';
 export const mapAdmin = (admin: Admin): AdminResponse => ({
 	id: admin.id,
 	username: admin.username,
-	email: admin.email ?? '',
+	email: admin.email ?? undefined,
 	createdAt: admin.createdAt.toISOString(),
 	updatedAt: admin.updatedAt.toISOString(),
 });

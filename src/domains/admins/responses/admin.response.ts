@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AdminResponse {
 	@ApiProperty()
@@ -7,8 +7,8 @@ export class AdminResponse {
 	@ApiProperty()
 	username: string;
 
-	@ApiProperty()
-	email: string;
+	@ApiPropertyOptional()
+	email?: string;
 
 	@ApiProperty()
 	createdAt: string;
