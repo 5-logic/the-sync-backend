@@ -5,7 +5,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
+import { CACHE_KEY } from '@/semesters/constants';
 import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
 import { mapSemester } from '@/semesters/mappers';
 import { SemesterResponse } from '@/semesters/responses';
@@ -31,6 +32,7 @@ export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
 
 	constructor(
+		private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly statusService: SemesterStatusService,
 	) {}
@@ -60,6 +62,10 @@ export class SemesterService {
 
 			const result: SemesterResponse = mapSemester(newSemester);
 
+			const cacheKey = `${CACHE_KEY}/${newSemester.id}`;
+			await this.cache.saveToCache(cacheKey, result);
+			await this.cache.delete(`${CACHE_KEY}/`);
+
 			return result;
 		} catch (error) {
 			this.logger.error('Error creating semester', error);
@@ -72,6 +78,14 @@ export class SemesterService {
 		this.logger.log('Retrieving all semesters');
 
 		try {
+			const cacheKey = `${CACHE_KEY}/`;
+			const cache = await this.cache.getFromCache<SemesterResponse[]>(cacheKey);
+			if (cache) {
+				this.logger.log('Returning cached semesters');
+
+				return cache;
+			}
+
 			const semesters = await this.prisma.semester.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
@@ -80,6 +94,8 @@ export class SemesterService {
 			this.logger.debug('Semesters details', JSON.stringify(semesters));
 
 			const result: SemesterResponse[] = semesters.map(mapSemester);
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -93,6 +109,14 @@ export class SemesterService {
 		this.logger.log(`Fetching semester with ID: ${id}`);
 
 		try {
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			const cache = await this.cache.getFromCache<SemesterResponse>(cacheKey);
+			if (cache) {
+				this.logger.log(`Returning cached semester with id: ${id}`);
+
+				return cache;
+			}
+
 			const semester = await this.prisma.semester.findUnique({
 				where: { id },
 			});
@@ -107,6 +131,8 @@ export class SemesterService {
 			this.logger.debug('Semester details', JSON.stringify(semester));
 
 			const result: SemesterResponse = mapSemester(semester);
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -147,6 +173,10 @@ export class SemesterService {
 
 			const result: SemesterResponse = mapSemester(updated);
 
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			await this.cache.saveToCache(cacheKey, result);
+			await this.cache.delete(`${CACHE_KEY}/`);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error updating semester with ID ${id}`, error);
@@ -184,6 +214,10 @@ export class SemesterService {
 			this.logger.debug('Deleted semester details', JSON.stringify(deleted));
 
 			const result: SemesterResponse = mapSemester(deleted);
+
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			await this.cache.delete(cacheKey);
+			await this.cache.delete(`${CACHE_KEY}/`);
 
 			return result;
 		} catch (error) {
