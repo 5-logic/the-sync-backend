@@ -344,6 +344,23 @@ export class MilestoneService {
 				);
 			}
 
+			// Check all submissions in this milestone
+			const submissions = await this.prisma.submission.findMany({
+				where: { milestoneId: id },
+				select: { status: true },
+			});
+			if (
+				submissions.length > 0 &&
+				submissions.some((s) => s.status !== 'NotSubmitted')
+			) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: some submissions have already been submitted.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: some submissions have already been submitted.',
+				);
+			}
+
 			const deleted = await this.prisma.milestone.delete({
 				where: { id },
 			});
