@@ -745,16 +745,15 @@ export class SubmissionService {
 
 				// Lấy danh sách lecturer review hiện tại
 				const reviewLecturers = (submission.reviews || [])
-					.map((review) => {
-						if (review.lecturer && review.lecturer.user) {
-							return {
-								id: review.lecturer.user.id,
-								fullName: review.lecturer.user.fullName,
-								email: review.lecturer.user.email,
-							};
-						}
-						return null;
-					})
+					.map((review) =>
+						review.lecturer?.user
+							? {
+									id: review.lecturer.user.id,
+									fullName: review.lecturer.user.fullName,
+									email: review.lecturer.user.email,
+								}
+							: null,
+					)
 					.filter(Boolean);
 
 				return {
