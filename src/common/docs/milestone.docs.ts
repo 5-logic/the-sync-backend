@@ -27,6 +27,6 @@ export const MilestoneDocs = {
 
 	delete: {
 		summary: 'Delete milestone',
-		description: `Permanently delete a milestone.\n\n- **Admin access only**.\n- Only allowed before the milestone start date and when the semester status is Ongoing.\n- Removes all associated submissions.\n- Returns error if delete rules are violated.\n- Logs all deletion attempts and errors.`,
+		description: `Permanently delete a milestone.\n\n- **Admin access only** (authentication and ADMIN role required).\n- Only allowed before the milestone start date and when the semester status is Ongoing.\n- Only allowed if all submissions in the milestone have status 'NotSubmitted'.\n- Returns error if any submission has been submitted.\n- Does NOT remove associated submissions if delete is blocked.\n- Returns error if delete rules are violated.\n- Logs all deletion attempts, warnings, and errors.`,
 	} as ApiOperationOptions,
 };
