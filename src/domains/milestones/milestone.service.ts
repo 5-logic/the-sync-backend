@@ -126,6 +126,7 @@ export class MilestoneService {
 					startDate: startDate,
 					endDate: endDate,
 					semesterId: dto.semesterId,
+					documents: dto.documents || [],
 				},
 			});
 
@@ -341,6 +342,23 @@ export class MilestoneService {
 			if (today >= existingStartDateOnly) {
 				throw new ConflictException(
 					'Milestone can only be deleted before its start date',
+				);
+			}
+
+			// Check all submissions in this milestone
+			const submissions = await this.prisma.submission.findMany({
+				where: { milestoneId: id },
+				select: { status: true },
+			});
+			if (
+				submissions.length > 0 &&
+				submissions.some((s) => s.status !== 'NotSubmitted')
+			) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: some submissions have already been submitted.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: some submissions have already been submitted.',
 				);
 			}
 

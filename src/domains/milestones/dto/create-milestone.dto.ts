@@ -17,4 +17,8 @@ export class CreateMilestoneDto {
 	@ApiProperty()
 	@IsUUID()
 	semesterId: string;
+
+	@ApiProperty()
+	@IsString({ each: true })
+	documents: string[];
 }
