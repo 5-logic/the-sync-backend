@@ -100,7 +100,7 @@ export class SemesterService {
 			if (!semester) {
 				this.logger.warn(`Semester with ID ${id} not found`);
 
-				throw new NotFoundException(`Semester with ID ${id} not found`);
+				throw new NotFoundException(`Semester not found`);
 			}
 
 			this.logger.log(`Semester with ID ${id} retrieved successfully`);
@@ -117,7 +117,42 @@ export class SemesterService {
 	}
 
 	async update(id: string, dto: UpdateSemesterDto): Promise<SemesterResponse> {
-		// Implementation for updating a semester
+		this.logger.log(`Updating semester with ID: ${id}`);
+
+		try {
+			const existingSemester = await this.prisma.semester.findUnique({
+				where: { id },
+			});
+
+			if (!existingSemester) {
+				this.logger.warn(`Semester with ID ${id} not found`);
+
+				throw new NotFoundException(`Semester with ID ${id} not found`);
+			}
+
+			await this.statusService.validateSemesterUpdate(existingSemester, dto);
+
+			const updatedDto = this.statusService.prepareUpdateData(
+				existingSemester,
+				dto,
+			);
+
+			const updated = await this.prisma.semester.update({
+				where: { id },
+				data: updatedDto,
+			});
+
+			this.logger.log(`Semester with ID ${id} updated successfully`);
+			this.logger.debug('Updated semester details', JSON.stringify(updated));
+
+			const result: SemesterResponse = mapSemester(updated);
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error updating semester with ID ${id}`, error);
+
+			throw error;
+		}
 	}
 
 	async remove(id: string): Promise<SemesterResponse> {
