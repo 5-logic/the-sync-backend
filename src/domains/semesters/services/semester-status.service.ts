@@ -2,7 +2,7 @@ import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
 
-import { SemesterStatus } from '~/generated/prisma';
+import { Semester, SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
 export class SemesterStatusService {
@@ -26,6 +26,20 @@ export class SemesterStatusService {
 
 			throw new ConflictException(
 				`Cannot create new semester. There is already an active semester (${activeSemester.name}) with status: ${activeSemester.status}`,
+			);
+		}
+
+		return;
+	}
+
+	ensureDeletableStatus(semester: Semester) {
+		if (semester.status !== SemesterStatus.NotYet) {
+			this.logger.warn(
+				`Cannot delete semester ${semester.id}: status = ${semester.status}`,
+			);
+
+			throw new ConflictException(
+				`Only semesters with status "${SemesterStatus.NotYet}" can be deleted.`,
 			);
 		}
 

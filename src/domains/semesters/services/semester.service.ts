@@ -1,10 +1,30 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
 import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
 import { mapSemester } from '@/semesters/mappers';
 import { SemesterResponse } from '@/semesters/responses';
 import { SemesterStatusService } from '@/semesters/services/semester-status.service';
+
+import {
+	Enrollment,
+	Group,
+	Milestone,
+	Semester,
+	StudentGroupParticipation,
+} from '~/generated/prisma';
+
+type SemesterWithRelationships = Semester & {
+	groups: Group[];
+	enrollments: Enrollment[];
+	milestones: Milestone[];
+	studentGroupParticipations: StudentGroupParticipation[];
+};
 
 @Injectable()
 export class SemesterService {
@@ -80,7 +100,7 @@ export class SemesterService {
 			if (!semester) {
 				this.logger.warn(`Semester with ID ${id} not found`);
 
-				throw new ConflictException(`Semester with ID ${id} not found`);
+				throw new NotFoundException(`Semester with ID ${id} not found`);
 			}
 
 			this.logger.log(`Semester with ID ${id} retrieved successfully`);
@@ -100,7 +120,43 @@ export class SemesterService {
 		// Implementation for updating a semester
 	}
 
-	async remove(id: string): Promise<SemesterResponse> {}
+	async remove(id: string): Promise<SemesterResponse> {
+		this.logger.log(`Removing semester with ID: ${id}`);
+
+		try {
+			const semester = await this.prisma.semester.findUnique({
+				where: { id },
+				include: {
+					groups: true,
+					enrollments: true,
+					milestones: true,
+					studentGroupParticipations: true,
+				},
+			});
+
+			if (!semester) {
+				this.logger.warn(`Semester ${id} not found`);
+
+				throw new NotFoundException(`Semester not found`);
+			}
+
+			this.statusService.ensureDeletableStatus(semester);
+			this.ensureNoDependencies(semester);
+
+			const deleted = await this.prisma.semester.delete({ where: { id } });
+
+			this.logger.log(`Deleted semester with ID: ${id}`);
+			this.logger.debug('Deleted semester details', JSON.stringify(deleted));
+
+			const result: SemesterResponse = mapSemester(deleted);
+
+			return result;
+		} catch (error) {
+			this.logger.error('Failed to delete semester', error);
+
+			throw error;
+		}
+	}
 
 	// ------------------------------------------------------------------------------------------
 	// Additional methods for semester management can be added here
@@ -121,5 +177,21 @@ export class SemesterService {
 		}
 
 		return;
+	}
+
+	private ensureNoDependencies(semester: SemesterWithRelationships): void {
+		const hasRelations =
+			semester.groups.length > 0 ||
+			semester.enrollments.length > 0 ||
+			semester.milestones.length > 0 ||
+			semester.studentGroupParticipations.length > 0;
+
+		if (hasRelations) {
+			this.logger.warn(`Semester ${semester.id} has dependent relationships`);
+
+			throw new ConflictException(
+				`Cannot delete semester: it has related data.`,
+			);
+		}
 	}
 }
