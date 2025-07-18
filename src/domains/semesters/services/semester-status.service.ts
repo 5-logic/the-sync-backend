@@ -125,30 +125,53 @@ export class SemesterStatusService {
 			);
 		}
 
+		this.logger.log(
+			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. All students have groups.`,
+		);
+
 		return;
 	}
 
-	validateStatusTransition___Ongoing_To_End(
+	async validateStatusTransition___Ongoing_To_End(
 		semester: Semester,
-		dto: UpdateSemesterDto,
 	): Promise<void> {
-		if (
-			semester.status === SemesterStatus.Ongoing &&
-			dto.status === SemesterStatus.End
-		) {
-			this.logger.log(
-				`Validating transition from Ongoing to End for semester with ID ${semester.id}`,
+		if (semester.ongoingPhase !== OngoingPhase.ScopeLocked) {
+			this.logger.warn(
+				`Cannot transition from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}. Ongoing phase is not locked.`,
 			);
-			return;
+
+			throw new ConflictException(
+				`Cannot transition from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}. Please lock the ongoing phase first.`,
+			);
 		}
 
-		this.logger.warn(
-			`Invalid status transition from ${semester.status} to ${dto.status}`,
+		const studentsWithIncompleteEnrollmentCount =
+			await this.prisma.student.count({
+				where: {
+					enrollments: {
+						some: {
+							semesterId: semester.id,
+							status: {
+								in: [EnrollmentStatus.NotYet, EnrollmentStatus.Ongoing],
+							},
+						},
+					},
+				},
+			});
+
+		if (studentsWithIncompleteEnrollmentCount > 0) {
+			const message = `Cannot transition from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}. ${studentsWithIncompleteEnrollmentCount} students have incomplete enrollments.`;
+
+			this.logger.warn(message);
+
+			throw new ConflictException(message);
+		}
+
+		this.logger.log(
+			`${SemesterStatus.Ongoing} to ${SemesterStatus.End} transition validation passed. All students have groups.`,
 		);
 
-		throw new ConflictException(
-			`Invalid status transition. Can only move from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}`,
-		);
+		return;
 	}
 
 	async validateStatusTransition(
@@ -201,7 +224,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Ongoing &&
 			newStatus === SemesterStatus.End
 		) {
-			await this.validateStatusTransition___Ongoing_To_End(semester, dto);
+			await this.validateStatusTransition___Ongoing_To_End(semester);
 		}
 
 		this.logger.log(
@@ -229,7 +252,7 @@ export class SemesterStatusService {
 		return;
 	}
 
-	validateOngoingPhase(semester: Semester, dto: UpdateSemesterDto): void {
+	validateOngoingPhase(semester: Semester): void {
 		if (semester.status !== SemesterStatus.Ongoing) {
 			this.logger.warn(
 				`Cannot update ongoingPhase when status is ${semester.status}`,
@@ -264,7 +287,7 @@ export class SemesterStatusService {
 		}
 
 		if (dto.ongoingPhase) {
-			this.validateOngoingPhase(semester, dto);
+			this.validateOngoingPhase(semester);
 		}
 
 		return;
