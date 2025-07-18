@@ -1,25 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsUUID } from 'class-validator';
 
 import { EnrollmentStatus } from '~/generated/prisma';
 
-export class UpdateStudentEnrollmentDto {
-	@ApiProperty()
-	@IsUUID()
-	studentId: string;
-
-	@ApiProperty({ enum: EnrollmentStatus })
-	@IsEnum(EnrollmentStatus)
-	status: EnrollmentStatus;
-}
-
 export class UpdateEnrollmentsDto {
-	@ApiProperty({
-		type: [UpdateStudentEnrollmentDto],
-	})
+	@ApiProperty()
 	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => UpdateStudentEnrollmentDto)
-	enrollments: UpdateStudentEnrollmentDto[];
+	@IsUUID(4, { each: true })
+	studentIds: string[];
+
+	@ApiProperty({ enum: [EnrollmentStatus.Passed, EnrollmentStatus.Failed] })
+	@IsIn([EnrollmentStatus.Passed, EnrollmentStatus.Failed])
+	status: EnrollmentStatus;
 }
