@@ -135,7 +135,6 @@ export class SubmissionService {
 								name: true,
 								description: true,
 								isRequired: true,
-								acceptance: true,
 							},
 						},
 					},
@@ -662,31 +661,120 @@ export class SubmissionService {
 				where,
 				include: {
 					group: {
-						select: { id: true, name: true, code: true },
+						select: {
+							id: true,
+							name: true,
+							code: true,
+							thesis: {
+								select: {
+									id: true,
+									englishName: true,
+									vietnameseName: true,
+									abbreviation: true,
+									description: true,
+									status: true,
+									lecturer: {
+										select: {
+											user: {
+												select: {
+													id: true,
+													fullName: true,
+													email: true,
+												},
+											},
+											isModerator: true,
+										},
+									},
+								},
+							},
+						},
 					},
 					milestone: {
 						select: { id: true, name: true },
 					},
-					_count: {
+					reviews: {
 						select: {
-							assignmentReviews: true,
-							reviews: true,
+							lecturer: {
+								select: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
 						},
 					},
 				},
 				orderBy: { createdAt: 'desc' },
 			});
 
-			const mappedSubmissions = submissions.map((submission) => ({
-				id: submission.id,
-				status: submission.status,
-				documents: submission.documents,
-				createdAt: submission.createdAt,
-				group: submission.group,
-				milestone: submission.milestone,
-				assignedReviewers: submission._count.assignmentReviews,
-				completedReviews: submission._count.reviews,
-			}));
+			const mappedSubmissions = submissions.map((submission) => {
+				// Lấy thông tin thesis nếu có
+				let supervisors: any[] = [];
+				if (submission.group.thesis) {
+					const lecturer = submission.group.thesis.lecturer;
+					if (Array.isArray(lecturer)) {
+						supervisors = lecturer.map((lect) => ({
+							id: lect.user.id,
+							fullName: lect.user.fullName,
+							email: lect.user.email,
+							isModerator: lect.isModerator,
+						}));
+					} else if (lecturer) {
+						supervisors = [
+							{
+								id: lecturer.user.id,
+								fullName: lecturer.user.fullName,
+								email: lecturer.user.email,
+								isModerator: lecturer.isModerator,
+							},
+						];
+					}
+				}
+
+				const thesis = submission.group.thesis
+					? {
+							id: submission.group.thesis.id,
+							englishName: submission.group.thesis.englishName,
+							vietnameseName: submission.group.thesis.vietnameseName,
+							abbreviation: submission.group.thesis.abbreviation,
+							description: submission.group.thesis.description,
+							status: submission.group.thesis.status,
+							supervisors,
+						}
+					: null;
+
+				// Lấy danh sách lecturer review hiện tại
+				const reviewLecturers = (submission.reviews || [])
+					.map((review) =>
+						review.lecturer?.user
+							? {
+									id: review.lecturer.user.id,
+									fullName: review.lecturer.user.fullName,
+									email: review.lecturer.user.email,
+								}
+							: null,
+					)
+					.filter(Boolean);
+
+				return {
+					id: submission.id,
+					status: submission.status,
+					documents: submission.documents,
+					createdAt: submission.createdAt,
+					group: {
+						id: submission.group.id,
+						name: submission.group.name,
+						code: submission.group.code,
+					},
+					milestone: submission.milestone,
+					thesis,
+					reviewLecturers,
+				};
+			});
 
 			this.logger.log(`Fetched ${submissions.length} submissions for review`);
 			this.logger.debug(`Submissions: ${JSON.stringify(submissions, null, 2)}`);

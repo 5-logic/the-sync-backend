@@ -34,14 +34,14 @@ export class SubmissionController {
 
 	@Roles(Role.MODERATOR)
 	@Get('semester/:semesterId')
-	@SwaggerDoc('submission', 'findAll')
+	@SwaggerDoc('submission', 'findAllBySemester')
 	async getSubmissionsBySemester(@Param('semesterId') semesterId: string) {
 		return await this.submissionService.getSubmissionsForReview(semesterId);
 	}
 
 	@Roles(Role.MODERATOR)
 	@Get('milestone/:milestoneId')
-	@SwaggerDoc('submission', 'findAll')
+	@SwaggerDoc('submission', 'findAllByMilestone')
 	async getSubmissionsByMilestone(@Param('milestoneId') milestoneId: string) {
 		return await this.submissionService.getSubmissionsForReview(
 			undefined,
@@ -51,7 +51,7 @@ export class SubmissionController {
 
 	@Roles(Role.MODERATOR)
 	@Get('semester/:semesterId/milestone/:milestoneId')
-	@SwaggerDoc('submission', 'findAll')
+	@SwaggerDoc('submission', 'findAllBySemesterAndMilestone')
 	async getSubmissionsBySemesterAndMilestone(
 		@Param('semesterId') semesterId: string,
 		@Param('milestoneId') milestoneId: string,
