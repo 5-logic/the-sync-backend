@@ -73,6 +73,75 @@ export class SemesterStatusService {
 		return;
 	}
 
+	async validateStatusTransition__Preparing_To_Picking(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
+		if (
+			semester.status === SemesterStatus.Preparing &&
+			dto.status === SemesterStatus.Picking
+		) {
+			this.logger.log(
+				`Validating transition from Preparing to Picking for semester with ID ${semester.id}`,
+			);
+			return;
+		}
+
+		this.logger.warn(
+			`Invalid status transition from ${semester.status} to ${dto.status}`,
+		);
+
+		throw new ConflictException(
+			`Invalid status transition. Can only move from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}`,
+		);
+	}
+
+	validateStatusTransition__Picking_To_Ongoing(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
+		if (
+			semester.status === SemesterStatus.Picking &&
+			dto.status === SemesterStatus.Ongoing
+		) {
+			this.logger.log(
+				`Validating transition from Picking to Ongoing for semester with ID ${semester.id}`,
+			);
+			return;
+		}
+
+		this.logger.warn(
+			`Invalid status transition from ${semester.status} to ${dto.status}`,
+		);
+
+		throw new ConflictException(
+			`Invalid status transition. Can only move from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}`,
+		);
+	}
+
+	validateStatusTransition___Ongoing_To_End(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
+		if (
+			semester.status === SemesterStatus.Ongoing &&
+			dto.status === SemesterStatus.End
+		) {
+			this.logger.log(
+				`Validating transition from Ongoing to End for semester with ID ${semester.id}`,
+			);
+			return;
+		}
+
+		this.logger.warn(
+			`Invalid status transition from ${semester.status} to ${dto.status}`,
+		);
+
+		throw new ConflictException(
+			`Invalid status transition. Can only move from ${SemesterStatus.Ongoing} to ${SemesterStatus.End}`,
+		);
+	}
+
 	async validateStatusTransition(
 		semester: Semester,
 		dto: UpdateSemesterDto,
@@ -107,6 +176,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Preparing &&
 			newStatus === SemesterStatus.Picking
 		) {
+			await this.validateStatusTransition__Preparing_To_Picking(semester, dto);
 		}
 
 		// Check if move from Picking to Ongoing
@@ -114,6 +184,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Picking &&
 			newStatus === SemesterStatus.Ongoing
 		) {
+			await this.validateStatusTransition__Picking_To_Ongoing(semester, dto);
 		}
 
 		// Check if move from Ongoing to End
@@ -121,6 +192,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Ongoing &&
 			newStatus === SemesterStatus.End
 		) {
+			await this.validateStatusTransition___Ongoing_To_End(semester, dto);
 		}
 
 		this.logger.log(
