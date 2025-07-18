@@ -126,6 +126,7 @@ export class MilestoneService {
 					startDate: startDate,
 					endDate: endDate,
 					semesterId: dto.semesterId,
+					documents: dto.documents || [],
 				},
 			});
 
