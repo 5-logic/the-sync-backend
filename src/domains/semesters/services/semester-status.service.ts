@@ -116,6 +116,13 @@ export class SemesterStatusService {
 		) {
 		}
 
+		// Check if move from Ongoing to End
+		if (
+			currentStatus === SemesterStatus.Ongoing &&
+			newStatus === SemesterStatus.End
+		) {
+		}
+
 		this.logger.log(
 			`Status transition validation passed: ${currentStatus} -> ${newStatus}`,
 		);
@@ -141,6 +148,24 @@ export class SemesterStatusService {
 		return;
 	}
 
+	validateOngoingPhase(semester: Semester, dto: UpdateSemesterDto): void {
+		if (semester.status !== SemesterStatus.Ongoing) {
+			this.logger.warn(
+				`Cannot update ongoingPhase when status is ${semester.status}`,
+			);
+
+			throw new ConflictException(
+				`ongoingPhase can only be updated when status is ${SemesterStatus.Ongoing}`,
+			);
+		}
+
+		this.logger.log(
+			`Ongoing phase validation passed for semester with ID ${semester.id}`,
+		);
+
+		return;
+	}
+
 	async validateSemesterUpdate(
 		semester: Semester,
 		dto: UpdateSemesterDto,
@@ -155,6 +180,10 @@ export class SemesterStatusService {
 
 		if (dto.maxGroup) {
 			this.validateMaxGroup(semester, dto);
+		}
+
+		if (dto.ongoingPhase) {
+			this.validateOngoingPhase(semester, dto);
 		}
 
 		return;
