@@ -713,6 +713,28 @@ export class SubmissionService {
 
 			const mappedSubmissions = submissions.map((submission) => {
 				// Lấy thông tin thesis nếu có
+				let supervisors: any[] = [];
+				if (submission.group.thesis) {
+					const lecturer = submission.group.thesis.lecturer;
+					if (Array.isArray(lecturer)) {
+						supervisors = lecturer.map((lect) => ({
+							id: lect.user.id,
+							fullName: lect.user.fullName,
+							email: lect.user.email,
+							isModerator: lect.isModerator,
+						}));
+					} else if (lecturer) {
+						supervisors = [
+							{
+								id: lecturer.user.id,
+								fullName: lecturer.user.fullName,
+								email: lecturer.user.email,
+								isModerator: lecturer.isModerator,
+							},
+						];
+					}
+				}
+
 				const thesis = submission.group.thesis
 					? {
 							id: submission.group.thesis.id,
@@ -721,25 +743,7 @@ export class SubmissionService {
 							abbreviation: submission.group.thesis.abbreviation,
 							description: submission.group.thesis.description,
 							status: submission.group.thesis.status,
-							supervisors: Array.isArray(submission.group.thesis.lecturer)
-								? submission.group.thesis.lecturer.map((lect) => ({
-										id: lect.user.id,
-										fullName: lect.user.fullName,
-										email: lect.user.email,
-										isModerator: lect.isModerator,
-									}))
-								: submission.group.thesis.lecturer
-									? [
-											{
-												id: submission.group.thesis.lecturer.user.id,
-												fullName:
-													submission.group.thesis.lecturer.user.fullName,
-												email: submission.group.thesis.lecturer.user.email,
-												isModerator:
-													submission.group.thesis.lecturer.isModerator,
-											},
-										]
-									: [],
+							supervisors,
 						}
 					: null;
 
