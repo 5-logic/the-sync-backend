@@ -112,24 +112,20 @@ export class SemesterStatusService {
 	validateStatusTransition__Picking_To_Ongoing(
 		semester: Semester,
 		dto: UpdateSemesterDto,
-	): Promise<void> {
-		if (
-			semester.status === SemesterStatus.Picking &&
-			dto.status === SemesterStatus.Ongoing
-		) {
-			this.logger.log(
-				`Validating transition from Picking to Ongoing for semester with ID ${semester.id}`,
+	): void {
+		const currentMaxGroup = dto.maxGroup ?? semester.maxGroup;
+
+		if (!currentMaxGroup) {
+			this.logger.warn(
+				`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. maxGroup is not set.`,
 			);
-			return;
+
+			throw new ConflictException(
+				`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. Please set maxGroup first.`,
+			);
 		}
 
-		this.logger.warn(
-			`Invalid status transition from ${semester.status} to ${dto.status}`,
-		);
-
-		throw new ConflictException(
-			`Invalid status transition. Can only move from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}`,
-		);
+		return;
 	}
 
 	validateStatusTransition___Ongoing_To_End(
@@ -197,7 +193,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Picking &&
 			newStatus === SemesterStatus.Ongoing
 		) {
-			await this.validateStatusTransition__Picking_To_Ongoing(semester, dto);
+			this.validateStatusTransition__Picking_To_Ongoing(semester, dto);
 		}
 
 		// Check if move from Ongoing to End
