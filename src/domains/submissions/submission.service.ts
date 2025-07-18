@@ -135,7 +135,6 @@ export class SubmissionService {
 								name: true,
 								description: true,
 								isRequired: true,
-								acceptance: true,
 							},
 						},
 					},
