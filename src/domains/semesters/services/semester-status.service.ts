@@ -3,7 +3,12 @@ import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
 
-import { OngoingPhase, Semester, SemesterStatus } from '~/generated/prisma';
+import {
+	EnrollmentStatus,
+	OngoingPhase,
+	Semester,
+	SemesterStatus,
+} from '~/generated/prisma';
 
 @Injectable()
 export class SemesterStatusService {
@@ -75,25 +80,33 @@ export class SemesterStatusService {
 
 	async validateStatusTransition__Preparing_To_Picking(
 		semester: Semester,
-		dto: UpdateSemesterDto,
 	): Promise<void> {
-		if (
-			semester.status === SemesterStatus.Preparing &&
-			dto.status === SemesterStatus.Picking
-		) {
-			this.logger.log(
-				`Validating transition from Preparing to Picking for semester with ID ${semester.id}`,
-			);
-			return;
+		const studentsWithoutGroupCount = await this.prisma.student.count({
+			where: {
+				enrollments: {
+					some: { semesterId: semester.id, status: EnrollmentStatus.NotYet },
+				},
+				studentGroupParticipations: {
+					none: {
+						semesterId: semester.id,
+					},
+				},
+			},
+		});
+
+		if (studentsWithoutGroupCount > 0) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. ${studentsWithoutGroupCount} students do not have groups.`;
+
+			this.logger.warn(message);
+
+			throw new ConflictException(message);
 		}
 
-		this.logger.warn(
-			`Invalid status transition from ${semester.status} to ${dto.status}`,
+		this.logger.log(
+			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups.`,
 		);
 
-		throw new ConflictException(
-			`Invalid status transition. Can only move from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}`,
-		);
+		return;
 	}
 
 	validateStatusTransition__Picking_To_Ongoing(
@@ -176,7 +189,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Preparing &&
 			newStatus === SemesterStatus.Picking
 		) {
-			await this.validateStatusTransition__Preparing_To_Picking(semester, dto);
+			await this.validateStatusTransition__Preparing_To_Picking(semester);
 		}
 
 		// Check if move from Picking to Ongoing
