@@ -376,6 +376,10 @@ export class LecturerManagementService {
 		}
 	}
 
+	// ------------------------------------------------------------------------------------------
+	// Additional methods for lecturer management can be added here
+	// ------------------------------------------------------------------------------------------
+
 	private async ensureNoDependencies(lecturerId: string): Promise<void> {
 		const counts = await this.prisma.$queryRaw<
 			{
