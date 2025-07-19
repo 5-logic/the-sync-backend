@@ -10,15 +10,96 @@ import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
 import { mapLecturerV1, mapLecturerV3 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
 import { PrismaService } from '@/providers';
+import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
 import { CreateUserDto } from '@/users/index';
+import { generateStrongPassword, hash } from '@/utils';
 
 @Injectable()
 export class LecturerManagementService {
 	private readonly logger = new Logger(LecturerManagementService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailQueueService,
+	) {}
 
-	async create(dto: CreateUserDto): Promise<LecturerResponse> {}
+	async create(dto: CreateUserDto): Promise<LecturerResponse> {
+		this.logger.log(`Creating lecturer with email: ${dto.email}`);
+
+		try {
+			let emailDto: EmailJobDto | undefined = undefined;
+
+			const plainPassword = generateStrongPassword();
+			const hashedPassword = await hash(plainPassword);
+
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingUser = await txn.user.findUnique({
+					where: {
+						email: dto.email,
+					},
+				});
+
+				if (existingUser) {
+					this.logger.warn(`Lecturer with email ${dto.email} already exists`);
+
+					throw new ConflictException(
+						`Lecturer with  email ${dto.email} already exists`,
+					);
+				}
+
+				const newUser = await txn.user.create({
+					data: {
+						email: dto.email,
+						fullName: dto.fullName,
+						gender: dto.gender,
+						phoneNumber: dto.phoneNumber,
+						password: hashedPassword,
+					},
+				});
+
+				const newLecturer = await txn.lecturer.create({
+					data: { userId: newUser.id },
+				});
+
+				// Prepare email data
+				emailDto = {
+					to: newUser.email,
+					subject: 'Welcome to TheSync',
+					context: {
+						fullName: newUser.fullName,
+						email: newUser.email,
+						password: plainPassword,
+					},
+				};
+
+				const result: LecturerResponse = mapLecturerV1(newUser, newLecturer);
+
+				return result;
+			});
+
+			// Send email after user and lecturer are created
+			if (!emailDto) {
+				this.logger.error('Email DTO is undefined, cannot send email');
+
+				throw new Error('Email DTO is undefined');
+			}
+
+			await this.email.sendEmail(
+				EmailJobType.SEND_LECTURER_ACCOUNT,
+				emailDto,
+				500,
+			);
+
+			this.logger.log(`Lecturer created with ID: ${result.id}`);
+			this.logger.debug('Lecturer detail', JSON.stringify(result));
+
+			return result;
+		} catch (error) {
+			this.logger.error('Error creating lecturer', error);
+
+			throw error;
+		}
+	}
 
 	async createMany(dtos: CreateUserDto[]): Promise<LecturerResponse[]> {}
 
