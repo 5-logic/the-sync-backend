@@ -9,7 +9,7 @@ import {
 
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { GroupService } from '@/groups/group.service';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
@@ -30,7 +30,7 @@ export class ThesisService {
 	private static readonly CACHE_KEY = 'cache:thesis';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 		@Inject(GroupService) private readonly groupService: GroupService,

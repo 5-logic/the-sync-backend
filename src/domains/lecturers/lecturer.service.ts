@@ -9,7 +9,7 @@ import {
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import { CreateUserDto, UpdateUserDto } from '@/users/dto';
@@ -22,7 +22,7 @@ export class LecturerService {
 	private static readonly CACHE_KEY = 'cache:lecturer';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 	) {}

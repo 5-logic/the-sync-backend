@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { CreateChecklistDto, UpdateChecklistDto } from '@/checklists/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 
 @Injectable()
 export class ChecklistService {

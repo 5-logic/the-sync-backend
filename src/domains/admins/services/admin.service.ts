@@ -5,24 +5,36 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CACHE_KEY } from '@/admins/constants';
 import { UpdateAdminDto } from '@/admins/dto';
+import { mapAdmin } from '@/admins/mappers';
 import { AdminResponse } from '@/admins/responses';
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
 import { hash, verify } from '@/utils';
 
 @Injectable()
 export class AdminService {
 	private readonly logger = new Logger(AdminService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly cache: CacheHelperService,
+		private readonly prisma: PrismaService,
+	) {}
 
 	async findOne(id: string): Promise<AdminResponse> {
+		this.logger.log(`Fetching admin with ID: ${id}`);
+
 		try {
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			const cache = await this.cache.getFromCache<AdminResponse>(cacheKey);
+			if (cache) {
+				this.logger.log(`Returning cached admin with ID: ${id}`);
+
+				return cache;
+			}
+
 			const admin = await this.prisma.admin.findUnique({
 				where: { id: id },
-				omit: {
-					password: true,
-				},
 			});
 
 			if (!admin) {
@@ -32,14 +44,11 @@ export class AdminService {
 			}
 
 			this.logger.log(`Admin found with ID: ${admin.id}`);
+			this.logger.debug('Admin details:', JSON.stringify(admin));
 
-			const result: AdminResponse = {
-				id: admin.id,
-				username: admin.username,
-				email: admin.email ?? '',
-				createdAt: admin.createdAt.toISOString(),
-				updatedAt: admin.updatedAt.toISOString(),
-			};
+			const result: AdminResponse = mapAdmin(admin);
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -50,6 +59,8 @@ export class AdminService {
 	}
 
 	async update(id: string, dto: UpdateAdminDto): Promise<AdminResponse> {
+		this.logger.log(`Updating admin with ID: ${id}`);
+
 		try {
 			const existingAdmin = await this.prisma.admin.findUnique({
 				where: { id },
@@ -66,13 +77,8 @@ export class AdminService {
 			// Handle email update
 			if (dto.email) {
 				if (dto.email === existingAdmin.email) {
-					const admin = {
-						id: existingAdmin.id,
-						username: existingAdmin.username,
-						email: existingAdmin.email ?? '',
-						createdAt: existingAdmin.createdAt.toISOString(),
-						updatedAt: existingAdmin.updatedAt.toISOString(),
-					};
+					const admin = mapAdmin(existingAdmin);
+
 					return admin;
 				}
 				updateData.email = dto.email;
@@ -97,18 +103,20 @@ export class AdminService {
 			const updatedAdmin = await this.prisma.admin.update({
 				where: { id },
 				data: updateData,
-				omit: { password: true },
 			});
 
 			this.logger.log(`Admin updated with ID: ${updatedAdmin.id}`);
+			this.logger.debug('Updated admin details:', JSON.stringify(updatedAdmin));
 
-			const result: AdminResponse = {
-				id: updatedAdmin.id,
-				username: updatedAdmin.username,
-				email: updatedAdmin.email ?? '',
-				createdAt: updatedAdmin.createdAt.toISOString(),
-				updatedAt: updatedAdmin.updatedAt.toISOString(),
-			};
+			const result: AdminResponse = mapAdmin(updatedAdmin);
+
+			// Clear cache for this admin after update
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			await this.cache.delete(cacheKey);
+			this.logger.log(`Cache cleared for admin with ID: ${id}`);
+
+			// Save updated admin to cache
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {

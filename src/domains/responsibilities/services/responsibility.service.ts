@@ -1,10 +1,8 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Cache } from 'cache-manager';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CONSTANTS } from '@/configs';
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
 import { CACHE_KEY } from '@/responsibilities/constants';
+import { mapResponsibility } from '@/responsibilities/mappers';
 import { ResponsibilityResponse } from '@/responsibilities/responses';
 
 @Injectable()
@@ -12,8 +10,8 @@ export class ResponsibilityService {
 	private readonly logger = new Logger(ResponsibilityService.name);
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) private readonly cache: Cache,
+		private readonly cache: CacheHelperService,
+		private readonly prisma: PrismaService,
 	) {}
 
 	async findAll(): Promise<ResponsibilityResponse[]> {
@@ -21,7 +19,8 @@ export class ResponsibilityService {
 
 		try {
 			const cacheKey = `${CACHE_KEY}/`;
-			const cache = await this.cache.get<ResponsibilityResponse[]>(cacheKey);
+			const cache =
+				await this.cache.getFromCache<ResponsibilityResponse[]>(cacheKey);
 			if (cache) {
 				this.logger.log('Returning cached responsibilities');
 
@@ -32,22 +31,17 @@ export class ResponsibilityService {
 				orderBy: { name: 'asc' },
 			});
 
-			this.logger.log(`Found ${responsibilities.length} responsibilities`);
+			this.logger.log(`Fetched ${responsibilities.length} responsibilities`);
+			this.logger.debug('Responsibilities:', JSON.stringify(responsibilities));
 
-			await this.cache.set(cacheKey, responsibilities, CONSTANTS.TTL);
+			const result: ResponsibilityResponse[] =
+				responsibilities.map(mapResponsibility);
 
-			const result: ResponsibilityResponse[] = responsibilities.map(
-				(responsibility) => ({
-					id: responsibility.id,
-					name: responsibility.name,
-					createdAt: responsibility.createdAt.toISOString(),
-					updatedAt: responsibility.updatedAt.toISOString(),
-				}),
-			);
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
-			this.logger.error('Error fetching responsibilities:', error);
+			this.logger.error('Error fetching responsibilities', error);
 
 			throw error;
 		}
@@ -58,7 +52,8 @@ export class ResponsibilityService {
 
 		try {
 			const cacheKey = `${CACHE_KEY}/${id}`;
-			const cache = await this.cache.get<ResponsibilityResponse>(cacheKey);
+			const cache =
+				await this.cache.getFromCache<ResponsibilityResponse>(cacheKey);
 			if (cache) {
 				this.logger.log(`Returning cached responsibility with ID: ${id}`);
 
@@ -70,23 +65,24 @@ export class ResponsibilityService {
 			});
 
 			if (!responsibility) {
+				this.logger.warn(`Responsibility with ID ${id} not found`);
+
 				throw new NotFoundException(`Responsibility not found`);
 			}
 
-			this.logger.log(`Responsibility found with ID: ${responsibility.id}`);
+			this.logger.log(`Responsibility found with ID: ${id}`);
+			this.logger.debug(
+				'Responsibility detail:',
+				JSON.stringify(responsibility),
+			);
 
-			await this.cache.set(cacheKey, responsibility, CONSTANTS.TTL);
+			const result: ResponsibilityResponse = mapResponsibility(responsibility);
 
-			const result: ResponsibilityResponse = {
-				id: responsibility.id,
-				name: responsibility.name,
-				createdAt: responsibility.createdAt.toISOString(),
-				updatedAt: responsibility.updatedAt.toISOString(),
-			};
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
-			this.logger.error('Error fetching responsibility:', error);
+			this.logger.error(`Error fetching responsibility with ID ${id}`, error);
 
 			throw error;
 		}

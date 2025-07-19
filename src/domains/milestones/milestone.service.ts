@@ -1,13 +1,12 @@
 import {
 	ConflictException,
-	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 
 import { SemesterStatus } from '~/generated/prisma';
 
@@ -17,7 +16,7 @@ export class MilestoneService {
 
 	private static readonly CACHE_KEY = 'cache:milestone';
 
-	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService) {}
 
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({

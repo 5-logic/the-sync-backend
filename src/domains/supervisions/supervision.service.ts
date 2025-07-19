@@ -7,7 +7,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
@@ -29,7 +29,7 @@ export class SupervisionService {
 	private static readonly CACHE_KEY = 'cache:supervision';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 	) {}

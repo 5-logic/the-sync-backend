@@ -1,10 +1,23 @@
 import { Module } from '@nestjs/common';
 
-import { SemesterController } from '@/semesters/semester.controller';
-import { SemesterService } from '@/semesters/semester.service';
+import {
+	SemesterController,
+	SemesterEnrollmentController,
+} from '@/semesters/controllers';
+import {
+	SemesterEnrollmentService,
+	SemesterNotificationService,
+	SemesterService,
+	SemesterStatusService,
+} from '@/semesters/services';
 
 @Module({
-	controllers: [SemesterController],
-	providers: [SemesterService],
+	controllers: [SemesterController, SemesterEnrollmentController],
+	providers: [
+		SemesterEnrollmentService,
+		SemesterNotificationService,
+		SemesterService,
+		SemesterStatusService,
+	],
 })
 export class SemesterModule {}

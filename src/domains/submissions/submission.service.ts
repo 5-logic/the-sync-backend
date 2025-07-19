@@ -1,13 +1,12 @@
 import {
 	ConflictException,
 	ForbiddenException,
-	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { CreateSubmissionDto, UpdateSubmissionDto } from '@/submissions/dto';
 
 import { SemesterStatus } from '~/generated/prisma';
@@ -163,7 +162,7 @@ export class SubmissionService {
 		reviews: this.basicReviewInclude,
 	};
 
-	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+	constructor(private readonly prisma: PrismaService) {}
 
 	// Generic method to find group participation
 	private async findGroupParticipation(

@@ -8,7 +8,7 @@ import {
 
 import { CONSTANTS } from '@/configs';
 import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
@@ -29,7 +29,7 @@ export class StudentService {
 	private static readonly CACHE_KEY = 'cache:student';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
 	) {}
