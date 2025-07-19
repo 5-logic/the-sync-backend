@@ -24,7 +24,7 @@ import { LecturerDocs } from '@/lecturers//docs';
 import { LECTURER_API_TAGS, LECTURER_CONSTANTS } from '@/lecturers/constants';
 import { LecturerResponse } from '@/lecturers/responses';
 import { LecturerService } from '@/lecturers/services';
-import { UpdateUserDto } from '@/users/dto';
+import { UpdateUserDto } from '@/users/index';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()

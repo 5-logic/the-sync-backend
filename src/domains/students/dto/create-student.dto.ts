@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsUUID } from 'class-validator';
 
-import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { CreateUserDto } from '@/users/dtos/create-user.dto';
 
 export class CreateStudentDto extends CreateUserDto {
 	@ApiProperty()
