@@ -30,3 +30,17 @@ export const mapLecturerV2 = (
 	createdAt: lecturer.user.createdAt.toISOString(),
 	updatedAt: lecturer.user.updatedAt.toISOString(),
 });
+
+export const mapLecturerV3 = (
+	user: User & { lecturer: Lecturer | null },
+): LecturerResponse => ({
+	id: user.id,
+	fullName: user.fullName,
+	email: user.email,
+	phoneNumber: user.phoneNumber,
+	gender: user.gender.toString(),
+	isActive: user.isActive,
+	isModerator: user.lecturer?.isModerator ?? false,
+	createdAt: user.createdAt.toISOString(),
+	updatedAt: user.updatedAt.toISOString(),
+});
