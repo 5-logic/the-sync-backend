@@ -9,7 +9,7 @@ import { Cache } from 'cache-manager';
 
 import { AdminService } from '@/admins/index';
 import { CACHE_KEY, TOKEN_CACHE_TTL } from '@/auth/constants';
-import { AdminLoginDto, RefreshDto } from '@/auth/dto';
+import { AdminLoginDto, RefreshDto } from '@/auth/dtos';
 import { Role } from '@/auth/enums';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
 import { LoginResponse, RefreshResponse } from '@/auth/responses';
