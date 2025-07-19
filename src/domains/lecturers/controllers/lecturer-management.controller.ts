@@ -12,7 +12,7 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
-import { ApiArrayResponse, ApiEmptyResponse } from '@/common';
+import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { LECTURER_API_TAGS, LECTURER_CONSTANTS } from '@/lecturers/constants';
 import { LecturerManagementDocs } from '@/lecturers/docs';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
@@ -31,7 +31,7 @@ export class LecturerManagementController {
 	@HttpCode(HttpStatus.CREATED)
 	@Post()
 	@ApiOperation(LecturerManagementDocs.create)
-	@ApiArrayResponse(LecturerResponse, HttpStatus.CREATED)
+	@ApiBaseResponse(LecturerResponse, HttpStatus.CREATED)
 	async create(@Body() dto: CreateUserDto): Promise<LecturerResponse> {
 		return await this.service.create(dto);
 	}
@@ -50,7 +50,7 @@ export class LecturerManagementController {
 	@HttpCode(HttpStatus.OK)
 	@Put(':id')
 	@ApiOperation(LecturerManagementDocs.updateByAdmin)
-	@ApiEmptyResponse(HttpStatus.OK)
+	@ApiBaseResponse(LecturerResponse, HttpStatus.OK)
 	async updateByAdmin(
 		@Param('id') id: string,
 		@Body() dto: UpdateLecturerDto,
@@ -62,7 +62,7 @@ export class LecturerManagementController {
 	@HttpCode(HttpStatus.OK)
 	@Post(':id/toggle-status')
 	@ApiOperation(LecturerManagementDocs.toggleStatus)
-	@ApiEmptyResponse(HttpStatus.OK)
+	@ApiBaseResponse(LecturerResponse, HttpStatus.OK)
 	async toggleStatus(
 		@Param('id') id: string,
 		@Body() dto: ToggleLecturerStatusDto,
@@ -74,7 +74,7 @@ export class LecturerManagementController {
 	@HttpCode(HttpStatus.OK)
 	@Delete(':id')
 	@ApiOperation(LecturerManagementDocs.delete)
-	@ApiEmptyResponse(HttpStatus.OK)
+	@ApiBaseResponse(LecturerResponse, HttpStatus.OK)
 	async remove(@Param('id') id: string): Promise<LecturerResponse> {
 		return await this.service.remove(id);
 	}

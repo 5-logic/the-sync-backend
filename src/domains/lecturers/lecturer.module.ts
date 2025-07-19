@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 
 import { LecturerController } from '@/domains/lecturers/lecturer.controller';
-import { LecturerService } from '@/domains/lecturers/lecturer.service';
 import { EmailModule } from '@/queue/email/email.module';
+
+import { LecturerService } from '~/src/domains/lecturers/services/lecturer.service';
 
 @Module({
 	imports: [EmailModule],

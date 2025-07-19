@@ -16,8 +16,9 @@ import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
-import { LecturerService } from '@/lecturers/lecturer.service';
 import { CreateUserDto, UpdateUserDto } from '@/users/dto';
+
+import { LecturerService } from '~/src/domains/lecturers/services/lecturer.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
