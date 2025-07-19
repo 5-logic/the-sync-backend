@@ -3,13 +3,15 @@ import {
 	Controller,
 	Delete,
 	Get,
+	HttpCode,
+	HttpStatus,
 	Param,
 	Post,
 	Put,
 	Req,
 	UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import {
@@ -27,6 +29,7 @@ import {
 	UpdateGroupDto,
 } from '@/groups//dtos';
 import { GROUP_API_TAGS, GROUP_CONSTANTS } from '@/groups/constants';
+import { GroupStudentDocs } from '@/groups/docs';
 import { GroupStudentService } from '@/groups/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -37,7 +40,9 @@ export class GroupStudentController {
 	constructor(private readonly service: GroupStudentService) {}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.CREATED)
 	@Post()
+	@ApiOperation(GroupStudentDocs.create)
 	async create(@Req() req: Request, @Body() dto: CreateGroupDto) {
 		const user = req.user as UserPayload;
 
@@ -45,7 +50,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id')
+	@ApiOperation(GroupStudentDocs.update)
 	async update(
 		@Req() req: Request,
 		@Param('id') id: string,
@@ -57,7 +64,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id/change-leader')
+	@ApiOperation(GroupStudentDocs.changeLeader)
 	async changeLeader(
 		@Req() req: Request,
 		@Param('id') id: string,
@@ -69,7 +78,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id/remove-student')
+	@ApiOperation(GroupStudentDocs.removeStudent)
 	async removeStudent(
 		@Req() req: Request,
 		@Param('id') id: string,
@@ -81,7 +92,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id/leave')
+	@ApiOperation(GroupStudentDocs.leaveGroup)
 	async leaveGroup(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as UserPayload;
 
@@ -89,7 +102,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id/pick-thesis')
+	@ApiOperation(GroupStudentDocs.pickThesis)
 	async pickThesis(
 		@Req() req: Request,
 		@Param('id') id: string,
@@ -101,7 +116,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id/unpick-thesis')
+	@ApiOperation(GroupStudentDocs.unpickThesis)
 	async unpickThesis(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as UserPayload;
 
@@ -109,7 +126,9 @@ export class GroupStudentController {
 	}
 
 	@Roles(Role.STUDENT)
+	@HttpCode(HttpStatus.OK)
 	@Delete(':id')
+	@ApiOperation(GroupStudentDocs.delete)
 	async delete(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as UserPayload;
 
@@ -117,6 +136,8 @@ export class GroupStudentController {
 	}
 
 	@Get('student')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation(GroupStudentDocs.findMyGroups)
 	async findMyGroups(@Req() req: Request) {
 		const user = req.user as UserPayload;
 
