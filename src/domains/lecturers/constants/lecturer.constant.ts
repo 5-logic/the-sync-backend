@@ -1,4 +1,4 @@
-export const LECTURER_API_TAGS = 'Lecturers';
+export const LECTURER_API_TAGS = 'Lecturer';
 
 export const BASE_LECTURER_PATH = 'lecturers';
 
