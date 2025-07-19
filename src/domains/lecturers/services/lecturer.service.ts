@@ -1,20 +1,9 @@
-import {
-	ConflictException,
-	Inject,
-	Injectable,
-	Logger,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CONSTANTS } from '@/configs';
-import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
+import { mapLecturerV1, mapLecturerV2 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
 import { PrismaService } from '@/providers';
-import { EmailQueueService } from '@/queue/email/email-queue.service';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
-import { CreateUserDto, UpdateUserDto } from '@/users/dto';
-import { generateStrongPassword, hash } from '@/utils';
+import { UpdateUserDto } from '@/users/dto';
 
 @Injectable()
 export class LecturerService {
@@ -37,14 +26,12 @@ export class LecturerService {
 				},
 			});
 
-			// Transform data
-			const formattedLecturers = lecturers.map((lecturer) => ({
-				...lecturer.user,
-				isModerator: lecturer.isModerator,
-			}));
+			this.logger.log(`Found ${lecturers.length} lecturers`);
+			this.logger.debug('Lecturers data', JSON.stringify(lecturers));
 
-			this.logger.log(`Found ${formattedLecturers.length} lecturers`);
-			return formattedLecturers;
+			const result: LecturerResponse[] = lecturers.map(mapLecturerV2);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching lecturers', error);
 			throw error;
@@ -58,25 +45,21 @@ export class LecturerService {
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: id },
 				include: {
-					user: {
-						omit: {
-							password: true,
-						},
-					},
+					user: true,
 				},
 			});
 
 			if (!lecturer) {
 				this.logger.warn(`Lecturer with ID ${id} not found`);
+
 				throw new NotFoundException(`Lecturer not found`);
 			}
 
-			const result = {
-				...lecturer.user,
-				isModerator: lecturer.isModerator,
-			};
+			this.logger.log(`Lecturer found with ID: ${lecturer.userId}`);
+			this.logger.debug('Lecturer detail', JSON.stringify(lecturer));
 
-			this.logger.log(`Lecturer found with ID: ${id} (from DB)`);
+			const result: LecturerResponse = mapLecturerV2(lecturer);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error fetching lecturer with ID ${id}`, error);
@@ -106,17 +89,18 @@ export class LecturerService {
 						gender: dto.gender,
 						phoneNumber: dto.phoneNumber,
 					},
-					omit: { password: true },
 				});
 
-				return {
-					...updatedUser,
-					isModerator: existingLecturer.isModerator,
-				};
+				const result: LecturerResponse = mapLecturerV1(
+					updatedUser,
+					existingLecturer,
+				);
+
+				return result;
 			});
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
-			this.logger.debug('Updated Lecturer', result);
+			this.logger.debug('Updated Lecturer', JSON.stringify(result));
 
 			return result;
 		} catch (error) {
