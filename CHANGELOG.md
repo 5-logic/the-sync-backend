@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.9] - 2025-07-18
+
+### Added
+
+- **Milestone API**:
+  - Added `documents` field (array of strings) to `CreateMilestoneDto` and milestone creation. Now, when creating a milestone, you can provide a list of required document names. [See migration](https://github.com/5-logic/the-sync-backend/commit/2412cd6)
+  - Database schema updated: `documents` field added to `milestones` table. [Migration 20250718052219, 20250718052949]
+
+- **Semester API**:
+  - `CreateSemesterDto` now supports `defaultThesesPerLecturer` and `maxThesesPerLecturer` as optional properties for more flexible semester configuration. [See implementation](https://github.com/5-logic/the-sync-backend/commit/b29e996)
+
+### Changed
+
+- **Submission API**:
+  - Enhanced submission retrieval endpoints:
+    - Now includes detailed milestone, thesis, and lecturer review information in responses.
+    - Improved mapping and structure for reviewer and lecturer details in submission responses.
+    - Refined Swagger documentation for all submission endpoints for clarity and accuracy.
+    - SubmissionService refactored for better reviewer mapping and simplified logic. [See implementation](https://github.com/5-logic/the-sync-backend/commit/49cf0dc)
+  - Prevent deletion of milestones that have submissions with status `SUBMITTED`. [See implementation](https://github.com/5-logic/the-sync-backend/commit/bb83c49)
+  - Improved error messages and documentation for milestone deletion requirements. [See implementation](https://github.com/5-logic/the-sync-backend/commit/9bf153a)
+
+### Fixed
+
+- Removed unused or redundant fields from submission details selection for cleaner API responses.
+- Improved logging and error handling in milestone and submission services.
+
+### Pull Requests / Commits
+
+- [49cf0dc](https://github.com/5-logic/the-sync-backend/commit/49cf0dc) - Refactor supervisor mapping in getSubmissionsForReview
+- [f9b17d9](https://github.com/5-logic/the-sync-backend/commit/f9b17d9) - Simplify lecturer review mapping in SubmissionService
+- [f5e7661](https://github.com/5-logic/the-sync-backend/commit/f5e7661) - Add documents field handling in CreateMilestoneDto and MilestoneService
+- [499674a](https://github.com/5-logic/the-sync-backend/commit/499674a) - Remove default value for documents field in Milestone model and migration
+- [2412cd6](https://github.com/5-logic/the-sync-backend/commit/2412cd6) - Add documents field to Milestone model and migration script
+- [9bf153a](https://github.com/5-logic/the-sync-backend/commit/9bf153a) - Enhance delete milestone documentation with submission status requirements
+- [bb83c49](https://github.com/5-logic/the-sync-backend/commit/bb83c49) - Prevent deletion of milestones with submitted submissions
+- [f559791](https://github.com/5-logic/the-sync-backend/commit/f559791) - Remove acceptance field from submission details selection
+- [4b690a7](https://github.com/5-logic/the-sync-backend/commit/4b690a7) - Refine Swagger documentation for submission retrieval endpoints
+- [e04b6bd](https://github.com/5-logic/the-sync-backend/commit/e04b6bd) - Refine submission retrieval summaries and descriptions
+- [60424ae](https://github.com/5-logic/the-sync-backend/commit/60424ae) - Enhance submission retrieval with thesis and review lecturer details
+- [b29e996](https://github.com/5-logic/the-sync-backend/commit/b29e996) - Extend CreateSemesterDto with optional thesis properties in SemesterService
+
 ## [0.6.8] - 2025-07-17
 
 ### Added
