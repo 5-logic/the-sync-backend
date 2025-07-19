@@ -101,7 +101,98 @@ export class LecturerManagementService {
 		}
 	}
 
-	async createMany(dtos: CreateUserDto[]): Promise<LecturerResponse[]> {}
+	async createMany(dto: CreateUserDto[]): Promise<LecturerResponse[]> {
+		this.logger.log(`Creating lecturers in batch: ${dto.length} records`);
+
+		try {
+			const emailsToSend: EmailJobDto[] = [];
+
+			const results = await this.prisma.$transaction(
+				async (txn) => {
+					const createdLecturers: LecturerResponse[] = [];
+
+					for (const createLecturerDto of dto) {
+						// Check if user already exists
+						const existingUser = await txn.user.findUnique({
+							where: {
+								email: createLecturerDto.email,
+							},
+						});
+
+						if (existingUser) {
+							this.logger.warn(
+								`Lecturer with email ${createLecturerDto.email} already exists`,
+							);
+
+							throw new ConflictException(
+								`Lecturer with email ${createLecturerDto.email} already exists`,
+							);
+						}
+
+						const plainPassword = generateStrongPassword();
+						const hashedPassword = await hash(plainPassword);
+
+						// Create user
+						const newUser = await txn.user.create({
+							data: {
+								email: createLecturerDto.email,
+								fullName: createLecturerDto.fullName,
+								gender: createLecturerDto.gender,
+								phoneNumber: createLecturerDto.phoneNumber,
+								password: hashedPassword,
+							},
+						});
+
+						const newLecturer = await txn.lecturer.create({
+							data: { userId: newUser.id },
+						});
+
+						const result: LecturerResponse = mapLecturerV1(
+							newUser,
+							newLecturer,
+						);
+
+						createdLecturers.push(result);
+
+						// Prepare email data for bulk sending
+						const emailDto: EmailJobDto = {
+							to: newUser.email,
+							subject: 'Welcome to TheSync',
+							context: {
+								fullName: newUser.fullName,
+								email: newUser.email,
+								password: plainPassword,
+							},
+						};
+						emailsToSend.push(emailDto);
+
+						this.logger.log(`Lecturer created with ID: ${result.id}`);
+						this.logger.debug('Lecturer detail', JSON.stringify(result));
+					}
+
+					return createdLecturers;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
+
+			// Send bulk emails after all lecturers are created successfully
+			if (emailsToSend.length > 0) {
+				await this.email.sendBulkEmails(
+					EmailJobType.SEND_LECTURER_ACCOUNT,
+					emailsToSend,
+					500,
+				);
+			}
+
+			this.logger.log(`Successfully created ${results.length} lecturers`);
+
+			return results;
+		} catch (error) {
+			this.logger.error('Error creating lecturers in batch', error);
+
+			throw error;
+		}
+	}
 
 	async updateByAdmin(
 		id: string,
