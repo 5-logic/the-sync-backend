@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
-import { mapStudentV2 } from '@/students/mappers';
+import { mapStudentDetailResponse, mapStudentV2 } from '@/students/mappers';
 import { StudentDetailResponse, StudentResponse } from '@/students/responses';
 
 @Injectable()
@@ -38,7 +38,54 @@ export class StudentPublicService {
 	}
 
 	async findOne(id: string): Promise<StudentDetailResponse> {
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		this.logger.log(`Fetching student with ID: ${id}`);
+
+		try {
+			const student = await this.prisma.student.findUnique({
+				where: { userId: id },
+				include: {
+					user: true,
+					major: true,
+					enrollments: {
+						include: {
+							semester: true,
+						},
+						orderBy: {
+							status: 'asc',
+						},
+					},
+					studentSkills: {
+						include: {
+							skill: {
+								include: { skillSet: true },
+							},
+						},
+					},
+					studentExpectedResponsibilities: {
+						include: {
+							responsibility: true,
+						},
+					},
+				},
+			});
+
+			if (!student) {
+				this.logger.warn(`Student with ID ${id} not found`);
+
+				throw new NotFoundException(`Student not found`);
+			}
+
+			this.logger.log(`Student found with ID: ${id}`);
+			this.logger.debug('Student detail', JSON.stringify(student));
+
+			const result: StudentDetailResponse = mapStudentDetailResponse(student);
+
+			return result;
+		} catch (error) {
+			this.logger.error(`Error fetching student with ID ${id}`, error);
+
+			throw error;
+		}
 	}
 
 	async findAllBySemester(semesterId: string): Promise<StudentResponse[]> {
