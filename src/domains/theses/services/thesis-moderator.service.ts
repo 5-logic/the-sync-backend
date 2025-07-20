@@ -5,7 +5,8 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
+import { CACHE_KEY } from '@/theses/constants';
 import {
 	AssignThesisDto,
 	PublishThesisDto,
@@ -20,7 +21,10 @@ import { ThesisStatus } from '~/generated/prisma';
 export class ThesisModeratorService {
 	private readonly logger = new Logger(ThesisModeratorService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly cache: CacheHelperService,
+		private readonly prisma: PrismaService,
+	) {}
 
 	async publishTheses(dto: PublishThesisDto): Promise<void> {
 		this.logger.log(`Publishing theses with isPublish: ${dto.isPublish}`);
@@ -90,6 +94,17 @@ export class ThesisModeratorService {
 			this.logger.debug(
 				`Updated ${updatedTheses.count} theses to isPublish: ${dto.isPublish}`,
 			);
+
+			// Update cache for each thesis
+			for (const thesis of theses) {
+				const cacheKey = `${CACHE_KEY}/${thesis.id}`;
+				await Promise.all([
+					this.cache.saveToCache(cacheKey, thesis),
+					this.cache.delete(`${CACHE_KEY}/lecturer/${thesis.lecturerId}`),
+				]);
+			}
+			await this.cache.delete(`${CACHE_KEY}/`);
+			await this.cache.delete(`${CACHE_KEY}/semester/${theses[0].semesterId}`);
 		} catch (error) {
 			this.logger.error('Error publishing theses', error);
 
@@ -158,6 +173,14 @@ export class ThesisModeratorService {
 			this.logger.debug('Updated thesis detail', JSON.stringify(updatedThesis));
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			const cacheKey = `${CACHE_KEY}/${result.id}`;
+			await Promise.all([
+				this.cache.saveToCache(cacheKey, result),
+				this.cache.delete(`${CACHE_KEY}/`),
+				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+			]);
 
 			return result;
 		} catch (error) {
@@ -281,6 +304,14 @@ export class ThesisModeratorService {
 			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			const cacheKey = `${CACHE_KEY}/${result.id}`;
+			await Promise.all([
+				this.cache.saveToCache(cacheKey, result),
+				this.cache.delete(`${CACHE_KEY}/`),
+				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+			]);
 
 			return result;
 		} catch (error) {

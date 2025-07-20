@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 
 import { CONSTANTS } from '@/configs';
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
+import { CACHE_KEY } from '@/theses/constants';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
@@ -20,7 +21,10 @@ export class ThesisLecturerService {
 
 	private static readonly INITIAL_VERSION = 1;
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly cache: CacheHelperService,
+		private readonly prisma: PrismaService,
+	) {}
 
 	async create(
 		lecturerId: string,
@@ -108,6 +112,14 @@ export class ThesisLecturerService {
 			this.logger.log(`Thesis created with ID: ${result?.id}`);
 			this.logger.debug('New thesis detail', JSON.stringify(result));
 
+			const cacheKey = `${CACHE_KEY}/${result.id}`;
+			await Promise.all([
+				this.cache.saveToCache(cacheKey, result),
+				this.cache.delete(`${CACHE_KEY}/`),
+				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+			]);
+
 			return result;
 		} catch (error) {
 			this.logger.error('Error creating thesis', error);
@@ -122,6 +134,15 @@ export class ThesisLecturerService {
 		this.logger.log(`Fetching all theses for lecturer with ID: ${lecturerId}`);
 
 		try {
+			const cacheKey = `${CACHE_KEY}/lecturer/${lecturerId}`;
+			const cache =
+				await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
+			if (cache) {
+				this.logger.log('Returning theses from cache');
+
+				return cache;
+			}
+
 			const theses = await this.prisma.thesis.findMany({
 				where: { lecturerId: lecturerId },
 				include: {
@@ -146,6 +167,8 @@ export class ThesisLecturerService {
 			this.logger.debug('Theses detail', JSON.stringify(theses));
 
 			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -269,6 +292,14 @@ export class ThesisLecturerService {
 
 				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
 
+				const cacheKey = `${CACHE_KEY}/${result.id}`;
+				await Promise.all([
+					this.cache.saveToCache(cacheKey, result),
+					this.cache.delete(`${CACHE_KEY}/`),
+					this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+					this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+				]);
+
 				return result;
 			});
 
@@ -352,6 +383,14 @@ export class ThesisLecturerService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
+			const cacheKey = `${CACHE_KEY}/${result.id}`;
+			await Promise.all([
+				this.cache.saveToCache(cacheKey, result),
+				this.cache.delete(`${CACHE_KEY}/`),
+				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+			]);
+
 			return result;
 		} catch (error) {
 			this.logger.error(
@@ -432,6 +471,14 @@ export class ThesisLecturerService {
 			this.logger.debug('Deleted thesis detail', JSON.stringify(deletedThesis));
 
 			const result: ThesisResponse = mapThesis(deletedThesis);
+
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			await Promise.all([
+				this.cache.delete(cacheKey),
+				this.cache.delete(`${CACHE_KEY}/`),
+				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+			]);
 
 			return result;
 		} catch (error) {
