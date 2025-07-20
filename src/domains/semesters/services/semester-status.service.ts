@@ -1,7 +1,7 @@
-import { UpdateSemesterDto } from '../dto';
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
+import { UpdateSemesterDto } from '@/semesters/dto';
 
 import {
 	EnrollmentStatus,
@@ -166,6 +166,10 @@ export class SemesterStatusService {
 		semester: Semester,
 		dto: UpdateSemesterDto,
 	): Promise<void> {
+		if (!dto.status) {
+			return;
+		}
+
 		const statusOrder = [
 			SemesterStatus.NotYet,
 			SemesterStatus.Preparing,
@@ -175,7 +179,7 @@ export class SemesterStatusService {
 		];
 
 		const currentIndex = statusOrder.indexOf(semester.status);
-		const newIndex = statusOrder.indexOf(dto.status!);
+		const newIndex = statusOrder.indexOf(dto.status);
 
 		const currentStatus = statusOrder[currentIndex];
 		const newStatus = statusOrder[newIndex];
