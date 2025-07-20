@@ -1,16 +1,12 @@
 import { mapThesisDetail } from '../mappers';
 import {
 	ConflictException,
-	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 
-import { GroupService } from '@/groups/group.service';
 import { PrismaService } from '@/providers';
-import { EmailQueueService } from '@/queue/email/email-queue.service';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
 	AssignThesisDto,
 	PublishThesisDto,
@@ -24,14 +20,9 @@ import { ThesisStatus } from '~/generated/prisma';
 export class ThesisModeratorService {
 	private readonly logger = new Logger(ThesisModeratorService.name);
 
-	constructor(
-		private readonly prisma: PrismaService,
-		@Inject(EmailQueueService)
-		private readonly emailQueueService: EmailQueueService,
-		@Inject(GroupService) private readonly groupService: GroupService,
-	) {}
+	constructor(private readonly prisma: PrismaService) {}
 
-	async publishTheses(dto: PublishThesisDto): Promise<ThesisDetailResponse[]> {
+	async publishTheses(dto: PublishThesisDto): Promise<void> {
 		this.logger.log(`Publishing theses with isPublish: ${dto.isPublish}`);
 
 		try {
@@ -45,143 +36,60 @@ export class ThesisModeratorService {
 			// Fetch theses with required data
 			const theses = await this.prisma.thesis.findMany({
 				where: { id: { in: dto.thesisIds } },
-				select: {
-					id: true,
-					status: true,
-					isPublish: true,
-					group: { select: { id: true } },
-				},
 			});
 
 			// Validate theses exist
 			if (theses.length !== dto.thesisIds.length) {
 				this.logger.warn(`Some theses not found for publishing`);
+
 				throw new NotFoundException('Some theses not found');
 			}
 
 			// Get supervision counts for all theses
 			const supervisionCounts = await this.prisma.supervision.groupBy({
-				by: ['thesisId'],
+				by: 'thesisId',
 				where: { thesisId: { in: dto.thesisIds } },
 				_count: { lecturerId: true },
 			});
 
-			const supervisionMap = supervisionCounts.reduce(
-				(acc, item) => {
-					acc[item.thesisId] = item._count.lecturerId;
-					return acc;
-				},
-				{} as Record<string, number>,
-			);
-
-			const thesesWithoutTwoSupervisors = theses.filter(
-				(thesis) => (supervisionMap[thesis.id] || 0) !== 2,
-			);
-
-			if (thesesWithoutTwoSupervisors.length > 0) {
-				this.logger.warn(
-					`Some theses do not have exactly 2 supervisors: ${thesesWithoutTwoSupervisors.map((t) => t.id).join(', ')}`,
-				);
-				throw new ConflictException(
-					`All theses must have exactly 2 supervisors to be published. ${
-						thesesWithoutTwoSupervisors.length
-					} ${
-						thesesWithoutTwoSupervisors.length === 1
-							? 'thesis has'
-							: 'theses have'
-					} incorrect supervisor count.`,
-				);
-			}
-
-			if (dto.isPublish) {
-				// Validate can publish
-				const notApprovedTheses = theses.filter(
-					(thesis) => thesis.status !== ThesisStatus.Approved,
-				);
-				if (notApprovedTheses.length > 0) {
+			// Check if all theses have exactly 2 supervisors
+			supervisionCounts.forEach((item) => {
+				if (item._count.lecturerId !== 2) {
 					this.logger.warn(
-						`Some theses are not approved: ${notApprovedTheses.map((t) => t.id).join(', ')}`,
+						`Thesis ${item.thesisId} does not have exactly 2 supervisors`,
 					);
+
 					throw new ConflictException(
-						`Only approved theses can be published. ${notApprovedTheses.length} ${
-							notApprovedTheses.length === 1 ? 'thesis is' : 'theses are'
-						} not approved.`,
+						`All theses must have exactly 2 supervisors to be published.`,
 					);
 				}
+			});
 
-				const alreadyPublishedTheses = theses.filter(
-					(thesis) => thesis.isPublish,
-				);
-				if (alreadyPublishedTheses.length > 0) {
-					this.logger.warn(
-						`Some theses are already published: ${alreadyPublishedTheses.map((t) => t.id).join(', ')}`,
-					);
-					throw new ConflictException(
-						`Some theses are already published. ${alreadyPublishedTheses.length} ${
-							alreadyPublishedTheses.length === 1 ? 'thesis is' : 'theses are'
-						} already published.`,
-					);
-				}
-			} else {
+			if (!dto.isPublish) {
 				// Validate can unpublish
-				const notPublishedTheses = theses.filter((thesis) => !thesis.isPublish);
-				if (notPublishedTheses.length > 0) {
-					this.logger.warn(
-						`Some theses are not published: ${notPublishedTheses.map((t) => t.id).join(', ')}`,
-					);
-					throw new ConflictException(
-						`Some theses are not published. ${notPublishedTheses.length} ${
-							notPublishedTheses.length === 1 ? 'thesis is' : 'theses are'
-						} not published.`,
-					);
-				}
+				const thesesWithGroups = theses.filter((thesis) => thesis.groupId);
 
-				const thesesWithGroups = theses.filter((thesis) => thesis.group);
 				if (thesesWithGroups.length > 0) {
-					this.logger.warn(
-						`Some theses have been selected by groups: ${thesesWithGroups.map((t) => t.id).join(', ')}`,
-					);
+					this.logger.warn('Cannot unpublish theses that have groups');
+
 					throw new ConflictException(
-						`Cannot unpublish theses that have been selected by groups. ${
-							thesesWithGroups.length
-						} ${
-							thesesWithGroups.length === 1 ? 'thesis has' : 'theses have'
-						} been selected by groups and cannot be unpublished.`,
+						`Cannot unpublish theses that are already assigned to groups.`,
 					);
 				}
 			}
 
 			// Update theses
-			await this.prisma.thesis.updateMany({
+			const updatedTheses = await this.prisma.thesis.updateMany({
 				where: { id: { in: dto.thesisIds } },
 				data: { isPublish: dto.isPublish },
 			});
 
 			this.logger.log(
-				`Updated publication status for ${dto.thesisIds.length} theses to ${dto.isPublish ? 'published' : 'unpublished'}`,
+				`Theses successfully ${dto.isPublish ? 'published' : 'unpublished'}`,
 			);
-
-			// Send notifications
-			const status = dto.isPublish ? 'Published' : 'Unpublished';
-			this.sendBulkThesisStatusChangeEmail(dto.thesisIds, status, true).catch(
-				(error) => {
-					this.logger.error(
-						`Error sending publication notification emails for theses: ${dto.thesisIds.join(', ')}`,
-						error,
-					);
-				},
+			this.logger.debug(
+				`Updated ${updatedTheses.count} theses to isPublish: ${dto.isPublish}`,
 			);
-
-			// Return updated theses
-			return await this.prisma.thesis.findMany({
-				where: { id: { in: dto.thesisIds } },
-				include: {
-					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
-						orderBy: { version: 'desc' },
-					},
-				},
-			});
 		} catch (error) {
 			this.logger.error('Error publishing theses', error);
 
@@ -392,131 +300,6 @@ export class ThesisModeratorService {
 				error,
 			);
 			throw error;
-		}
-	}
-
-	/**
-	 * Helper method to send bulk thesis status change email notification
-	 * Groups theses by lecturer to minimize email count
-	 */
-	private async sendBulkThesisStatusChangeEmail(
-		thesesIds: string[],
-		newStatus: string,
-		isPublicationChange: boolean = false,
-	) {
-		try {
-			// Get theses with lecturer information
-			const theses = await this.prisma.thesis.findMany({
-				where: { id: { in: thesesIds } },
-				include: {
-					lecturer: {
-						include: {
-							user: {
-								select: {
-									email: true,
-									fullName: true,
-								},
-							},
-						},
-					},
-				},
-			});
-
-			// Group theses by lecturer email to send bulk emails
-			const thesesByLecturer = theses.reduce(
-				(acc, thesis) => {
-					const lecturerEmail = thesis.lecturer.user.email;
-					if (!acc[lecturerEmail]) {
-						acc[lecturerEmail] = {
-							lecturer: thesis.lecturer.user,
-							theses: [],
-						};
-					}
-					acc[lecturerEmail].theses.push({
-						id: thesis.id,
-						englishName: thesis.englishName,
-						vietnameseName: thesis.vietnameseName,
-						abbreviation: thesis.abbreviation,
-						domain: thesis.domain,
-					});
-					return acc;
-				},
-				{} as Record<string, { lecturer: any; theses: any[] }>,
-			);
-
-			// Send emails for each lecturer
-			const emailPromises = Object.entries(thesesByLecturer).map(
-				async ([email, { lecturer, theses: lecturerTheses }]) => {
-					// Determine email subject and type
-					let subject: string;
-					if (isPublicationChange) {
-						subject = `Thesis Publication Update - ${lecturerTheses.length} ${
-							lecturerTheses.length === 1 ? 'thesis' : 'theses'
-						}`;
-					} else {
-						subject = `Thesis Review Status Update - ${lecturerTheses.length} ${
-							lecturerTheses.length === 1 ? 'thesis' : 'theses'
-						}`;
-					}
-
-					// Use unified email template for both single and bulk
-					const emailType = EmailJobType.SEND_THESIS_STATUS_CHANGE;
-
-					// Prepare context for unified template
-					let context: any;
-					if (lecturerTheses.length === 1) {
-						// Single thesis - use single thesis format
-						const thesis = lecturerTheses[0];
-						context = {
-							lecturerName: lecturer.fullName,
-							englishName: thesis.englishName,
-							vietnameseName: thesis.vietnameseName,
-							abbreviation: thesis.abbreviation,
-							domain: thesis.domain,
-							status: newStatus,
-						};
-					} else {
-						// Multiple theses - use bulk format
-						context = {
-							lecturerName: lecturer.fullName,
-							theses: lecturerTheses,
-							actionType: newStatus,
-							isPublicationChange,
-							thesesCount: lecturerTheses.length,
-						};
-					}
-
-					try {
-						await this.emailQueueService.sendEmail(
-							emailType,
-							{
-								to: email,
-								subject,
-								context,
-							},
-							500, // delay
-						);
-
-						this.logger.log(
-							`${isPublicationChange ? 'Publication' : 'Review status'} change email sent to ${email} for ${lecturerTheses.length} theses`,
-						);
-					} catch (emailError) {
-						this.logger.error(`Error sending email to ${email}`, emailError);
-					}
-				},
-			);
-
-			// Wait for all emails to be sent
-			await Promise.allSettled(emailPromises);
-
-			this.logger.log(
-				`Bulk status change emails sent for ${thesesIds.length} theses to ${
-					Object.keys(thesesByLecturer).length
-				} lecturers`,
-			);
-		} catch (error) {
-			this.logger.error('Error sending bulk status change emails', error);
-			// Don't throw error to avoid breaking the main operation
 		}
 	}
 }
