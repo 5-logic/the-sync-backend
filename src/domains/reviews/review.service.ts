@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	Inject,
 	Injectable,
 	Logger,
@@ -580,9 +581,9 @@ export class ReviewService {
 			);
 
 			await this.validateReviewer(
-				updateDto.currentReviewerId,
 				updateDto.newReviewerId,
 				submissionId,
+				updateDto.currentReviewerId,
 			);
 
 			const existingReviewers = await this.prisma.assignmentReview.findFirst({
@@ -649,6 +650,10 @@ export class ReviewService {
 				where: { userId: currentReviewerId },
 			});
 
+			this.logger.log(
+				`Validating current reviewer with ID ${currentReviewerId}`,
+			);
+
 			if (!currentReviewer) {
 				this.logger.warn(
 					`Current reviewer with ID ${currentReviewerId} does not exist`,
@@ -696,6 +701,20 @@ export class ReviewService {
 			throw new BadRequestException(
 				'New reviewer cannot be a supervisor of the submission',
 			);
+		}
+
+		const existingReview = await this.prisma.assignmentReview.findFirst({
+			where: {
+				submissionId: submissionId,
+				reviewerId: newReviewerId,
+			},
+		});
+
+		if (existingReview) {
+			this.logger.warn(
+				`Reviewer with ID ${newReviewerId} is already assigned to submission ID ${submissionId}`,
+			);
+			throw new ConflictException('Reviewer is already assigned to this group');
 		}
 	}
 	/**
