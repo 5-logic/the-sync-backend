@@ -21,7 +21,7 @@ import {
 	SelfUpdateStudentDto,
 	ToggleStudentStatusDto,
 	UpdateStudentDto,
-} from '@/students/dto';
+} from '@/students/dtos';
 import { StudentService } from '@/students/student.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

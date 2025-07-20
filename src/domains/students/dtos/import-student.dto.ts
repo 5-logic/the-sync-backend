@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsString, IsUUID, ValidateNested } from 'class-validator';
 
-import { CreateUserDto } from '@/users/dtos/create-user.dto';
+import { CreateUserDto } from '@/users/index';
 
 export class ImportStudentItemDto extends CreateUserDto {
 	@ApiProperty()

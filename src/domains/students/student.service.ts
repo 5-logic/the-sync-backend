@@ -17,7 +17,7 @@ import {
 	SelfUpdateStudentDto,
 	ToggleStudentStatusDto,
 	UpdateStudentDto,
-} from '@/students/dto';
+} from '@/students/dtos';
 import { generateStrongPassword, hash } from '@/utils';
 
 import { SemesterStatus } from '~/generated/prisma';
