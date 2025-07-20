@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
+import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
 import {
 	CreateStudentDto,
 	ImportStudentDto,
@@ -14,20 +15,168 @@ import {
 } from '@/students/dtos';
 import { mapStudentV1, mapStudentV2 } from '@/students/mappers';
 import { StudentResponse } from '@/students/responses';
+import { generateStrongPassword, hash } from '@/utils';
 
-import { SemesterStatus } from '~/generated/prisma';
+import { Semester, SemesterStatus, Student, User } from '~/generated/prisma';
 
 @Injectable()
 export class StudentAdminService {
 	private readonly logger = new Logger(StudentAdminService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly email: EmailQueueService,
+	) {}
 
-	async create(dto: CreateStudentDto) {
-		await new Promise((resolve) => setTimeout(resolve, 10));
+	async create(dto: CreateStudentDto): Promise<StudentResponse> {
+		this.logger.log(
+			`Creating student with studentCode: ${dto.studentCode}, email: ${dto.email}`,
+		);
+
+		try {
+			// Validate major and semester
+			await this.validateMajorForEnrollment(dto.majorId);
+			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
+
+			let emailDto: EmailJobDto | undefined = undefined;
+			let isNewStudent = false;
+
+			const plainPassword = generateStrongPassword();
+			const hashedPassword = await hash(plainPassword);
+
+			const result = await this.prisma.$transaction(async (txn) => {
+				const existingStudent = await txn.student.findUnique({
+					where: { studentCode: dto.studentCode },
+					include: {
+						user: true,
+						enrollments: {
+							where: {
+								semesterId: dto.semesterId,
+							},
+						},
+					},
+				});
+
+				let userInfo: User;
+				let studentInfo: Student;
+
+				if (existingStudent) {
+					const isAlreadyEnrolledInThisSemester =
+						existingStudent.enrollments.length > 0;
+
+					if (isAlreadyEnrolledInThisSemester) {
+						throw new ConflictException(
+							`Student with studentCode ${dto.studentCode} is already enrolled in semester ${semester.name}}`,
+						);
+					}
+
+					// Student exists but not enrolled in this semester
+					// A student can be enrolled in multiple semesters, so we only enroll them in this semester
+					userInfo = await txn.user.update({
+						where: { id: existingStudent.userId },
+						data: {
+							password: hashedPassword,
+						},
+					});
+
+					await txn.enrollment.create({
+						data: {
+							studentId: existingStudent.userId,
+							semesterId: dto.semesterId,
+						},
+					});
+
+					studentInfo = existingStudent;
+
+					this.logger.log(
+						`Student ${dto.studentCode} enrolled to semester ${dto.semesterId} with new password`,
+					);
+				} else {
+					// Student doesn't exist, create new student
+					userInfo = await txn.user.create({
+						data: {
+							email: dto.email,
+							fullName: dto.fullName,
+							gender: dto.gender,
+							phoneNumber: dto.phoneNumber,
+							password: hashedPassword,
+						},
+					});
+
+					studentInfo = await txn.student.create({
+						data: {
+							userId: userInfo.id,
+							studentCode: dto.studentCode,
+							majorId: dto.majorId,
+						},
+					});
+
+					await txn.enrollment.create({
+						data: {
+							studentId: userInfo.id,
+							semesterId: dto.semesterId,
+						},
+					});
+
+					isNewStudent = true;
+
+					this.logger.log(
+						`Student created with studentCode: ${dto.studentCode}`,
+					);
+					this.logger.log(
+						`Student ${dto.studentCode} enrolled to semester ${dto.semesterId}`,
+					);
+				}
+
+				// Prepare email data
+				emailDto = {
+					to: userInfo.email,
+					subject: isNewStudent
+						? 'Welcome to TheSync'
+						: 'Welcome back to TheSync',
+					context: {
+						fullName: userInfo.fullName,
+						email: userInfo.email,
+						password: plainPassword,
+						studentCode: studentInfo.studentCode,
+						semesterName: semester.name,
+					},
+				};
+
+				const result: StudentResponse = mapStudentV1(userInfo, studentInfo);
+
+				return result;
+			});
+
+			// Send email after all operations are successful
+			if (!emailDto) {
+				this.logger.warn(
+					'No email data prepared for sending after student creation',
+				);
+
+				throw Error(
+					'No email data prepared for sending after student creation',
+				);
+			}
+
+			await this.email.sendEmail(
+				EmailJobType.SEND_STUDENT_ACCOUNT,
+				emailDto,
+				500,
+			);
+
+			this.logger.log(`Student operation completed with userId: ${result.id}`);
+			this.logger.debug('Student detail', JSON.stringify(result));
+
+			return result;
+		} catch (error) {
+			this.logger.error('Error creating student', error);
+
+			throw error;
+		}
 	}
 
-	async createMany(dto: ImportStudentDto) {
+	async createMany(dto: ImportStudentDto): Promise<StudentResponse[]> {
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
 
@@ -229,5 +378,40 @@ export class StudentAdminService {
 
 			throw error;
 		}
+	}
+
+	// ------------------------------------------------------------------------------------------
+	// Additional methods for student management can be added here
+	// ------------------------------------------------------------------------------------------
+
+	private async validateMajorForEnrollment(majorId: string): Promise<void> {
+		const major = await this.prisma.major.findUnique({
+			where: { id: majorId },
+		});
+
+		if (!major) {
+			throw new NotFoundException(`Major not found`);
+		}
+	}
+
+	private async validateSemesterForEnrollment(
+		semesterId: string,
+	): Promise<Semester> {
+		const semester = await this.prisma.semester.findUnique({
+			where: { id: semesterId },
+		});
+
+		if (!semester) {
+			throw new NotFoundException(`Semester not found`);
+		}
+
+		// Only allow enrollment when semester is in Preparing status
+		if (semester.status !== SemesterStatus.Preparing) {
+			throw new ConflictException(
+				`Cannot add students to semester ${semester.name}. Semester status is ${semester.status}. Only ${SemesterStatus.Preparing} semesters allow student enrollment.`,
+			);
+		}
+
+		return semester;
 	}
 }
