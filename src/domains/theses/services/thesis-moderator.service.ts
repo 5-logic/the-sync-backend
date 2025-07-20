@@ -1,4 +1,3 @@
-import { mapThesisDetail } from '../mappers';
 import {
 	ConflictException,
 	Injectable,
@@ -12,6 +11,7 @@ import {
 	PublishThesisDto,
 	ReviewThesisDto,
 } from '@/theses/dtos';
+import { mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse } from '@/theses/responses';
 
 import { ThesisStatus } from '~/generated/prisma';
@@ -167,23 +167,22 @@ export class ThesisModeratorService {
 		}
 	}
 
-	async assignThesis(id: string, dto: AssignThesisDto) {
-		try {
-			this.logger.log(
-				`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId}`,
-			);
+	async assignThesis(
+		id: string,
+		dto: AssignThesisDto,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(
+			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId}`,
+		);
 
-			// Validate thesis exists and meets assignment criteria
+		try {
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
-				include: {
-					semester: { select: { id: true, name: true } },
-					group: { select: { id: true } },
-				},
 			});
 
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for assignment`);
+
 				throw new NotFoundException(`Thesis not found`);
 			}
 
@@ -192,6 +191,7 @@ export class ThesisModeratorService {
 				this.logger.warn(
 					`Cannot assign thesis with status ${existingThesis.status}`,
 				);
+
 				throw new ConflictException(
 					`Can only assign approved theses. Current status: ${existingThesis.status}`,
 				);
@@ -200,16 +200,18 @@ export class ThesisModeratorService {
 			// Check if thesis is published
 			if (!existingThesis.isPublish) {
 				this.logger.warn(`Cannot assign unpublished thesis with ID ${id}`);
+
 				throw new ConflictException(
 					`Can only assign published theses. This thesis is not published`,
 				);
 			}
 
 			// Check if thesis is already assigned
-			if (existingThesis.group) {
+			if (existingThesis.groupId) {
 				this.logger.warn(
-					`Thesis with ID ${id} is already assigned to group ${existingThesis.group.id}`,
+					`Thesis with ID ${id} is already assigned to group ${existingThesis.groupId}`,
 				);
+
 				throw new ConflictException(
 					`This thesis is already assigned to another group`,
 				);
@@ -218,56 +220,57 @@ export class ThesisModeratorService {
 			// Validate group exists and meets assignment criteria
 			const targetGroup = await this.prisma.group.findUnique({
 				where: { id: dto.groupId },
-				include: {
-					thesis: { select: { id: true, englishName: true } },
-					semester: { select: { id: true, name: true } },
-				},
 			});
 
 			if (!targetGroup) {
 				this.logger.warn(`Group with ID ${dto.groupId} not found`);
+
 				throw new NotFoundException(`Group not found`);
 			}
 
 			// Check if group already has a thesis
-			if (targetGroup.thesis) {
+			if (targetGroup.thesisId) {
 				this.logger.warn(
-					`Group with ID ${dto.groupId} already has thesis ${targetGroup.thesis.id}`,
+					`Group with ID ${dto.groupId} already has thesis ${targetGroup.thesisId}`,
 				);
-				throw new ConflictException(
-					`This group already has a thesis assigned: ${targetGroup.thesis.englishName}`,
-				);
+
+				throw new ConflictException('This group already has a thesis assigned');
 			}
 
 			// Check if thesis and group are in the same semester
-			if (existingThesis.semester.id !== targetGroup.semester.id) {
+			if (existingThesis.semesterId !== targetGroup.semesterId) {
 				this.logger.warn(
-					`Thesis semester ${existingThesis.semester.id} does not match group semester ${targetGroup.semester.id}`,
+					`Thesis semester ${existingThesis.semesterId} does not match group semester ${targetGroup.semesterId}`,
 				);
+
 				throw new ConflictException(
-					`Thesis is in semester "${existingThesis.semester.name}" but group is in semester "${targetGroup.semester.name}". They must be in the same semester.`,
+					'Thesis and group must be in the same semester',
 				);
 			}
 
 			// Assign thesis to group
-			const updatedGroup = await this.prisma.group.update({
+			await this.prisma.group.update({
 				where: { id: dto.groupId },
-				data: { thesisId: id },
+				data: {
+					thesisId: id,
+				},
+			});
+
+			// Assign group to thesis
+			const updatedThesis = await this.prisma.thesis.update({
+				where: { id },
+				data: { groupId: dto.groupId },
 				include: {
-					thesis: {
+					thesisVersions: {
+						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
 						include: {
-							thesisVersions: {
-								select: { id: true, version: true, supportingDocument: true },
-								orderBy: { version: 'desc' },
-							},
-							lecturer: {
-								include: {
-									user: {
-										select: { id: true, fullName: true, email: true },
-									},
-								},
-							},
+							skill: true,
 						},
+					},
+					lecturer: {
+						include: { user: true },
 					},
 				},
 			});
@@ -275,30 +278,17 @@ export class ThesisModeratorService {
 			this.logger.log(
 				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
 			);
+			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
 
-			// Send email notifications
-			try {
-				await this.groupService.sendThesisAssignmentNotification(
-					dto.groupId,
-					id,
-					'assigned',
-				);
-			} catch (emailError) {
-				this.logger.warn(
-					'Failed to send thesis assignment notification emails',
-					emailError,
-				);
-			}
+			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			return {
-				message: 'Thesis assigned to group successfully',
-				group: updatedGroup,
-			};
+			return result;
 		} catch (error) {
 			this.logger.error(
 				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId}`,
 				error,
 			);
+
 			throw error;
 		}
 	}

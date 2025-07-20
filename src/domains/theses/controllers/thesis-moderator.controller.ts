@@ -11,7 +11,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
-import { ApiArrayResponse, ApiBaseResponse, ApiEmptyResponse } from '@/common';
+import { ApiBaseResponse, ApiEmptyResponse } from '@/common';
 import { THESIS_API_TAGS, THESIS_CONSTANTS } from '@/theses/constants';
 import { ThesisModeratorDocs } from '@/theses/docs';
 import {
@@ -50,11 +50,15 @@ export class ThesisModeratorController {
 		return await this.service.reviewThesis(id, dto);
 	}
 
+	@Roles(Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
 	@Post(':id/assign')
 	@ApiOperation(ThesisModeratorDocs.assignThesis)
-	@Roles(Role.MODERATOR)
-	async assignThesis(@Param('id') id: string, @Body() dto: AssignThesisDto) {
+	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
+	async assignThesis(
+		@Param('id') id: string,
+		@Body() dto: AssignThesisDto,
+	): Promise<ThesisDetailResponse> {
 		return await this.service.assignThesis(id, dto);
 	}
 }
