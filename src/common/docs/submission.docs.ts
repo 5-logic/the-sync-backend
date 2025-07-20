@@ -11,6 +11,11 @@ export const SubmissionDocs = {
 		description: `Retrieve all submissions across all groups and milestones, including group info, milestone details, document attachments, and review status.\n\n- **Authorization:** Admin and Lecturer only.\n- **Business logic:**\n  - Returns all submissions with assignment reviews and lecturer feedback.\n  - Results are cached for performance.\n- **Error handling:**\n  - 403 if unauthorized.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
 	} as ApiOperationOptions,
 
+	findDetail: {
+		summary: 'Get submission detail by ID',
+		description: `Get detailed information for a submission by its ID, including group, milestone, document attachments, assignment reviews, and lecturer feedback.\n\n- **Authorization:** Only Authentication.\n- **Business logic:**\n  - Returns all details of the submission, including group, milestone, assignment reviews, and reviews.\n- **Error handling:**\n  - 403 if unauthorized.\n  - 404 if submission not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
+	} as ApiOperationOptions,
+
 	findAllBySemester: {
 		summary: 'Get submissions for review by semester',
 		description: `Retrieve all submissions for a specific semester, including group, milestone, thesis, supervisors (from Supervision), and review lecturers.\n\n- **Authorization:** Moderator only.\n- **Business logic:**\n  - Returns submissions for review, with reviewer and review counts, thesis info, supervisors (from Supervision), and review lecturers.\n  - Results are cached for performance.\n- **Error handling:**\n  - 404 if semester not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,

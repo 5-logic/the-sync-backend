@@ -635,6 +635,117 @@ export class SubmissionService {
 		);
 	}
 
+	async findDetail(id: string) {
+		return this.executeWithErrorHandling(
+			`Finding submission detail for ID: ${id}`,
+			async () => {
+				const submission = await this.prisma.submission.findUnique({
+					where: { id },
+					include: {
+						...this.detailedSubmissionInclude,
+						assignmentReviews: {
+							include: {
+								reviewer: {
+									include: {
+										user: true,
+									},
+								},
+							},
+						},
+						group: {
+							select: {
+								...this.basicGroupSelect,
+								semester: {
+									select: {
+										id: true,
+										name: true,
+										code: true,
+										status: true,
+									},
+								},
+								thesis: {
+									select: {
+										id: true,
+										englishName: true,
+										vietnameseName: true,
+										abbreviation: true,
+										description: true,
+										status: true,
+										lecturer: {
+											select: {
+												user: {
+													select: {
+														id: true,
+														fullName: true,
+														email: true,
+													},
+												},
+												isModerator: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				});
+
+				if (!submission) {
+					throw new NotFoundException('Submission not found');
+				}
+
+				const reviewers = (submission.assignmentReviews || []).map((ar) => ({
+					id: ar.reviewerId,
+					name: ar.reviewer?.user?.fullName,
+					email: ar.reviewer?.user?.email,
+					isModerator: ar.reviewer?.isModerator,
+				}));
+
+				// Build thesis and supervisor info if available
+				let thesis: any = null;
+				let supervisors: any[] = [];
+				if (submission.group && (submission.group as any).thesis) {
+					const groupThesis = (submission.group as any).thesis;
+					thesis = {
+						id: groupThesis.id,
+						englishName: groupThesis.englishName,
+						vietnameseName: groupThesis.vietnameseName,
+						abbreviation: groupThesis.abbreviation,
+						description: groupThesis.description,
+						status: groupThesis.status,
+					};
+					if (groupThesis.lecturer) {
+						supervisors = [
+							{
+								id: groupThesis.lecturer.user.id,
+								fullName: groupThesis.lecturer.user.fullName,
+								email: groupThesis.lecturer.user.email,
+								isModerator: groupThesis.lecturer.isModerator,
+							},
+						];
+					}
+				}
+
+				this.logger.log(`Found submission with ID: ${submission.id}`);
+				return {
+					submission: {
+						id: submission.id,
+						status: submission.status,
+						createdAt: submission.createdAt,
+						updatedAt: submission.updatedAt,
+						documents: submission.documents,
+					},
+					group: {
+						...submission.group,
+						thesis,
+						supervisors,
+					},
+					reviewers,
+				};
+			},
+		);
+	}
+
 	async getSubmissionsForReview(semesterId?: string, milestoneId?: string) {
 		try {
 			const where: any = {};

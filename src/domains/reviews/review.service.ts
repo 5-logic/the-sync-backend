@@ -44,6 +44,26 @@ export class ReviewService {
 				);
 			}
 
+			// Lấy group và thesis để tìm supervisor
+			let supervisorIds: string[] = [];
+			if (submission.groupId) {
+				const group = await this.prisma.group.findUnique({
+					where: { id: submission.groupId },
+					select: {
+						thesis: {
+							select: {
+								supervisions: {
+									select: { lecturerId: true },
+								},
+							},
+						},
+					},
+				});
+				if (group?.thesis?.supervisions) {
+					supervisorIds = group.thesis.supervisions.map((s) => s.lecturerId);
+				}
+			}
+
 			const lecturers = await this.prisma.lecturer.findMany({
 				where: {
 					assignmentReviews: {
@@ -51,6 +71,9 @@ export class ReviewService {
 							submissionId: submissionId,
 						},
 					},
+					...(supervisorIds.length > 0
+						? { userId: { notIn: supervisorIds } }
+						: {}),
 				},
 				include: {
 					user: {
@@ -76,7 +99,6 @@ export class ReviewService {
 			this.logger.debug(
 				`Eligible reviewers: ${JSON.stringify(lecturers, null, 2)}`,
 			);
-
 			return mappedReviewers;
 		} catch (error) {
 			this.logger.error(
@@ -94,10 +116,18 @@ export class ReviewService {
 		try {
 			const { assignments } = assignDto;
 
-			// Validate all submissions exist
+			// Validate all submissions exist và milestone chưa end
 			const submissionIds = assignments.map((a) => a.submissionId);
 			const submissions = await this.prisma.submission.findMany({
 				where: { id: { in: submissionIds } },
+				include: {
+					milestone: {
+						select: {
+							id: true,
+							endDate: true,
+						},
+					},
+				},
 			});
 
 			if (submissions.length !== submissionIds.length) {
@@ -107,6 +137,21 @@ export class ReviewService {
 					`Some submissions with IDs ${missingIds.join(', ')} do not exist`,
 				);
 				throw new NotFoundException('Some submissions not found');
+			}
+
+			// Kiểm tra milestone đã end chưa
+			const now = new Date();
+			const endedMilestoneSubmissions = submissions.filter(
+				(s) => now > s.milestone?.endDate,
+			);
+			if (endedMilestoneSubmissions.length > 0) {
+				const ids = endedMilestoneSubmissions.map((s) => s.id).join(', ');
+				this.logger.warn(
+					`Cannot assign reviewers: milestone ended for submissions: ${ids}`,
+				);
+				throw new BadRequestException(
+					'Cannot assign reviewers to submissions whose milestone has ended',
+				);
 			}
 
 			const results: Array<{
@@ -1043,52 +1088,6 @@ export class ReviewService {
 		} catch (error) {
 			this.logger.warn('Error clearing submission-related caches', error);
 			// Don't throw error to prevent main operation from failing
-		}
-	}
-
-	async getGroupReviewers(groupId: string) {
-		try {
-			const group = await this.prisma.group.findUnique({
-				where: { id: groupId },
-				include: {
-					submissions: {
-						select: { id: true },
-					},
-				},
-			});
-
-			if (!group) {
-				this.logger.warn(`Group with ID ${groupId} does not exist`);
-				throw new NotFoundException(`Group with ID ${groupId} does not exist`);
-			}
-
-			const reviewers = await this.prisma.lecturer.findMany({
-				where: {
-					assignmentReviews: {
-						some: {
-							submissionId: { in: group.submissions.map((s) => s.id) },
-						},
-					},
-				},
-				include: {
-					user: {
-						select: { id: true, fullName: true, email: true },
-					},
-				},
-			});
-
-			this.logger.log(
-				`Found ${reviewers.length} reviewers for group ID ${groupId}`,
-			);
-			this.logger.debug(`Reviewers: ${JSON.stringify(reviewers, null, 2)}`);
-
-			return reviewers;
-		} catch (error) {
-			this.logger.error(
-				`Error fetching group reviewers for group ID ${groupId}`,
-				error,
-			);
-			throw error;
 		}
 	}
 }
