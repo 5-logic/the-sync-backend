@@ -13,11 +13,12 @@ import { Request } from 'express';
 import { AUTH_API_TAGS, AUTH_CONSTANTS } from '@/auth/constants';
 import { Roles } from '@/auth/decorators';
 import { ChangePasswordDocs } from '@/auth/docs';
-import { ChangePasswordDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
 import { ChangePasswordService } from '@/auth/services';
+
+import { ChangePasswordDto } from '~/src/auth/dtos';
 
 @ApiTags(AUTH_API_TAGS)
 @Controller(AUTH_CONSTANTS.CHANGE_PASSWORD)

@@ -15,6 +15,8 @@ import { Request } from 'express';
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
 import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
+import { GroupService } from '@/groups/group.service';
+
 import {
 	AssignStudentDto,
 	ChangeLeaderDto,
@@ -22,8 +24,7 @@ import {
 	PickThesisDto,
 	RemoveStudentDto,
 	UpdateGroupDto,
-} from '@/groups/dto';
-import { GroupService } from '@/groups/group.service';
+} from '~/src/domains/groups/dtos';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()

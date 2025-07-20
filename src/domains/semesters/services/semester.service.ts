@@ -12,21 +12,6 @@ import { mapSemester } from '@/semesters/mappers';
 import { SemesterResponse } from '@/semesters/responses';
 import { SemesterStatusService } from '@/semesters/services/semester-status.service';
 
-import {
-	Enrollment,
-	Group,
-	Milestone,
-	Semester,
-	StudentGroupParticipation,
-} from '~/generated/prisma';
-
-type SemesterWithRelationships = Semester & {
-	groups: Group[];
-	enrollments: Enrollment[];
-	milestones: Milestone[];
-	studentGroupParticipations: StudentGroupParticipation[];
-};
-
 @Injectable()
 export class SemesterService {
 	private readonly logger = new Logger(SemesterService.name);
@@ -191,12 +176,6 @@ export class SemesterService {
 		try {
 			const semester = await this.prisma.semester.findUnique({
 				where: { id },
-				include: {
-					groups: true,
-					enrollments: true,
-					milestones: true,
-					studentGroupParticipations: true,
-				},
 			});
 
 			if (!semester) {
@@ -206,7 +185,7 @@ export class SemesterService {
 			}
 
 			this.statusService.ensureDeletableStatus(semester);
-			this.ensureNoDependencies(semester);
+			await this.ensureNoDependencies(semester.id);
 
 			const deleted = await this.prisma.semester.delete({ where: { id } });
 
@@ -248,15 +227,41 @@ export class SemesterService {
 		return;
 	}
 
-	private ensureNoDependencies(semester: SemesterWithRelationships): void {
+	private async ensureNoDependencies(semesterId: string): Promise<void> {
+		const counts = await this.prisma.$queryRaw<{
+			groups: number;
+			enrollments: number;
+			milestones: number;
+			studentGroupParticipations: number;
+		}>`
+			SELECT
+				COUNT(DISTINCT g.id) AS groups,
+				COUNT(DISTINCT e.student_id) AS enrollments,
+				COUNT(DISTINCT m.id) AS milestones,
+				COUNT(DISTINCT sgp.group_id) AS studentGroupParticipations
+			FROM
+				groups g
+			LEFT JOIN
+				_enrollments e ON e.semester_id = g.semester_id AND g.semester_id = ${semesterId}
+			LEFT JOIN
+				milestones m ON m.semester_id = g.semester_id AND g.semester_id = ${semesterId}
+			LEFT JOIN
+				_student_group_participations sgp ON sgp.semester_id = g.semester_id AND g.semester_id = ${semesterId}
+			WHERE
+				g.semester_id = ${semesterId}
+		`;
+
+		const { groups, enrollments, milestones, studentGroupParticipations } =
+			counts[0];
+
 		const hasRelations =
-			semester.groups.length > 0 ||
-			semester.enrollments.length > 0 ||
-			semester.milestones.length > 0 ||
-			semester.studentGroupParticipations.length > 0;
+			groups > 0 ||
+			enrollments > 0 ||
+			milestones > 0 ||
+			studentGroupParticipations > 0;
 
 		if (hasRelations) {
-			this.logger.warn(`Semester ${semester.id} has dependent relationships`);
+			this.logger.warn(`Semester ${semesterId} has dependent relationships`);
 
 			throw new ConflictException(
 				`Cannot delete semester: it has related data.`,

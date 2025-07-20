@@ -33,14 +33,20 @@ export const mapLecturerV2 = (
 
 export const mapLecturerV3 = (
 	user: User & { lecturer: Lecturer | null },
-): LecturerResponse => ({
-	id: user.id,
-	fullName: user.fullName,
-	email: user.email,
-	phoneNumber: user.phoneNumber,
-	gender: user.gender.toString(),
-	isActive: user.isActive,
-	isModerator: user.lecturer?.isModerator ?? false,
-	createdAt: user.createdAt.toISOString(),
-	updatedAt: user.updatedAt.toISOString(),
-});
+): LecturerResponse => {
+	if (!user.lecturer) {
+		throw new Error('Lecturer not found');
+	}
+
+	return {
+		id: user.id,
+		fullName: user.fullName,
+		email: user.email,
+		phoneNumber: user.phoneNumber,
+		gender: user.gender.toString(),
+		isActive: user.isActive,
+		isModerator: user.lecturer.isModerator,
+		createdAt: user.createdAt.toISOString(),
+		updatedAt: user.updatedAt.toISOString(),
+	};
+};

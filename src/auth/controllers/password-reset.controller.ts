@@ -3,12 +3,13 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AUTH_API_TAGS, AUTH_CONSTANTS } from '@/auth/constants';
 import { PasswordResetDocs } from '@/auth/docs';
+import { PasswordResetService } from '@/auth/services';
+import { ApiEmptyResponse } from '@/common';
+
 import {
 	RequestPasswordResetDto,
 	VerifyOtpAndResetPasswordDto,
-} from '@/auth/dto';
-import { PasswordResetService } from '@/auth/services';
-import { ApiEmptyResponse } from '@/common';
+} from '~/src/auth/dtos';
 
 @ApiTags(AUTH_API_TAGS)
 @Controller(AUTH_CONSTANTS.PASSWORD_RESET)

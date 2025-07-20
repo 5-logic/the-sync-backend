@@ -7,7 +7,7 @@ import {
 
 import { CONSTANTS } from '@/configs';
 import { CACHE_KEY } from '@/lecturers/constants';
-import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
+import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dtos';
 import { mapLecturerV1, mapLecturerV3 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
 import { CacheHelperService, PrismaService } from '@/providers';
@@ -375,6 +375,10 @@ export class LecturerManagementService {
 			throw error;
 		}
 	}
+
+	// ------------------------------------------------------------------------------------------
+	// Additional methods for lecturer management can be added here
+	// ------------------------------------------------------------------------------------------
 
 	private async ensureNoDependencies(lecturerId: string): Promise<void> {
 		const counts = await this.prisma.$queryRaw<

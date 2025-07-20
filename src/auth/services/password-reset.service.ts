@@ -12,7 +12,7 @@ import { OTP_CACHE_KEY, OTP_TTL } from '@/auth/constants';
 import {
 	RequestPasswordResetDto,
 	VerifyOtpAndResetPasswordDto,
-} from '@/auth/dto';
+} from '@/auth/dtos';
 import { EmailJobType, EmailQueueService } from '@/queue';
 import { UserService } from '@/users/index';
 import { generateOTP, generateStrongPassword } from '@/utils';

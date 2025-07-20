@@ -15,7 +15,7 @@ import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { LECTURER_API_TAGS, LECTURER_CONSTANTS } from '@/lecturers/constants';
 import { LecturerManagementDocs } from '@/lecturers/docs';
-import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dto';
+import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dtos';
 import { LecturerResponse } from '@/lecturers/responses';
 import { LecturerManagementService } from '@/lecturers/services';
 import { CreateUserDto } from '@/users/index';

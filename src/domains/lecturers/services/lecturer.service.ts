@@ -4,7 +4,7 @@ import { CACHE_KEY } from '@/lecturers/constants';
 import { mapLecturerV1, mapLecturerV2 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
 import { CacheHelperService, PrismaService } from '@/providers';
-import { UpdateUserDto } from '@/users/dto';
+import { UpdateUserDto } from '@/users/index';
 
 @Injectable()
 export class LecturerService {

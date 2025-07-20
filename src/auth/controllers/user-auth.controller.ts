@@ -13,13 +13,14 @@ import { Request } from 'express';
 import { AUTH_API_TAGS, AUTH_CONSTANTS } from '@/auth/constants';
 import { Roles } from '@/auth/decorators';
 import { UserAuthDocs } from '@/auth/docs';
-import { RefreshDto, UserLoginDto } from '@/auth/dto';
 import { Role } from '@/auth/enums';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
 import { LoginResponse, RefreshResponse } from '@/auth/responses';
 import { BaseAuthService, UserAuthService } from '@/auth/services';
 import { ApiBaseResponse, ApiEmptyResponse } from '@/common';
+
+import { RefreshDto, UserLoginDto } from '~/src/auth/dtos';
 
 @ApiTags(AUTH_API_TAGS)
 @Controller(AUTH_CONSTANTS.USER_AUTH)

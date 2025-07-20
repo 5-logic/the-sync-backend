@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { CACHE_KEY } from '@/admins/constants';
-import { UpdateAdminDto } from '@/admins/dto';
+import { UpdateAdminDto } from '@/admins/dtos';
 import { mapAdmin } from '@/admins/mappers';
 import { AdminResponse } from '@/admins/responses';
 import { CacheHelperService, PrismaService } from '@/providers';

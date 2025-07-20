@@ -6,17 +6,17 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import {
-	ChangeLeaderDto,
-	CreateGroupDto,
-	PickThesisDto,
-	UpdateGroupDto,
-} from '@/groups/dto';
 import { PrismaService } from '@/providers';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
+import {
+	ChangeLeaderDto,
+	CreateGroupDto,
+	PickThesisDto,
+	UpdateGroupDto,
+} from '~/src/domains/groups/dtos';
 
 // Define a type alias for thesis assignment actions
 export type ThesisAssignmentActionType = 'assigned' | 'picked' | 'unpicked';
