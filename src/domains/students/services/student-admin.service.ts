@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
 import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
 import {
@@ -177,7 +178,159 @@ export class StudentAdminService {
 	}
 
 	async createMany(dto: ImportStudentDto): Promise<StudentResponse[]> {
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		this.logger.log(
+			`Creating students in batch for semesterId: ${dto.semesterId}, majorId: ${dto.majorId}`,
+		);
+
+		try {
+			// Validate semester and major before starting the import process
+			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
+			await this.validateMajorForEnrollment(dto.majorId);
+
+			const emailsToSend: EmailJobDto[] = [];
+
+			const results = await this.prisma.$transaction(
+				async (txn) => {
+					const createdStudents: StudentResponse[] = [];
+
+					for (const studentData of dto.students) {
+						// Check if student already exists
+						const existingStudent = await txn.student.findUnique({
+							where: { studentCode: studentData.studentCode },
+							include: {
+								user: true,
+								enrollments: {
+									where: {
+										semesterId: dto.semesterId,
+									},
+								},
+							},
+						});
+
+						let result: StudentResponse;
+						const plainPassword = generateStrongPassword();
+						const hashedPassword = await hash(plainPassword);
+						let isNewStudent = false;
+
+						if (existingStudent) {
+							const isAlreadyEnrolledInThisSemester =
+								existingStudent.enrollments.length > 0;
+
+							if (isAlreadyEnrolledInThisSemester) {
+								throw new ConflictException(
+									`Student with studentCode ${studentData.studentCode} is already enrolled in semester ${semester.name}}`,
+								);
+							}
+
+							const updatedUser = await txn.user.update({
+								where: { id: existingStudent.userId },
+								data: {
+									password: hashedPassword,
+								},
+							});
+
+							// Enroll the existing student in the new semester
+							await txn.enrollment.create({
+								data: {
+									studentId: existingStudent.userId,
+									semesterId: dto.semesterId,
+								},
+							});
+
+							this.logger.log(
+								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId} with new password`,
+							);
+
+							result = mapStudentV1(updatedUser, existingStudent);
+						} else {
+							// Student doesn't exist, create new student
+							const newUser = await txn.user.create({
+								data: {
+									email: studentData.email,
+									fullName: studentData.fullName,
+									gender: studentData.gender,
+									phoneNumber: studentData.phoneNumber,
+									password: hashedPassword,
+								},
+							});
+
+							// Create student
+							const newStudent = await txn.student.create({
+								data: {
+									userId: newUser.id,
+									studentCode: studentData.studentCode,
+									majorId: dto.majorId,
+								},
+							});
+
+							// Create enrollment for the new student
+							await txn.enrollment.create({
+								data: {
+									studentId: newStudent.userId,
+									semesterId: dto.semesterId,
+								},
+							});
+
+							this.logger.log(
+								`Student ${studentData.studentCode} created successfully`,
+							);
+							this.logger.log(
+								`Student ${studentData.studentCode} enrolled to semester ${dto.semesterId}`,
+							);
+
+							result = mapStudentV1(newUser, newStudent);
+
+							isNewStudent = true;
+						}
+
+						// Prepare email data for bulk sending
+						const emailDto: EmailJobDto = {
+							to: result.email,
+							subject: isNewStudent
+								? 'Welcome to TheSync'
+								: 'Welcome back to TheSync',
+							context: {
+								fullName: result.fullName,
+								email: result.email,
+								password: plainPassword,
+								studentCode: result.studentCode,
+								semesterName: semester.name,
+							},
+						};
+						emailsToSend.push(emailDto);
+
+						createdStudents.push(result);
+
+						this.logger.log(
+							`Student operation completed with userId: ${result.id}`,
+						);
+						this.logger.debug('Student detail', JSON.stringify(result));
+					}
+
+					return createdStudents;
+				},
+				{
+					timeout: CONSTANTS.TIMEOUT,
+				},
+			);
+
+			// Send bulk emails after all students are created successfully
+			if (emailsToSend.length > 0) {
+				await this.email.sendBulkEmails(
+					EmailJobType.SEND_STUDENT_ACCOUNT,
+					emailsToSend,
+					500,
+				);
+			}
+
+			this.logger.log(`Successfully processed ${results.length} students`);
+
+			return results;
+		} catch (error) {
+			this.logger.error('Error creating students in batch', error);
+
+			throw error;
+		}
 	}
 
 	async updateByAdmin(
