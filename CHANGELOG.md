@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2025-07-20
+
+### Added
+
+- **Thesis Management System Refactoring**:
+  - Introduced specialized thesis controllers for improved role-based access and modularity:
+    - `ThesisLecturerController` - Handles lecturer-specific thesis operations (create, update, submit, delete)
+    - `ThesisModeratorController` - Handles moderator-specific operations (publish, review, assign)
+    - `ThesisPublishController` - Handles public thesis viewing operations
+  - Added comprehensive response mapping system with detailed thesis information
+  - Implemented caching for improved performance and response times
+
+- **Enhanced DTOs and Validation**:
+  - `CreateThesisDto` - Enhanced with `semesterId` and optional `skillIds` array for thesis creation
+  - `UpdateThesisDto` - Partial update DTO based on `CreateThesisDto`
+  - `AssignThesisDto` - New DTO for thesis assignment with `groupId` validation
+  - `ReviewThesisDto` - New DTO for thesis review with `ThesisStatus` enum validation
+  - `PublishThesisDto` - Enhanced DTO for bulk thesis publishing with `thesisIds` array and `isPublish` boolean
+
+- **Structured Response Classes**:
+  - `ThesisResponse` - Base response class with core thesis information
+  - `ThesisDetailResponse` - Extended response class including:
+    - Thesis versions with version numbers and supporting documents
+    - Required skills with skill details
+    - Lecturer information with full name and email
+
+- **Response Mapping System**:
+  - `mapThesis()` - Maps basic thesis data to `ThesisResponse`
+  - `mapThesisDetail()` - Maps comprehensive thesis data to `ThesisDetailResponse` including related entities
+
+### Changed
+
+- **API Architecture Restructuring**:
+  - **Replaced Single Controller**: Migrated from monolithic `ThesisController` to three specialized controllers for better separation of concerns
+  - **Enhanced API Documentation**: Replaced `@SwaggerDoc` decorators with detailed `@ApiOperation` annotations
+  - **Improved Response Handling**: All endpoints now return structured response objects with proper HTTP status codes
+
+- **Service Layer Improvements**:
+  - Split thesis service into specialized services:
+    - `ThesisLecturerService` - Handles lecturer operations with user context validation
+    - `ThesisModeratorService` - Handles administrative operations
+    - `ThesisPublishService` - Handles public viewing operations with caching
+  - Integrated caching mechanisms for improved performance
+  - Enhanced error handling and validation across all services
+
+- **Enhanced API Endpoints**:
+  - All thesis endpoints now return detailed response objects instead of raw Prisma entities
+  - Improved role-based access control with specific role requirements per endpoint
+  - Enhanced HTTP status code usage (201 for creation, 200 for updates/retrieval)
+
+### Fixed
+
+- **Performance Optimization**: Implemented caching strategies to reduce database load and improve response times
+- **Type Safety**: Enhanced TypeScript support with comprehensive response type definitions
+- **Code Organization**: Better separation of concerns with modular controller and service architecture
+
+### Enhanced
+
+- **Developer Experience**: Improved API documentation with detailed operation descriptions and response schemas
+- **Maintainability**: Cleaner code organization with dedicated controllers, services, and response mappers
+- **Scalability**: Modular architecture allows for easier future enhancements and maintenance
+
+### Technical Improvements
+
+- **Response Mapping**: Consistent data transformation across all thesis endpoints
+- **Caching Integration**: Strategic caching implementation for frequently accessed data
+- **Role-Based Access**: Granular permission control based on user roles (LECTURER, MODERATOR)
+- **Enhanced Validation**: Comprehensive input validation with detailed error messages
+
+### Pull Requests
+
+- [#222](https://github.com/5-logic/the-sync-backend/pull/222) - Merge dev branch for v0.6.11 release
+- [#221](https://github.com/5-logic/the-sync-backend/pull/221) - Thesis management system refactoring and performance improvements
+
 ## [0.6.10] - 2025-07-20
 
 ### Added
