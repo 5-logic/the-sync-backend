@@ -38,8 +38,6 @@ export class SemesterStatusService {
 				`Cannot create new semester. There is already an active semester (${activeSemester.name}) with status: ${activeSemester.status}`,
 			);
 		}
-
-		return;
 	}
 
 	// ------------------------------------------------------------------------------------------
@@ -56,8 +54,6 @@ export class SemesterStatusService {
 				`Only semesters with status "${SemesterStatus.NotYet}" can be deleted.`,
 			);
 		}
-
-		return;
 	}
 
 	// ------------------------------------------------------------------------------------------
@@ -74,8 +70,6 @@ export class SemesterStatusService {
 				`Only semesters with status "${SemesterStatus.End}" can be updated.`,
 			);
 		}
-
-		return;
 	}
 
 	async validateStatusTransition__Preparing_To_Picking(
@@ -105,8 +99,6 @@ export class SemesterStatusService {
 		this.logger.log(
 			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups.`,
 		);
-
-		return;
 	}
 
 	validateStatusTransition__Picking_To_Ongoing(
@@ -128,8 +120,6 @@ export class SemesterStatusService {
 		this.logger.log(
 			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. All students have groups.`,
 		);
-
-		return;
 	}
 
 	async validateStatusTransition___Ongoing_To_End(
@@ -170,8 +160,6 @@ export class SemesterStatusService {
 		this.logger.log(
 			`${SemesterStatus.Ongoing} to ${SemesterStatus.End} transition validation passed. All students have groups.`,
 		);
-
-		return;
 	}
 
 	async validateStatusTransition(
@@ -248,8 +236,6 @@ export class SemesterStatusService {
 		this.logger.log(
 			`Max group validation passed for semester with ID ${semester.id}`,
 		);
-
-		return;
 	}
 
 	validateOngoingPhase(semester: Semester): void {
@@ -266,8 +252,6 @@ export class SemesterStatusService {
 		this.logger.log(
 			`Ongoing phase validation passed for semester with ID ${semester.id}`,
 		);
-
-		return;
 	}
 
 	async validateSemesterUpdate(
@@ -289,8 +273,6 @@ export class SemesterStatusService {
 		if (dto.ongoingPhase) {
 			this.validateOngoingPhase(semester);
 		}
-
-		return;
 	}
 
 	prepareUpdateData(

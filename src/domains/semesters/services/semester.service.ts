@@ -223,8 +223,6 @@ export class SemesterService {
 
 			throw new ConflictException(`Semester with this ${field} already exists`);
 		}
-
-		return;
 	}
 
 	private async ensureNoDependencies(semesterId: string): Promise<void> {
