@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { PrismaService } from '@/providers';
+import { CacheHelperService, PrismaService } from '@/providers';
+import { CACHE_KEY } from '@/students/constants';
 import { mapStudentDetailResponse, mapStudentV2 } from '@/students/mappers';
 import { StudentDetailResponse, StudentResponse } from '@/students/responses';
 
@@ -8,12 +9,23 @@ import { StudentDetailResponse, StudentResponse } from '@/students/responses';
 export class StudentPublicService {
 	private readonly logger = new Logger(StudentPublicService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly cache: CacheHelperService,
+		private readonly prisma: PrismaService,
+	) {}
 
 	async findAll(): Promise<StudentResponse[]> {
 		this.logger.log('Fetching all students');
 
 		try {
+			const cacheKey = `${CACHE_KEY}/`;
+			const cache = await this.cache.getFromCache<StudentResponse[]>(cacheKey);
+			if (cache) {
+				this.logger.log('Returning students from cache');
+
+				return cache;
+			}
+
 			const students = await this.prisma.student.findMany({
 				include: {
 					user: true,
@@ -30,6 +42,8 @@ export class StudentPublicService {
 
 			const result: StudentResponse[] = students.map(mapStudentV2);
 
+			await this.cache.saveToCache(cacheKey, result);
+
 			return result;
 		} catch (error) {
 			this.logger.error('Error fetching students', error);
@@ -41,6 +55,15 @@ export class StudentPublicService {
 		this.logger.log(`Fetching student with ID: ${id}`);
 
 		try {
+			const cacheKey = `${CACHE_KEY}/${id}`;
+			const cache =
+				await this.cache.getFromCache<StudentDetailResponse>(cacheKey);
+			if (cache) {
+				this.logger.log(`Returning student ${id} from cache`);
+
+				return cache;
+			}
+
 			const student = await this.prisma.student.findUnique({
 				where: { userId: id },
 				include: {
@@ -80,6 +103,8 @@ export class StudentPublicService {
 
 			const result: StudentDetailResponse = mapStudentDetailResponse(student);
 
+			await this.cache.saveToCache(cacheKey, result);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error fetching student with ID ${id}`, error);
@@ -92,6 +117,14 @@ export class StudentPublicService {
 		this.logger.log(`Fetching all students for semester: ${semesterId}`);
 
 		try {
+			const cacheKey = `${CACHE_KEY}/semester/${semesterId}`;
+			const cache = await this.cache.getFromCache<StudentResponse[]>(cacheKey);
+			if (cache) {
+				this.logger.log('Returning students from cache');
+
+				return cache;
+			}
+
 			const semester = await this.prisma.semester.findUnique({
 				where: { id: semesterId },
 			});
@@ -128,6 +161,8 @@ export class StudentPublicService {
 			const result: StudentResponse[] = enrollments.map((e) =>
 				mapStudentV2(e.student),
 			);
+
+			await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
