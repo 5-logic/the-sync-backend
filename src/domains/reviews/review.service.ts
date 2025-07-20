@@ -142,7 +142,7 @@ export class ReviewService {
 			// Kiểm tra milestone đã end chưa
 			const now = new Date();
 			const endedMilestoneSubmissions = submissions.filter(
-				(s) => s.milestone && s.milestone.endDate && now > s.milestone.endDate,
+				(s) => now > s.milestone?.endDate,
 			);
 			if (endedMilestoneSubmissions.length > 0) {
 				const ids = endedMilestoneSubmissions.map((s) => s.id).join(', ');
