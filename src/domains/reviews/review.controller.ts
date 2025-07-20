@@ -74,12 +74,6 @@ export class ReviewController {
 		return await this.reviewService.getReviewForm(submissionId);
 	}
 
-	@Get('groups/:groupId')
-	@SwaggerDoc('review', 'getGroupReviewers')
-	async getGroupReviewers(@Param('groupId') groupId: string) {
-		return await this.reviewService.getGroupReviewers(groupId);
-	}
-
 	@Roles(Role.LECTURER)
 	@Post(':submissionId')
 	@SwaggerDoc('review', 'submitReview')
