@@ -1,8 +1,17 @@
-import { Body, Controller, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+	Body,
+	Controller,
+	HttpCode,
+	HttpStatus,
+	Param,
+	Post,
+	Put,
+	UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
-import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
+import { ThesisModeratorDocs } from '@/theses/docs';
 import {
 	AssignThesisDto,
 	PublishThesisDto,
@@ -19,23 +28,26 @@ export class ThesisModeratorController {
 		private readonly thesisModeratorService: ThesisModeratorService,
 	) {}
 
-	@SwaggerDoc('thesis', 'publishTheses')
-	@Roles(Role.MODERATOR)
+	@HttpCode(HttpStatus.OK)
 	@Put('publish')
+	@ApiOperation(ThesisModeratorDocs.publishTheses)
+	@Roles(Role.MODERATOR)
 	async publishTheses(@Body() dto: PublishThesisDto) {
 		return await this.thesisModeratorService.publishTheses(dto);
 	}
 
-	@SwaggerDoc('thesis', 'reviewThesis')
-	@Roles(Role.MODERATOR)
+	@HttpCode(HttpStatus.OK)
 	@Post(':id/review')
+	@ApiOperation(ThesisModeratorDocs.reviewThesis)
+	@Roles(Role.MODERATOR)
 	async reviewThesis(@Param('id') id: string, @Body() dto: ReviewThesisDto) {
 		return await this.thesisModeratorService.reviewThesis(id, dto);
 	}
 
-	@SwaggerDoc('thesis', 'assignThesis')
-	@Roles(Role.MODERATOR)
+	@HttpCode(HttpStatus.OK)
 	@Post(':id/assign')
+	@ApiOperation(ThesisModeratorDocs.assignThesis)
+	@Roles(Role.MODERATOR)
 	async assignThesis(@Param('id') id: string, @Body() dto: AssignThesisDto) {
 		return await this.thesisModeratorService.assignThesis(id, dto);
 	}

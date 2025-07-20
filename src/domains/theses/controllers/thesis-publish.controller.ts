@@ -1,8 +1,15 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+	Controller,
+	Get,
+	HttpCode,
+	HttpStatus,
+	Param,
+	UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard } from '@/auth';
-import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
+import { ThesisPublishDocs } from '@/theses/docs';
 import { ThesisPublishService } from '@/theses/services/thesis-publish.service';
 
 @UseGuards(JwtAccessAuthGuard)
@@ -12,20 +19,23 @@ import { ThesisPublishService } from '@/theses/services/thesis-publish.service';
 export class ThesisPublishController {
 	constructor(private readonly thesisPublishService: ThesisPublishService) {}
 
-	@SwaggerDoc('thesis', 'findAll')
+	@HttpCode(HttpStatus.OK)
 	@Get()
+	@ApiOperation(ThesisPublishDocs.findAll)
 	async findAll() {
 		return await this.thesisPublishService.findAll();
 	}
 
-	@SwaggerDoc('thesis', 'findAllBySemesterId')
+	@HttpCode(HttpStatus.OK)
 	@Get('semester/:semesterId')
+	@ApiOperation(ThesisPublishDocs.findAllBySemesterId)
 	async findAllBySemesterId(@Param('semesterId') semesterId: string) {
 		return await this.thesisPublishService.findAllBySemesterId(semesterId);
 	}
 
-	@SwaggerDoc('thesis', 'findOne')
+	@HttpCode(HttpStatus.OK)
 	@Get(':id')
+	@ApiOperation(ThesisPublishDocs.findOne)
 	async findOne(@Param('id') id: string) {
 		return await this.thesisPublishService.findOne(id);
 	}

@@ -1,0 +1,28 @@
+import { ApiOperationOptions } from '@nestjs/swagger';
+
+export const ThesisLecturerDocs = {
+	create: {
+		summary: 'Create new thesis',
+		description: `Create a new thesis project proposal.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Validations:**\n  - All required fields (title, description, domain, skills, etc.) must be provided.\n  - Title must be unique within the semester.\n  - Skill IDs must exist.\n  - Lecturer cannot create more than the maximum allowed theses in the semester (maxThesesPerLecturer).\n- **Business logic:**\n  - Checks current thesis count for lecturer in the semester before creation.\n  - Creates thesis record, initial version, and required skills.\n  - Assigns the creator as the first supervisor.\n  - Uses transactions for consistency.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 409 if title is not unique, creation fails, or maxThesesPerLecturer is reached.\n  - 404 if skill IDs or semester do not exist.\n- **Logging:** Logs all creation attempts and errors.\n\n**Status Codes:**\n- **201 Created:** Thesis successfully created\n- **400 Bad Request:** Invalid input data or validation errors\n- **401 Unauthorized:** Invalid or missing authentication token\n- **403 Forbidden:** User does not have lecturer/moderator role\n- **404 Not Found:** Semester or skill IDs do not exist\n- **409 Conflict:** Title not unique or max theses limit reached\n- **500 Internal Server Error:** Database or server error`,
+	} as ApiOperationOptions,
+
+	findAllByLecturerId: {
+		summary: 'Get theses by lecturer',
+		description: `Retrieve all thesis projects supervised or created by a specific lecturer.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Business logic:**\n  - Returns theses associated with the lecturer, including supervision assignments, proposals, project status, and student enrollments.\n  - No caching for list operations.\n- **Error handling:**\n  - 404 if lecturer not found.\n  - 500 on database errors.\n- **Logging:** Logs all fetch attempts and errors.\n\n**Status Codes:**\n- **200 OK:** Successfully retrieved lecturer's theses\n- **401 Unauthorized:** Invalid or missing authentication token\n- **403 Forbidden:** User does not have lecturer/moderator role\n- **404 Not Found:** Lecturer does not exist\n- **500 Internal Server Error:** Database or server error`,
+	} as ApiOperationOptions,
+
+	update: {
+		summary: 'Update thesis information',
+		description: `Update detailed information of a specific thesis project.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Validations:**\n  - Only the creator/assigned lecturer can update.\n  - All required fields must be valid.\n  - Skill IDs must exist.\n- **Business logic:**\n  - Updates thesis properties and creates new version if supporting document is provided.\n  - Updates required skills.\n  - Uses transactions for consistency.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 403 if not the creator/lecturer.\n  - 404 if thesis not found.\n  - 409 if update fails.\n- **Logging:** Logs all update attempts and errors.\n\n**Status Codes:**\n- **200 OK:** Thesis successfully updated\n- **400 Bad Request:** Invalid input data or validation errors\n- **401 Unauthorized:** Invalid or missing authentication token\n- **403 Forbidden:** User does not have permission to update this thesis\n- **404 Not Found:** Thesis or skill IDs do not exist\n- **409 Conflict:** Update operation failed due to business rule violation\n- **500 Internal Server Error:** Database or server error`,
+	} as ApiOperationOptions,
+
+	submitForReview: {
+		summary: 'Submit thesis for review',
+		description: `Submit a thesis project for administrative review and approval.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Validations:**\n  - Only the creator/assigned lecturer can submit.\n  - Thesis must be in New or Rejected status.\n- **Business logic:**\n  - Changes thesis status to Pending.\n  - Triggers cache invalidation and sends notification email.\n- **Error handling:**\n  - 403 if not the creator/lecturer.\n  - 404 if thesis not found.\n  - 409 if already pending/approved or invalid status.\n- **Logging:** Logs all submission attempts, notifications, and errors.\n\n**Status Codes:**\n- **200 OK:** Thesis successfully submitted for review\n- **401 Unauthorized:** Invalid or missing authentication token\n- **403 Forbidden:** User does not have permission to submit this thesis\n- **404 Not Found:** Thesis does not exist\n- **409 Conflict:** Thesis is not in a valid status for submission (must be New or Rejected)\n- **500 Internal Server Error:** Database or server error`,
+	} as ApiOperationOptions,
+
+	remove: {
+		summary: 'Delete thesis project',
+		description: `Permanently remove a thesis project from the system.\n\n- **Authorization:** Lecturer or Moderator only.\n- **Validations:**\n  - Only the creator/assigned lecturer can delete.\n  - Thesis must be in New or Rejected status.\n- **Business logic:**\n  - Deletes thesis and all associated data.\n  - Triggers cache invalidation.\n- **Error handling:**\n  - 403 if not the creator/lecturer.\n  - 404 if thesis not found.\n  - 409 if status is not New or Rejected.\n- **Logging:** Logs all deletion attempts and errors.\n\n**Status Codes:**\n- **200 OK:** Thesis successfully deleted\n- **401 Unauthorized:** Invalid or missing authentication token\n- **403 Forbidden:** User does not have permission to delete this thesis\n- **404 Not Found:** Thesis does not exist\n- **409 Conflict:** Thesis is not in a valid status for deletion (must be New or Rejected)\n- **500 Internal Server Error:** Database or server error`,
+	} as ApiOperationOptions,
+};
