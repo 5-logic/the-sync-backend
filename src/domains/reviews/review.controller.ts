@@ -35,9 +35,9 @@ export class ReviewController {
 	constructor(private readonly reviewService: ReviewService) {}
 
 	@Roles(Role.MODERATOR)
-	@Get(':id/eligible-reviewers')
+	@Get(':submissionId/eligible-reviewers')
 	@SwaggerDoc('review', 'getEligibleReviewers')
-	async getEligibleReviewers(@Param('id') submissionId: string) {
+	async getEligibleReviewers(@Param('submissionId') submissionId: string) {
 		return await this.reviewService.getEligibleReviewers(submissionId);
 	}
 
