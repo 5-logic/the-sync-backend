@@ -9,8 +9,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
+import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { STUDENT_API_TAGS, STUDENT_CONSTANTS } from '@/students/constants';
 import { StudentPublicDocs } from '@/students/docs';
+import { StudentResponse } from '@/students/responses';
 import { StudentPublicService } from '@/students/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -23,7 +25,8 @@ export class StudentPublicController {
 	@HttpCode(HttpStatus.OK)
 	@Get()
 	@ApiOperation(StudentPublicDocs.findAll)
-	async findAll() {
+	@ApiArrayResponse(StudentResponse, HttpStatus.OK)
+	async findAll(): Promise<StudentResponse[]> {
 		return await this.service.findAll();
 	}
 
@@ -37,14 +40,20 @@ export class StudentPublicController {
 	@HttpCode(HttpStatus.OK)
 	@Get('semester/:semesterId')
 	@ApiOperation(StudentPublicDocs.findAllBySemester)
-	async findAllBySemester(@Param('semesterId') semesterId: string) {
+	@ApiArrayResponse(StudentResponse, HttpStatus.OK)
+	async findAllBySemester(
+		@Param('semesterId') semesterId: string,
+	): Promise<StudentResponse[]> {
 		return await this.service.findAllBySemester(semesterId);
 	}
 
 	@HttpCode(HttpStatus.OK)
 	@Get('semester/:semesterId/without-group')
 	@ApiOperation(StudentPublicDocs.findStudentsWithoutGroup)
-	async findStudentsWithoutGroup(@Param('semesterId') semesterId: string) {
+	@ApiArrayResponse(StudentResponse, HttpStatus.OK)
+	async findStudentsWithoutGroup(
+		@Param('semesterId') semesterId: string,
+	): Promise<StudentResponse[]> {
 		return await this.service.findStudentsWithoutGroup(semesterId);
 	}
 }
