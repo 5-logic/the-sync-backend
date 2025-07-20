@@ -16,16 +16,18 @@ import { Request } from 'express';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { UserPayload } from '@/auth/interfaces/user-payload.interface';
+import { ApiBaseResponse } from '@/common';
 import { ThesisLecturerDocs } from '@/theses/docs';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
-import { ThesisLecturerService } from '@/theses/services/thesis-lecturer.service';
+import { ThesisResponse } from '@/theses/responses';
+import { ThesisLecturerService } from '@/theses/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Thesis - Lecturer')
 @Controller('theses')
 export class ThesisLecturerController {
-	constructor(private readonly thesisLecturerService: ThesisLecturerService) {}
+	constructor(private readonly service: ThesisLecturerService) {}
 
 	@HttpCode(HttpStatus.CREATED)
 	@Post()
@@ -34,7 +36,7 @@ export class ThesisLecturerController {
 	async create(@Req() req: Request, @Body() dto: CreateThesisDto) {
 		const user = req.user as UserPayload;
 
-		return await this.thesisLecturerService.create(user.id, dto);
+		return await this.service.create(user.id, dto);
 	}
 
 	@HttpCode(HttpStatus.OK)
@@ -42,7 +44,7 @@ export class ThesisLecturerController {
 	@ApiOperation(ThesisLecturerDocs.findAllByLecturerId)
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	async findAllByLecturerId(@Param('lecturerId') lecturerId: string) {
-		return await this.thesisLecturerService.findAllByLecturerId(lecturerId);
+		return await this.service.findAllByLecturerId(lecturerId);
 	}
 
 	@HttpCode(HttpStatus.OK)
@@ -56,7 +58,7 @@ export class ThesisLecturerController {
 	) {
 		const user = req.user as UserPayload;
 
-		return await this.thesisLecturerService.update(user.id, id, dto);
+		return await this.service.update(user.id, id, dto);
 	}
 
 	@HttpCode(HttpStatus.OK)
@@ -66,16 +68,20 @@ export class ThesisLecturerController {
 	async submitForReview(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as UserPayload;
 
-		return await this.thesisLecturerService.submitForReview(user.id, id);
+		return await this.service.submitForReview(user.id, id);
 	}
 
+	@Roles(Role.MODERATOR, Role.LECTURER)
 	@HttpCode(HttpStatus.OK)
 	@Delete(':id')
 	@ApiOperation(ThesisLecturerDocs.remove)
-	@Roles(Role.MODERATOR, Role.LECTURER)
-	async remove(@Req() req: Request, @Param('id') id: string) {
+	@ApiBaseResponse(ThesisResponse, HttpStatus.OK)
+	async remove(
+		@Req() req: Request,
+		@Param('id') id: string,
+	): Promise<ThesisResponse> {
 		const user = req.user as UserPayload;
 
-		return await this.thesisLecturerService.remove(user.id, id);
+		return await this.service.remove(user.id, id);
 	}
 }

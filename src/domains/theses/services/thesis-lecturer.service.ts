@@ -7,11 +7,11 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { EmailJobDto } from '@/email/dto/email-job.dto';
 import { PrismaService } from '@/providers';
-import { EmailQueueService } from '@/queue/email/email-queue.service';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
+import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
+import { mapThesis } from '@/theses/mappers';
+import { ThesisResponse } from '@/theses/responses';
 
 import { ThesisStatus } from '~/generated/prisma';
 
@@ -511,12 +511,12 @@ export class ThesisLecturerService {
 		}
 	}
 
-	async remove(lecturerId: string, id: string) {
-		try {
-			this.logger.log(
-				`Attempting to delete thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
-			);
+	async remove(lecturerId: string, id: string): Promise<ThesisResponse> {
+		this.logger.log(
+			`Attempting to delete thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
+		);
 
+		try {
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
 			});
@@ -548,27 +548,25 @@ export class ThesisLecturerService {
 				);
 
 				throw new ConflictException(
-					`Cannot delete thesis with current status. Only New or Rejected theses can be deleted`,
+					`Cannot delete thesis with current status. Only ${ThesisStatus.New} or ${ThesisStatus.Rejected} theses can be deleted`,
 				);
 			}
 
 			// Check if thesis is published
 			if (existingThesis.isPublish) {
 				this.logger.warn(`Cannot delete published thesis with ID ${id}`);
+
 				throw new ConflictException(
 					`Cannot delete published thesis. Please unpublish it first`,
 				);
 			}
 
 			// Check if thesis is assigned to any group
-			const assignedGroup = await this.prisma.group.findFirst({
-				where: { thesisId: id },
-			});
-
-			if (assignedGroup) {
+			if (existingThesis.groupId) {
 				this.logger.warn(
-					`Cannot delete thesis with ID ${id} as it is assigned to group ${assignedGroup.id}`,
+					`Cannot delete thesis with ID ${id} as it is assigned to group ${existingThesis.groupId}`,
 				);
+
 				throw new ConflictException(
 					`Cannot delete thesis as it is already assigned to a group`,
 				);
@@ -576,18 +574,14 @@ export class ThesisLecturerService {
 
 			const deletedThesis = await this.prisma.thesis.delete({
 				where: { id },
-				include: {
-					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
-						orderBy: { version: 'desc' },
-					},
-				},
 			});
 
 			this.logger.log(`Thesis with ID: ${id} successfully deleted`);
-			this.logger.debug('Deleted thesis detail', deletedThesis);
+			this.logger.debug('Deleted thesis detail', JSON.stringify(deletedThesis));
 
-			return deletedThesis;
+			const result: ThesisResponse = mapThesis(deletedThesis);
+
+			return result;
 		} catch (error) {
 			this.logger.error(`Error deleting thesis with ID ${id}`, error);
 
