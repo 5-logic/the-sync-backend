@@ -340,6 +340,9 @@ export class MilestoneService {
 			existingStartDateOnly.setHours(0, 0, 0, 0);
 
 			if (today >= existingStartDateOnly) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: must be before its start date`,
+				);
 				throw new ConflictException(
 					'Milestone can only be deleted before its start date',
 				);
@@ -348,20 +351,89 @@ export class MilestoneService {
 			// Check all submissions in this milestone
 			const submissions = await this.prisma.submission.findMany({
 				where: { milestoneId: id },
-				select: { status: true },
+				select: { id: true, status: true },
 			});
-			if (
-				submissions.length > 0 &&
-				submissions.some((s) => s.status !== 'NotSubmitted')
-			) {
+			if (submissions.some((s) => s.status !== 'NotSubmitted')) {
 				this.logger.warn(
-					`Cannot delete milestone ${id}: some submissions have already been submitted.`,
+					`Cannot delete milestone ${id}: all submissions must have status NotSubmitted.`,
 				);
 				throw new ConflictException(
-					'Cannot delete milestone: some submissions have already been submitted.',
+					'Cannot delete milestone because have group submissions',
 				);
 			}
 
+			// Check for any related entities: checklist, checklistItem, review, reviewItem, assignmentReview
+			const checklistCount = await this.prisma.checklist.count({
+				where: { milestoneId: id },
+			});
+			if (checklistCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related checklist(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related checklist(s) exist.',
+				);
+			}
+
+			const submissionIds = submissions.map((s) => s.id);
+			const reviewCount = await this.prisma.review.count({
+				where: { submissionId: { in: submissionIds } },
+			});
+			if (reviewCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related review(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related review(s) exist.',
+				);
+			}
+
+			const assignmentReviewCount = await this.prisma.assignmentReview.count({
+				where: { submissionId: { in: submissionIds } },
+			});
+			if (assignmentReviewCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related assignment review(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related assignment review(s) exist.',
+				);
+			}
+
+			const checklistItemCount = await this.prisma.checklistItem.count({
+				where: {
+					checklist: { milestoneId: id },
+				},
+			});
+			if (checklistItemCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related checklist item(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related checklist item(s) exist.',
+				);
+			}
+
+			const reviewItemCount = await this.prisma.reviewItem.count({
+				where: {
+					review: { submissionId: { in: submissionIds } },
+				},
+			});
+			if (reviewItemCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related review item(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related review item(s) exist.',
+				);
+			}
+
+			// Delete all submissions in this milestone
+			await this.prisma.submission.deleteMany({
+				where: { id: { in: submissionIds } },
+			});
+
+			// Delete the milestone
 			const deleted = await this.prisma.milestone.delete({
 				where: { id },
 			});
