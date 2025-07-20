@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.10] - 2025-07-20
+
+### Added
+
+- **Skill Set API**:
+  - Introduced `SkillSetController` and `SkillSetService` with full CRUD and caching support. Added API documentation and response classes for skill sets and skills.
+  - New endpoints for managing skill sets and skills, with improved Swagger documentation.
+
+- **Lecturer API**:
+  - Added `LecturerManagementController` and `LecturerManagementService` for batch and single lecturer registration, status toggling, and improved data mapping.
+  - Enhanced caching for lecturer management and service methods.
+  - Added new response classes and constants for API integration.
+
+- **Student API**:
+  - Major refactor: split student logic into `student-admin`, `student-public`, and `student-self` controllers and services.
+  - Added batch student creation with validation, password hashing, and bulk email notifications.
+  - Added endpoints for student self-management, including self-update, skill and responsibility management, and status toggling.
+  - Introduced detailed student response classes and improved error handling and logging.
+  - Integrated caching for student services.
+
+- **Group API**:
+  - Added group management endpoints for moderators and students, including group creation, update, leader change, and thesis picking.
+  - Added new DTOs and improved validation (e.g., UUID checks).
+  - Enhanced API documentation and HTTP status code usage.
+
+- **Semester API**:
+  - Added `SemesterEnrollmentController` and refactored semester services for better modularity.
+  - Implemented caching for semester creation, retrieval, update, and deletion.
+  - Improved status transition validation and error handling in `SemesterStatusService`.
+  - Enhanced enrollment update logic and validation for ongoing semester status.
+
+- **General**:
+  - Added and reorganized DTOs, mappers, constants, and response classes across domains for better structure and maintainability.
+  - Introduced `CacheHelperModule` and `CacheHelperService` for centralized caching logic.
+  - Improved logging and error handling across services.
+
+### Changed
+
+- **DTOs and Imports**:
+  - Reorganized DTOs into `dtos/` folders, updated import paths for consistency, and improved validation logic.
+  - Updated response mapping and error handling in multiple services.
+
+- **Milestone API**:
+  - Enhanced milestone deletion validation and documentation, including checklist validation and error handling.
+  - Added `documents` field to milestone update.
+
+- **Checklist API**:
+  - Enforced single checklist per milestone in creation and update endpoints. Updated documentation accordingly.
+
+- **Review API**:
+  - Improved reviewer assignment logic: now limits to two reviewers per submission, excludes supervisors, and adds milestone end validation.
+  - Enhanced eligible reviewers endpoint and documentation.
+  - Refactored and removed unused endpoints and methods.
+
+- **Submission API**:
+  - Added `findDetail` endpoint to retrieve detailed submission information by ID.
+  - Enhanced review assignment structure and included moderator status in responses.
+
+- **Admin, Major, Responsibility, and User APIs**:
+  - Improved mapping, logging, and caching logic.
+  - Updated response classes and documentation.
+
+### Fixed
+
+- Fixed various validation, mapping, and error handling issues across services and controllers.
+- Improved type safety and logging in multiple modules.
+
+### Pull Requests
+
+- [#219](https://github.com/5-logic/the-sync-backend/pull/219) - dev: release api v0.6.10
+- [#220](https://github.com/5-logic/the-sync-backend/pull/220) - feature/refactor
+- [#218](https://github.com/5-logic/the-sync-backend/pull/218) - feature/issue-211
+- [#217](https://github.com/5-logic/the-sync-backend/pull/217) - feature/issue-212
+- [#216](https://github.com/5-logic/the-sync-backend/pull/216) - feature/issue-213
+- [#215](https://github.com/5-logic/the-sync-backend/pull/215) - feature/task-214
+
 ## [0.6.9] - 2025-07-18
 
 ### Added
