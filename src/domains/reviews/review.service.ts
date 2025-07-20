@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ConflictException,
 	Inject,
 	Injectable,
 	Logger,
@@ -108,7 +109,6 @@ export class ReviewService {
 				throw new NotFoundException('Some submissions not found');
 			}
 
-			// Process each assignment
 			const results: Array<{
 				submissionId: string;
 				assignedCount: number;
@@ -117,70 +117,14 @@ export class ReviewService {
 			let totalAssignedCount = 0;
 
 			for (const assignment of assignments) {
-				const { submissionId, lecturerIds } = assignment;
-
-				if (lecturerIds && lecturerIds.length > 0) {
-					// Validate lecturers exist
-					const lecturers = await this.prisma.lecturer.findMany({
-						where: { userId: { in: lecturerIds } },
-					});
-
-					if (lecturers.length !== lecturerIds.length) {
-						const foundLecturerIds = lecturers.map((l) => l.userId);
-						const missingLecturerIds = lecturerIds.filter(
-							(id) => !foundLecturerIds.includes(id),
-						);
-						this.logger.warn(
-							`Some lecturers with IDs ${missingLecturerIds.join(', ')} do not exist or are not lecturers`,
-						);
-						throw new NotFoundException(
-							`Some lecturers not found for submission ${submissionId}`,
-						);
-					}
-
-					// Validate supervisor không được là reviewer
-					for (const lecturerId of lecturerIds) {
-						await this.validateReviewer(lecturerId, submissionId);
-					}
-
-					// Create assignment data
-					const assignmentData: Array<{
-						reviewerId: string;
-						submissionId: string;
-					}> = lecturerIds.map((lecturerId) => ({
-						reviewerId: lecturerId,
-						submissionId: submissionId,
-					}));
-
-					const submissionAssignments =
-						await this.prisma.assignmentReview.createMany({
-							data: assignmentData,
-							skipDuplicates: true,
-						});
-
-					totalAssignedCount += submissionAssignments.count;
-
-					results.push({
-						submissionId,
-						assignedCount: submissionAssignments.count,
-						lecturerIds,
-					});
-
-					this.logger.log(
-						`Assigned ${submissionAssignments.count} reviewer(s) to submission ${submissionId}`,
-					);
-				} else {
-					// No lecturers specified for this submission
-					results.push({
-						submissionId,
-						assignedCount: 0,
-						lecturerIds: [],
-					});
-
-					this.logger.log(
-						`No reviewers specified for submission ${submissionId}`,
-					);
-				}
+				// Đảm bảo lecturerIds luôn là mảng (nếu undefined thì thành [])
+				const safeAssignment = {
+					submissionId: assignment.submissionId,
+					lecturerIds: assignment.lecturerIds ?? [],
+				};
+				const result = await this.processSingleAssignment(safeAssignment);
+				totalAssignedCount += result.assignedCount;
+				results.push(result);
 			}
 
 			this.logger.log(
@@ -204,6 +148,103 @@ export class ReviewService {
 				error,
 			);
 			throw error;
+		}
+	}
+
+	private async processSingleAssignment(assignment: {
+		submissionId: string;
+		lecturerIds: string[];
+	}) {
+		const { submissionId, lecturerIds } = assignment;
+		const currentReviewerCount = await this.prisma.assignmentReview.count({
+			where: { submissionId },
+		});
+
+		if (lecturerIds && lecturerIds.length > 0) {
+			if (currentReviewerCount >= 2) {
+				this.logger.warn(
+					`Submission ${submissionId} already has 2 reviewers, you can only change reviewers!`,
+				);
+				return {
+					submissionId,
+					assignedCount: 0,
+					lecturerIds: [],
+				};
+			}
+
+			const availableSlots = 2 - currentReviewerCount;
+			const lecturerIdsToAssign = lecturerIds.slice(0, availableSlots);
+
+			if (lecturerIdsToAssign.length === 0) {
+				this.logger.warn(
+					`Không còn slot reviewer cho submission ${submissionId}`,
+				);
+				return {
+					submissionId,
+					assignedCount: 0,
+					lecturerIds: [],
+				};
+			}
+
+			await this.validateLecturersExistAndNotSupervisor(
+				lecturerIdsToAssign,
+				submissionId,
+			);
+
+			const assignmentData: Array<{
+				reviewerId: string;
+				submissionId: string;
+			}> = lecturerIdsToAssign.map((lecturerId) => ({
+				reviewerId: lecturerId,
+				submissionId: submissionId,
+			}));
+
+			const submissionAssignments =
+				await this.prisma.assignmentReview.createMany({
+					data: assignmentData,
+					skipDuplicates: true,
+				});
+
+			this.logger.log(
+				`Assigned ${submissionAssignments.count} reviewer(s) to submission ${submissionId}`,
+			);
+
+			return {
+				submissionId,
+				assignedCount: submissionAssignments.count,
+				lecturerIds: lecturerIdsToAssign,
+			};
+		} else {
+			this.logger.log(`No reviewers specified for submission ${submissionId}`);
+			return {
+				submissionId,
+				assignedCount: 0,
+				lecturerIds: [],
+			};
+		}
+	}
+
+	private async validateLecturersExistAndNotSupervisor(
+		lecturerIds: string[],
+		submissionId: string,
+	) {
+		const lecturers = await this.prisma.lecturer.findMany({
+			where: { userId: { in: lecturerIds } },
+		});
+		if (lecturers.length !== lecturerIds.length) {
+			const foundLecturerIds = lecturers.map((l) => l.userId);
+			const missingLecturerIds = lecturerIds.filter(
+				(id) => !foundLecturerIds.includes(id),
+			);
+			this.logger.warn(
+				`Some lecturers with IDs ${missingLecturerIds.join(', ')} do not exist or are not lecturers`,
+			);
+			throw new NotFoundException(
+				`Some lecturers not found for submission ${submissionId}`,
+			);
+		}
+		for (const lecturerId of lecturerIds) {
+			await this.validateReviewer(lecturerId, submissionId);
 		}
 	}
 
@@ -580,9 +621,9 @@ export class ReviewService {
 			);
 
 			await this.validateReviewer(
-				updateDto.currentReviewerId,
 				updateDto.newReviewerId,
 				submissionId,
+				updateDto.currentReviewerId,
 			);
 
 			const existingReviewers = await this.prisma.assignmentReview.findFirst({
@@ -649,6 +690,10 @@ export class ReviewService {
 				where: { userId: currentReviewerId },
 			});
 
+			this.logger.log(
+				`Validating current reviewer with ID ${currentReviewerId}`,
+			);
+
 			if (!currentReviewer) {
 				this.logger.warn(
 					`Current reviewer with ID ${currentReviewerId} does not exist`,
@@ -696,6 +741,20 @@ export class ReviewService {
 			throw new BadRequestException(
 				'New reviewer cannot be a supervisor of the submission',
 			);
+		}
+
+		const existingReview = await this.prisma.assignmentReview.findFirst({
+			where: {
+				submissionId: submissionId,
+				reviewerId: newReviewerId,
+			},
+		});
+
+		if (existingReview) {
+			this.logger.warn(
+				`Reviewer with ID ${newReviewerId} is already assigned to submission ID ${submissionId}`,
+			);
+			throw new ConflictException('Reviewer is already assigned to this group');
 		}
 	}
 	/**
