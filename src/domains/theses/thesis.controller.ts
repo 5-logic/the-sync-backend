@@ -24,7 +24,7 @@ import {
 } from '@/theses/dtos';
 import { ThesisService } from '@/theses/thesis.service';
 
-@UseGuards(JwtAccessAuthGuard, RoleGuard)
+// @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags('Thesis')
 @Controller('theses')
