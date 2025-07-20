@@ -1,3 +1,4 @@
+import { mapThesisDetail } from '../mappers';
 import {
 	ConflictException,
 	Inject,
@@ -15,6 +16,7 @@ import {
 	PublishThesisDto,
 	ReviewThesisDto,
 } from '@/theses/dtos';
+import { ThesisDetailResponse } from '@/theses/responses';
 
 import { ThesisStatus } from '~/generated/prisma';
 
@@ -29,19 +31,20 @@ export class ThesisModeratorService {
 		@Inject(GroupService) private readonly groupService: GroupService,
 	) {}
 
-	async publishTheses(dto: PublishThesisDto) {
-		try {
-			this.logger.log(`Publishing theses with isPublish: ${dto.isPublish}`);
+	async publishTheses(dto: PublishThesisDto): Promise<ThesisDetailResponse[]> {
+		this.logger.log(`Publishing theses with isPublish: ${dto.isPublish}`);
 
+		try {
 			// Validate input
-			if (!dto.thesesIds || dto.thesesIds.length === 0) {
+			if (dto.thesisIds.length === 0) {
 				this.logger.warn('No thesis IDs provided for publishing');
+
 				throw new NotFoundException('No thesis IDs provided');
 			}
 
 			// Fetch theses with required data
 			const theses = await this.prisma.thesis.findMany({
-				where: { id: { in: dto.thesesIds } },
+				where: { id: { in: dto.thesisIds } },
 				select: {
 					id: true,
 					status: true,
@@ -51,7 +54,7 @@ export class ThesisModeratorService {
 			});
 
 			// Validate theses exist
-			if (theses.length !== dto.thesesIds.length) {
+			if (theses.length !== dto.thesisIds.length) {
 				this.logger.warn(`Some theses not found for publishing`);
 				throw new NotFoundException('Some theses not found');
 			}
@@ -59,7 +62,7 @@ export class ThesisModeratorService {
 			// Get supervision counts for all theses
 			const supervisionCounts = await this.prisma.supervision.groupBy({
 				by: ['thesisId'],
-				where: { thesisId: { in: dto.thesesIds } },
+				where: { thesisId: { in: dto.thesisIds } },
 				_count: { lecturerId: true },
 			});
 
@@ -150,20 +153,20 @@ export class ThesisModeratorService {
 
 			// Update theses
 			await this.prisma.thesis.updateMany({
-				where: { id: { in: dto.thesesIds } },
+				where: { id: { in: dto.thesisIds } },
 				data: { isPublish: dto.isPublish },
 			});
 
 			this.logger.log(
-				`Updated publication status for ${dto.thesesIds.length} theses to ${dto.isPublish ? 'published' : 'unpublished'}`,
+				`Updated publication status for ${dto.thesisIds.length} theses to ${dto.isPublish ? 'published' : 'unpublished'}`,
 			);
 
 			// Send notifications
 			const status = dto.isPublish ? 'Published' : 'Unpublished';
-			this.sendBulkThesisStatusChangeEmail(dto.thesesIds, status, true).catch(
+			this.sendBulkThesisStatusChangeEmail(dto.thesisIds, status, true).catch(
 				(error) => {
 					this.logger.error(
-						`Error sending publication notification emails for theses: ${dto.thesesIds.join(', ')}`,
+						`Error sending publication notification emails for theses: ${dto.thesisIds.join(', ')}`,
 						error,
 					);
 				},
@@ -171,7 +174,7 @@ export class ThesisModeratorService {
 
 			// Return updated theses
 			return await this.prisma.thesis.findMany({
-				where: { id: { in: dto.thesesIds } },
+				where: { id: { in: dto.thesisIds } },
 				include: {
 					thesisVersions: {
 						select: { id: true, version: true, supportingDocument: true },
@@ -181,32 +184,32 @@ export class ThesisModeratorService {
 			});
 		} catch (error) {
 			this.logger.error('Error publishing theses', error);
+
 			throw error;
 		}
 	}
 
-	async reviewThesis(id: string, dto: ReviewThesisDto) {
-		try {
-			this.logger.log(`Reviewing thesis with ID: ${id}`);
+	async reviewThesis(
+		id: string,
+		dto: ReviewThesisDto,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(`Reviewing thesis with ID: ${id}`);
 
+		try {
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
-				select: {
-					id: true,
-					status: true,
-					isPublish: true,
-					englishName: true,
-				},
 			});
 
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for review`);
+
 				throw new NotFoundException(`Thesis not found`);
 			}
 
 			// Check if thesis is published
 			if (existingThesis.isPublish) {
 				this.logger.warn(`Cannot review published thesis with ID ${id}`);
+
 				throw new ConflictException(
 					`Cannot review published thesis. Please unpublish it first`,
 				);
@@ -217,43 +220,41 @@ export class ThesisModeratorService {
 				this.logger.warn(
 					`Cannot review thesis with status ${existingThesis.status}`,
 				);
+
 				throw new ConflictException(
 					`Can only review theses with Pending status. Current status: ${existingThesis.status}`,
 				);
 			}
 
-			const { status } = dto;
-
 			const updatedThesis = await this.prisma.thesis.update({
 				where: { id },
-				data: { status },
+				data: { status: dto.status },
 				include: {
 					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
 						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
+						include: {
+							skill: true,
+						},
+					},
+					lecturer: {
+						include: { user: true },
 					},
 				},
 			});
 
 			this.logger.log(
-				`Thesis with ID: ${id} successfully reviewed. Status changed to ${status}`,
+				`Thesis with ID: ${id} successfully reviewed. Status changed to ${dto.status}`,
 			);
+			this.logger.debug('Updated thesis detail', JSON.stringify(updatedThesis));
 
-			// Send notification email
-			const statusText =
-				status === ThesisStatus.Approved ? 'Approved' : 'Rejected';
-			this.sendBulkThesisStatusChangeEmail([id], statusText, false).catch(
-				(error) => {
-					this.logger.error(
-						`Error sending review notification email for thesis ${id}`,
-						error,
-					);
-				},
-			);
+			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			return updatedThesis;
+			return result;
 		} catch (error) {
 			this.logger.error(`Error reviewing thesis with ID ${id}`, error);
+
 			throw error;
 		}
 	}

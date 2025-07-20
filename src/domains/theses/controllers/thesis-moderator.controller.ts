@@ -11,37 +11,45 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
+import { ApiArrayResponse } from '@/common';
+import { THESIS_API_TAGS, THESIS_CONSTANTS } from '@/theses/constants';
 import { ThesisModeratorDocs } from '@/theses/docs';
 import {
 	AssignThesisDto,
 	PublishThesisDto,
 	ReviewThesisDto,
 } from '@/theses/dtos';
-import { ThesisModeratorService } from '@/theses/services/thesis-moderator.service';
+import { ThesisDetailResponse } from '@/theses/responses';
+import { ThesisModeratorService } from '@/theses/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
-@ApiTags('Thesis - Moderator')
-@Controller('theses')
+@ApiTags(THESIS_API_TAGS)
+@Controller(THESIS_CONSTANTS.BASE)
 export class ThesisModeratorController {
-	constructor(
-		private readonly thesisModeratorService: ThesisModeratorService,
-	) {}
+	constructor(private readonly service: ThesisModeratorService) {}
 
+	@Roles(Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
 	@Put('publish')
 	@ApiOperation(ThesisModeratorDocs.publishTheses)
-	@Roles(Role.MODERATOR)
-	async publishTheses(@Body() dto: PublishThesisDto) {
-		return await this.thesisModeratorService.publishTheses(dto);
+	@ApiArrayResponse(ThesisDetailResponse, HttpStatus.OK)
+	async publishTheses(
+		@Body() dto: PublishThesisDto,
+	): Promise<ThesisDetailResponse[]> {
+		return await this.service.publishTheses(dto);
 	}
 
+	@Roles(Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
 	@Post(':id/review')
 	@ApiOperation(ThesisModeratorDocs.reviewThesis)
-	@Roles(Role.MODERATOR)
-	async reviewThesis(@Param('id') id: string, @Body() dto: ReviewThesisDto) {
-		return await this.thesisModeratorService.reviewThesis(id, dto);
+	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
+	async reviewThesis(
+		@Param('id') id: string,
+		@Body() dto: ReviewThesisDto,
+	): Promise<ThesisDetailResponse> {
+		return await this.service.reviewThesis(id, dto);
 	}
 
 	@HttpCode(HttpStatus.OK)
@@ -49,6 +57,6 @@ export class ThesisModeratorController {
 	@ApiOperation(ThesisModeratorDocs.assignThesis)
 	@Roles(Role.MODERATOR)
 	async assignThesis(@Param('id') id: string, @Body() dto: AssignThesisDto) {
-		return await this.thesisModeratorService.assignThesis(id, dto);
+		return await this.service.assignThesis(id, dto);
 	}
 }

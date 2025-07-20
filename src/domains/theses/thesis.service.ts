@@ -529,13 +529,13 @@ export class ThesisService {
 			this.logger.log(`Publishing theses with isPublish: ${dto.isPublish}`);
 
 			// Validate input
-			this.validateThesesIds(dto.thesesIds);
+			this.validateThesesIds(dto.thesisIds);
 
 			// Fetch theses with required data
-			const theses = await this.fetchThesesForPublishing(dto.thesesIds);
+			const theses = await this.fetchThesesForPublishing(dto.thesisIds);
 
 			// Validate theses exist
-			this.validateThesesExist(theses, dto.thesesIds);
+			this.validateThesesExist(theses, dto.thesisIds);
 
 			// Validate business rules
 			await this.validateThesesForPublishingAndSupervisors(theses);
@@ -546,13 +546,13 @@ export class ThesisService {
 			}
 
 			// Update theses
-			await this.updateThesesPublicationStatus(dto.thesesIds, dto.isPublish);
+			await this.updateThesesPublicationStatus(dto.thesisIds, dto.isPublish);
 
 			// Send notifications
-			this.sendPublicationNotifications(dto.thesesIds, dto.isPublish);
+			this.sendPublicationNotifications(dto.thesisIds, dto.isPublish);
 
 			// Return updated theses
-			return await this.fetchUpdatedTheses(dto.thesesIds);
+			return await this.fetchUpdatedTheses(dto.thesisIds);
 		} catch (error) {
 			this.logger.error('Error publishing theses', error);
 			throw error;

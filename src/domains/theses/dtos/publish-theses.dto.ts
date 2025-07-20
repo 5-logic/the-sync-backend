@@ -5,7 +5,7 @@ export class PublishThesisDto {
 	@ApiProperty({ required: true })
 	@IsArray()
 	@IsString({ each: true })
-	thesesIds: string[];
+	thesisIds: string[];
 
 	@ApiProperty({ required: true })
 	@IsBoolean()
