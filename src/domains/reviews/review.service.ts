@@ -44,6 +44,26 @@ export class ReviewService {
 				);
 			}
 
+			// Lấy group và thesis để tìm supervisor
+			let supervisorIds: string[] = [];
+			if (submission.groupId) {
+				const group = await this.prisma.group.findUnique({
+					where: { id: submission.groupId },
+					select: {
+						thesis: {
+							select: {
+								supervisions: {
+									select: { lecturerId: true },
+								},
+							},
+						},
+					},
+				});
+				if (group?.thesis?.supervisions) {
+					supervisorIds = group.thesis.supervisions.map((s) => s.lecturerId);
+				}
+			}
+
 			const lecturers = await this.prisma.lecturer.findMany({
 				where: {
 					assignmentReviews: {
@@ -51,6 +71,9 @@ export class ReviewService {
 							submissionId: submissionId,
 						},
 					},
+					...(supervisorIds.length > 0
+						? { userId: { notIn: supervisorIds } }
+						: {}),
 				},
 				include: {
 					user: {
@@ -76,7 +99,6 @@ export class ReviewService {
 			this.logger.debug(
 				`Eligible reviewers: ${JSON.stringify(lecturers, null, 2)}`,
 			);
-
 			return mappedReviewers;
 		} catch (error) {
 			this.logger.error(
