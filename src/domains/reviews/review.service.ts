@@ -116,10 +116,18 @@ export class ReviewService {
 		try {
 			const { assignments } = assignDto;
 
-			// Validate all submissions exist
+			// Validate all submissions exist và milestone chưa end
 			const submissionIds = assignments.map((a) => a.submissionId);
 			const submissions = await this.prisma.submission.findMany({
 				where: { id: { in: submissionIds } },
+				include: {
+					milestone: {
+						select: {
+							id: true,
+							endDate: true,
+						},
+					},
+				},
 			});
 
 			if (submissions.length !== submissionIds.length) {
@@ -129,6 +137,21 @@ export class ReviewService {
 					`Some submissions with IDs ${missingIds.join(', ')} do not exist`,
 				);
 				throw new NotFoundException('Some submissions not found');
+			}
+
+			// Kiểm tra milestone đã end chưa
+			const now = new Date();
+			const endedMilestoneSubmissions = submissions.filter(
+				(s) => s.milestone && s.milestone.endDate && now > s.milestone.endDate,
+			);
+			if (endedMilestoneSubmissions.length > 0) {
+				const ids = endedMilestoneSubmissions.map((s) => s.id).join(', ');
+				this.logger.warn(
+					`Cannot assign reviewers: milestone ended for submissions: ${ids}`,
+				);
+				throw new BadRequestException(
+					'Cannot assign reviewers to submissions whose milestone has ended',
+				);
 			}
 
 			const results: Array<{
