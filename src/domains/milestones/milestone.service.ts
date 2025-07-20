@@ -311,6 +311,7 @@ export class MilestoneService {
 					name: dto.name,
 					startDate: dto.startDate,
 					endDate: dto.endDate,
+					documents: dto.documents || existing.documents,
 				},
 			});
 
