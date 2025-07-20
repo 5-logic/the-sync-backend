@@ -9,8 +9,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
+import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { THESIS_API_TAGS, THESIS_CONSTANTS } from '@/theses/constants';
 import { ThesisPublishDocs } from '@/theses/docs';
+import { ThesisDetailResponse } from '@/theses/responses';
 import { ThesisPublishService } from '@/theses/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -23,21 +25,26 @@ export class ThesisPublishController {
 	@HttpCode(HttpStatus.OK)
 	@Get()
 	@ApiOperation(ThesisPublishDocs.findAll)
-	async findAll() {
+	@ApiArrayResponse(ThesisDetailResponse, HttpStatus.OK)
+	async findAll(): Promise<ThesisDetailResponse[]> {
 		return await this.service.findAll();
 	}
 
 	@HttpCode(HttpStatus.OK)
 	@Get(':id')
 	@ApiOperation(ThesisPublishDocs.findOne)
-	async findOne(@Param('id') id: string) {
+	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
+	async findOne(@Param('id') id: string): Promise<ThesisDetailResponse> {
 		return await this.service.findOne(id);
 	}
 
 	@HttpCode(HttpStatus.OK)
 	@Get('semester/:semesterId')
 	@ApiOperation(ThesisPublishDocs.findAllBySemesterId)
-	async findAllBySemesterId(@Param('semesterId') semesterId: string) {
+	@ApiArrayResponse(ThesisDetailResponse, HttpStatus.OK)
+	async findAllBySemesterId(
+		@Param('semesterId') semesterId: string,
+	): Promise<ThesisDetailResponse[]> {
 		return await this.service.findAllBySemesterId(semesterId);
 	}
 }

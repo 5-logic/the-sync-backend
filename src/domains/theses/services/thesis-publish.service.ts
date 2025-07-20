@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
+import { mapThesisDetail } from '@/theses/mappers';
+import { ThesisDetailResponse } from '@/theses/responses';
 
 @Injectable()
 export class ThesisPublishService {
@@ -8,35 +10,33 @@ export class ThesisPublishService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
-	async findAll() {
-		try {
-			this.logger.log('Fetching all theses');
+	async findAll(): Promise<ThesisDetailResponse[]> {
+		this.logger.log('Fetching all theses');
 
-			// No cache for list operations to ensure real-time data
+		try {
 			const theses = await this.prisma.thesis.findMany({
 				include: {
 					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
 						orderBy: { version: 'desc' },
 					},
 					thesisRequiredSkills: {
 						include: {
-							skill: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
+							skill: true,
 						},
+					},
+					lecturer: {
+						include: { user: true },
 					},
 				},
 				orderBy: { createdAt: 'desc' },
 			});
 
 			this.logger.log(`Found ${theses.length} theses`);
-			this.logger.debug('Theses detail', theses);
+			this.logger.debug('Theses detail', JSON.stringify(theses));
 
-			return theses;
+			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching theses', error);
 
@@ -44,78 +44,65 @@ export class ThesisPublishService {
 		}
 	}
 
-	async findOne(id: string) {
-		try {
-			this.logger.log(`Fetching thesis with id: ${id}`);
+	async findOne(id: string): Promise<ThesisDetailResponse> {
+		this.logger.log(`Fetching thesis with id: ${id}`);
 
+		try {
 			const thesis = await this.prisma.thesis.findUnique({
 				where: { id },
 				include: {
 					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
 						orderBy: { version: 'desc' },
 					},
 					thesisRequiredSkills: {
 						include: {
-							skill: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
+							skill: true,
 						},
+					},
+					lecturer: {
+						include: { user: true },
 					},
 				},
 			});
 
 			if (!thesis) {
 				this.logger.warn(`Thesis with ID ${id} not found`);
+
 				throw new NotFoundException(`Thesis not found`);
 			}
 
 			this.logger.log(`Thesis found with ID: ${id} (from DB)`);
-			this.logger.debug('Thesis detail', thesis);
-			return thesis;
+			this.logger.debug('Thesis detail', JSON.stringify(thesis));
+
+			const result: ThesisDetailResponse = mapThesisDetail(thesis);
+
+			return result;
 		} catch (error) {
 			this.logger.error(`Error fetching thesis with ID ${id}`, error);
+
 			throw error;
 		}
 	}
 
-	async findAllBySemesterId(semesterId: string) {
-		try {
-			this.logger.log(
-				`Fetching all theses for semester with ID: ${semesterId}`,
-			);
+	async findAllBySemesterId(
+		semesterId: string,
+	): Promise<ThesisDetailResponse[]> {
+		this.logger.log(`Fetching all theses for semester with ID: ${semesterId}`);
 
-			// No cache for list operations to ensure real-time data
+		try {
 			const theses = await this.prisma.thesis.findMany({
 				where: { semesterId },
 				include: {
 					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
 						orderBy: { version: 'desc' },
 					},
 					thesisRequiredSkills: {
 						include: {
-							skill: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
+							skill: true,
 						},
 					},
 					lecturer: {
-						include: {
-							user: {
-								select: {
-									id: true,
-									fullName: true,
-									email: true,
-								},
-							},
-						},
+						include: { user: true },
 					},
 				},
 				orderBy: { createdAt: 'desc' },
@@ -124,9 +111,11 @@ export class ThesisPublishService {
 			this.logger.log(
 				`Found ${theses.length} theses for semester ${semesterId}`,
 			);
-			this.logger.debug('Theses detail', theses);
+			this.logger.debug('Theses detail', JSON.stringify(theses));
 
-			return theses;
+			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
+
+			return result;
 		} catch (error) {
 			this.logger.error(
 				`Error fetching theses for semester with ID ${semesterId}`,
