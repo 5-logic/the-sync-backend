@@ -21,7 +21,7 @@ import {
 	Roles,
 	UserPayload,
 } from '@/auth';
-import { ApiBaseResponse } from '@/common';
+import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { THESIS_API_TAGS, THESIS_CONSTANTS } from '@/theses/constants';
 import { ThesisLecturerDocs } from '@/theses/docs';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
@@ -53,7 +53,10 @@ export class ThesisLecturerController {
 	@HttpCode(HttpStatus.OK)
 	@Get('lecturer/:lecturerId')
 	@ApiOperation(ThesisLecturerDocs.findAllByLecturerId)
-	async findAllByLecturerId(@Param('lecturerId') lecturerId: string) {
+	@ApiArrayResponse(ThesisDetailResponse, HttpStatus.OK)
+	async findAllByLecturerId(
+		@Param('lecturerId') lecturerId: string,
+	): Promise<ThesisDetailResponse[]> {
 		return await this.service.findAllByLecturerId(lecturerId);
 	}
 
@@ -61,11 +64,12 @@ export class ThesisLecturerController {
 	@HttpCode(HttpStatus.OK)
 	@Put(':id')
 	@ApiOperation(ThesisLecturerDocs.update)
+	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
 	async update(
 		@Req() req: Request,
 		@Param('id') id: string,
 		@Body() dto: UpdateThesisDto,
-	) {
+	): Promise<ThesisDetailResponse> {
 		const user = req.user as UserPayload;
 
 		return await this.service.update(user.id, id, dto);
@@ -75,7 +79,11 @@ export class ThesisLecturerController {
 	@HttpCode(HttpStatus.OK)
 	@Post(':id/submit')
 	@ApiOperation(ThesisLecturerDocs.submitForReview)
-	async submitForReview(@Req() req: Request, @Param('id') id: string) {
+	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
+	async submitForReview(
+		@Req() req: Request,
+		@Param('id') id: string,
+	): Promise<ThesisDetailResponse> {
 		const user = req.user as UserPayload;
 
 		return await this.service.submitForReview(user.id, id);

@@ -97,7 +97,7 @@ export class ThesisLecturerService {
 						},
 					});
 
-					const result: ThesisDetailResponse = mapThesisDetail(newThesis);
+					const result: ThesisDetailResponse = mapThesisDetail(newThesis!);
 
 					// Return thesis with version and skills information
 					return result;
@@ -116,50 +116,58 @@ export class ThesisLecturerService {
 		}
 	}
 
-	async findAllByLecturerId(lecturerId: string) {
-		try {
-			this.logger.log(
-				`Fetching all theses for lecturer with ID: ${lecturerId}`,
-			);
+	async findAllByLecturerId(
+		lecturerId: string,
+	): Promise<ThesisDetailResponse[]> {
+		this.logger.log(`Fetching all theses for lecturer with ID: ${lecturerId}`);
 
-			// No cache for list operations to ensure real-time data
+		try {
 			const theses = await this.prisma.thesis.findMany({
-				where: { lecturerId },
+				where: { lecturerId: lecturerId },
 				include: {
 					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
 						orderBy: { version: 'desc' },
 					},
 					thesisRequiredSkills: {
 						include: {
-							skill: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
+							skill: true,
 						},
+					},
+					lecturer: {
+						include: { user: true },
 					},
 				},
 				orderBy: { createdAt: 'desc' },
 			});
 
-			return theses;
+			this.logger.log(
+				`Found ${theses.length} theses for lecturer with ID: ${lecturerId}`,
+			);
+			this.logger.debug('Theses detail', JSON.stringify(theses));
+
+			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
+
+			return result;
 		} catch (error) {
 			this.logger.error(
 				`Error fetching theses for lecturer with ID ${lecturerId}`,
 				error,
 			);
+
 			throw error;
 		}
 	}
 
-	async update(lecturerId: string, id: string, dto: UpdateThesisDto) {
-		try {
-			this.logger.log(
-				`Updating thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
-			);
+	async update(
+		lecturerId: string,
+		id: string,
+		dto: UpdateThesisDto,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(
+			`Updating thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
+		);
 
+		try {
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
 				include: {
@@ -187,45 +195,23 @@ export class ThesisLecturerService {
 				);
 			}
 
-			const {
-				supportingDocument,
-				englishName,
-				vietnameseName,
-				abbreviation,
-				description,
-				domain,
-				skillIds,
-			} = dto;
-
 			// Validate skillIds if provided
-			if (skillIds && skillIds.length > 0) {
-				await this.validateSkillIds(skillIds);
+			if (dto.skillIds && dto.skillIds.length > 0) {
+				await this.validateSkillIds(dto.skillIds);
 			}
 
-			const updatedThesis = await this.prisma.$transaction(async (prisma) => {
-				// Update thesis data (excluding supportingDocument)
-				await prisma.thesis.update({
-					where: { id },
-					data: {
-						englishName,
-						vietnameseName,
-						abbreviation,
-						description,
-						domain,
-					},
-				});
-
+			const result = await this.prisma.$transaction(async (txn) => {
 				// If supportingDocument is provided, create a new version
-				if (supportingDocument) {
+				if (dto.supportingDocument) {
 					const latestVersion =
 						existingThesis.thesisVersions[0]?.version ??
 						ThesisLecturerService.INITIAL_VERSION;
 					const newVersion = latestVersion + 1;
 
-					await prisma.thesisVersion.create({
+					await txn.thesisVersion.create({
 						data: {
 							version: newVersion,
-							supportingDocument,
+							supportingDocument: dto.supportingDocument,
 							thesisId: id,
 						},
 					});
@@ -236,16 +222,16 @@ export class ThesisLecturerService {
 				}
 
 				// Update thesis required skills if skillIds provided
-				if (skillIds !== undefined) {
+				if (dto.skillIds && dto.skillIds.length > 0) {
 					// Delete existing skills
-					await prisma.thesisRequiredSkill.deleteMany({
+					await txn.thesisRequiredSkill.deleteMany({
 						where: { thesisId: id },
 					});
 
 					// Create new skills if any provided
-					if (skillIds.length > 0) {
-						await prisma.thesisRequiredSkill.createMany({
-							data: skillIds.map((skillId) => ({
+					if (dto.skillIds && dto.skillIds.length > 0) {
+						await txn.thesisRequiredSkill.createMany({
+							data: dto.skillIds.map((skillId) => ({
 								thesisId: id,
 								skillId,
 							})),
@@ -253,40 +239,43 @@ export class ThesisLecturerService {
 					}
 
 					this.logger.log(
-						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${skillIds.length}`,
+						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
 					);
 				}
 
-				// Return updated thesis with all versions and skills
-				return prisma.thesis.findUnique({
-					where: { id },
+				const updateThesis = await txn.thesis.update({
+					where: { id: id },
+					data: {
+						englishName: dto.englishName,
+						vietnameseName: dto.vietnameseName,
+						abbreviation: dto.abbreviation,
+						description: dto.description,
+						domain: dto.domain,
+					},
 					include: {
 						thesisVersions: {
-							select: { id: true, version: true, supportingDocument: true },
 							orderBy: { version: 'desc' },
 						},
 						thesisRequiredSkills: {
 							include: {
-								skill: {
-									select: {
-										id: true,
-										name: true,
-									},
-								},
+								skill: true,
 							},
+						},
+						lecturer: {
+							include: { user: true },
 						},
 					},
 				});
+
+				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
+
+				return result;
 			});
 
-			if (!updatedThesis) {
-				throw new ConflictException('Failed to update thesis');
-			}
+			this.logger.log(`Thesis updated with ID: ${result.id}`);
+			this.logger.debug('Updated thesis detail', JSON.stringify(result));
 
-			this.logger.log(`Thesis updated with ID: ${updatedThesis.id}`);
-			this.logger.debug('Updated thesis detail', updatedThesis);
-
-			return updatedThesis;
+			return result;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
 
@@ -294,19 +283,17 @@ export class ThesisLecturerService {
 		}
 	}
 
-	async submitForReview(lecturerId: string, id: string) {
-		try {
-			this.logger.log(
-				`Submitting thesis with ID: ${id} for review by lecturer with ID: ${lecturerId}`,
-			);
+	async submitForReview(
+		lecturerId: string,
+		id: string,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(
+			`Submitting thesis with ID: ${id} for review by lecturer with ID: ${lecturerId}`,
+		);
 
+		try {
 			const existingThesis = await this.prisma.thesis.findUnique({
-				where: { id },
-				select: {
-					id: true,
-					status: true,
-					lecturerId: true,
-				},
+				where: { id: id },
 			});
 
 			if (!existingThesis) {
@@ -338,16 +325,6 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// Only allow submission from New or Rejected status
-			if (
-				existingThesis.status !== ThesisStatus.New &&
-				existingThesis.status !== ThesisStatus.Rejected
-			) {
-				throw new ConflictException(
-					`Cannot submit thesis with current status for review`,
-				);
-			}
-
 			const updatedThesis = await this.prisma.thesis.update({
 				where: { id },
 				data: {
@@ -355,8 +332,15 @@ export class ThesisLecturerService {
 				},
 				include: {
 					thesisVersions: {
-						select: { id: true, version: true, supportingDocument: true },
 						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
+						include: {
+							skill: true,
+						},
+					},
+					lecturer: {
+						include: { user: true },
 					},
 				},
 			});
@@ -364,9 +348,11 @@ export class ThesisLecturerService {
 			this.logger.log(
 				`Thesis with ID: ${id} successfully submitted for review. Status changed to Pending`,
 			);
-			this.logger.debug('Updated thesis detail', updatedThesis);
+			this.logger.debug('Updated thesis detail', JSON.stringify(updatedThesis));
 
-			return updatedThesis;
+			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			return result;
 		} catch (error) {
 			this.logger.error(
 				`Error submitting thesis with ID ${id} for review`,
