@@ -120,15 +120,49 @@ export class ReviewService {
 			for (const assignment of assignments) {
 				const { submissionId, lecturerIds } = assignment;
 
+				// Lấy số lượng reviewer hiện tại của submission này
+				const currentReviewerCount = await this.prisma.assignmentReview.count({
+					where: { submissionId },
+				});
+
 				if (lecturerIds && lecturerIds.length > 0) {
+					// Nếu đã đủ 2 reviewer thì không cho phép assign thêm
+					if (currentReviewerCount >= 2) {
+						this.logger.warn(
+							`Submission ${submissionId} already has 2 reviewers, you can only change reviewers!`,
+						);
+						results.push({
+							submissionId,
+							assignedCount: 0,
+							lecturerIds: [],
+						});
+						continue;
+					}
+
+					// Số lượng reviewer có thể assign thêm
+					const availableSlots = 2 - currentReviewerCount;
+					const lecturerIdsToAssign = lecturerIds.slice(0, availableSlots);
+
+					if (lecturerIdsToAssign.length === 0) {
+						this.logger.warn(
+							`Không còn slot reviewer cho submission ${submissionId}`,
+						);
+						results.push({
+							submissionId,
+							assignedCount: 0,
+							lecturerIds: [],
+						});
+						continue;
+					}
+
 					// Validate lecturers exist
 					const lecturers = await this.prisma.lecturer.findMany({
-						where: { userId: { in: lecturerIds } },
+						where: { userId: { in: lecturerIdsToAssign } },
 					});
 
-					if (lecturers.length !== lecturerIds.length) {
+					if (lecturers.length !== lecturerIdsToAssign.length) {
 						const foundLecturerIds = lecturers.map((l) => l.userId);
-						const missingLecturerIds = lecturerIds.filter(
+						const missingLecturerIds = lecturerIdsToAssign.filter(
 							(id) => !foundLecturerIds.includes(id),
 						);
 						this.logger.warn(
@@ -140,7 +174,7 @@ export class ReviewService {
 					}
 
 					// Validate supervisor không được là reviewer
-					for (const lecturerId of lecturerIds) {
+					for (const lecturerId of lecturerIdsToAssign) {
 						await this.validateReviewer(lecturerId, submissionId);
 					}
 
@@ -148,7 +182,7 @@ export class ReviewService {
 					const assignmentData: Array<{
 						reviewerId: string;
 						submissionId: string;
-					}> = lecturerIds.map((lecturerId) => ({
+					}> = lecturerIdsToAssign.map((lecturerId) => ({
 						reviewerId: lecturerId,
 						submissionId: submissionId,
 					}));
@@ -164,7 +198,7 @@ export class ReviewService {
 					results.push({
 						submissionId,
 						assignedCount: submissionAssignments.count,
-						lecturerIds,
+						lecturerIds: lecturerIdsToAssign,
 					});
 
 					this.logger.log(
