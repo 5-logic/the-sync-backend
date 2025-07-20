@@ -1,17 +1,16 @@
 import {
 	ConflictException,
 	ForbiddenException,
-	Inject,
 	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
-import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
-import { mapThesis } from '@/theses/mappers';
-import { ThesisResponse } from '@/theses/responses';
+import { mapThesis, mapThesisDetail } from '@/theses/mappers';
+import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
 
 import { ThesisStatus } from '~/generated/prisma';
 
@@ -21,220 +20,95 @@ export class ThesisLecturerService {
 
 	private static readonly INITIAL_VERSION = 1;
 
-	constructor(
-		private readonly prisma: PrismaService,
-		@Inject(EmailQueueService)
-		private readonly emailQueueService: EmailQueueService,
-	) {}
+	constructor(private readonly prisma: PrismaService) {}
 
-	/**
-	 * Helper method to send thesis status change email notification
-	 */
-	private async sendThesisStatusChangeEmail(
-		thesisId: string,
-		newStatus: string,
-		isPublicationChange: boolean = false,
-	) {
+	async create(
+		lecturerId: string,
+		dto: CreateThesisDto,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(`Creating thesis for lecturer with ID: ${lecturerId}`);
+
 		try {
-			// Get thesis with lecturer information
-			const thesis = await this.prisma.thesis.findUnique({
-				where: { id: thesisId },
-				include: {
-					lecturer: {
-						include: {
-							user: {
-								select: {
-									email: true,
-									fullName: true,
-								},
-							},
-						},
-					},
-				},
-			});
-
-			if (!thesis) {
-				this.logger.warn(`Thesis with ID ${thesisId} not found for email`);
-				return;
-			}
-
-			// Determine email subject based on the type of change
-			let subject: string;
-			if (isPublicationChange) {
-				subject = `Thesis Publication Update - ${thesis.englishName}`;
-			} else {
-				subject = `Thesis Review Status Update - ${thesis.englishName}`;
-			}
-
-			// Prepare email data
-			const emailDto: EmailJobDto = {
-				to: thesis.lecturer.user.email,
-				subject,
-				context: {
-					lecturerName: thesis.lecturer.user.fullName,
-					englishName: thesis.englishName,
-					vietnameseName: thesis.vietnameseName,
-					abbreviation: thesis.abbreviation,
-					domain: thesis.domain,
-					status: newStatus,
-				},
-			};
-
-			// Send email
-			await this.emailQueueService.sendEmail(
-				EmailJobType.SEND_THESIS_STATUS_CHANGE,
-				emailDto,
-				500,
-			);
-
-			this.logger.log(
-				`${isPublicationChange ? 'Publication' : 'Review status'} change email sent to ${thesis.lecturer.user.email} for thesis ${thesisId}`,
-			);
-		} catch (error) {
-			this.logger.error(
-				`Error sending ${isPublicationChange ? 'publication' : 'review status'} change email for thesis ${thesisId}`,
-				error,
-			);
-			// Don't throw error to avoid breaking the main operation
-		}
-	}
-
-	/**
-	 * Validate that all skill IDs exist in the database
-	 */
-	private async validateSkillIds(skillIds: string[]) {
-		const existingSkills = await this.prisma.skill.findMany({
-			where: { id: { in: skillIds } },
-			select: { id: true },
-		});
-
-		if (existingSkills.length !== skillIds.length) {
-			const existingSkillIds = existingSkills.map((skill) => skill.id);
-			const missingSkillIds = skillIds.filter(
-				(skillId) => !existingSkillIds.includes(skillId),
-			);
-
-			this.logger.warn(
-				`Some skill IDs do not exist: ${missingSkillIds.join(', ')}`,
-			);
-			throw new NotFoundException(
-				`Some skills not found: ${missingSkillIds.join(', ')}`,
-			);
-		}
-	}
-
-	async create(lecturerId: string, dto: CreateThesisDto) {
-		try {
-			const {
-				supportingDocument,
-				englishName,
-				vietnameseName,
-				abbreviation,
-				description,
-				domain,
-				skillIds,
-				semesterId,
-			} = dto;
-
 			// Validate skillIds if provided
-			if (skillIds && skillIds.length > 0) {
-				await this.validateSkillIds(skillIds);
+			if (dto.skillIds && dto.skillIds.length > 0) {
+				await this.validateSkillIds(dto.skillIds);
 			}
 
 			// Check maxThesesPerLecturer for this semester
-			const semester = await this.prisma.semester.findUnique({
-				where: { id: semesterId },
-				select: {
-					maxThesesPerLecturer: true,
-					name: true,
-				},
-			});
-			if (!semester) {
-				this.logger.debug(`Semester with ID ${semesterId} not found`);
-				throw new NotFoundException('Semester not found');
-			}
-			const currentThesesCount = await this.prisma.thesis.count({
-				where: {
-					lecturerId,
-					semesterId,
-				},
-			});
-			if (currentThesesCount >= semester.maxThesesPerLecturer) {
-				this.logger.warn(
-					`Lecturer ${lecturerId} has reached the maximum number of theses (${semester.maxThesesPerLecturer}) in semester ${semester.name}`,
-				);
-				throw new ConflictException(
-					`You have reached the maximum number of theses (${semester.maxThesesPerLecturer}) allowed in semester ${semester.name}`,
-				);
-			}
+			await this.validateSemesterAndThesisCount(lecturerId, dto.semesterId);
 
-			const newThesis = await this.prisma.$transaction(async (prisma) => {
-				// Create thesis
-				const thesis = await prisma.thesis.create({
-					data: {
-						englishName,
-						vietnameseName,
-						abbreviation,
-						description,
-						domain,
-						lecturerId,
-						semesterId,
-					},
-				});
-
-				// Create the first thesis version
-				await prisma.thesisVersion.create({
-					data: {
-						version: ThesisLecturerService.INITIAL_VERSION,
-						supportingDocument,
-						thesisId: thesis.id,
-					},
-				});
-
-				//  Create first supervisor who create thí thesis
-				await prisma.supervision.create({
-					data: {
-						lecturerId,
-						thesisId: thesis.id,
-					},
-				});
-
-				// Create thesis required skills if skillIds provided
-				if (skillIds && skillIds.length > 0) {
-					await prisma.thesisRequiredSkill.createMany({
-						data: skillIds.map((skillId) => ({
-							thesisId: thesis.id,
-							skillId,
-						})),
-					});
-				}
-
-				// Return thesis with version and skills information
-				return prisma.thesis.findUnique({
-					where: { id: thesis.id },
-					include: {
-						thesisVersions: {
-							select: { id: true, version: true, supportingDocument: true },
-							orderBy: { version: 'desc' },
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					// Create thesis
+					const thesis = await txn.thesis.create({
+						data: {
+							englishName: dto.englishName,
+							vietnameseName: dto.vietnameseName,
+							abbreviation: dto.abbreviation,
+							description: dto.description,
+							domain: dto.domain,
+							lecturerId,
+							semesterId: dto.semesterId,
 						},
-						thesisRequiredSkills: {
-							include: {
-								skill: {
-									select: {
-										id: true,
-										name: true,
-									},
+						select: { id: true },
+					});
+
+					// Create the first thesis version
+					await txn.thesisVersion.create({
+						data: {
+							version: ThesisLecturerService.INITIAL_VERSION,
+							supportingDocument: dto.supportingDocument,
+							thesisId: thesis.id,
+						},
+					});
+
+					//  Create first supervisor who create thí thesis
+					await txn.supervision.create({
+						data: {
+							lecturerId,
+							thesisId: thesis.id,
+						},
+					});
+
+					// Create thesis required skills if skillIds provided
+					if (dto.skillIds && dto.skillIds?.length > 0) {
+						await txn.thesisRequiredSkill.createMany({
+							data: dto.skillIds.map((skillId) => ({
+								thesisId: thesis.id,
+								skillId,
+							})),
+						});
+					}
+
+					const newThesis = await txn.thesis.findUnique({
+						where: { id: thesis.id },
+						include: {
+							thesisVersions: {
+								orderBy: { version: 'desc' },
+							},
+							thesisRequiredSkills: {
+								include: {
+									skill: true,
 								},
 							},
+							lecturer: {
+								include: { user: true },
+							},
 						},
-					},
-				});
-			});
+					});
 
-			this.logger.log(`Thesis created with ID: ${newThesis?.id}`);
-			this.logger.debug('New thesis detail', newThesis);
+					const result: ThesisDetailResponse = mapThesisDetail(newThesis);
 
-			return newThesis;
+					// Return thesis with version and skills information
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
+
+			this.logger.log(`Thesis created with ID: ${result?.id}`);
+			this.logger.debug('New thesis detail', JSON.stringify(result));
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error creating thesis', error);
 
@@ -492,14 +366,6 @@ export class ThesisLecturerService {
 			);
 			this.logger.debug('Updated thesis detail', updatedThesis);
 
-			// Send notification email about submission (review status change)
-			this.sendThesisStatusChangeEmail(id, 'Pending', false).catch((error) => {
-				this.logger.error(
-					`Error sending submission notification email for thesis ${id}`,
-					error,
-				);
-			});
-
 			return updatedThesis;
 		} catch (error) {
 			this.logger.error(
@@ -586,6 +452,63 @@ export class ThesisLecturerService {
 			this.logger.error(`Error deleting thesis with ID ${id}`, error);
 
 			throw error;
+		}
+	}
+
+	// ------------------------------------------------------------------------------------------
+	// Additional methods for thesis management can be added here
+	// ------------------------------------------------------------------------------------------
+
+	private async validateSkillIds(skillIds: string[]) {
+		const existingSkills = await this.prisma.skill.findMany({
+			where: { id: { in: skillIds } },
+			select: { id: true },
+		});
+
+		if (existingSkills.length !== skillIds.length) {
+			const existingSkillIds = existingSkills.map((skill) => skill.id);
+			const missingSkillIds = skillIds.filter(
+				(skillId) => !existingSkillIds.includes(skillId),
+			);
+
+			this.logger.warn(
+				`Some skill IDs do not exist: ${missingSkillIds.join(', ')}`,
+			);
+			throw new NotFoundException(
+				`Some skills not found: ${missingSkillIds.join(', ')}`,
+			);
+		}
+	}
+
+	private async validateSemesterAndThesisCount(
+		lecturerId: string,
+		semesterId: string,
+	): Promise<void> {
+		// Validate that the semester exists
+		const semester = await this.prisma.semester.findUnique({
+			where: { id: semesterId },
+		});
+
+		if (!semester) {
+			this.logger.warn(`Semester with ID ${semesterId} not found`);
+
+			throw new NotFoundException(`Semester not found`);
+		}
+
+		// Validate that the lecturer has not exceeded the thesis limit for the semester
+		const thesisCount = await this.prisma.thesis.count({
+			where: {
+				lecturerId,
+				semesterId,
+			},
+		});
+
+		if (thesisCount >= semester.maxThesesPerLecturer) {
+			this.logger.warn(
+				`Lecturer with ID ${lecturerId} has exceeded the thesis limit for semester ${semesterId}`,
+			);
+
+			throw new ConflictException('Thesis limit exceeded for this semester');
 		}
 	}
 }
