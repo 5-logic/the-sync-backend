@@ -12,7 +12,7 @@ import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
 import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { STUDENT_API_TAGS, STUDENT_CONSTANTS } from '@/students/constants';
 import { StudentPublicDocs } from '@/students/docs';
-import { StudentResponse } from '@/students/responses';
+import { StudentDetailResponse, StudentResponse } from '@/students/responses';
 import { StudentPublicService } from '@/students/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -33,7 +33,8 @@ export class StudentPublicController {
 	@HttpCode(HttpStatus.OK)
 	@Get(':id')
 	@ApiOperation(StudentPublicDocs.findOne)
-	async findOne(@Param('id') id: string) {
+	@ApiBaseResponse(StudentDetailResponse, HttpStatus.OK)
+	async findOne(@Param('id') id: string): Promise<StudentDetailResponse> {
 		return await this.service.findOne(id);
 	}
 

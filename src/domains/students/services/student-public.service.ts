@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
 import { mapStudentV2 } from '@/students/mappers';
-import { StudentResponse } from '@/students/responses';
+import { StudentDetailResponse, StudentResponse } from '@/students/responses';
 
 @Injectable()
 export class StudentPublicService {
@@ -37,7 +37,7 @@ export class StudentPublicService {
 		}
 	}
 
-	async findOne(id: string) {
+	async findOne(id: string): Promise<StudentDetailResponse> {
 		await new Promise((resolve) => setTimeout(resolve, 10));
 	}
 
