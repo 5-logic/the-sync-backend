@@ -21,7 +21,7 @@ import {
 	PublishThesisDto,
 	ReviewThesisDto,
 	UpdateThesisDto,
-} from '@/theses/dto';
+} from '@/theses/dtos';
 import { ThesisService } from '@/theses/thesis.service';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)

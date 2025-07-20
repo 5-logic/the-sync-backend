@@ -18,7 +18,7 @@ import {
 	PublishThesisDto,
 	ReviewThesisDto,
 	UpdateThesisDto,
-} from '@/theses/dto';
+} from '@/theses/dtos';
 
 import { ThesisStatus } from '~/generated/prisma';
 
