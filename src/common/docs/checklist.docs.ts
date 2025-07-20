@@ -3,7 +3,7 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 export const ChecklistDocs: Record<string, ApiOperationOptions> = {
 	create: {
 		summary: 'Create a new checklist',
-		description: `Create a new checklist with name, description, and optional milestone assignment.\n\n- **Moderator access only** (authentication and MODERATOR role required).\n- If milestoneId is provided, validates that the milestone exists and has not started yet.\n- Returns created checklist with milestone info, checklist items, and item/review counts.\n- Returns 409 error if milestone has started.\n- Returns 404 error if milestone does not exist.\n- Logs all creation attempts and errors.`,
+		description: `Create a new checklist with name, description, and optional milestone assignment.\n\n- **Moderator access only** (authentication and MODERATOR role required).\n- If milestoneId is provided, validates that the milestone exists, has not started yet, and does not already have a checklist.\n- Each milestone can have only one checklist.\n- Returns created checklist with milestone info, checklist items, and item/review counts.\n- Returns 409 error if milestone has started or already has a checklist.\n- Returns 404 error if milestone does not exist.\n- Logs all creation attempts and errors.`,
 	},
 
 	findAll: {
@@ -18,7 +18,7 @@ export const ChecklistDocs: Record<string, ApiOperationOptions> = {
 
 	update: {
 		summary: 'Update a checklist',
-		description: `Update checklist name, description, and milestone assignment.\n\n- **Moderator access only**.\n- If checklist is currently attached to a milestone, validates that milestone has not started.\n- If updating to attach to a new milestone, validates that new milestone exists and has not started.\n- Returns updated checklist with milestone info and item/review counts.\n- Returns 409 error if milestone has started.\n- Returns 404 error if checklist or milestone does not exist.\n- Logs all update attempts and errors.`,
+		description: `Update checklist name, description, and milestone assignment.\n\n- **Moderator access only**.\n- If checklist is currently attached to a milestone, validates that milestone has not started.\n- If updating to attach to a new milestone, validates that new milestone exists, has not started, and does not already have a checklist.\n- Each milestone can have only one checklist.\n- Returns updated checklist with milestone info and item/review counts.\n- Returns 409 error if milestone has started or new milestone already has a checklist.\n- Returns 404 error if checklist or milestone does not exist.\n- Logs all update attempts and errors.`,
 	},
 
 	remove: {

@@ -8,7 +8,7 @@ import {
 import { Cache } from 'cache-manager';
 
 import { CACHE_KEY, TOKEN_CACHE_TTL } from '@/auth/constants';
-import { RefreshDto, UserLoginDto } from '@/auth/dto';
+import { RefreshDto, UserLoginDto } from '@/auth/dtos';
 import { Role } from '@/auth/enums';
 import { CachePayload, JwtPayload } from '@/auth/interfaces';
 import { LoginResponse, RefreshResponse } from '@/auth/responses';

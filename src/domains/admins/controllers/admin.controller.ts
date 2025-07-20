@@ -13,7 +13,7 @@ import { Request } from 'express';
 
 import { ADMIN_API_TAGS, ADMIN_CONSTANTS } from '@/admins/constants';
 import { AdminDocs } from '@/admins/docs';
-import { UpdateAdminDto } from '@/admins/dto';
+import { UpdateAdminDto } from '@/admins/dtos';
 import { AdminResponse } from '@/admins/responses';
 import { AdminService } from '@/admins/services';
 import {
