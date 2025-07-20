@@ -105,13 +105,7 @@ export class ThesisLecturerService {
 			this.logger.log(`Thesis created with ID: ${result?.id}`);
 			this.logger.debug('New thesis detail', JSON.stringify(result));
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await Promise.all([
-				this.cache.saveToCache(cacheKey, result),
-				this.cache.delete(`${CACHE_KEY}/`),
-				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-			]);
+			await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -285,13 +279,7 @@ export class ThesisLecturerService {
 
 				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
 
-				const cacheKey = `${CACHE_KEY}/${result.id}`;
-				await Promise.all([
-					this.cache.saveToCache(cacheKey, result),
-					this.cache.delete(`${CACHE_KEY}/`),
-					this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-					this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-				]);
+				await this.saveAndDeleteCache(result);
 
 				return result;
 			});
@@ -376,13 +364,7 @@ export class ThesisLecturerService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await Promise.all([
-				this.cache.saveToCache(cacheKey, result),
-				this.cache.delete(`${CACHE_KEY}/`),
-				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-			]);
+			await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -465,13 +447,7 @@ export class ThesisLecturerService {
 
 			const result: ThesisResponse = mapThesis(deletedThesis);
 
-			const cacheKey = `${CACHE_KEY}/${id}`;
-			await Promise.all([
-				this.cache.delete(cacheKey),
-				this.cache.delete(`${CACHE_KEY}/`),
-				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-			]);
+			await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -536,5 +512,17 @@ export class ThesisLecturerService {
 
 			throw new ConflictException('Thesis limit exceeded for this semester');
 		}
+	}
+
+	private async saveAndDeleteCache(
+		result: ThesisDetailResponse | ThesisResponse,
+	) {
+		const cacheKey = `${CACHE_KEY}/${result.id}`;
+		await Promise.all([
+			this.cache.saveToCache(cacheKey, result),
+			this.cache.delete(`${CACHE_KEY}/`),
+			this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+			this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+		]);
 	}
 }

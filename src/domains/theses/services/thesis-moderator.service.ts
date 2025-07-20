@@ -174,13 +174,7 @@ export class ThesisModeratorService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await Promise.all([
-				this.cache.saveToCache(cacheKey, result),
-				this.cache.delete(`${CACHE_KEY}/`),
-				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-			]);
+			await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -305,13 +299,7 @@ export class ThesisModeratorService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await Promise.all([
-				this.cache.saveToCache(cacheKey, result),
-				this.cache.delete(`${CACHE_KEY}/`),
-				this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-				this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-			]);
+			await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -322,5 +310,19 @@ export class ThesisModeratorService {
 
 			throw error;
 		}
+	}
+
+	// ------------------------------------------------------------------------------------------
+	// Additional methods for thesis management can be added here
+	// ------------------------------------------------------------------------------------------
+
+	private async saveAndDeleteCache(result: ThesisDetailResponse) {
+		const cacheKey = `${CACHE_KEY}/${result.id}`;
+		await Promise.all([
+			this.cache.saveToCache(cacheKey, result),
+			this.cache.delete(`${CACHE_KEY}/`),
+			this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+			this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+		]);
 	}
 }
