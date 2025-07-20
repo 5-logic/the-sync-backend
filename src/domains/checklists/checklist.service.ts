@@ -53,6 +53,18 @@ export class ChecklistService {
 				await this.validateMilestoneOperationTiming(
 					createChecklistDto.milestoneId,
 				);
+				// Ensure only one checklist per milestone
+				const existingChecklist = await this.prisma.checklist.findFirst({
+					where: { milestoneId: createChecklistDto.milestoneId },
+				});
+				if (existingChecklist) {
+					this.logger.warn(
+						`Milestone already has a checklist (ID: ${existingChecklist.id}). Only one checklist is allowed per milestone.`,
+					);
+					throw new ConflictException(
+						`Milestone already has a checklist  ${existingChecklist.name}. Only one checklist is allowed per milestone.`,
+					);
+				}
 			}
 
 			const checklist = await this.prisma.checklist.create({
@@ -233,6 +245,21 @@ export class ChecklistService {
 				await this.validateMilestoneOperationTiming(
 					updateChecklistDto.milestoneId,
 				);
+				// Ensure only one checklist per milestone
+				const checklistOnMilestone = await this.prisma.checklist.findFirst({
+					where: {
+						milestoneId: updateChecklistDto.milestoneId,
+						NOT: { id },
+					},
+				});
+				if (checklistOnMilestone) {
+					this.logger.warn(
+						`Milestone already has a checklist (ID: ${checklistOnMilestone.id}). Only one checklist is allowed per milestone.`,
+					);
+					throw new ConflictException(
+						`Milestone already has a checklist ${checklistOnMilestone.name}. Only one checklist is allowed per milestone.`,
+					);
+				}
 			}
 
 			const updatedChecklist = await this.prisma.checklist.update({

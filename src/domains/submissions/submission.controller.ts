@@ -32,6 +32,12 @@ export class SubmissionController {
 		return await this.submissionService.findAll(user.id);
 	}
 
+	@Get(':id')
+	@SwaggerDoc('submission', 'findDetail')
+	async findDetail(@Param('id') id: string) {
+		return await this.submissionService.findDetail(id);
+	}
+
 	@Roles(Role.MODERATOR)
 	@Get('semester/:semesterId')
 	@SwaggerDoc('submission', 'findAllBySemester')
