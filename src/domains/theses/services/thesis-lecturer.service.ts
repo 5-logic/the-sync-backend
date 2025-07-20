@@ -13,7 +13,7 @@ import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
 
-import { ThesisStatus } from '~/generated/prisma';
+import { Skill, ThesisRequiredSkill, ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class ThesisLecturerService {
@@ -54,11 +54,13 @@ export class ThesisLecturerService {
 							lecturerId,
 							semesterId: dto.semesterId,
 						},
-						select: { id: true },
+						include: {
+							lecturer: { include: { user: true } },
+						},
 					});
 
 					// Create the first thesis version
-					await txn.thesisVersion.create({
+					const firstThesisVersion = await txn.thesisVersion.create({
 						data: {
 							version: ThesisLecturerService.INITIAL_VERSION,
 							supportingDocument: dto.supportingDocument,
@@ -75,33 +77,24 @@ export class ThesisLecturerService {
 					});
 
 					// Create thesis required skills if skillIds provided
+					let thesisRequiredSkills: (ThesisRequiredSkill & { skill: Skill })[] =
+						[];
 					if (dto.skillIds && dto.skillIds?.length > 0) {
-						await txn.thesisRequiredSkill.createMany({
-							data: dto.skillIds.map((skillId) => ({
-								thesisId: thesis.id,
-								skillId,
-							})),
-						});
+						thesisRequiredSkills =
+							await txn.thesisRequiredSkill.createManyAndReturn({
+								data: dto.skillIds.map((skillId) => ({
+									thesisId: thesis.id,
+									skillId: skillId,
+								})),
+								include: { skill: true },
+							});
 					}
 
-					const newThesis = await txn.thesis.findUnique({
-						where: { id: thesis.id },
-						include: {
-							thesisVersions: {
-								orderBy: { version: 'desc' },
-							},
-							thesisRequiredSkills: {
-								include: {
-									skill: true,
-								},
-							},
-							lecturer: {
-								include: { user: true },
-							},
-						},
+					const result: ThesisDetailResponse = mapThesisDetail({
+						...thesis,
+						thesisVersions: [firstThesisVersion],
+						thesisRequiredSkills: thesisRequiredSkills,
 					});
-
-					const result: ThesisDetailResponse = mapThesisDetail(newThesis!);
 
 					// Return thesis with version and skills information
 					return result;
