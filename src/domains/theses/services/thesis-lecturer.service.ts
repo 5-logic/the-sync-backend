@@ -8,6 +8,7 @@ import {
 
 import { CONSTANTS } from '@/configs';
 import { CacheHelperService, PrismaService } from '@/providers';
+import { PineconeJobType, PineconeThesisService } from '@/queue';
 import { CACHE_KEY } from '@/theses/constants';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
@@ -24,6 +25,7 @@ export class ThesisLecturerService {
 	constructor(
 		private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
+		private readonly pinecone: PineconeThesisService,
 	) {}
 
 	async create(
@@ -106,6 +108,13 @@ export class ThesisLecturerService {
 			this.logger.debug('New thesis detail', JSON.stringify(result));
 
 			await this.saveAndDeleteCache(result);
+
+			// Upsert thesis into Pinecone
+			await this.pinecone.processThesis(
+				PineconeJobType.CREATE_OR_UPDATE,
+				result,
+				500,
+			);
 
 			return result;
 		} catch (error) {
@@ -279,13 +288,20 @@ export class ThesisLecturerService {
 
 				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
 
-				await this.saveAndDeleteCache(result);
-
 				return result;
 			});
 
 			this.logger.log(`Thesis updated with ID: ${result.id}`);
 			this.logger.debug('Updated thesis detail', JSON.stringify(result));
+
+			await this.saveAndDeleteCache(result);
+
+			// Update thesis into Pinecone
+			await this.pinecone.processThesis(
+				PineconeJobType.CREATE_OR_UPDATE,
+				result,
+				500,
+			);
 
 			return result;
 		} catch (error) {
@@ -448,6 +464,13 @@ export class ThesisLecturerService {
 			const result: ThesisResponse = mapThesis(deletedThesis);
 
 			await this.saveAndDeleteCache(result);
+
+			// Delete thesis from Pinecone
+			await this.pinecone.processThesis(
+				PineconeJobType.DELETE,
+				deletedThesis.id,
+				500,
+			);
 
 			return result;
 		} catch (error) {
