@@ -1,1 +1,1 @@
-export * from '@/email/dto/email-job.dto';
+export * from '@/queue/email/dto/email-job.dto';
