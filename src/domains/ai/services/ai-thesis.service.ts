@@ -38,7 +38,7 @@ export class AIThesisService {
 			// First, get the vector of the current thesis
 			const fetchResult = await index.fetch([thesisId]);
 
-			if (!fetchResult.records || !fetchResult.records[thesisId]) {
+			if (!fetchResult.records?.[thesisId]) {
 				throw new NotFoundException(`Thesis not found in vector database`);
 			}
 
