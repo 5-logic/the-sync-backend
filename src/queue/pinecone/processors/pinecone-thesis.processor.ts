@@ -12,7 +12,7 @@ import { ThesisDetailResponse } from '@/theses/responses';
 
 @Processor(PINECONE_TOKENS.THESIS)
 export class PineconeThesisProcessor extends WorkerHost {
-	private static readonly NAMESPACE = PINECONE_TOKENS.THESIS + ':namespace';
+	private static readonly NAMESPACE = PINECONE_TOKENS.THESIS + '-namespace';
 
 	private readonly logger = new Logger(PineconeThesisProcessor.name);
 
