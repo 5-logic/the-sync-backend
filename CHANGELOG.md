@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-07-21
+
+### Added
+
+- **AI-Powered Thesis Duplicate Detection System**:
+  - `GET /admins/thesis/check-duplicates/:thesisId` - New moderator endpoint for AI-powered thesis duplicate detection (requires `thesisId` as path parameter)
+  - `DuplicateThesisResponse` - New response class with thesis details and duplicate percentage
+  - `AIThesisService` - New service implementing duplicate detection using vector similarity analysis
+
+- **Pinecone Vector Database Integration**:
+  - **PineconeProviderModule** - New provider module for Pinecone database connection and configuration
+  - **PineconeThesisProcessor** - Background job processor for thesis vector operations (create, update, delete)
+  - **PineconeThesisService** - Queue service for managing thesis vector processing jobs
+  - Enhanced thesis lifecycle with automatic vector database synchronization
+
+- **Enhanced Environment Configuration**:
+  - Added `PINECONE_API_KEY` environment variable for Pinecone authentication
+  - Added `PINECONE_INDEX_NAME` environment variable for vector index configuration
+  - Updated environment setup documentation with Pinecone configuration guide
+
+- **New Dependencies and Libraries**:
+  - `@pinecone-database/pinecone@6.1.1` - Pinecone vector database client
+  - `axios@1.10.0` - HTTP client for external API communications
+  - `mammoth@1.9.1` - Document processing library for content extraction
+
+### Changed
+
+- **Thesis Management Enhancement**:
+  - Enhanced `ThesisLecturerService` with automatic Pinecone vector operations
+  - Thesis creation, updates, and deletions now automatically sync with vector database
+  - Improved thesis processing workflow with background job queue integration
+
+- **AI Module Architecture**:
+  - Introduced comprehensive AI domain module with controllers, services, and DTOs
+  - Added proper error handling and logging for AI operations
+  - Implemented role-based access control for AI features (MODERATOR only)
+
+- **Queue System Expansion**:
+  - Enhanced queue module to support Pinecone processing operations
+  - Added new job types: `CREATE_OR_UPDATE`, `DELETE` for thesis vector operations
+  - Improved background processing with configurable delays and error handling
+
+- **API Documentation Enhancement**:
+  - Added comprehensive Swagger documentation for AI endpoints
+  - Enhanced API operation descriptions with detailed use cases and parameters
+  - Improved response schema documentation for duplicate detection features
+
+### Fixed
+
+- **Vector Database Error Handling**:
+  - Added safe access using optional chaining for thesis records in duplicate checks
+  - Enhanced error logging and exception handling in AI operations
+  - Improved robustness of vector similarity calculations
+
+### Enhanced
+
+- **Developer Experience**:
+  - Updated environment setup documentation with complete Pinecone configuration examples
+  - Enhanced TypeScript configuration with AI module path mappings
+  - Improved code organization with dedicated AI domain structure
+
+- **Performance Optimization**:
+  - Implemented background processing for vector operations to prevent API blocking
+  - Added configurable processing delays for optimal resource utilization
+  - Enhanced caching strategies for AI-powered features
+
+- **Academic Integrity Features**:
+  - AI-powered duplicate detection with 70% similarity threshold
+  - Automated thesis content analysis and comparison
+  - Real-time plagiarism detection capabilities for thesis review process
+
+### Technical Improvements
+
+- **Module Structure**: Enhanced domain module architecture with AI integration
+- **Service Architecture**: Improved service layer with vector database operations
+- **Background Processing**: Enhanced queue system with Pinecone-specific processors
+- **Configuration Management**: Streamlined configuration with Pinecone utilities
+- **Error Handling**: Comprehensive error handling for AI and vector operations
+
+### Pull Requests
+
+- [#225](https://github.com/5-logic/the-sync-backend/pull/225) - Merge dev branch for v0.7.0 release
+- [#224](https://github.com/5-logic/the-sync-backend/pull/224) - AI-powered thesis duplicate detection system implementation
+
 ## [0.6.12] - 2025-07-21
 
 ### Changed
