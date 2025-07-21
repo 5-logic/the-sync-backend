@@ -4,6 +4,7 @@ export const CONFIG_TOKENS = {
 	JWT_ACCESS: 'jwt-access',
 	JWT_REFRESH: 'jwt-refresh',
 	EMAIL: 'email',
+	PINECONE: 'pinecone',
 } as const;
 
 export const CONFIG_MOUNTS = {

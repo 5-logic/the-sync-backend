@@ -7,7 +7,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import basicAuth from 'basic-auth-connect';
 
 import { AuthModule } from '@/auth/auth.module';
-import { CONFIG_MOUNTS, corsConfig, redisConfig } from '@/configs';
+import {
+	CONFIG_MOUNTS,
+	corsConfig,
+	pineconeConfig,
+	redisConfig,
+} from '@/configs';
 import { DomainModule } from '@/domains/domain.module';
 import { CacheHelperModule, PrismaModule } from '@/providers';
 import { QueueModule } from '@/queue/queue.module';
@@ -20,7 +25,7 @@ import {
 @Module({
 	imports: [
 		ConfigModule.forRoot({
-			load: [corsConfig, redisConfig],
+			load: [corsConfig, pineconeConfig, redisConfig],
 			cache: true,
 			isGlobal: true,
 		}),
