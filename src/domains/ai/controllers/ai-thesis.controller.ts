@@ -9,6 +9,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AI_API_TAGS, AI_CONSTANTS } from '@/ai/constants';
+import { AIThesisDocs } from '@/ai/docs';
 import { DuplicateThesisResponse } from '@/ai/responses';
 import { AIThesisService } from '@/ai/services';
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
@@ -24,6 +25,7 @@ export class AIThesisController {
 	@Roles(Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
 	@Get('check-duplicates/:thesisId')
+	@ApiOperation(AIThesisDocs.checkDuplicates)
 	@ApiArrayResponse(DuplicateThesisResponse, HttpStatus.OK)
 	async checkDuplicates(
 		@Param('thesisId') thesisId: string,
