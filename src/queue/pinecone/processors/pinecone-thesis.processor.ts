@@ -1,37 +1,22 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject, Logger } from '@nestjs/common';
-import { Pinecone } from '@pinecone-database/pinecone';
+import { Logger } from '@nestjs/common';
 import axios from 'axios';
 import { Job } from 'bullmq';
 import mammoth from 'mammoth';
 
-import { PineconeConfig, pineconeConfig } from '@/configs';
+import { PineconeProviderService } from '@/providers';
 import { PINECONE_TOKENS } from '@/queue/pinecone/constants';
 import { PineconeJobType } from '@/queue/pinecone/enums';
 import { ThesisDetailResponse } from '@/theses/responses';
 
 @Processor(PINECONE_TOKENS.THESIS)
 export class PineconeThesisProcessor extends WorkerHost {
-	private static readonly NAMESPACE = PINECONE_TOKENS.THESIS + '-namespace';
+	static readonly NAMESPACE = PINECONE_TOKENS.THESIS + '-namespace';
 
 	private readonly logger = new Logger(PineconeThesisProcessor.name);
 
-	private readonly pineconeClient: Pinecone;
-
-	constructor(
-		@Inject(pineconeConfig.KEY)
-		private readonly pineconeConfiguration: PineconeConfig,
-	) {
+	constructor(private readonly pinecone: PineconeProviderService) {
 		super();
-
-		this.pineconeClient = new Pinecone({
-			apiKey: pineconeConfiguration.apiKey,
-		});
-
-		this.logger.log('Pinecone client initialized successfully.');
-		this.logger.debug(
-			`Pinecone environment: ${JSON.stringify(pineconeConfiguration)}`,
-		);
 	}
 
 	async process(job: Job<ThesisDetailResponse | string>): Promise<void> {
@@ -79,8 +64,9 @@ export class PineconeThesisProcessor extends WorkerHost {
 			...value,
 		};
 
-		const index = this.pineconeClient
-			.Index(this.pineconeConfiguration.indexName)
+		const index = this.pinecone
+			.getClient()
+			.index(this.pinecone.getIndexName())
 			.namespace(PineconeThesisProcessor.NAMESPACE);
 
 		await index.upsertRecords([record]);
@@ -89,8 +75,9 @@ export class PineconeThesisProcessor extends WorkerHost {
 	}
 
 	async delete(id: string): Promise<void> {
-		const index = this.pineconeClient
-			.Index(this.pineconeConfiguration.indexName)
+		const index = this.pinecone
+			.getClient()
+			.index(this.pinecone.getIndexName())
 			.namespace(PineconeThesisProcessor.NAMESPACE);
 
 		await index.deleteOne(id);

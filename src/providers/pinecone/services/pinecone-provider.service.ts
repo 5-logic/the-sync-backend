@@ -26,4 +26,8 @@ export class PineconeProviderService {
 	getClient(): Pinecone {
 		return this.pineconeClient;
 	}
+
+	getIndexName(): string {
+		return this.pineconeConfiguration.indexName;
+	}
 }
