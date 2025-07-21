@@ -53,9 +53,10 @@ enum RequestType {
 }
 
 enum RequestStatus {
-  Pending  @map("pending")
-  Approved @map("approved")
-  Rejected @map("rejected")
+  Cancelled @map("cancelled")
+  Pending   @map("pending")
+  Approved  @map("approved")
+  Rejected  @map("rejected")
 
   @@map("request_statuses")
 }
@@ -68,6 +69,13 @@ enum SemesterStatus {
   End       @map("end")
 
   @@map("semester_statuses")
+}
+
+enum SubmissionStatus {
+  NotSubmitted @map("not_submitted")
+  Submitted    @map("submitted")
+
+  @@map("submission_statuses")
 }
 
 enum OngoingPhase {
@@ -255,27 +263,29 @@ model ThesisVersion {
 }
 
 model Milestone {
-  id          String   @id @default(uuid())
-  name        String   @map("name")
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  semesterId  String   @map("semester_id")
-  checklistId String?  @unique @map("checklist_id")
+  id         String   @id @default(uuid())
+  name       String   @map("name")
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  semesterId String   @map("semester_id")
+  documents  String[] @map("documents")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   semester    Semester     @relation(fields: [semesterId], references: [id])
-  checklist   Checklist?   @relation(fields: [checklistId], references: [id])
   submissions Submission[]
+  checklist   Checklist[]
 
   @@map("milestones")
 }
 
 model Submission {
-  id          String @id @default(uuid())
-  groupId     String @map("group_id")
-  milestoneId String @map("milestone_id")
+  id          String           @id @default(uuid())
+  groupId     String           @map("group_id")
+  milestoneId String           @map("milestone_id")
+  documents   String[]         @default([])
+  status      SubmissionStatus @default(NotSubmitted) @map("status")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -312,12 +322,12 @@ model Checklist {
   id          String  @id @default(uuid())
   name        String  @map("name")
   description String? @map("description")
-  milestoneId String  @map("milestone_id")
+  milestoneId String? @map("milestone_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  milestone      Milestone?
+  milestone      Milestone?      @relation(fields: [milestoneId], references: [id])
   checklistItems ChecklistItem[]
   reviews        Review[]
 
@@ -325,12 +335,11 @@ model Checklist {
 }
 
 model ChecklistItem {
-  id          String                    @id @default(uuid())
-  name        String                    @map("name")
-  acceptance  ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
-  description String?                   @map("description")
-  isRequired  Boolean                   @default(false) @map("is_required")
-  checklistId String                    @map("checklist_id")
+  id          String  @id @default(uuid())
+  name        String  @map("name")
+  description String? @map("description")
+  isRequired  Boolean @default(false) @map("is_required")
+  checklistId String  @map("checklist_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -469,9 +478,10 @@ model Enrollment {
 }
 
 model ReviewItem {
-  reviewId        String  @map("review_id")
-  checklistItemId String  @map("checklistitem_id")
-  note            String? @map("note")
+  reviewId        String                    @map("review_id")
+  checklistItemId String                    @map("checklistitem_id")
+  acceptance      ChecklistReviewAcceptance @default(NotAvailable) @map("acceptance")
+  note            String?                   @map("note")
 
   review        Review        @relation(fields: [reviewId], references: [id])
   checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id])

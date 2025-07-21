@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsPositive, IsString } from 'class-validator';
 
 export class CreateSemesterDto {
 	@ApiProperty()
@@ -9,4 +9,19 @@ export class CreateSemesterDto {
 	@ApiProperty()
 	@IsString()
 	name: string;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsPositive()
+	maxGroup?: number;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsPositive()
+	defaultThesesPerLecturer?: number;
+
+	@ApiPropertyOptional()
+	@IsOptional()
+	@IsPositive()
+	maxThesesPerLecturer?: number;
 }

@@ -1,43 +1,44 @@
+//- Data to be rendered in the email template
+//- + fullName: Name of the student
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+
 extends layouts/email-layout.pug
 
 block content
   p.greeting 
-    | Xin chào #{fullName},
+    | Hello #[strong #{fullName}],
 
   .info-box
     h3
-      span 🎯 Thông Báo Học Kỳ Bắt Đầu
-    p Chúng tôi xin thông báo rằng học kỳ <strong>#{semesterName}</strong> (mã: <strong>#{semesterCode}</strong>) đã chính thức bắt đầu.
+      span 🎯 Semester Start Notification
+    p We are pleased to inform you that the semester #[strong #{semesterName}] (code: #[strong #{semesterCode}]) has officially started.
 
   .success-box
-    strong ✅ Trạng thái đăng ký của bạn
-    p Trạng thái đăng ký của bạn đã được cập nhật thành <strong>"Đang diễn ra"</strong> (Ongoing).
+    strong ✅ Your Registration Status
+    p Your registration status has been updated to #[strong "Ongoing"].
 
   .info-box
     h3
-      span 📋 Những việc bạn cần làm ngay:
+      span 📋 Things you need to do now:
     ul
       li
-        strong Kiểm tra thông tin nhóm: 
-        | Xác nhận thông tin nhóm và thành viên của bạn
+        strong Check group information: 
+        | Confirm your group and member information
       li
-        strong Liên hệ với giảng viên hướng dẫn: 
-        | Nếu bạn đã có nhóm và đề tài
+        strong Contact your supervisor: 
+        | If you already have a group and topic
       li
-        strong Theo dõi timeline: 
-        | Kiểm tra các milestone và deadline quan trọng
+        strong Follow the timeline: 
+        | Check important milestones and deadlines
       li
-        strong Chuẩn bị tài liệu: 
-        | Bắt đầu chuẩn bị các tài liệu cần thiết cho đề tài
+        strong Prepare documents: 
+        | Start preparing the necessary documents for your project
 
   .warning-box
-    strong ⚠️ Lưu ý quan trọng
-    p Việc thực hiện đề tài capstone đã chính thức bắt đầu. Hãy đảm bảo bạn tham gia tích cực và tuân thủ các quy định của học kỳ.
-
-  p
-    | Chúc bạn có một học kỳ thành công và hoàn thành tốt đề tài capstone!
-
-  p
-    | Trân trọng,
+    strong ⚠️ Important Note
     br
-    strong TheSync Team
+    p The capstone project has officially started. Please make sure to participate actively and comply with the semester regulations.
+
+  p
+    | Wish you a successful semester and a great capstone project!

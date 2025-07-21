@@ -1,0 +1,56 @@
+//- Data to be rendered in the email template
+//- + studentName: Name of the student receiving the notification
+//- + groupName: Name of the group
+//- + groupCode: Code of the group
+//- + milestoneName: Name of the milestone
+//- + reviewerName: Name of the reviewer
+//- + reviewSubmittedAt: Date and time when the review was submitted
+//- + feedback: Feedback provided by the reviewer
+//- + reviewItems: Array of review items with checklist item names, acceptance status, and notes
+
+extends layouts/email-layout
+
+block content
+	div.container
+		h1 Review Completed Notification
+		
+		p Dear #{studentName},
+		
+		p Your group's submission has been reviewed by #{reviewerName}.
+		
+		div.submission-details
+			h3 Submission Details:
+			p
+				strong Group: 
+				| #{groupName} (#{groupCode})
+			p
+				strong Milestone: 
+				| #{milestoneName}
+			p
+				strong Reviewer: 
+				| #{reviewerName}
+			p
+				strong Review Submitted At: 
+				| #{reviewSubmittedAt}
+		
+		div.review-summary
+			h3 Review Summary:
+			if feedback
+				p
+					strong Feedback:
+				div.feedback-content
+					| #{feedback}
+			
+			if reviewItems && reviewItems.length > 0
+				h4 Review Items:
+				div.review-items
+					each item in reviewItems
+						div.review-item
+							p
+								strong #{item.checklistItemName}: 
+								span.acceptance-status(class=item.acceptance.toLowerCase()) #{item.acceptance}
+							if item.note
+								p.item-note
+									em Note: #{item.note}
+		
+		p Please log in to TheSync system to view the complete review details.

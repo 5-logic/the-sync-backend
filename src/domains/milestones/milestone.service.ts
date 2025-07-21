@@ -1,28 +1,22 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
-	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 
 import { SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
-export class MilestoneService extends BaseCacheService {
+export class MilestoneService {
+	private readonly logger = new Logger(MilestoneService.name);
+
 	private static readonly CACHE_KEY = 'cache:milestone';
 
-	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
-	) {
-		super(cacheManager, MilestoneService.name);
-	}
+	constructor(private readonly prisma: PrismaService) {}
 
 	private async validateSemester(semesterId: string) {
 		const semester = await this.prisma.semester.findUnique({
@@ -131,11 +125,13 @@ export class MilestoneService extends BaseCacheService {
 					startDate: startDate,
 					endDate: endDate,
 					semesterId: dto.semesterId,
+					documents: dto.documents || [],
 				},
 			});
 
-			// Clear cache after successful creation
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:all`);
+			await this.createSubmission(milestone.id, dto.semesterId);
+
+			// No need to clear cache since findAll() doesn't use cache anymore
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
 			this.logger.debug('Milestone detail', milestone);
@@ -148,26 +144,43 @@ export class MilestoneService extends BaseCacheService {
 		}
 	}
 
+	private async createSubmission(milestoneId: string, semesterId: string) {
+		try {
+			this.logger.log(`Creating submission for milestone ${milestoneId}...`);
+
+			const listGroups = await this.prisma.group.findMany({
+				where: { semesterId },
+			});
+
+			await this.prisma.submission.createMany({
+				data: listGroups.map((group) => ({
+					groupId: group.id,
+					milestoneId,
+					status: 'NotSubmitted',
+				})),
+			});
+
+			this.logger.log(
+				`Submission created for milestone ${milestoneId} successfully`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to create submission for milestone ${milestoneId}`,
+				error,
+			);
+			throw error;
+		}
+	}
+
 	async findAll() {
 		try {
 			this.logger.log('Fetching all milestones');
 
-			// Check cache first
-			const cacheKey = `${MilestoneService.CACHE_KEY}:all`;
-			const cachedMilestones = await this.getCachedData<any[]>(cacheKey);
-			if (cachedMilestones) {
-				this.logger.log(
-					`Found ${cachedMilestones.length} milestones (from cache)`,
-				);
-				return cachedMilestones;
-			}
-
+			// Removed caching for real-time data - milestone data may need frequent updates
+			// Milestones are critical schedule information that needs to be up-to-date
 			const milestones = await this.prisma.milestone.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
-
-			// Cache the result
-			await this.setCachedData(cacheKey, milestones);
 
 			this.logger.log(`Found ${milestones.length} milestones`);
 			this.logger.debug('Milestones detail', milestones);
@@ -180,26 +193,44 @@ export class MilestoneService extends BaseCacheService {
 		}
 	}
 
+	async findBySemester(semesterId: string) {
+		try {
+			this.logger.log(`Fetching milestones for semester ${semesterId}`);
+
+			const semester = await this.validateSemester(semesterId);
+
+			const milestones = await this.prisma.milestone.findMany({
+				where: { semesterId: semester.id },
+				orderBy: { startDate: 'asc' },
+			});
+
+			if (milestones.length === 0) {
+				this.logger.warn(`No milestones found for semester ${semesterId}`);
+			} else {
+				this.logger.log(
+					`Found ${milestones.length} milestones for semester ${semesterId}`,
+				);
+			}
+
+			return milestones;
+		} catch (error) {
+			this.logger.error(
+				`Error fetching milestones for semester ${semesterId}`,
+				error,
+			);
+			throw error;
+		}
+	}
+
 	async findOne(id: string) {
 		try {
 			this.logger.log(`Fetching milestone with ID: ${id}`);
-
-			// Check cache first
-			const cacheKey = `${MilestoneService.CACHE_KEY}:${id}`;
-			const cachedMilestone = await this.getCachedData<any>(cacheKey);
-			if (cachedMilestone) {
-				this.logger.log(`Milestone found with ID: ${id} (from cache)`);
-				return cachedMilestone;
-			}
 
 			const milestone = await this.validateMilestone(id);
 
 			if (!milestone) {
 				throw new NotFoundException(`Milestone not found`);
 			}
-
-			// Cache the result
-			await this.setCachedData(cacheKey, milestone);
 
 			this.logger.log(`Milestone found with ID: ${id}`);
 			this.logger.debug('Milestone detail', milestone);
@@ -280,12 +311,9 @@ export class MilestoneService extends BaseCacheService {
 					name: dto.name,
 					startDate: dto.startDate,
 					endDate: dto.endDate,
+					documents: dto.documents || existing.documents,
 				},
 			});
-
-			// Clear cache after successful update
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:all`);
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:${id}`);
 
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);
 			this.logger.debug('Updated Milestone', updated);
@@ -312,18 +340,103 @@ export class MilestoneService extends BaseCacheService {
 			existingStartDateOnly.setHours(0, 0, 0, 0);
 
 			if (today >= existingStartDateOnly) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: must be before its start date`,
+				);
 				throw new ConflictException(
 					'Milestone can only be deleted before its start date',
 				);
 			}
 
+			// Check all submissions in this milestone
+			const submissions = await this.prisma.submission.findMany({
+				where: { milestoneId: id },
+				select: { id: true, status: true },
+			});
+			if (submissions.some((s) => s.status !== 'NotSubmitted')) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: all submissions must have status NotSubmitted.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone because have group submissions',
+				);
+			}
+
+			// Check for any related entities: checklist, checklistItem, review, reviewItem, assignmentReview
+			const checklistCount = await this.prisma.checklist.count({
+				where: { milestoneId: id },
+			});
+			if (checklistCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related checklist(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related checklist(s) exist.',
+				);
+			}
+
+			const submissionIds = submissions.map((s) => s.id);
+			const reviewCount = await this.prisma.review.count({
+				where: { submissionId: { in: submissionIds } },
+			});
+			if (reviewCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related review(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related review(s) exist.',
+				);
+			}
+
+			const assignmentReviewCount = await this.prisma.assignmentReview.count({
+				where: { submissionId: { in: submissionIds } },
+			});
+			if (assignmentReviewCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related assignment review(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related assignment review(s) exist.',
+				);
+			}
+
+			const checklistItemCount = await this.prisma.checklistItem.count({
+				where: {
+					checklist: { milestoneId: id },
+				},
+			});
+			if (checklistItemCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related checklist item(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related checklist item(s) exist.',
+				);
+			}
+
+			const reviewItemCount = await this.prisma.reviewItem.count({
+				where: {
+					review: { submissionId: { in: submissionIds } },
+				},
+			});
+			if (reviewItemCount > 0) {
+				this.logger.warn(
+					`Cannot delete milestone ${id}: related review item(s) exist.`,
+				);
+				throw new ConflictException(
+					'Cannot delete milestone: related review item(s) exist.',
+				);
+			}
+
+			// Delete all submissions in this milestone
+			await this.prisma.submission.deleteMany({
+				where: { id: { in: submissionIds } },
+			});
+
+			// Delete the milestone
 			const deleted = await this.prisma.milestone.delete({
 				where: { id },
 			});
-
-			// Clear cache after successful deletion
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:all`);
-			await this.clearCache(`${MilestoneService.CACHE_KEY}:${id}`);
 
 			this.logger.log(`Milestone deleted with ID: ${deleted.id}`);
 			this.logger.debug('Deleted Milestone', deleted);

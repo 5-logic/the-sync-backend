@@ -1,47 +1,51 @@
+//- Data to be rendered in the email template
+//- + leaderName: Name of the group leader
+//- + studentName: Name of the student who sent the request
+//- + studentEmail: Email of the student who sent the request
+//- + groupName: Name of the group
+//- + groupCode: Unique code of the group
+//- + semesterName: Name of the semester
+//- + requestDate: Date when the request was sent
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= leaderName
-    | ,
+    | Hello #[strong #{leaderName}],
 
   p
-    | A student has sent a request to join your group 
-    strong= groupName
-    |  (
-    strong= groupCode
-    | ). Please review the request and take appropriate action.
+    | A student has sent a request to join your group #[strong #{groupName}] (#[strong #{groupCode}]). Please review the request and take appropriate action.
 
   .info-box
     h3 📋 Join Request Details
     
     .info-item
       span.info-label Student Name:
-      span.info-value= studentName
+      span.info-value #{studentName}
     
     .info-item
       span.info-label Student Email:
-      span.info-value= studentEmail
+      span.info-value #{studentEmail}
     
     .info-item
       span.info-label Group Name:
-      span.info-value= groupName
+      span.info-value #{groupName}
     
     .info-item
       span.info-label Group Code:
-      span.info-value= groupCode
+      span.info-value #{groupCode}
     
     .info-item
       span.info-label Semester:
-      span.info-value= semesterName
+      span.info-value #{semesterName}
     
     .info-item
       span.info-label Request Date:
-      span.info-value= requestDate
+      span.info-value #{requestDate}
 
   .success-box
     strong What's Next?
+    br
     | As the group leader, you can:
     ul
       li ✅ Approve the request to add the student to your group
@@ -50,6 +54,7 @@ block content
 
   .warning-box
     strong Important Notes:
+    br
     ul
       li Your group can have a maximum of 5 members
       li Once approved, the student will become a member of your group
@@ -57,11 +62,3 @@ block content
 
   p
     | Please log in to TheSync to review and respond to this request. You can find the request in your group management section.
-
-  p
-    | If you have any questions about this request or need assistance, please contact the system administrator.
-
-  p
-    strong Best regards,
-    br
-    | TheSync Team

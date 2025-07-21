@@ -1,114 +1,98 @@
+//- Data to be rendered in the email template
+//- + recipientName: Name of the recipient
+//- + requestStatus: Status of the request (Approved/Rejected)
+//- + requestType: Type of the request (Join/Invite)
+//- + groupName: Name of the group
+//- + groupCode: Unique code of the group
+//- + studentName: Name of the student (if applicable)
+//- + leaderName: Name of the group leader
+//- + semesterName: Name of the semester
+//- + updateDate: Date of the request status update
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= recipientName
-    | ,
+    | Hello #[strong #{recipientName}],
 
   if requestStatus === 'Approved'
     p
-      | Great news! Your 
-      strong= requestType.toLowerCase()
-      |  request has been 
-      strong approved
-      | .
+      | Great news! Your #[strong #{requestType.toLowerCase()}] request has been #[strong approved].
 
     if requestType === 'Join'
       .success-box
         strong 🎉 Welcome to the Group!
-        | You have successfully joined 
-        strong= groupName
-        |  (
-        strong= groupCode
-        | ). You are now a member of this group for the 
-        strong= semesterName
-        |  semester.
+        br
+        | You have successfully joined #[strong #{groupName}] (#[strong #{groupCode}]). You are now a member of this group for the #[strong #{semesterName}] semester.
     else
       .success-box
         strong 🎉 Invitation Accepted!
-        | The student 
-        strong= studentName
-        |  has accepted your invitation and joined your group 
-        strong= groupName
-        |  (
-        strong= groupCode
-        | ).
+        br
+        | The student #[strong #studentName}] has accepted your invitation and joined your group #[strong #{groupName}] (#[strong #{groupCode}]).
 
   else if requestStatus === 'Rejected'
     p
-      | We regret to inform you that your 
-      strong= requestType.toLowerCase()
-      |  request has been 
-      strong rejected
-      | .
+      | We regret to inform you that your #[strong #{requestType.toLowerCase()}] request has been #[strong rejected].
 
     if requestType === 'Join'
       .warning-box
         strong Request Not Accepted
-        | Your request to join 
-        strong= groupName
-        |  (
-        strong= groupCode
-        | ) has been declined by the group leader. You can send requests to other groups or create your own group.
+        br
+        | Your request to join #[strong #{groupName}] (#[strong #{groupCode}]) has been declined by the group leader. You can send requests to other groups or create your own group.
     else
       .warning-box
         strong Invitation Declined
-        | The student 
-        strong= studentName
-        |  has declined your invitation to join your group 
-        strong= groupName
-        |  (
-        strong= groupCode
-        | ). You can invite other students or wait for join requests.
+        br
+        | The student #[strong #{studentName}] has declined your invitation to join your group #[strong #{groupName}] (#[strong #{groupCode}]). You can invite other students or wait for join requests.
 
   .info-box
     h3 📋 Request Details
     
     .info-item
       span.info-label Request Type:
-      span.info-value= requestType
+      span.info-value #{requestType}
     
     .info-item
       span.info-label Group Name:
-      span.info-value= groupName
+      span.info-value #{groupName}
     
     .info-item
       span.info-label Group Code:
-      span.info-value= groupCode
+      span.info-value #{groupCode}
     
     if requestType === 'Join'
       .info-item
         span.info-label Student:
-        span.info-value= studentName
+        span.info-value #{studentName}
       
       .info-item
         span.info-label Group Leader:
-        span.info-value= leaderName
+        span.info-value #{leaderName}
     else
       .info-item
         span.info-label Invited Student:
-        span.info-value= studentName
+        span.info-value #{studentName}
       
       .info-item
         span.info-label Group Leader:
-        span.info-value= leaderName
+        span.info-value #{leaderName}
     
     .info-item
       span.info-label Semester:
-      span.info-value= semesterName
+      span.info-value #{semesterName}
     
     .info-item
       span.info-label Status:
-      span.info-value(class=requestStatus === 'Approved' ? 'success' : 'warning')= requestStatus
+      span.info-value(class=requestStatus === 'Approved' ? 'success' : 'warning') #{requestStatus}
     
     .info-item
       span.info-label Date:
-      span.info-value= updateDate
+      span.info-value #{updateDate}
 
   if requestStatus === 'Approved'
     .success-box
       strong Next Steps:
+      br
       ul
         if requestType === 'Join'
           li 🏁 Start collaborating with your new group members
@@ -123,6 +107,7 @@ block content
   else
     .info-box
       strong Alternative Options:
+      br
       ul
         if requestType === 'Join'
           li 🔍 Search for other groups that are accepting members
@@ -134,11 +119,3 @@ block content
           li 📢 Make your group more visible to potential members
           li 🤝 Network with students in your major
           li ⏳ Wait for join requests from interested students
-
-  p
-    | For more information about your group status and available options, please log in to TheSync.
-
-  p
-    strong Best regards,
-    br
-    | TheSync Team

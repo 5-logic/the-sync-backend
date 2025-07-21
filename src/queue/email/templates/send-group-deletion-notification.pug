@@ -1,10 +1,19 @@
+//- Data to be rendered in the email template
+//- + recipientName: Name of the recipient
+//- + isLeader: Boolean indicating if the recipient is a group leader
+//- + groupName: Name of the group that was deleted
+//- + groupCode: Unique code of the group
+//- + semesterName: Name of the semester during which the group was active
+//- + semesterCode: Code of the semester
+//- + leaderName: Name of the group leader who initiated the deletion
+//- + deletionDate: Date when the group was deleted
+//- + memberCount: Number of members affected by the deletion
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= recipientName
-    | ,
+    | Hello #[strong #{recipientName}],
 
   if isLeader
     p
@@ -18,35 +27,37 @@ block content
     
     .info-item
       span.info-label Group Name:
-      span.info-value= groupName
+      span.info-value #{groupName}
     
     .info-item
       span.info-label Group Code:
-      span.info-value= groupCode
+      span.info-value #{groupCode}
     
     .info-item
       span.info-label Semester:
-      span.info-value= semesterName + " (" + semesterCode + ")"
+      span.info-value #{semesterName} (#{semesterCode})
     
     .info-item
       span.info-label Deleted By:
-      span.info-value= leaderName + " (Group Leader)"
+      span.info-value #{leaderName} (Group Leader)
     
     .info-item
       span.info-label Deletion Date:
-      span.info-value= deletionDate
+      span.info-value #{deletionDate}
     
     .info-item
       span.info-label Members Affected:
-      span.info-value= memberCount + " students"
+      span.info-value #{memberCount} students
 
   if isLeader
     .success-box
       strong 👨‍💼 Leader Action Completed:
+      br
       | As the group leader, your request to delete the group has been processed successfully. All group data, including member participations, required skills, and expected responsibilities, have been permanently removed from the system.
   else
     .warning-box
       strong 📢 Membership Status Update:
+      br
       | Your membership in this group has been automatically removed. You are now available to join or create a new group during the current semester's preparation phase.
 
   .info-box
@@ -67,4 +78,5 @@ block content
 
   .warning-box
     strong ⚠️ Important Notice:
+    br
     | This action cannot be undone. If you need to form a group again, you will need to create a new group and invite members manually. Please ensure you are ready to commit to a group before creating one in the future.

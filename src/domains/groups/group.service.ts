@@ -1,52 +1,37 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
+import { PrismaService } from '@/providers';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailJobType } from '@/queue/email/enums/type.enum';
+
+import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 import {
 	ChangeLeaderDto,
 	CreateGroupDto,
 	PickThesisDto,
 	UpdateGroupDto,
-} from '@/groups/dto';
-import { PrismaService } from '@/providers/prisma/prisma.service';
-import { EmailQueueService } from '@/queue/email/email-queue.service';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
-
-import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
+} from '~/src/domains/groups/dtos';
 
 // Define a type alias for thesis assignment actions
 export type ThesisAssignmentActionType = 'assigned' | 'picked' | 'unpicked';
 
 @Injectable()
-export class GroupService extends BaseCacheService {
+export class GroupService {
+	private readonly logger = new Logger(GroupService.name);
+
 	private static readonly CACHE_KEY = 'cache:group';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {
-		super(cacheManager, GroupService.name);
-	}
-
-	private async clearCacheWithPattern(pattern?: string): Promise<void> {
-		try {
-			if (pattern) {
-				await this.cacheManager.del(pattern);
-			} else {
-				this.logger.warn('Cache reset not implemented for current store');
-			}
-		} catch (error) {
-			this.logger.warn(`Cache clear error:`, error);
-		}
-	}
+	) {}
 
 	private async validateSkills(skillIds: string[]) {
 		if (!skillIds || skillIds.length === 0) return;
@@ -247,15 +232,6 @@ export class GroupService extends BaseCacheService {
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
 			);
 
-			await this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`);
-			await this.clearCacheWithPattern(`cache:student:${userId}:groups`);
-			await this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${result.id}:members`,
-			);
-			await this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${result.id}:skills-responsibilities`,
-			);
-
 			const completeGroup = await this.findOne(result.id);
 			return completeGroup;
 		} catch (error) {
@@ -329,14 +305,12 @@ export class GroupService extends BaseCacheService {
 		skillIds?: string[],
 	) {
 		if (skillIds !== undefined) {
-			await Promise.all([
-				prisma.groupRequiredSkill.deleteMany({
-					where: { groupId: groupId },
-				}),
-				skillIds.length > 0
-					? this.createGroupSkills(prisma, groupId, skillIds)
-					: Promise.resolve(),
-			]);
+			await prisma.groupRequiredSkill.deleteMany({
+				where: { groupId: groupId },
+			});
+			if (skillIds.length > 0) {
+				await this.createGroupSkills(prisma, groupId, skillIds);
+			}
 		}
 	}
 
@@ -346,14 +320,16 @@ export class GroupService extends BaseCacheService {
 		responsibilityIds?: string[],
 	) {
 		if (responsibilityIds !== undefined) {
-			await Promise.all([
-				prisma.groupExpectedResponsibility.deleteMany({
-					where: { groupId: groupId },
-				}),
-				responsibilityIds.length > 0
-					? this.createGroupResponsibilities(prisma, groupId, responsibilityIds)
-					: Promise.resolve(),
-			]);
+			await prisma.groupExpectedResponsibility.deleteMany({
+				where: { groupId: groupId },
+			});
+			if (responsibilityIds.length > 0) {
+				await this.createGroupResponsibilities(
+					prisma,
+					groupId,
+					responsibilityIds,
+				);
+			}
 		}
 	}
 
@@ -464,13 +440,8 @@ export class GroupService extends BaseCacheService {
 
 	async findAll() {
 		try {
-			const cacheKey = `${GroupService.CACHE_KEY}:all`;
-			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
-			if (cachedGroups) {
-				this.logger.log(`Found ${cachedGroups.length} groups (from cache)`);
-				return cachedGroups;
-			}
-
+			// Removed caching for findAll() to ensure real-time data
+			// Group data changes frequently and needs to be up-to-date
 			const groups = await this.prisma.group.findMany({
 				select: {
 					id: true,
@@ -500,8 +471,6 @@ export class GroupService extends BaseCacheService {
 				leader: group.studentGroupParticipations[0] ?? null,
 			}));
 
-			await this.setCachedData(cacheKey, transformedGroups);
-
 			this.logger.log(`Found ${transformedGroups.length} groups`);
 
 			return transformedGroups;
@@ -512,13 +481,6 @@ export class GroupService extends BaseCacheService {
 
 	async findOne(id: string) {
 		try {
-			const cacheKey = `${GroupService.CACHE_KEY}:${id}`;
-			const cachedGroup = await this.getCachedData<any>(cacheKey);
-			if (cachedGroup) {
-				this.logger.log(`Group found with ID: ${cachedGroup.id} (from cache)`);
-				return cachedGroup;
-			}
-
 			const group = await this.prisma.group.findUnique({
 				where: { id },
 				select: {
@@ -561,16 +523,23 @@ export class GroupService extends BaseCacheService {
 				responsibilities: group.groupExpectedResponsibilities.map(
 					(ger) => ger.responsibility,
 				),
-				members: group.studentGroupParticipations.map((sgp) => ({
-					...sgp.student,
-					isLeader: sgp.isLeader,
-				})),
+				members: group.studentGroupParticipations
+					.sort((a, b) => {
+						// Sort by isLeader desc (leader first), then by fullName asc
+						if (a.isLeader && !b.isLeader) return -1;
+						if (!a.isLeader && b.isLeader) return 1;
+						return a.student.user.fullName.localeCompare(
+							b.student.user.fullName,
+						);
+					})
+					.map((sgp) => ({
+						...sgp.student,
+						isLeader: sgp.isLeader,
+					})),
 				leader:
 					group.studentGroupParticipations.find((sgp) => sgp.isLeader)
 						?.student ?? null,
 			};
-
-			await this.setCachedData(cacheKey, transformedGroup);
 
 			this.logger.log(`Group found with ID: ${transformedGroup.id}`);
 
@@ -650,8 +619,6 @@ export class GroupService extends BaseCacheService {
 			});
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
-
-			await this.clearGroupRelatedCaches(id, [userId]);
 
 			const completeGroup = await this.findOne(result.id);
 
@@ -790,11 +757,6 @@ export class GroupService extends BaseCacheService {
 				`Group leadership changed successfully. Group: "${result.name}" (${result.code}), ` +
 					`New Leader: ${newLeaderParticipation.student.user.fullName} (${newLeaderParticipation.student.user.email})`,
 			);
-			// Clear relevant caches
-			await this.clearGroupRelatedCaches(groupId, [
-				currentLeaderId,
-				dto.newLeaderId,
-			]);
 
 			// Send email notifications
 			await this.sendGroupLeaderChangeNotification(
@@ -934,16 +896,7 @@ export class GroupService extends BaseCacheService {
 		try {
 			this.logger.log(`Finding groups for student ID: ${studentId}`);
 
-			// Check cache first
-			const cacheKey = `cache:student:${studentId}:groups`;
-			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
-			if (cachedGroups) {
-				this.logger.log(
-					`Found ${cachedGroups.length} groups for student (from cache)`,
-				);
-				return cachedGroups;
-			}
-
+			// Removed caching for real-time data - student group participation changes frequently
 			// Find all groups where the student is a participant
 			const participations =
 				await this.prisma.studentGroupParticipation.findMany({
@@ -1016,9 +969,6 @@ export class GroupService extends BaseCacheService {
 				},
 			}));
 
-			// Cache the result
-			await this.setCachedData(cacheKey, groupsWithParticipation);
-
 			this.logger.log(
 				`Found ${groupsWithParticipation.length} groups for student ID: ${studentId}`,
 			);
@@ -1033,16 +983,7 @@ export class GroupService extends BaseCacheService {
 		try {
 			this.logger.log(`Finding detailed groups for student ID: ${studentId}`);
 
-			// Check cache first
-			const cacheKey = `cache:student:${studentId}:detailed-groups`;
-			const cachedGroups = await this.getCachedData<any[]>(cacheKey);
-			if (cachedGroups) {
-				this.logger.log(
-					`Found ${cachedGroups.length} detailed groups for student (from cache)`,
-				);
-				return cachedGroups;
-			}
-
+			// Removed caching for real-time data - student group participation changes frequently
 			// Find all groups where the student is a participant with detailed data
 			const participations =
 				await this.prisma.studentGroupParticipation.findMany({
@@ -1107,12 +1048,19 @@ export class GroupService extends BaseCacheService {
 						participation.group.groupExpectedResponsibilities.map(
 							(ger) => ger.responsibility,
 						),
-					members: participation.group.studentGroupParticipations.map(
-						(sgp) => ({
+					members: participation.group.studentGroupParticipations
+						.sort((a, b) => {
+							// Sort by isLeader desc (leader first), then by fullName asc
+							if (a.isLeader && !b.isLeader) return -1;
+							if (!a.isLeader && b.isLeader) return 1;
+							return a.student.user.fullName.localeCompare(
+								b.student.user.fullName,
+							);
+						})
+						.map((sgp) => ({
 							...sgp.student,
 							isLeader: sgp.isLeader,
-						}),
-					),
+						})),
 					leader:
 						participation.group.studentGroupParticipations.find(
 							(sgp) => sgp.isLeader,
@@ -1123,9 +1071,6 @@ export class GroupService extends BaseCacheService {
 					},
 				}),
 			);
-
-			// Cache the result
-			await this.setCachedData(cacheKey, detailedGroupsWithParticipation);
 
 			this.logger.log(
 				`Found ${detailedGroupsWithParticipation.length} detailed groups for student ID: ${studentId}`,
@@ -1141,16 +1086,7 @@ export class GroupService extends BaseCacheService {
 		try {
 			this.logger.log(`Finding members for group ID: ${groupId}`);
 
-			// Check cache first
-			const cacheKey = `${GroupService.CACHE_KEY}:${groupId}:members`;
-			const cachedMembers = await this.getCachedData<any[]>(cacheKey);
-			if (cachedMembers) {
-				this.logger.log(
-					`Found ${cachedMembers.length} members for group (from cache)`,
-				);
-				return cachedMembers;
-			}
-
+			// Removed caching for real-time data - group membership changes frequently
 			const members = await this.prisma.studentGroupParticipation.findMany({
 				where: {
 					groupId: groupId,
@@ -1232,9 +1168,6 @@ export class GroupService extends BaseCacheService {
 				),
 			}));
 
-			// Cache the result
-			await this.setCachedData(cacheKey, transformedMembers);
-
 			this.logger.log(
 				`Found ${transformedMembers.length} members for group ID: ${groupId}`,
 			);
@@ -1250,14 +1183,6 @@ export class GroupService extends BaseCacheService {
 			this.logger.log(
 				`Finding skills and responsibilities for group ID: ${groupId}`,
 			);
-
-			// Check cache first
-			const cacheKey = `${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`;
-			const cached = await this.getCachedData<any>(cacheKey);
-			if (cached) {
-				this.logger.log('Found skills and responsibilities (from cache)');
-				return cached;
-			}
 
 			const [groupSkills, groupResponsibilities] = await Promise.all([
 				this.prisma.groupRequiredSkill.findMany({
@@ -1294,9 +1219,6 @@ export class GroupService extends BaseCacheService {
 				skills: groupSkills.map((gs) => gs.skill),
 				responsibilities: groupResponsibilities.map((gr) => gr.responsibility),
 			};
-
-			// Cache the result
-			await this.setCachedData(cacheKey, result);
 
 			this.logger.log(
 				`Found ${result.skills.length} skills and ${result.responsibilities.length} responsibilities for group ID: ${groupId}`,
@@ -1502,9 +1424,6 @@ export class GroupService extends BaseCacheService {
 				`Student "${student.user.fullName}" (${student.user.email}) successfully assigned to group "${group.name}" (${group.code}) by moderator "${moderator.user.fullName}"`,
 			);
 
-			// Clear relevant caches
-			await this.clearGroupRelatedCaches(groupId, [studentId]);
-
 			// Send email notifications to all group members
 			await this.sendStudentAssignmentNotification(group, student);
 
@@ -1558,14 +1477,14 @@ export class GroupService extends BaseCacheService {
 
 			const assignmentDate = new Date().toLocaleDateString();
 			const groupLeader = groupMembers.find((member) => member.isLeader);
-			const currentGroupSize = groupMembers.length + 1; // Include the newly assigned student
+			const currentGroupSize = groupMembers.length;
 
 			const baseContext = {
 				groupName: group.name,
 				groupCode: group.code,
 				semesterName: group.semester.name,
 				targetStudentName: assignedStudent.user.fullName,
-				targetStudentCode: assignedStudent.code,
+				targetStudentCode: assignedStudent.studentCode,
 				groupLeaderName:
 					groupLeader?.student.user.fullName ?? 'No leader assigned',
 				changeDate: assignmentDate,
@@ -1689,14 +1608,28 @@ export class GroupService extends BaseCacheService {
 
 			// Validations
 			if (!group) {
+				this.logger.warn(`Group with ID ${groupId} not found`);
 				throw new NotFoundException(`Group not found`);
 			}
 
+			if (group.thesisId) {
+				this.logger.warn(
+					`Cannot remove student from group with thesis. Group ID: ${groupId}`,
+				);
+				throw new ConflictException(
+					`Cannot remove student from group with thesis. Please contact a moderator for assistance.`,
+				);
+			}
+
 			if (!student) {
+				this.logger.warn(`Student with ID ${studentId} not found`);
 				throw new NotFoundException(`Student not found`);
 			}
 
 			if (!leaderParticipation) {
+				this.logger.warn(
+					`Leader with ID ${leaderId} is not a member of group ${groupId}`,
+				);
 				throw new NotFoundException(`You are not a member of this group`);
 			}
 
@@ -1761,9 +1694,6 @@ export class GroupService extends BaseCacheService {
 				`Student "${student.user.fullName}" (${student.user.email}) successfully removed from group "${group.name}" (${group.code})`,
 			);
 
-			// Clear relevant caches
-			await this.clearGroupRelatedCaches(groupId, [studentId, leaderId]);
-
 			// Send email notifications to all remaining group members and the removed student
 			await this.sendStudentRemovalNotification(
 				group,
@@ -1798,29 +1728,42 @@ export class GroupService extends BaseCacheService {
 		leaderParticipation: any,
 		remainingMembers: any[],
 	) {
+		const user = await this.prisma.user.findUnique({
+			where: { id: leaderParticipation.studentId },
+		});
+
+		if (!user) {
+			this.logger.warn(
+				`Leader user with ID ${leaderParticipation.student.userId} not found`,
+			);
+			return;
+		}
+
 		try {
-			const removalDate = new Date().toLocaleDateString();
+			const changeDate = new Date().toLocaleDateString();
 			const baseContext = {
 				groupName: group.name,
 				groupCode: group.code,
 				semesterName: group.semester.name,
-				removedStudentName: removedStudent.user.fullName,
-				removedStudentEmail: removedStudent.user.email,
-				leaderName: `Group Leader`,
-				removalDate,
+				targetStudentName: removedStudent.user.fullName,
+				targetStudentCode: removedStudent.studentCode,
+				groupLeaderName: user.fullName,
+				changeDate,
+				actionType: 'removed',
+				currentGroupSize: remainingMembers.length + 1, // before removal
 			};
 
 			// Send email to the removed student
 			if (removedStudent.user.email) {
 				await this.emailQueueService.sendEmail(
-					EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION, // Reuse existing email type or create new one
+					EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
 					{
 						to: removedStudent.user.email,
 						subject: `You have been removed from Group ${group.code}`,
 						context: {
 							...baseContext,
 							recipientName: removedStudent.user.fullName,
-							recipientType: 'removed_student',
+							recipientType: 'target_student',
 						},
 					},
 				);
@@ -1830,7 +1773,7 @@ export class GroupService extends BaseCacheService {
 			for (const member of remainingMembers) {
 				if (member.student.user.email) {
 					await this.emailQueueService.sendEmail(
-						EmailJobType.SEND_GROUP_LEADER_CHANGE_NOTIFICATION, // Reuse existing email type or create new one
+						EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
 						{
 							to: member.student.user.email,
 							subject: `Member removed from Group ${group.code}`,
@@ -1874,6 +1817,13 @@ export class GroupService extends BaseCacheService {
 								status: true,
 							},
 						},
+						thesis: {
+							select: {
+								id: true,
+								englishName: true,
+								abbreviation: true,
+							},
+						},
 						_count: {
 							select: {
 								studentGroupParticipations: true,
@@ -1910,6 +1860,12 @@ export class GroupService extends BaseCacheService {
 			if (group.semester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
 					`Cannot leave group. You can only leave groups during the PREPARING semester status. Current status is ${group.semester.status}`,
+				);
+			}
+
+			if (group.thesis) {
+				throw new ConflictException(
+					`Cannot leave group. Your group is assigned to a thesis "${group.thesis.englishName}" (${group.thesis.abbreviation}). Please contact your thesis supervisor for assistance.`,
 				);
 			}
 
@@ -1999,9 +1955,6 @@ export class GroupService extends BaseCacheService {
 					`Group "${group.name}" (${group.code}) was automatically deleted as the last member (leader) left`,
 				);
 
-				// Clear relevant caches
-				await this.clearGroupRelatedCaches(groupId, [studentId]);
-
 				return {
 					success: true,
 					message: `You have successfully left the group. Since you were the last member, group "${group.name}" (${group.code}) has been automatically deleted.`,
@@ -2029,9 +1982,6 @@ export class GroupService extends BaseCacheService {
 			this.logger.log(
 				`Student "${student.user.fullName}" (${student.user.email}) successfully left group "${group.name}" (${group.code})`,
 			);
-
-			// Clear relevant caches
-			await this.clearGroupRelatedCaches(groupId, [studentId]);
 
 			// Send email notifications to remaining group members and the leaving student
 			await this.sendStudentLeaveNotification(group, student, remainingMembers);
@@ -2265,10 +2215,6 @@ export class GroupService extends BaseCacheService {
 				`Group "${result.name}" (${result.code}) successfully deleted by leader. ${groupMembers.length} members affected.`,
 			);
 
-			// Clear all relevant caches
-			const affectedStudentIds = groupMembers.map((member) => member.studentId);
-			await this.clearGroupRelatedCaches(groupId, affectedStudentIds);
-
 			// Send email notifications to all group members
 			await this.sendGroupDeletionNotification(
 				result,
@@ -2494,9 +2440,6 @@ export class GroupService extends BaseCacheService {
 				`Thesis "${thesis.vietnameseName}" successfully assigned to group "${group.name}" (${group.code}) by leader`,
 			);
 
-			// Clear relevant caches
-			await this.clearGroupRelatedCaches(groupId, [leaderId]);
-
 			// Send email notifications
 			await this.sendThesisAssignmentNotification(
 				group.id,
@@ -2582,9 +2525,6 @@ export class GroupService extends BaseCacheService {
 			this.logger.log(
 				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
 			);
-
-			// // Clear relevant caches
-			await this.clearGroupRelatedCaches(groupId, [leaderId]);
 
 			// Send email notifications
 			await this.sendThesisAssignmentNotification(
@@ -2862,46 +2802,6 @@ export class GroupService extends BaseCacheService {
 			pickDate: actionType === 'picked' ? currentDate : undefined,
 			unpickDate: actionType === 'unpicked' ? currentDate : undefined,
 		};
-	}
-
-	/**
-	 * Clear multiple cache patterns related to group operations
-	 */
-	private async clearGroupRelatedCaches(
-		groupId: string,
-		studentIds?: string[],
-		clearAll = true,
-	): Promise<void> {
-		const cachePromises: Promise<void>[] = [];
-
-		if (clearAll) {
-			cachePromises.push(
-				this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:all`),
-			);
-		}
-
-		cachePromises.push(
-			this.clearCacheWithPattern(`${GroupService.CACHE_KEY}:${groupId}`),
-			this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${groupId}:members`,
-			),
-			this.clearCacheWithPattern(
-				`${GroupService.CACHE_KEY}:${groupId}:skills-responsibilities`,
-			),
-		);
-
-		if (studentIds?.length) {
-			for (const studentId of studentIds) {
-				cachePromises.push(
-					this.clearCacheWithPattern(`cache:student:${studentId}:groups`),
-					this.clearCacheWithPattern(
-						`cache:student:${studentId}:detailed-groups`,
-					),
-				);
-			}
-		}
-
-		await Promise.all(cachePromises);
 	}
 
 	/**

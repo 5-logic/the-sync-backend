@@ -1,47 +1,51 @@
+//- Data to be rendered in the email template
+//- + studentName: Name of the student receiving the invitation
+//- + groupName: Name of the group being invited to
+//- + groupCode: Unique code for the group
+//- + leaderName: Name of the group leader
+//- + leaderEmail: Email of the group leader
+//- + semesterName: Name of the current semester
+//- + requestDate: Date when the invitation was sent
+
 extends layouts/email-layout
 
 block content
   .greeting
-    | Hello 
-    strong= studentName
-    | ,
+    | Hello #[strong #{studentName}],
 
   p
-    | You have received an invitation to join the group 
-    strong= groupName
-    |  (
-    strong= groupCode
-    | ) from their group leader. Please review the invitation and respond accordingly.
+    | You have received an invitation to join the group #[strong #{groupName}] (#[strong #{groupCode}]) from their group leader. Please review the invitation and respond accordingly.
 
   .info-box
     h3 🎯 Invitation Details
     
     .info-item
       span.info-label Group Name:
-      span.info-value= groupName
+      span.info-value #{groupName
     
     .info-item
       span.info-label Group Code:
-      span.info-value= groupCode
+      span.info-value #{groupCode}
     
     .info-item
       span.info-label Group Leader:
-      span.info-value= leaderName
+      span.info-value #{leaderName}
     
     .info-item
       span.info-label Leader Email:
-      span.info-value= leaderEmail
+      span.info-value #{leaderEmail}
     
     .info-item
       span.info-label Semester:
-      span.info-value= semesterName
+      span.info-value #{semesterName}
     
     .info-item
       span.info-label Invitation Date:
-      span.info-value= requestDate
+      span.info-value #{requestDate}
 
   .success-box
     strong What's Next?
+    br
     | You can respond to this invitation by:
     ul
       li ✅ Accepting the invitation to join the group
@@ -50,6 +54,7 @@ block content
 
   .warning-box
     strong Important Notes:
+    br
     ul
       li You can only be a member of one group per semester
       li If you accept, any other pending requests you have will be cancelled
@@ -57,11 +62,3 @@ block content
 
   p
     | Please log in to TheSync to review and respond to this invitation. You can find the invitation in your requests section.
-
-  p
-    | If you have any questions about this invitation or the group, feel free to contact the group leader directly.
-
-  p
-    strong Best regards,
-    br
-    | TheSync Team

@@ -1,13 +1,26 @@
 import { Module } from '@nestjs/common';
 
-import { GroupModule } from '@/groups/group.module';
-import { EmailModule } from '@/queue/email/email.module';
-import { ThesisController } from '@/theses/thesis.controller';
-import { ThesisService } from '@/theses/thesis.service';
+import {
+	ThesisLecturerController,
+	ThesisModeratorController,
+	ThesisPublishController,
+} from '@/theses/controllers';
+import {
+	ThesisLecturerService,
+	ThesisModeratorService,
+	ThesisPublishService,
+} from '@/theses/services';
 
 @Module({
-	imports: [EmailModule, GroupModule],
-	controllers: [ThesisController],
-	providers: [ThesisService],
+	controllers: [
+		ThesisLecturerController,
+		ThesisModeratorController,
+		ThesisPublishController,
+	],
+	providers: [
+		ThesisLecturerService,
+		ThesisModeratorService,
+		ThesisPublishService,
+	],
 })
 export class ThesisModule {}

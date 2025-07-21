@@ -5,6 +5,570 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2025-07-20
+
+### Added
+
+- **Thesis Management System Refactoring**:
+  - Introduced specialized thesis controllers for improved role-based access and modularity:
+    - `ThesisLecturerController` - Handles lecturer-specific thesis operations (create, update, submit, delete)
+    - `ThesisModeratorController` - Handles moderator-specific operations (publish, review, assign)
+    - `ThesisPublishController` - Handles public thesis viewing operations
+  - Added comprehensive response mapping system with detailed thesis information
+  - Implemented caching for improved performance and response times
+
+- **Enhanced DTOs and Validation**:
+  - `CreateThesisDto` - Enhanced with `semesterId` and optional `skillIds` array for thesis creation
+  - `UpdateThesisDto` - Partial update DTO based on `CreateThesisDto`
+  - `AssignThesisDto` - New DTO for thesis assignment with `groupId` validation
+  - `ReviewThesisDto` - New DTO for thesis review with `ThesisStatus` enum validation
+  - `PublishThesisDto` - Enhanced DTO for bulk thesis publishing with `thesisIds` array and `isPublish` boolean
+
+- **Structured Response Classes**:
+  - `ThesisResponse` - Base response class with core thesis information
+  - `ThesisDetailResponse` - Extended response class including:
+    - Thesis versions with version numbers and supporting documents
+    - Required skills with skill details
+    - Lecturer information with full name and email
+
+- **Response Mapping System**:
+  - `mapThesis()` - Maps basic thesis data to `ThesisResponse`
+  - `mapThesisDetail()` - Maps comprehensive thesis data to `ThesisDetailResponse` including related entities
+
+### Changed
+
+- **API Architecture Restructuring**:
+  - **Replaced Single Controller**: Migrated from monolithic `ThesisController` to three specialized controllers for better separation of concerns
+  - **Enhanced API Documentation**: Replaced `@SwaggerDoc` decorators with detailed `@ApiOperation` annotations
+  - **Improved Response Handling**: All endpoints now return structured response objects with proper HTTP status codes
+
+- **Service Layer Improvements**:
+  - Split thesis service into specialized services:
+    - `ThesisLecturerService` - Handles lecturer operations with user context validation
+    - `ThesisModeratorService` - Handles administrative operations
+    - `ThesisPublishService` - Handles public viewing operations with caching
+  - Integrated caching mechanisms for improved performance
+  - Enhanced error handling and validation across all services
+
+- **Enhanced API Endpoints**:
+  - All thesis endpoints now return detailed response objects instead of raw Prisma entities
+  - Improved role-based access control with specific role requirements per endpoint
+  - Enhanced HTTP status code usage (201 for creation, 200 for updates/retrieval)
+
+### Fixed
+
+- **Performance Optimization**: Implemented caching strategies to reduce database load and improve response times
+- **Type Safety**: Enhanced TypeScript support with comprehensive response type definitions
+- **Code Organization**: Better separation of concerns with modular controller and service architecture
+
+### Enhanced
+
+- **Developer Experience**: Improved API documentation with detailed operation descriptions and response schemas
+- **Maintainability**: Cleaner code organization with dedicated controllers, services, and response mappers
+- **Scalability**: Modular architecture allows for easier future enhancements and maintenance
+
+### Technical Improvements
+
+- **Response Mapping**: Consistent data transformation across all thesis endpoints
+- **Caching Integration**: Strategic caching implementation for frequently accessed data
+- **Role-Based Access**: Granular permission control based on user roles (LECTURER, MODERATOR)
+- **Enhanced Validation**: Comprehensive input validation with detailed error messages
+
+### Pull Requests
+
+- [#222](https://github.com/5-logic/the-sync-backend/pull/222) - Merge dev branch for v0.6.11 release
+- [#221](https://github.com/5-logic/the-sync-backend/pull/221) - Thesis management system refactoring and performance improvements
+
+## [0.6.10] - 2025-07-20
+
+### Added
+
+- **Skill Set API**:
+  - Introduced `SkillSetController` and `SkillSetService` with full CRUD and caching support. Added API documentation and response classes for skill sets and skills.
+  - New endpoints for managing skill sets and skills, with improved Swagger documentation.
+
+- **Lecturer API**:
+  - Added `LecturerManagementController` and `LecturerManagementService` for batch and single lecturer registration, status toggling, and improved data mapping.
+  - Enhanced caching for lecturer management and service methods.
+  - Added new response classes and constants for API integration.
+
+- **Student API**:
+  - Major refactor: split student logic into `student-admin`, `student-public`, and `student-self` controllers and services.
+  - Added batch student creation with validation, password hashing, and bulk email notifications.
+  - Added endpoints for student self-management, including self-update, skill and responsibility management, and status toggling.
+  - Introduced detailed student response classes and improved error handling and logging.
+  - Integrated caching for student services.
+
+- **Group API**:
+  - Added group management endpoints for moderators and students, including group creation, update, leader change, and thesis picking.
+  - Added new DTOs and improved validation (e.g., UUID checks).
+  - Enhanced API documentation and HTTP status code usage.
+
+- **Semester API**:
+  - Added `SemesterEnrollmentController` and refactored semester services for better modularity.
+  - Implemented caching for semester creation, retrieval, update, and deletion.
+  - Improved status transition validation and error handling in `SemesterStatusService`.
+  - Enhanced enrollment update logic and validation for ongoing semester status.
+
+- **General**:
+  - Added and reorganized DTOs, mappers, constants, and response classes across domains for better structure and maintainability.
+  - Introduced `CacheHelperModule` and `CacheHelperService` for centralized caching logic.
+  - Improved logging and error handling across services.
+
+### Changed
+
+- **DTOs and Imports**:
+  - Reorganized DTOs into `dtos/` folders, updated import paths for consistency, and improved validation logic.
+  - Updated response mapping and error handling in multiple services.
+
+- **Milestone API**:
+  - Enhanced milestone deletion validation and documentation, including checklist validation and error handling.
+  - Added `documents` field to milestone update.
+
+- **Checklist API**:
+  - Enforced single checklist per milestone in creation and update endpoints. Updated documentation accordingly.
+
+- **Review API**:
+  - Improved reviewer assignment logic: now limits to two reviewers per submission, excludes supervisors, and adds milestone end validation.
+  - Enhanced eligible reviewers endpoint and documentation.
+  - Refactored and removed unused endpoints and methods.
+
+- **Submission API**:
+  - Added `findDetail` endpoint to retrieve detailed submission information by ID.
+  - Enhanced review assignment structure and included moderator status in responses.
+
+- **Admin, Major, Responsibility, and User APIs**:
+  - Improved mapping, logging, and caching logic.
+  - Updated response classes and documentation.
+
+### Fixed
+
+- Fixed various validation, mapping, and error handling issues across services and controllers.
+- Improved type safety and logging in multiple modules.
+
+### Pull Requests
+
+- [#219](https://github.com/5-logic/the-sync-backend/pull/219) - dev: release api v0.6.10
+- [#220](https://github.com/5-logic/the-sync-backend/pull/220) - feature/refactor
+- [#218](https://github.com/5-logic/the-sync-backend/pull/218) - feature/issue-211
+- [#217](https://github.com/5-logic/the-sync-backend/pull/217) - feature/issue-212
+- [#216](https://github.com/5-logic/the-sync-backend/pull/216) - feature/issue-213
+- [#215](https://github.com/5-logic/the-sync-backend/pull/215) - feature/task-214
+
+## [0.6.9] - 2025-07-18
+
+### Added
+
+- **Milestone API**:
+  - Added `documents` field (array of strings) to `CreateMilestoneDto` and milestone creation. Now, when creating a milestone, you can provide a list of required document names. [See migration](https://github.com/5-logic/the-sync-backend/commit/2412cd6)
+  - Database schema updated: `documents` field added to `milestones` table. [Migration 20250718052219, 20250718052949]
+
+- **Semester API**:
+  - `CreateSemesterDto` now supports `defaultThesesPerLecturer` and `maxThesesPerLecturer` as optional properties for more flexible semester configuration. [See implementation](https://github.com/5-logic/the-sync-backend/commit/b29e996)
+
+### Changed
+
+- **Submission API**:
+  - Enhanced submission retrieval endpoints:
+    - Now includes detailed milestone, thesis, and lecturer review information in responses.
+    - Improved mapping and structure for reviewer and lecturer details in submission responses.
+    - Refined Swagger documentation for all submission endpoints for clarity and accuracy.
+    - SubmissionService refactored for better reviewer mapping and simplified logic. [See implementation](https://github.com/5-logic/the-sync-backend/commit/49cf0dc)
+  - Prevent deletion of milestones that have submissions with status `SUBMITTED`. [See implementation](https://github.com/5-logic/the-sync-backend/commit/bb83c49)
+  - Improved error messages and documentation for milestone deletion requirements. [See implementation](https://github.com/5-logic/the-sync-backend/commit/9bf153a)
+
+### Fixed
+
+- Removed unused or redundant fields from submission details selection for cleaner API responses.
+- Improved logging and error handling in milestone and submission services.
+
+### Pull Requests / Commits
+
+- [49cf0dc](https://github.com/5-logic/the-sync-backend/commit/49cf0dc) - Refactor supervisor mapping in getSubmissionsForReview
+- [f9b17d9](https://github.com/5-logic/the-sync-backend/commit/f9b17d9) - Simplify lecturer review mapping in SubmissionService
+- [f5e7661](https://github.com/5-logic/the-sync-backend/commit/f5e7661) - Add documents field handling in CreateMilestoneDto and MilestoneService
+- [499674a](https://github.com/5-logic/the-sync-backend/commit/499674a) - Remove default value for documents field in Milestone model and migration
+- [2412cd6](https://github.com/5-logic/the-sync-backend/commit/2412cd6) - Add documents field to Milestone model and migration script
+- [9bf153a](https://github.com/5-logic/the-sync-backend/commit/9bf153a) - Enhance delete milestone documentation with submission status requirements
+- [bb83c49](https://github.com/5-logic/the-sync-backend/commit/bb83c49) - Prevent deletion of milestones with submitted submissions
+- [f559791](https://github.com/5-logic/the-sync-backend/commit/f559791) - Remove acceptance field from submission details selection
+- [4b690a7](https://github.com/5-logic/the-sync-backend/commit/4b690a7) - Refine Swagger documentation for submission retrieval endpoints
+- [e04b6bd](https://github.com/5-logic/the-sync-backend/commit/e04b6bd) - Refine submission retrieval summaries and descriptions
+- [60424ae](https://github.com/5-logic/the-sync-backend/commit/60424ae) - Enhance submission retrieval with thesis and review lecturer details
+- [b29e996](https://github.com/5-logic/the-sync-backend/commit/b29e996) - Extend CreateSemesterDto with optional thesis properties in SemesterService
+
+## [0.6.8] - 2025-07-17
+
+### Added
+
+- **Milestone API**:
+  - New endpoint: `GET /milestones/semester/:semesterId` to retrieve all milestones for a specific semester. Requires authenticated user and a valid semester ID. Returns an array of milestones ordered by start date. [See implementation](https://github.com/5-logic/the-sync-backend/pull/205)
+
+- **Review API**:
+  - New endpoint: `GET /reviews/groups/:groupId` to retrieve all reviewers assigned to a specific group. No authentication required. Returns lecturer details for each reviewer. [See implementation](https://github.com/5-logic/the-sync-backend/pull/205)
+
+### Changed
+
+- **Review API Refactor**:
+  - Refactored review assignment update logic:
+    - Replaced `PUT /reviews/:id/assign-reviewer` (bulk update) with `PUT /reviews/:id/change-reviewer` (change a single reviewer for a submission).
+    - `UpdateReviewerAssignmentDto` changed: now requires `currentReviewerId` and `newReviewerId` (both UUIDs), instead of an array of lecturer IDs.
+    - Enhanced validation: prevents assigning a supervisor as a reviewer and ensures the new reviewer is not the same as the current reviewer.
+    - Improved error handling and logging for reviewer assignment changes.
+  - Renamed and clarified controller routes for consistency:
+    - `POST /reviews/assign-reviewer` (bulk assign)
+    - `PUT /reviews/:id/change-reviewer` (change one reviewer)
+    - `GET /reviews/assigned` (get assigned reviews for lecturer)
+    - `GET /reviews/:submissionId/form` (get review form)
+    - `POST /reviews/:submissionId` (submit review)
+    - `PUT /reviews/:id` (update review)
+  - Updated API documentation for all affected endpoints and business logic. [See implementation](https://github.com/5-logic/the-sync-backend/pull/204)
+
+### Fixed
+
+- Improved reviewer validation logic to prevent supervisors from being assigned as reviewers.
+- Enhanced error messages and logging for reviewer assignment and milestone queries.
+
+### Pull Requests
+
+- [#204](https://github.com/5-logic/the-sync-backend/pull/204) - Update Logic Reviewer Assignment Validation & Update
+- [#205](https://github.com/5-logic/the-sync-backend/pull/205) - Implement API: Get Reviewer by Group ID & Get Milestones by Semester ID
+- [#206](https://github.com/5-logic/the-sync-backend/pull/206) - dev: release api v0.6.8
+
+## [0.6.7] - 2025-07-16
+
+### Added
+
+- **Modular Authentication System**:
+  - **Admin Authentication**: New `POST /auth/admin/login`, `POST /auth/admin/refresh`, and `POST /auth/admin/logout` endpoints for admin-specific authentication flow
+  - **User Authentication**: New `POST /auth/user/login`, `POST /auth/user/refresh`, and `POST /auth/user/logout` endpoints for student/lecturer authentication
+  - **Password Management**: New `PUT /auth/change-password` endpoint for authenticated users to change passwords (requires `ChangePasswordDto` with `currentPassword` and `newPassword`)
+  - **Password Reset System**: Enhanced password reset with `POST /auth/password-reset/request` (requires `RequestPasswordResetDto` with `email`) and `POST /auth/password-reset/verify` (requires `VerifyOtpAndResetPasswordDto` with `email`, `otp`, and `newPassword`)
+
+- **Structured API Response System**:
+  - **Response Classes**: Added `BaseResponse<T>`, `ArrayResponse<T>`, and `EmptyResponse` classes for consistent API responses
+  - **Response Decorators**: New `@ApiBaseResponse()`, `@ApiArrayResponse()`, and `@ApiEmptyResponse()` decorators for enhanced Swagger documentation
+  - **Type-Safe Responses**: All authentication endpoints now return structured responses with `success`, `statusCode`, and `data` fields
+
+- **Enhanced Business Validation**:
+  - **Thesis Creation Limits**: Added validation for maximum theses per lecturer per semester based on `semester.maxThesesPerLecturer` configuration
+  - **Supervisor Requirements**: Enhanced thesis publishing validation to ensure exactly 2 supervisors are assigned before publication
+  - **Approval Validation**: Added validation in bulk supervisor assignment to ensure only approved theses can have supervisors assigned
+
+### Changed
+
+- **Authentication Architecture Refactoring**:
+  - **Service Separation**: Split authentication into specialized services: `AdminAuthService`, `UserAuthService`, `BaseAuthService`, `ChangePasswordService`, `PasswordResetService`, and `TokenAuthService`
+  - **Controller Reorganization**: Replaced single `AuthController` with dedicated controllers: `AdminAuthController`, `UserAuthController`, `ChangePasswordController`, and `PasswordResetController`
+  - **Consolidated Endpoints**: Moved password change functionality from individual domain controllers to centralized auth controller
+
+- **Module Structure Improvements**:
+  - **Domain Reorganization**: Restructured `AdminModule`, `MajorModule`, `ResponsibilityModule`, and `UserModule` with organized subfolder structure (controllers/, services/, docs/, responses/, constants/)
+  - **Enhanced Documentation**: Added comprehensive API documentation with operation descriptions and response schemas
+  - **Barrel Exports**: Implemented index.ts files across modules for cleaner imports and better code organization
+
+- **Service Layer Enhancements**:
+  - **Error Handling**: Improved error message formatting in supervision service for unapproved thesis validation
+  - **Group Management**: Enhanced student removal from groups with proper thesis assignment validation and conflict handling
+  - **Validation Logic**: Streamlined skill and responsibility deletion logic in GroupService with better error handling
+
+### Fixed
+
+- **Import Path Optimization**: Updated import statements across modules to use barrel exports and relative paths for better maintainability
+- **Type Safety**: Enhanced TypeScript configuration with proper response type definitions
+- **Service Dependencies**: Fixed service injection and dependency management across refactored modules
+- **Validation Messages**: Improved error message formatting for thesis approval validation with clearer descriptions
+
+### Enhanced
+
+- **Code Organization**: Better separation of concerns with dedicated folders for controllers, services, docs, and responses
+- **API Documentation**: Comprehensive Swagger documentation with detailed operation descriptions and response schemas
+- **Authentication Flow**: More secure and maintainable authentication system with role-based access control
+- **Business Logic**: Enhanced validation rules for thesis management and supervision assignment
+
+### Pull Requests
+
+- [#199](https://github.com/5-logic/the-sync-backend/pull/199) - Merge dev branch for v0.6.7 release
+- [#200](https://github.com/5-logic/the-sync-backend/pull/200) - Authentication system refactoring and structured responses (feature/issue-196)
+- [#197](https://github.com/5-logic/the-sync-backend/pull/197) - Enhanced business validation and error handling (feature/issue-193)
+- [#194](https://github.com/5-logic/the-sync-backend/pull/194) - Module restructuring and code organization improvements (feature/refactor)
+
+---
+
+## [0.6.6] - 2025-07-15
+
+### Changed
+
+- **Service Architecture Refactoring**:
+  - **Removed BaseCacheService**: Eliminated the `BaseCacheService` abstract class and all caching logic from domain services to simplify architecture and improve maintainability.
+  - **Direct Service Implementation**: All domain services (GroupService, LecturerService, MajorService, MilestoneService, RequestService, ResponsibilityService, ReviewService, SemesterService, SkillSetService, StudentService, SubmissionService, SupervisionService, ThesisService) now extend directly from base classes without caching dependencies.
+  - **Simplified Dependencies**: Removed `@Inject(CACHE_MANAGER)` and Cache dependencies from all service constructors.
+
+- **Cache Utilities Refactoring**:
+  - **New Utility Functions**: Added `createCacheStores()` and Redis configuration utilities in `src/utils/cache.util.ts` and `src/utils/redis.util.ts`.
+  - **Centralized Configuration**: Extracted Redis and BullMQ configuration logic into reusable utility functions (`getRedisConfigOrThrow`, `getBullBoardAuthOrThrow`).
+  - **App Module Simplification**: Simplified `AppModule` configuration by using utility functions for cache store creation and configuration validation.
+
+- **Email Job Type Organization**:
+  - **Restructured Email Enums**: Reorganized `EmailJobType` enum with logical grouping by categories (Authentication, Accounts, Semesters, Groups, Theses, Enrollment, Invitations/Requests, Supervisions, Reviews).
+  - **Removed Unused Types**: Eliminated `SEND_NOTIFICATION` job type for cleaner email system.
+  - **Better Documentation**: Added comments to categorize email job types for improved readability.
+
+- **Email Template Improvements**:
+  - **Enhanced Thesis Assignment**: Updated thesis assignment notification templates with improved clarity and language.
+  - **Fixed Group Size Calculation**: Corrected current group size calculation in thesis assignment notifications.
+  - **Better Formatting**: Enhanced group membership notification formatting for improved clarity.
+
+### Removed
+
+- **BaseCacheService Class**: Completely removed the abstract base cache service class and all its methods (`getCachedData`, `setCachedData`, `clearCache`, `clearMultipleCache`, `getWithCacheAside`, `invalidateEntityCache`, `setCachedDataWithTags`).
+- **Cache Logic**: Removed all caching logic from domain services including cache key management, TTL handling, and cache invalidation patterns.
+- **Cache Dependencies**: Eliminated cache manager dependencies from service constructors across all domain modules.
+- **Redundant Configuration**: Removed duplicate Redis configuration code from AppModule.
+
+### Fixed
+
+- **Configuration Validation**: Enhanced error handling for missing Redis and BullMQ configurations with more descriptive error messages.
+- **Import Organization**: Cleaned up imports across all service files by removing cache-related dependencies.
+- **Code Simplification**: Streamlined service implementations by removing cache-aside patterns and related complexity.
+
+### Performance
+
+- **Reduced Complexity**: Simplified service architecture reduces memory overhead and improves application startup time.
+- **Direct Database Access**: Services now directly access database without cache layer, ensuring real-time data consistency.
+- **Cleaner Architecture**: Eliminated cache-related abstractions for more straightforward service implementations.
+
+### Pull Requests
+
+- [#192](https://github.com/5-logic/the-sync-backend/pull/192) - Merge dev branch for v0.6.6 release
+
+---
+
+## [0.6.5] - 2025-07-13
+
+### Added
+
+- **Review Management System**:
+  - Introduced `ReviewModule` with full CRUD and assignment APIs for submission reviews.
+  - New endpoints:
+    - `GET /:id/eligible-reviewers` (MODERATOR): List eligible reviewers for a submission.
+    - `POST /assign-reviewer` (MODERATOR): Bulk assign reviewers to submissions (`AssignBulkLecturerReviewerDto`).
+    - `PUT /:id/assign-reviewer` (MODERATOR): Update reviewer assignment for a submission (`UpdateReviewerAssignmentDto`).
+    - `GET /reviews/assigned` (LECTURER, MODERATOR): List reviews assigned to the current user.
+    - `GET /reviews/:submissionId/form` (LECTURER, MODERATOR): Get review form for a submission.
+    - `POST /reviews/:submissionId` (LECTURER): Submit a review for a submission (`CreateReviewDto`).
+    - `PUT /reviews/:id` (LECTURER): Update a review (`UpdateReviewDto`).
+    - `GET /groups/:groupId/submissions/:submissionId/reviews` (STUDENT, LECTURER, MODERATOR): List all reviews for a group submission.
+  - Added DTOs: `AssignBulkLecturerReviewerDto`, `CreateReviewDto`, `UpdateReviewDto`, `UpdateReviewerAssignmentDto`, `CreateReviewItemDto`, `UpdateReviewItemDto`.
+
+- **Submission Management System**:
+  - Introduced `SubmissionModule` with endpoints for group and milestone submissions.
+  - New endpoints:
+    - `GET /submissions` (ADMIN, LECTURER): List all submissions for the user.
+    - `GET /submissions/semester/:semesterId` (MODERATOR): List submissions for a semester.
+    - `GET /submissions/milestone/:milestoneId` (MODERATOR): List submissions for a milestone.
+    - `GET /submissions/semester/:semesterId/milestone/:milestoneId` (MODERATOR): List submissions for a semester and milestone.
+    - `GET /groups/:groupId/submissions` (all roles): List all submissions for a group.
+    - `GET /groups/:groupId/milestones/:milestoneId` (all roles): Get a submission for a group and milestone.
+    - `POST /groups/:groupId/milestones/:milestoneId` (STUDENT): Create a submission for a group and milestone (`CreateSubmissionDto`).
+    - `PUT /groups/:groupId/milestones/:milestoneId` (STUDENT): Update a submission for a group and milestone (`UpdateSubmissionDto`).
+  - Added DTOs: `CreateSubmissionDto`, `UpdateSubmissionDto`, `SubmissionServiceDto`.
+
+- **Bulk Supervision Assignment**:
+  - Replaced single supervision assignment with bulk assignment endpoint:
+    - `POST /supervisions/assign-supervisors` (MODERATOR): Bulk assign supervisors to theses (`AssignBulkSupervisionDto`).
+  - Added DTO: `AssignBulkSupervisionDto` (removes `AssignSupervisionDto`).
+
+- **Semester Enrollment Update**:
+  - New endpoint:
+    - `PUT /semesters/:id/enrollments` (ADMIN): Bulk update student enrollments in a semester (`UpdateEnrollmentsDto`).
+  - Added DTO: `UpdateEnrollmentsDto`.
+
+- **Email Notification Enhancements**:
+  - Added new email templates and job types for reviewer assignment, review completion, and enrollment result notifications.
+
+### Changed
+
+- **API Documentation**:
+  - Enhanced and unified Swagger documentation for new and existing endpoints.
+  - Improved DTO documentation with examples and property descriptions.
+
+- **Service Refactoring**:
+  - Refactored review, submission, and supervision services for bulk operations and improved error handling.
+  - Improved caching for review submissions and eligible reviewers.
+
+### Fixed
+
+- Minor bug fixes and optimizations in group, milestone, and student services.
+
+### Database
+
+- Added new migrations for submission attributes, submission status enum, and review item acceptance.
+
+### Pull Requests
+
+- [#191](https://github.com/5-logic/the-sync-backend/pull/191) - Merge dev branch for v0.6.5 release
+- [#190](https://github.com/5-logic/the-sync-backend/pull/190) - Bulk reviewer assignment and review management (task-187, task-188)
+- [#189](https://github.com/5-logic/the-sync-backend/pull/189) - Submission management system (task-144)
+- [#186](https://github.com/5-logic/the-sync-backend/pull/186) - Bulk supervision assignment (task-150)
+
+---
+
+## [0.6.4] - 2025-07-08
+
+### Added
+
+- **Checklist Items Management System**:
+  - `POST /checklist-items/create-list` - New endpoint for moderators to create multiple checklist items (requires `CreateManyChecklistItemsDto` with `checklistId` and array of `checklistItems`)
+  - `GET /checklist-items` - New endpoint for lecturers and moderators to view all checklist items with optional `checklistId` query parameter
+  - `GET /checklist-items/:id` - New endpoint for lecturers and moderators to view specific checklist item details
+  - `DELETE /checklist-items/:id` - New endpoint for moderators to remove checklist items
+  - `GET /checklist-items/checklist/:checklistId` - New endpoint for lecturers and moderators to view all items for a specific checklist
+  - `PUT /checklist-items/checklist/:checklistId/update-list` - New endpoint for moderators to bulk update checklist items (requires `UpdateManyChecklistItemsDto`)
+  - `CreateChecklistItemDto` - New DTO for individual checklist item creation with `name`, optional `description`, and optional `isRequired` boolean
+  - `CreateManyChecklistItemsDto` - New DTO for bulk checklist item creation with `checklistId` and array of checklist items
+  - `UpdateManyChecklistItemsDto` - New DTO for bulk checklist item updates
+
+- **Checklist Management API Restructuring**:
+  - Restructured checklist endpoints from `/checklists` to maintain same paths but with enhanced role-based access
+  - `GET /checklists/milestone/:milestoneId` - Enhanced endpoint for lecturers and moderators to view checklists by milestone
+
+### Changed
+
+- **Architecture Refactoring**:
+  - **Module Separation**: Split checklist functionality into separate `ChecklistModule` and `ChecklistItemModule` for better organization
+  - **Controller Restructuring**: Renamed `ChecklistsController` to `ChecklistController` and separated checklist item operations into dedicated `ChecklistItemController`
+  - **Service Architecture**: Renamed `ChecklistsService` to `ChecklistService` and created dedicated `ChecklistItemService` for item-specific operations
+
+- **Role Permission Updates**:
+  - **Checklist Operations**: Updated checklist creation and management permissions from `LECTURER` to `MODERATOR` only
+  - **Checklist Item Operations**: All checklist item creation, updates, and deletion operations restricted to `MODERATOR` role
+  - **View Permissions**: Lecturers and moderators can view checklists and checklist items, students no longer have direct access
+
+- **Cache Management Optimization**:
+  - **Streamlined Cache Clearing**: Removed generic cache pattern clearing methods (`clearCacheWithPattern`) across all services
+  - **Targeted Cache Management**: Implemented more efficient cache clearing strategies that only invalidate specific affected cache entries
+  - **Performance Enhancement**: Optimized cache management in `GroupService`, `LecturerService`, `MilestoneService`, `RequestService`, `SemesterService`, `StudentService`, `SupervisionService`, and `ThesisService`
+  - **Real-time Data Accuracy**: Enhanced cache invalidation to ensure more accurate real-time data retrieval
+
+- **API Documentation Enhancement**:
+  - **Comprehensive Documentation**: Enhanced Swagger documentation across all endpoints with detailed access requirements
+  - **Role-based Documentation**: Added clear documentation about which roles can access specific endpoints
+  - **Enhanced Descriptions**: Improved API operation descriptions for better developer experience across admin, auth, checklist, group, lecturer, major, milestone, request, responsibility, semester, skill-set, student, supervision, and thesis operations
+
+- **DTO Simplification**:
+  - **CreateChecklistDto**: Simplified API property documentation by removing verbose descriptions while maintaining validation
+  - **Cleaner Documentation**: Streamlined DTO documentation for better readability
+
+### Fixed
+
+- **Import Path Standardization**: Corrected import paths for checklist documentation and export names
+- **SwaggerDoc Tag Consistency**: Standardized SwaggerDoc tags for checklist endpoints to ensure consistent API documentation
+- **Module Integration**: Fixed import name for checklist module in domain module configuration
+
+### Enhanced
+
+- **TypeScript Configuration**: Added path mapping for checklist items (`@/checklists/checklist-items/*`) in `tsconfig.json` for improved module resolution
+- **Domain Module Structure**: Enhanced `DomainModule` to include both `ChecklistModule` and `ChecklistItemModule` for comprehensive checklist management
+- **Service Error Handling**: Improved error handling and validation in checklist item operations with enhanced logging
+- **Bulk Operations**: Added support for efficient bulk creation and updating of checklist items with proper validation
+
+### Technical Improvements
+
+- **Code Organization**: Better separation of concerns between checklist and checklist item management
+- **Validation Enhancement**: Improved validation for checklist item operations with proper UUID and nested object validation
+- **Service Architecture**: Enhanced service structure with dedicated functionality for checklist items separate from general checklist operations
+- **Performance Optimization**: Reduced unnecessary cache operations for better application performance
+
+### Pull Requests
+
+- [#185](https://github.com/5-logic/the-sync-backend/pull/185) - Merge dev branch for v0.6.4 release
+- [#184](https://github.com/5-logic/the-sync-backend/pull/184) - Checklist items management system and architecture refactoring (task-146)
+
+## [0.6.3] - 2025-07-07
+
+### Added
+
+- **Checklist Management System**:
+  - `POST /checklists` - New endpoint for lecturers to create checklists (requires `CreateChecklistDto` with `name`, optional `description`, and optional `milestoneId`)
+  - `GET /checklists` - New endpoint for students and lecturers to view all checklists
+  - `GET /checklists/:id` - New endpoint for students and lecturers to view specific checklist details
+  - `PUT /checklists/:id` - New endpoint for lecturers to update checklists (requires `UpdateChecklistDto`)
+  - `DELETE /checklists/:id` - New endpoint for lecturers to remove checklists
+  - `CreateChecklistDto` - New DTO for checklist creation with name, optional description, and optional milestone association
+  - `UpdateChecklistDto` - New DTO for checklist updates based on CreateChecklistDto
+
+- **Enhanced Student Profile Management**:
+  - `PUT /students` - Enhanced self-update endpoint now supports managing student skills and responsibilities
+  - `StudentSkillDto` - New DTO for managing student skills with skillId and skill level validation
+  - `StudentExpectedResponsibilityDto` - New DTO for managing student expected responsibilities with responsibilityId validation
+  - Enhanced `SelfUpdateStudentDto` with optional `studentSkills` and `studentExpectedResponsibilities` arrays for comprehensive profile management
+
+- **Request Status Enhancement**:
+  - Added `cancelled` status to RequestStatus enum for better request lifecycle management
+  - Enhanced request cancellation capabilities for join and invite requests with proper permission validation
+
+- **Comprehensive API Documentation System**:
+  - `SwaggerDoc` decorator - New centralized decorator for consistent API documentation across all endpoints
+  - Created comprehensive documentation modules for all API endpoints: `AdminDocs`, `AuthDocs`, `ChecklistsDocs`, `GroupDocs`, `LecturerDocs`, `MajorDocs`, `MilestoneDocs`, `RequestDocs`, `ResponsibilityDocs`, `SemesterDocs`, `SkillSetDocs`, `StudentDocs`, `SupervisionDocs`, `ThesisDocs`
+  - Centralized documentation mapping system with `DOCS_MAP` for consistent API operation descriptions
+  - Enhanced Swagger documentation consistency across all controllers
+
+### Changed
+
+- **Database Schema Improvements**:
+  - **Checklist-Milestone Relationship**: Reversed relationship from milestone having one checklist to checklist optionally belonging to a milestone
+  - Made `milestone_id` optional in checklists table to allow standalone checklists
+  - Removed `checklist_id` foreign key constraint from milestones table for better flexibility
+
+- **API Documentation Standardization**:
+  - Replaced individual `@ApiOperation` decorators with unified `SwaggerDoc` decorator across all controllers
+  - Standardized API operation descriptions and documentation structure
+  - Enhanced consistency in API documentation with centralized documentation management
+
+- **Cache Management Optimization**:
+  - Implemented cache-aside pattern in `LecturerService` for improved performance
+  - Enhanced cache invalidation strategies for better data consistency
+  - Optimized cache management methods in `BaseCacheService` for efficient caching operations
+
+- **Request Permission Validation**:
+  - Streamlined cancellation permission checks for join and invite requests
+  - Implemented dedicated permission validation methods for request status updates
+  - Enhanced request management workflow with better validation logic
+
+- **Student Service Enhancements**:
+  - Added support for managing student skills and expected responsibilities in profile updates
+  - Enhanced student data handling with proper validation and relationship management
+  - Improved student profile update workflow with comprehensive skill and responsibility management
+
+### Fixed
+
+- **Code Organization**: Consolidated DTO imports across supervision service and controller for cleaner code structure
+- **Import Path Management**: Updated import paths in DTO index files for better module organization
+- **Validation Logic**: Enhanced checklist service with proper validation and error handling for milestone operations
+- **API Documentation**: Corrected casing and export consistency in documentation modules
+
+### Enhanced
+
+- **TypeScript Configuration**: Added checklist module path mapping in `tsconfig.json` for improved module resolution
+- **Module Structure**: Enhanced `DomainModule` to include `ChecklistsModule` for comprehensive domain management
+- **Service Architecture**: Improved service structure with better validation, error handling, and logging across checklist and student management
+
+### Database Migration
+
+- **Migration 20250707131611**: Update checklist item acceptance
+  - Removed `checklist_id` column from `milestones` table
+  - Made `milestone_id` optional in `checklists` table
+  - Updated foreign key relationships for better flexibility
+
+- **Migration 20250707134933**: Add cancelled status to request status enum
+  - Added `cancelled` value to `request_statuses` enum for enhanced request lifecycle management
+
+### Pull Requests
+
+- [#183](https://github.com/5-logic/the-sync-backend/pull/183) - Merge dev branch for v0.6.3 release
+- [#182](https://github.com/5-logic/the-sync-backend/pull/182) - Checklist management system, enhanced student profiles, and comprehensive API documentation improvements (task-146)
+
 ## [0.6.2] - 2025-07-07
 
 ### Added

@@ -98,7 +98,6 @@ html(lang="en")
         margin: 20px 0;
       }
       .warning-box strong {
-        display: block;
         margin-bottom: 5px;
       }
       .success-box {
@@ -110,7 +109,6 @@ html(lang="en")
         margin: 20px 0;
       }
       .success-box strong {
-        display: block;
         margin-bottom: 5px;
       }
       .footer {
@@ -170,5 +168,8 @@ html(lang="en")
         p
           strong TheSync Team
         p Group Formation and Capstone Thesis Development
+        p(style="font-size: 13px; color: #495057;")
+          | Contact: 
+          a(href="mailto:" + process.env.SMTP_USER style="color: #0056b3; text-decoration: none;")= process.env.SMTP_USER
         p(style="font-size: 12px; color: #adb5bd;")
           | This email was sent automatically, please do not reply directly.

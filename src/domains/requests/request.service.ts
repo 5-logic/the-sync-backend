@@ -1,16 +1,14 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
 	ConflictException,
 	ForbiddenException,
 	Inject,
 	Injectable,
+	Logger,
 	NotFoundException,
 } from '@nestjs/common';
-import { Cache } from 'cache-manager';
 
-import { BaseCacheService } from '@/bases/base-cache.service';
 import { CONSTANTS } from '@/configs';
-import { PrismaService } from '@/providers/prisma/prisma.service';
+import { PrismaService } from '@/providers';
 import { EmailQueueService } from '@/queue/email/email-queue.service';
 import { EmailJobType } from '@/queue/email/enums/type.enum';
 import {
@@ -27,17 +25,15 @@ import {
 } from '~/generated/prisma';
 
 @Injectable()
-export class RequestService extends BaseCacheService {
+export class RequestService {
+	private readonly logger = new Logger(RequestService.name);
 	private static readonly CACHE_KEY = 'cache:request';
 
 	constructor(
-		@Inject(PrismaService) private readonly prisma: PrismaService,
-		@Inject(CACHE_MANAGER) cacheManager: Cache,
+		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-	) {
-		super(cacheManager, RequestService.name);
-	}
+	) {}
 
 	// Validation methods
 	private async validateStudentEnrollment(userId: string, semesterId: string) {
@@ -168,6 +164,80 @@ export class RequestService extends BaseCacheService {
 		}
 	}
 
+	/**
+	 * Validates permissions for updating request status based on request type and action
+	 */
+	private async validateUpdatePermissions(
+		userId: string,
+		request: { type: RequestType; studentId: string; groupId: string },
+		status: RequestStatus,
+	) {
+		if (request.type === RequestType.Join) {
+			await this.validateJoinRequestPermissions(userId, request, status);
+		} else if (request.type === RequestType.Invite) {
+			await this.validateInviteRequestPermissions(userId, request, status);
+		}
+	}
+
+	/**
+	 * Validates permissions for join request updates
+	 */
+	private async validateJoinRequestPermissions(
+		userId: string,
+		request: { studentId: string; groupId: string },
+		status: RequestStatus,
+	) {
+		if (status === RequestStatus.Cancelled && userId !== request.studentId) {
+			// For join requests, only the student who sent it can cancel
+			throw new ForbiddenException(
+				`Only the student who sent the join request can cancel it`,
+			);
+		} else if (status !== RequestStatus.Cancelled) {
+			// For join requests, only group leader can approve/reject
+			await this.validateStudentIsGroupLeader(userId, request.groupId);
+		}
+	}
+
+	/**
+	 * Validates permissions for invite request updates
+	 */
+	private async validateInviteRequestPermissions(
+		userId: string,
+		request: { studentId: string; groupId: string },
+		status: RequestStatus,
+	) {
+		if (status === RequestStatus.Cancelled) {
+			// For invite requests, only group leader can cancel
+			await this.validateStudentIsGroupLeader(userId, request.groupId);
+		} else if (userId !== request.studentId) {
+			// For invite requests, only the invited student can approve/reject
+			throw new ForbiddenException(
+				`Only the invited student can respond to this invitation`,
+			);
+		}
+	}
+
+	/**
+	 * Performs all validations required for request approval
+	 */
+	private async validateRequestApproval(request: {
+		studentId: string;
+		groupId: string;
+		group: { semesterId: string };
+	}) {
+		// Validate semester status
+		await this.validateSemesterStatus(request.group.semesterId);
+
+		// Validate student is not already in a group
+		await this.validateStudentNotInGroup(
+			request.studentId,
+			request.group.semesterId,
+		);
+
+		// Validate group capacity
+		await this.validateGroupCapacity(request.groupId);
+	}
+
 	// API Methods
 
 	/**
@@ -236,10 +306,6 @@ export class RequestService extends BaseCacheService {
 			this.logger.log(
 				`Student ${userId} sent join request to group ${group.code}`,
 			);
-
-			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:student:${userId}`);
-			await this.clearCache(`${RequestService.CACHE_KEY}:group:${dto.groupId}`);
 
 			// Send email notification to group leader
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
@@ -361,15 +427,6 @@ export class RequestService extends BaseCacheService {
 				`Group ${group.code} sent invite requests to ${dto.studentIds.length} students: ${dto.studentIds.join(', ')}`,
 			);
 
-			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:group:${groupId}`);
-			// Clear cache for all invited students
-			await Promise.all(
-				dto.studentIds.map((studentId) =>
-					this.clearCache(`${RequestService.CACHE_KEY}:student:${studentId}`),
-				),
-			);
-
 			// Get group leader info for email notifications
 			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
 				{
@@ -403,20 +460,11 @@ export class RequestService extends BaseCacheService {
 
 	/**
 	 * Get all requests for a student (both sent and received)
+	 * No caching for real-time updates
 	 */
 	async getStudentRequests(userId: string) {
 		try {
 			this.logger.log(`Fetching requests for student: ${userId}`);
-
-			// Check cache first
-			const cacheKey = `${RequestService.CACHE_KEY}:student:${userId}`;
-			const cachedRequests = await this.getCachedData<any[]>(cacheKey);
-			if (cachedRequests) {
-				this.logger.log(
-					`Found ${cachedRequests.length} requests for student (from cache)`,
-				);
-				return cachedRequests;
-			}
 
 			const requests = await this.prisma.request.findMany({
 				where: {
@@ -452,9 +500,6 @@ export class RequestService extends BaseCacheService {
 				orderBy: { createdAt: 'desc' },
 			});
 
-			// Cache the result
-			await this.setCachedData(cacheKey, requests);
-
 			this.logger.log(
 				`Found ${requests.length} requests for student ${userId}`,
 			);
@@ -467,6 +512,7 @@ export class RequestService extends BaseCacheService {
 
 	/**
 	 * Get all requests for a group (only accessible by group leader)
+	 * No caching for real-time updates
 	 */
 	async getGroupRequests(userId: string, groupId: string) {
 		try {
@@ -474,16 +520,6 @@ export class RequestService extends BaseCacheService {
 
 			// Validate user is group leader
 			await this.validateStudentIsGroupLeader(userId, groupId);
-
-			// Check cache first
-			const cacheKey = `${RequestService.CACHE_KEY}:group:${groupId}`;
-			const cachedRequests = await this.getCachedData<any[]>(cacheKey);
-			if (cachedRequests) {
-				this.logger.log(
-					`Found ${cachedRequests.length} requests for group (from cache)`,
-				);
-				return cachedRequests;
-			}
 
 			const requests = await this.prisma.request.findMany({
 				where: {
@@ -512,9 +548,6 @@ export class RequestService extends BaseCacheService {
 				orderBy: { createdAt: 'desc' },
 			});
 
-			// Cache the result
-			await this.setCachedData(cacheKey, requests);
-
 			this.logger.log(`Found ${requests.length} requests for group ${groupId}`);
 			return requests;
 		} catch (error) {
@@ -524,7 +557,7 @@ export class RequestService extends BaseCacheService {
 	}
 
 	/**
-	 * Process a request (approve/reject) - can be done by student or group leader
+	 * Process a request (approve/reject/cancel) - can be done by student or group leader
 	 */
 	async updateRequestStatus(
 		userId: string,
@@ -555,32 +588,12 @@ export class RequestService extends BaseCacheService {
 				);
 			}
 
-			// Validate permissions based on request type
-			if (request.type === RequestType.Join) {
-				// For join requests, only group leader can approve/reject
-				await this.validateStudentIsGroupLeader(userId, request.groupId);
-			} else if (request.type === RequestType.Invite) {
-				// For invite requests, only the invited student can approve/reject
-				if (userId !== request.studentId) {
-					throw new ForbiddenException(
-						`Only the invited student can respond to this invitation`,
-					);
-				}
-			}
+			// Validate permissions based on request type and action
+			await this.validateUpdatePermissions(userId, request, dto.status);
 
 			// If approving, perform additional validations
 			if (dto.status === RequestStatus.Approved) {
-				// Validate semester status
-				await this.validateSemesterStatus(request.group.semesterId);
-
-				// Validate student is not already in a group
-				await this.validateStudentNotInGroup(
-					request.studentId,
-					request.group.semesterId,
-				);
-
-				// Validate group capacity
-				await this.validateGroupCapacity(request.groupId);
+				await this.validateRequestApproval(request);
 			}
 
 			// Update request and potentially add student to group
@@ -640,15 +653,6 @@ export class RequestService extends BaseCacheService {
 				`Request ${requestId} ${dto.status.toLowerCase()} by user ${userId}`,
 			);
 
-			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
-			await this.clearCache(
-				`${RequestService.CACHE_KEY}:student:${request.studentId}`,
-			);
-			await this.clearCache(
-				`${RequestService.CACHE_KEY}:group:${request.groupId}`,
-			);
-
 			// Send email notification about request status update
 			await this.sendRequestStatusUpdateNotification(requestId, dto.status);
 
@@ -686,7 +690,7 @@ export class RequestService extends BaseCacheService {
 
 			const cancelledRequest = await this.prisma.request.update({
 				where: { id: requestId },
-				data: { status: RequestStatus.Rejected },
+				data: { status: RequestStatus.Cancelled },
 				include: {
 					student: {
 						include: {
@@ -709,13 +713,6 @@ export class RequestService extends BaseCacheService {
 				},
 			});
 
-			// Clear relevant caches
-			await this.clearCache(`${RequestService.CACHE_KEY}:${requestId}`);
-			await this.clearCache(`${RequestService.CACHE_KEY}:student:${userId}`);
-			await this.clearCache(
-				`${RequestService.CACHE_KEY}:group:${request.groupId}`,
-			);
-
 			this.logger.log(`Request ${requestId} cancelled by student ${userId}`);
 			return cancelledRequest;
 		} catch (error) {
@@ -726,36 +723,11 @@ export class RequestService extends BaseCacheService {
 
 	/**
 	 * Get a specific request by ID
+	 * Cache individual requests with TTL for performance
 	 */
 	async findOne(userId: string, requestId: string) {
 		try {
 			this.logger.log(`Fetching request: ${requestId} for user: ${userId}`);
-
-			// Check cache first
-			const cacheKey = `${RequestService.CACHE_KEY}:${requestId}`;
-			const cachedRequest = await this.getCachedData<any>(cacheKey);
-			if (cachedRequest) {
-				// Still need to check permissions for cached data
-				const isStudent = cachedRequest.studentId === userId;
-				const isGroupLeader = await this.prisma.studentGroupParticipation
-					.findFirst({
-						where: {
-							studentId: userId,
-							groupId: cachedRequest.groupId,
-							isLeader: true,
-						},
-					})
-					.then((participation) => !!participation);
-
-				if (!isStudent && !isGroupLeader) {
-					throw new ForbiddenException(
-						`You don't have permission to view this request`,
-					);
-				}
-
-				this.logger.log(`Request found with ID: ${requestId} (from cache)`);
-				return cachedRequest;
-			}
 
 			const request = await this.prisma.request.findUnique({
 				where: { id: requestId },
@@ -809,9 +781,6 @@ export class RequestService extends BaseCacheService {
 					`You don't have permission to view this request`,
 				);
 			}
-
-			// Cache the result
-			await this.setCachedData(cacheKey, request);
 
 			this.logger.log(`Request found with ID: ${requestId}`);
 			return request;
