@@ -30,7 +30,7 @@ export class PineconeThesisProcessor extends WorkerHost {
 
 		this.logger.log('Pinecone client initialized successfully.');
 		this.logger.debug(
-			`Pinecone environment: ${JSON.stringify(pineconeConfiguration.apiKey)}`,
+			`Pinecone environment: ${JSON.stringify(pineconeConfiguration)}`,
 		);
 	}
 
@@ -63,21 +63,20 @@ export class PineconeThesisProcessor extends WorkerHost {
 		// Get the content of the thesis document
 		const documentContent = await this.getContentFromDocument(dto);
 
-		const record = {
-			_id: dto.id,
-			text: JSON.stringify({ ...dto, documentContent: documentContent }),
+		const value = {
 			englishName: dto.englishName,
 			vietnameseName: dto.vietnameseName,
 			abbreviation: dto.abbreviation,
 			description: dto.description,
 			...(dto.domain && { domain: dto.domain }),
-			status: dto.status,
-			isPublish: dto.isPublish.toString(),
-			...(dto.groupId && { groupId: dto.groupId }),
 			lecturerId: dto.lecturerId,
 			semesterId: dto.semesterId,
-			createdAt: dto.createdAt,
-			updatedAt: dto.updatedAt,
+		};
+
+		const record = {
+			_id: dto.id,
+			text: JSON.stringify({ ...value, documentContent: documentContent }),
+			...value,
 		};
 
 		const index = this.pineconeClient
