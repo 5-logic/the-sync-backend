@@ -34,15 +34,15 @@ export class PineconeThesisProcessor extends WorkerHost {
 		);
 	}
 
-	async process(job: Job<ThesisDetailResponse>): Promise<void> {
+	async process(job: Job<ThesisDetailResponse | string>): Promise<void> {
 		try {
 			switch (job.name as PineconeJobType) {
 				case PineconeJobType.CREATE_OR_UPDATE: {
-					await this.createOrUpdate(job.data);
+					await this.createOrUpdate(job.data as ThesisDetailResponse);
 					break;
 				}
 				case PineconeJobType.DELETE: {
-					await this.delete(job.data);
+					await this.delete(job.data as string);
 					break;
 				}
 
@@ -89,12 +89,14 @@ export class PineconeThesisProcessor extends WorkerHost {
 		this.logger.log(`Upserting thesis with ID: ${dto.id} into Pinecone.`);
 	}
 
-	async delete(dto: ThesisDetailResponse): Promise<void> {
+	async delete(id: string): Promise<void> {
 		const index = this.pineconeClient
 			.Index(this.pineconeConfiguration.indexName)
 			.namespace(PineconeThesisProcessor.NAMESPACE);
 
-		await index.deleteOne(dto.id);
+		await index.deleteOne(id);
+
+		this.logger.log(`Deleting thesis with ID: ${id} from Pinecone.`);
 	}
 
 	// ------------------------------------------------------------------------------------------

@@ -13,12 +13,12 @@ export class PineconeThesisService {
 
 	constructor(
 		@InjectQueue(PINECONE_TOKENS.THESIS)
-		private readonly queue: Queue<ThesisDetailResponse>,
+		private readonly queue: Queue<ThesisDetailResponse | string>,
 	) {}
 
 	async processThesis(
 		type: PineconeJobType,
-		dto: ThesisDetailResponse,
+		dto: ThesisDetailResponse | string,
 		delay?: number,
 	) {
 		return await this.queue.add(type, dto, {
