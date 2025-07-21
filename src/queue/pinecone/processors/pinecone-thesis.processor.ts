@@ -1,7 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { Pinecone } from '@pinecone-database/pinecone';
+import axios from 'axios';
 import { Job } from 'bullmq';
+import mammoth from 'mammoth';
 
 import { PineconeConfig, pineconeConfig } from '@/configs';
 import { PINECONE_TOKENS } from '@/queue/pinecone/constants';
@@ -58,7 +60,33 @@ export class PineconeThesisProcessor extends WorkerHost {
 	}
 
 	async createOrUpdate(dto: ThesisDetailResponse): Promise<void> {
-		throw new Error('Method not implemented.');
+		// Get the content of the thesis document
+		const documentContent = await this.getContentFromDocument(dto);
+
+		const record = {
+			_id: dto.id,
+			text: JSON.stringify({ ...dto, documentContent: documentContent }),
+			englishName: dto.englishName,
+			vietnameseName: dto.vietnameseName,
+			abbreviation: dto.abbreviation,
+			description: dto.description,
+			...(dto.domain && { domain: dto.domain }),
+			status: dto.status,
+			isPublish: dto.isPublish.toString(),
+			...(dto.groupId && { groupId: dto.groupId }),
+			lecturerId: dto.lecturerId,
+			semesterId: dto.semesterId,
+			createdAt: dto.createdAt,
+			updatedAt: dto.updatedAt,
+		};
+
+		const index = this.pineconeClient
+			.Index(this.pineconeConfiguration.indexName)
+			.namespace(PineconeThesisProcessor.NAMESPACE);
+
+		await index.upsertRecords([record]);
+
+		this.logger.log(`Upserting thesis with ID: ${dto.id} into Pinecone.`);
 	}
 
 	async delete(dto: ThesisDetailResponse): Promise<void> {
@@ -67,5 +95,27 @@ export class PineconeThesisProcessor extends WorkerHost {
 			.namespace(PineconeThesisProcessor.NAMESPACE);
 
 		await index.deleteOne(dto.id);
+	}
+
+	// ------------------------------------------------------------------------------------------
+	// Additional methods for thesis processing can be added here
+	// ------------------------------------------------------------------------------------------
+
+	async getContentFromDocument(dto: ThesisDetailResponse): Promise<string> {
+		if (dto.thesisVersions.length < 1) return '';
+
+		const response = await axios.get(dto.thesisVersions[0].supportingDocument, {
+			responseType: 'arraybuffer',
+		});
+
+		const result = await mammoth.extractRawText({ buffer: response.data });
+
+		const content = result.value
+			.split('\n')
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0)
+			.join('\n');
+
+		return content;
 	}
 }
