@@ -24,7 +24,7 @@ import { SubmissionService } from '@/submissions/submission.service';
 export class SubmissionController {
 	constructor(private readonly submissionService: SubmissionService) {}
 
-	@Roles(Role.ADMIN, Role.LECTURER)
+	@Roles(Role.ADMIN, Role.LECTURER, Role.MODERATOR)
 	@Get()
 	@SwaggerDoc('submission', 'findAll')
 	async findAll(@Req() req: Request) {

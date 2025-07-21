@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
 	ConflictException,
 	ForbiddenException,
@@ -902,9 +903,9 @@ export class SubmissionService {
 		return this.executeWithErrorHandling(
 			`Finding submissions for group: ${groupId}`,
 			async () => {
-				if (userId) {
-					await this.validateGroupMembership(userId, groupId);
-				}
+				// if (userId) {
+				// 	await this.validateGroupMembership(userId, groupId);
+				// }
 
 				const submissions = await this.prisma.submission.findMany({
 					where: { groupId },
@@ -932,9 +933,9 @@ export class SubmissionService {
 		return this.executeWithErrorHandling(
 			`Finding submission for group: ${groupId}, milestone: ${milestoneId}`,
 			async () => {
-				if (userId) {
-					await this.validateGroupMembership(userId, groupId);
-				}
+				// if (userId) {
+				// 	await this.validateGroupMembership(userId, groupId);
+				// }
 
 				const submission = await this.prisma.submission.findUnique({
 					where: {
