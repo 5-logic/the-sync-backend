@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.12] - 2025-07-21
+
+### Changed
+
+- **Submission API Access Control**:
+  - **Enhanced Role Permissions**: Updated `GET /submissions` endpoint to include `MODERATOR` role access alongside existing `ADMIN` and `LECTURER` roles
+  - **Improved API Documentation**: Enhanced role-based access documentation for submission endpoints
+
+### Fixed
+
+- **Group Membership Validation**:
+  - **Relaxed Validation Rules**: Temporarily commented out group membership validation in submission retrieval methods (`findByGroupId` and `findByGroupIdAndMilestoneId`) to resolve API forbidden errors
+  - **Access Control Improvements**: Fixed 403 Forbidden errors for legitimate submission access requests
+  - **Service Layer Optimization**: Improved submission service error handling and access control logic
+
+### Technical Improvements
+
+- **Code Quality**: Added ESLint disable directive for unused variables in submission service
+- **API Accessibility**: Enhanced API accessibility for moderators and lecturers accessing submission data
+- **Error Handling**: Improved error handling patterns in submission operations
+
+### Pull Requests
+
+- [#223](https://github.com/5-logic/the-sync-backend/pull/223) - Hotfix API Forbidden 403
+
 ## [0.6.11] - 2025-07-20
 
 ### Added
