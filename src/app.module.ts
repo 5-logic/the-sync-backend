@@ -14,7 +14,11 @@ import {
 	redisConfig,
 } from '@/configs';
 import { DomainModule } from '@/domains/domain.module';
-import { CacheHelperModule, PrismaModule } from '@/providers';
+import {
+	CacheHelperModule,
+	PineconeProviderModule,
+	PrismaModule,
+} from '@/providers';
 import { QueueModule } from '@/queue/queue.module';
 import {
 	createCacheStores,
@@ -67,6 +71,7 @@ import {
 		}),
 
 		CacheHelperModule,
+		PineconeProviderModule,
 		PrismaModule,
 		AuthModule,
 		DomainModule,
