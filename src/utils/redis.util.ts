@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 
-import { CONFIG_TOKENS, PineconeConfig, RedisConfig } from '@/configs';
+import { CONFIG_TOKENS, RedisConfig } from '@/configs';
 
 export const getRedisConfigOrThrow = (
 	configService: ConfigService,
@@ -25,18 +25,4 @@ export const getBullBoardAuthOrThrow = (config: RedisConfig) => {
 		username: config.bullmq.username,
 		password: config.bullmq.password,
 	};
-};
-
-export const getPineconeConfigOrThrow = (
-	configService: ConfigService,
-): PineconeConfig => {
-	const config = configService.get<PineconeConfig>(CONFIG_TOKENS.PINECONE);
-
-	if (!config?.apiKey || !config?.indexName) {
-		throw new Error(
-			'Pinecone configuration is missing. Check your env/config files.',
-		);
-	}
-
-	return config;
 };
