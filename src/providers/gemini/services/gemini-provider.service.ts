@@ -7,7 +7,7 @@ import { GeminiConfig, geminiConfig } from '@/configs';
 export class GeminiProviderService {
 	private readonly logger = new Logger(GeminiProviderService.name);
 
-	private geminiClient: GoogleGenAI;
+	private readonly geminiClient: GoogleGenAI;
 
 	constructor(
 		@Inject(geminiConfig.KEY)
