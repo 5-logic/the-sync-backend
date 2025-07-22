@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
+import { CACHE_KEY } from '@/milestones/constants';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dtos';
 import { mapMilestone } from '@/milestones/mappers';
 import { MilestoneResponse } from '@/milestones/responses';
@@ -46,6 +47,10 @@ export class MilestoneAdminService {
 			this.logger.debug('Created Milestone', JSON.stringify(milestone));
 
 			const result: MilestoneResponse = mapMilestone(milestone);
+
+			const cacheKey = `${CACHE_KEY}/${milestone.id}`;
+			await this.cache.saveToCache(cacheKey, result);
+			await this.deleteCacheForMilestone(result);
 
 			return result;
 		} catch (error) {
@@ -101,6 +106,10 @@ export class MilestoneAdminService {
 			this.logger.debug('Updated Milestone', JSON.stringify(updated));
 
 			const result: MilestoneResponse = mapMilestone(updated);
+
+			const cacheKey = `${CACHE_KEY}/${updated.id}`;
+			await this.cache.saveToCache(cacheKey, result);
+			await this.deleteCacheForMilestone(result);
 
 			return result;
 		} catch (error) {
@@ -232,6 +241,9 @@ export class MilestoneAdminService {
 
 			const result: MilestoneResponse = mapMilestone(deleted);
 
+			await this.cache.delete(`${CACHE_KEY}/${id}`);
+			await this.deleteCacheForMilestone(result);
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Failed to delete milestone ${id}`, error);
@@ -262,5 +274,12 @@ export class MilestoneAdminService {
 				'Milestone start date must be before end date',
 			);
 		}
+	}
+
+	async deleteCacheForMilestone(milestone: MilestoneResponse): Promise<void> {
+		await Promise.all([
+			await this.cache.delete(`${CACHE_KEY}/`),
+			await this.cache.delete(`${CACHE_KEY}/semester/${milestone.semesterId}`),
+		]);
 	}
 }
