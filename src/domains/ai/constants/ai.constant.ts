@@ -1,6 +1,6 @@
 export const AI_API_TAGS = 'AI';
 
-export const BASE_AI_PATH = 'admins';
+export const BASE_AI_PATH = 'ai';
 
 export const CACHE_KEY = 'cache:' + BASE_AI_PATH;
 

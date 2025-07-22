@@ -15,7 +15,7 @@ export class AIThesisService {
 		private readonly pinecone: PineconeProviderService,
 	) {}
 
-	async checkDuplicates(thesisId: string): Promise<DuplicateThesisResponse[]> {
+	async checkDuplicate(thesisId: string): Promise<DuplicateThesisResponse[]> {
 		this.logger.log(`Checking for duplicates for thesis ID: ${thesisId}`);
 
 		try {
@@ -78,6 +78,8 @@ export class AIThesisService {
 							englishName: (match.metadata?.englishName as string) ?? 'Unknown',
 							vietnameseName:
 								(match.metadata?.vietnameseName as string) ?? 'Unknown',
+							description:
+								(match.metadata?.description as string) ?? 'No description',
 							duplicatePercentage,
 						});
 					}
