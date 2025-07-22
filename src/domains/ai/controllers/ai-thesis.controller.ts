@@ -22,7 +22,7 @@ import { ApiArrayResponse } from '@/common';
 export class AIThesisController {
 	constructor(private readonly service: AIThesisService) {}
 
-	@Roles(Role.MODERATOR)
+	@Roles(Role.MODERATOR, Role.LECTURER)
 	@HttpCode(HttpStatus.OK)
 	@Get('check-duplicate/:thesisId')
 	@ApiOperation(AIThesisDocs.checkDuplicate)
