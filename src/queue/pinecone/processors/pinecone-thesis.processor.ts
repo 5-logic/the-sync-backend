@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Job } from 'bullmq';
 import mammoth from 'mammoth';
 
-import { PineconeProviderService } from '@/providers';
+import { GeminiProviderService, PineconeProviderService } from '@/providers';
 import { PINECONE_TOKENS } from '@/queue/pinecone/constants';
 import { PineconeJobType } from '@/queue/pinecone/enums';
 import { ThesisDetailResponse } from '@/theses/responses';
@@ -15,7 +15,10 @@ export class PineconeThesisProcessor extends WorkerHost {
 
 	private readonly logger = new Logger(PineconeThesisProcessor.name);
 
-	constructor(private readonly pinecone: PineconeProviderService) {
+	constructor(
+		private readonly gemini: GeminiProviderService,
+		private readonly pinecone: PineconeProviderService,
+	) {
 		super();
 	}
 
@@ -47,6 +50,10 @@ export class PineconeThesisProcessor extends WorkerHost {
 	async createOrUpdate(dto: ThesisDetailResponse): Promise<void> {
 		// Get the content of the thesis document
 		const documentContent = await this.getContentFromDocument(dto);
+		const formattedContent =
+			documentContent === ''
+				? ''
+				: await this.formatDocumentContent(documentContent);
 
 		const value = {
 			englishName: dto.englishName,
@@ -60,7 +67,7 @@ export class PineconeThesisProcessor extends WorkerHost {
 
 		const record = {
 			_id: dto.id,
-			text: JSON.stringify({ ...value, documentContent: documentContent }),
+			text: JSON.stringify({ ...value, documentContent: formattedContent }),
 			...value,
 		};
 
@@ -90,20 +97,63 @@ export class PineconeThesisProcessor extends WorkerHost {
 	// ------------------------------------------------------------------------------------------
 
 	async getContentFromDocument(dto: ThesisDetailResponse): Promise<string> {
-		if (dto.thesisVersions.length < 1) return '';
+		try {
+			if (dto.thesisVersions.length < 1) return '';
 
-		const response = await axios.get(dto.thesisVersions[0].supportingDocument, {
-			responseType: 'arraybuffer',
-		});
+			const response = await axios.get(
+				dto.thesisVersions[0].supportingDocument,
+				{
+					responseType: 'arraybuffer',
+				},
+			);
 
-		const result = await mammoth.extractRawText({ buffer: response.data });
+			const result = await mammoth.extractRawText({ buffer: response.data });
 
-		const content = result.value
-			.split('\n')
-			.map((line) => line.trim())
-			.filter((line) => line.length > 0)
-			.join('\n');
+			const content = result.value
+				.split('\n')
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+				.join('\n');
 
-		return content;
+			return content;
+		} catch (error) {
+			this.logger.error('Failed to get content from document:', error);
+
+			return '';
+		}
+	}
+
+	async formatDocumentContent(content: string): Promise<string> {
+		try {
+			const ai = this.gemini.getClient();
+			const modelName = this.gemini.getModelName();
+
+			const prompt = `
+			You are given the raw content of a document, which may contain headers, footers, templates, placeholder sections, or formatting noise.
+
+			Your task is:
+			- Remove non-essential parts such as document titles, headers, footers, templates, or formatting noise.
+			- DO NOT rephrase, rewrite, summarize, or modify the original content. Keep sentence structure and wording exactly as-is.
+			- Only clean the content by trimming useless sections.
+			- Preserve paragraph breaks (line breaks).
+			- For any bullet lists (regardless of level), **normalize all bullets to use a dash "-"** only.
+			- Do not use any other bullet symbols like "*", "•", "●", "■", or "▪".
+			- Output the result in plain text without any special markdown or formatting.
+			
+			Here is the input content:
+			${content}
+			`;
+
+			const response = await ai.models.generateContent({
+				model: modelName,
+				contents: prompt,
+			});
+
+			return response.text ?? content;
+		} catch (error) {
+			this.logger.error('Failed to format document content:', error);
+
+			return content;
+		}
 	}
 }
