@@ -24,12 +24,12 @@ export class AIThesisController {
 
 	@Roles(Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
-	@Get('check-duplicates/:thesisId')
-	@ApiOperation(AIThesisDocs.checkDuplicates)
+	@Get('check-duplicate/:thesisId')
+	@ApiOperation(AIThesisDocs.checkDuplicate)
 	@ApiArrayResponse(DuplicateThesisResponse, HttpStatus.OK)
-	async checkDuplicates(
+	async checkDuplicate(
 		@Param('thesisId') thesisId: string,
 	): Promise<DuplicateThesisResponse[]> {
-		return await this.service.checkDuplicates(thesisId);
+		return await this.service.checkDuplicate(thesisId);
 	}
 }
