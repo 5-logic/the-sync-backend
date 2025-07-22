@@ -30,7 +30,6 @@ export class MilestoneAdminService {
 				dto.startDate,
 				dto.endDate,
 				dto.name,
-				undefined,
 			);
 
 			const milestone = await this.prisma.milestone.create({
