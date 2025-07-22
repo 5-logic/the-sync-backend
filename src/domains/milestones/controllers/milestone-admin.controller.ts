@@ -12,7 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
-import { SwaggerDoc } from '@/common/docs/swagger-docs.decorator';
+import { ApiBaseResponse } from '@/common';
 import {
 	MILESTONE_API_TAGS,
 	MILESTONE_CONSTANTS,
@@ -33,20 +33,25 @@ export class MilestoneAdminController {
 	@HttpCode(HttpStatus.CREATED)
 	@Post()
 	@ApiOperation(MilestoneAdminDocs.create)
+	@ApiBaseResponse(MilestoneResponse, HttpStatus.OK)
 	async create(@Body() dto: CreateMilestoneDto): Promise<MilestoneResponse> {
 		return await this.service.create(dto);
 	}
 
 	@Roles(Role.ADMIN)
+	@HttpCode(HttpStatus.OK)
 	@Put(':id')
-	@SwaggerDoc('milestone', 'update')
+	@ApiOperation(MilestoneAdminDocs.update)
+	@ApiBaseResponse(MilestoneResponse, HttpStatus.OK)
 	async update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
 		return await this.service.update(id, dto);
 	}
 
 	@Roles(Role.ADMIN)
+	@HttpCode(HttpStatus.OK)
 	@Delete(':id')
-	@SwaggerDoc('milestone', 'delete')
+	@ApiOperation(MilestoneAdminDocs.delete)
+	@ApiBaseResponse(MilestoneResponse, HttpStatus.OK)
 	async delete(@Param('id') id: string) {
 		return await this.service.delete(id);
 	}
