@@ -34,14 +34,37 @@ export class MilestoneAdminService {
 				dto.name,
 			);
 
-			const milestone = await this.prisma.milestone.create({
-				data: dto,
-			});
+			const resultTx = await this.prisma.$transaction(async (tx) => {
+				const milestone = await tx.milestone.create({
+					data: dto,
+				});
 
-			await this.milestoneService.createSubmission(
-				milestone.id,
-				dto.semesterId,
-			);
+				const listGroups = await tx.group.findMany({
+					where: { semesterId: dto.semesterId },
+					select: { id: true },
+				});
+
+				if (listGroups.length === 0) {
+					this.logger.warn(
+						`No groups found for semester ${dto.semesterId}, skipping submission creation.`,
+					);
+					return milestone;
+				}
+
+				if (listGroups.length > 0) {
+					await tx.submission.createMany({
+						data: listGroups.map((group) => ({
+							groupId: group.id,
+							milestoneId: milestone.id,
+							status: 'NotSubmitted',
+						})),
+						skipDuplicates: true,
+					});
+				}
+
+				return milestone;
+			});
+			const milestone = resultTx;
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
 			this.logger.debug('Created Milestone', JSON.stringify(milestone));

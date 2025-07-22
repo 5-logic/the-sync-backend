@@ -96,40 +96,4 @@ export class MilestoneService {
 
 		return mapMilestone(milestone);
 	}
-
-	async createSubmission(milestoneId: string, semesterId: string) {
-		this.logger.log(`Creating submission for milestone ${milestoneId}...`);
-		try {
-			const listGroups = await this.prisma.group.findMany({
-				where: { semesterId },
-				select: { id: true },
-			});
-
-			if (listGroups.length === 0) {
-				this.logger.warn(
-					`No groups found for semester ${semesterId}. Skipping submission creation.`,
-				);
-				return;
-			}
-
-			await this.prisma.submission.createMany({
-				data: listGroups.map((group) => ({
-					groupId: group.id,
-					milestoneId,
-					status: 'NotSubmitted',
-				})),
-				skipDuplicates: true,
-			});
-
-			this.logger.log(
-				`Submission created for milestone ${milestoneId} successfully`,
-			);
-		} catch (error) {
-			this.logger.error(
-				`Failed to create submission for milestone ${milestoneId}`,
-				error,
-			);
-			throw error;
-		}
-	}
 }
