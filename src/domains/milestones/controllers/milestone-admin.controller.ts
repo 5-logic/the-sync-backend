@@ -43,7 +43,10 @@ export class MilestoneAdminController {
 	@Put(':id')
 	@ApiOperation(MilestoneAdminDocs.update)
 	@ApiBaseResponse(MilestoneResponse, HttpStatus.OK)
-	async update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
+	async update(
+		@Param('id') id: string,
+		@Body() dto: UpdateMilestoneDto,
+	): Promise<MilestoneResponse> {
 		return await this.service.update(id, dto);
 	}
 
@@ -52,7 +55,7 @@ export class MilestoneAdminController {
 	@Delete(':id')
 	@ApiOperation(MilestoneAdminDocs.delete)
 	@ApiBaseResponse(MilestoneResponse, HttpStatus.OK)
-	async delete(@Param('id') id: string) {
+	async delete(@Param('id') id: string): Promise<MilestoneResponse> {
 		return await this.service.delete(id);
 	}
 }
