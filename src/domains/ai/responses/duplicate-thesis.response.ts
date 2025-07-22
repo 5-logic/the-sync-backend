@@ -11,5 +11,8 @@ export class DuplicateThesisResponse {
 	vietnameseName: string;
 
 	@ApiProperty()
+	description: string;
+
+	@ApiProperty()
 	duplicatePercentage: number;
 }

@@ -78,6 +78,8 @@ export class AIThesisService {
 							englishName: (match.metadata?.englishName as string) ?? 'Unknown',
 							vietnameseName:
 								(match.metadata?.vietnameseName as string) ?? 'Unknown',
+							description:
+								(match.metadata?.description as string) ?? 'No description',
 							duplicatePercentage,
 						});
 					}

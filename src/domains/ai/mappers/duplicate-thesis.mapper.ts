@@ -10,6 +10,7 @@ export const mapDuplicateThesis = (
 		id: thesis.id,
 		englishName: thesis.englishName,
 		vietnameseName: thesis.vietnameseName,
+		description: thesis.description,
 		duplicatePercentage: duplicatePercentage,
 	};
 };
