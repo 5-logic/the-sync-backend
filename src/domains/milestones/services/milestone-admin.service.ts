@@ -18,6 +18,7 @@ export class MilestoneAdminService {
 
 	async create(dto: CreateMilestoneDto): Promise<MilestoneResponse> {
 		this.logger.log(`Creating milestone with name ${dto.name}`);
+
 		try {
 			await this.milestoneService.validateSemesterForModification(
 				dto.semesterId,
@@ -42,10 +43,14 @@ export class MilestoneAdminService {
 			);
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
+			this.logger.debug('Created Milestone', JSON.stringify(milestone));
 
-			return mapMilestone(milestone);
+			const result: MilestoneResponse = mapMilestone(milestone);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Failed to create milestone', error);
+
 			throw error;
 		}
 	}
@@ -55,6 +60,7 @@ export class MilestoneAdminService {
 		dto: UpdateMilestoneDto,
 	): Promise<MilestoneResponse> {
 		this.logger.log(`Updating milestone with ID: ${id}`);
+
 		try {
 			const existing = await this.milestoneService.validateMilestone(id);
 
@@ -92,14 +98,21 @@ export class MilestoneAdminService {
 			});
 
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);
-			return mapMilestone(updated);
+			this.logger.debug('Updated Milestone', JSON.stringify(updated));
+
+			const result: MilestoneResponse = mapMilestone(updated);
+
+			return result;
 		} catch (error) {
 			this.logger.error(`Failed to update milestone ${id}`, error);
+
 			throw error;
 		}
 	}
 
 	async delete(id: string): Promise<MilestoneResponse> {
+		this.logger.log(`Deleting milestone with ID: ${id}`);
+
 		try {
 			const existing = await this.milestoneService.validateMilestone(id);
 			await this.milestoneService.validateSemesterForModification(
@@ -131,6 +144,7 @@ export class MilestoneAdminService {
 				this.logger.warn(
 					`Cannot delete milestone ${id}: all submissions must have status NotSubmitted.`,
 				);
+
 				throw new ConflictException(
 					'Cannot delete milestone because have group submissions',
 				);
@@ -212,11 +226,16 @@ export class MilestoneAdminService {
 			}
 
 			const deleted = await this.prisma.milestone.delete({ where: { id } });
+
 			this.logger.log(`Milestone deleted with ID: ${deleted.id}`);
-			this.logger.debug('Deleted Milestone', deleted);
-			return mapMilestone(deleted);
+			this.logger.debug('Deleted Milestone', JSON.stringify(deleted));
+
+			const result: MilestoneResponse = mapMilestone(deleted);
+
+			return result;
 		} catch (error) {
 			this.logger.error(`Failed to delete milestone ${id}`, error);
+
 			throw error;
 		}
 	}

@@ -15,17 +15,19 @@ export class MilestonePublicService {
 	) {}
 
 	async findAll(): Promise<MilestoneResponse[]> {
-		try {
-			this.logger.log('Fetching all milestones');
+		this.logger.log('Fetching all milestones');
 
+		try {
 			const milestones = await this.prisma.milestone.findMany({
 				orderBy: { createdAt: 'desc' },
 			});
 
 			this.logger.log(`Found ${milestones.length} milestones`);
-			this.logger.debug('Milestones detail', milestones);
+			this.logger.debug('Milestones detail', JSON.stringify(milestones));
 
-			return milestones.map(mapMilestone);
+			const result: MilestoneResponse[] = milestones.map(mapMilestone);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error fetching milestones', error);
 
@@ -34,9 +36,9 @@ export class MilestonePublicService {
 	}
 
 	async findBySemester(semesterId: string): Promise<MilestoneResponse[]> {
-		try {
-			this.logger.log(`Fetching milestones for semester ${semesterId}`);
+		this.logger.log(`Fetching milestones for semester ${semesterId}`);
 
+		try {
 			const semester = await this.milestoneService.validateSemester(semesterId);
 
 			const milestones = await this.prisma.milestone.findMany({
@@ -44,20 +46,20 @@ export class MilestonePublicService {
 				orderBy: { startDate: 'asc' },
 			});
 
-			if (milestones.length === 0) {
-				this.logger.warn(`No milestones found for semester ${semesterId}`);
-			} else {
-				this.logger.log(
-					`Found ${milestones.length} milestones for semester ${semesterId}`,
-				);
-			}
+			this.logger.log(
+				`Found ${milestones.length} milestones for semester ${semesterId}`,
+			);
+			this.logger.debug('Milestones detail', JSON.stringify(milestones));
 
-			return milestones.map(mapMilestone);
+			const result: MilestoneResponse[] = milestones.map(mapMilestone);
+
+			return result;
 		} catch (error) {
 			this.logger.error(
 				`Error fetching milestones for semester ${semesterId}`,
 				error,
 			);
+
 			throw error;
 		}
 	}
@@ -73,7 +75,7 @@ export class MilestonePublicService {
 			}
 
 			this.logger.log(`Milestone found with ID: ${id}`);
-			this.logger.debug('Milestone detail', milestone);
+			this.logger.debug('Milestone detail', JSON.stringify(milestone));
 
 			return milestone;
 		} catch (error) {

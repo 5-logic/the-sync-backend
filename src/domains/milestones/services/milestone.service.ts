@@ -93,6 +93,7 @@ export class MilestoneService {
 		if (!milestone) {
 			throw new NotFoundException(`Milestone not found`);
 		}
+
 		return mapMilestone(milestone);
 	}
 
