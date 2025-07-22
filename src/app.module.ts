@@ -10,6 +10,7 @@ import { AuthModule } from '@/auth/auth.module';
 import {
 	CONFIG_MOUNTS,
 	corsConfig,
+	geminiConfig,
 	pineconeConfig,
 	redisConfig,
 } from '@/configs';
@@ -29,7 +30,7 @@ import {
 @Module({
 	imports: [
 		ConfigModule.forRoot({
-			load: [corsConfig, pineconeConfig, redisConfig],
+			load: [corsConfig, geminiConfig, pineconeConfig, redisConfig],
 			cache: true,
 			isGlobal: true,
 		}),
