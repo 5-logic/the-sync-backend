@@ -48,10 +48,7 @@ export class MilestoneAdminService {
 					this.logger.warn(
 						`No groups found for semester ${dto.semesterId}, skipping submission creation.`,
 					);
-					return milestone;
-				}
-
-				if (listGroups.length > 0) {
+				} else {
 					await tx.submission.createMany({
 						data: listGroups.map((group) => ({
 							groupId: group.id,
