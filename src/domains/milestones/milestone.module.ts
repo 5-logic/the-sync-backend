@@ -1,10 +1,17 @@
 import { Module } from '@nestjs/common';
 
-import { MilestoneController } from '@/milestones/milestone.controller';
-import { MilestoneService } from '@/milestones/milestone.service';
+import {
+	MilestoneAdminController,
+	MilestonePublicController,
+} from '@/milestones/controllers';
+import {
+	MilestoneAdminService,
+	MilestonePublicService,
+	MilestoneService,
+} from '@/milestones/services';
 
 @Module({
-	controllers: [MilestoneController],
-	providers: [MilestoneService],
+	controllers: [MilestoneAdminController, MilestonePublicController],
+	providers: [MilestoneService, MilestoneAdminService, MilestonePublicService],
 })
 export class MilestoneModule {}
