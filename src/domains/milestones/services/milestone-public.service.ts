@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { mapMilestone } from '@/milestones/mappers';
 import { MilestoneResponse } from '@/milestones/responses';
-import { MilestoneService } from '@/milestones/services';
+import { MilestoneService } from '@/milestones/services/milestone.service';
 import { PrismaService } from '@/providers';
 
 @Injectable()

@@ -3,7 +3,7 @@ import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dtos';
 import { mapMilestone } from '@/milestones/mappers';
 import { MilestoneResponse } from '@/milestones/responses';
-import { MilestoneService } from '@/milestones/services';
+import { MilestoneService } from '@/milestones/services/milestone.service';
 import { CacheHelperService, PrismaService } from '@/providers';
 
 @Injectable()
