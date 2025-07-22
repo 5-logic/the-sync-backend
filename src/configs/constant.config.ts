@@ -5,6 +5,7 @@ export const CONFIG_TOKENS = {
 	JWT_REFRESH: 'jwt-refresh',
 	EMAIL: 'email',
 	PINECONE: 'pinecone',
+	GEMINI: 'gemini',
 } as const;
 
 export const CONFIG_MOUNTS = {
