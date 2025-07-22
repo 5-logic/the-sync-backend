@@ -5,8 +5,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { CONFIG_QUEUES, emailConfig } from '@/configs';
-import { EmailQueueService } from '@/email/email-queue.service';
-import { EmailConsumer } from '@/email/email.processor';
+import { EmailQueueService } from '@/queue/email/email-queue.service';
+import { EmailConsumer } from '@/queue/email/email.processor';
 
 @Global()
 @Module({

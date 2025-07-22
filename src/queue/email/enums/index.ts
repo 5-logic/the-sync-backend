@@ -1,1 +1,1 @@
-export * from '@/email/enums/type.enum';
+export * from '@/queue/email/enums/type.enum';

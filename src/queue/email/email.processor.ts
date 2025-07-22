@@ -6,7 +6,7 @@ import { join } from 'path';
 import { renderFile } from 'pug';
 
 import { CONFIG_QUEUES, EmailConfig, emailConfig } from '@/configs';
-import { EmailJobDto } from '@/email/dto/email-job.dto';
+import { EmailJobDto } from '@/queue/email/dto/email-job.dto';
 
 @Processor(CONFIG_QUEUES.EMAIL)
 export class EmailConsumer extends WorkerHost {
