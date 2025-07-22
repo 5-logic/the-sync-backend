@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 
 import { CONFIG_QUEUES } from '@/configs';
-import { EmailJobDto } from '@/email/dto/email-job.dto';
-import { EmailJobType } from '@/email/enums/type.enum';
+import { EmailJobDto } from '@/queue/email/dto';
+import { EmailJobType } from '@/queue/email/enums';
 
 @Injectable()
 export class EmailQueueService {

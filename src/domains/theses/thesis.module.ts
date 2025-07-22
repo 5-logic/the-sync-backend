@@ -22,5 +22,10 @@ import {
 		ThesisModeratorService,
 		ThesisPublishService,
 	],
+	exports: [
+		ThesisLecturerService,
+		ThesisModeratorService,
+		ThesisPublishService,
+	],
 })
 export class ThesisModule {}
