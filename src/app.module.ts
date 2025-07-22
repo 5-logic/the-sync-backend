@@ -20,6 +20,7 @@ import {
 import { DomainModule } from '@/domains/domain.module';
 import {
 	CacheHelperModule,
+	GeminiProviderModule,
 	PineconeProviderModule,
 	PrismaModule,
 } from '@/providers';
@@ -74,6 +75,7 @@ import { QueueModule } from '@/queue/queue.module';
 		}),
 
 		CacheHelperModule,
+		GeminiProviderModule,
 		PineconeProviderModule,
 		PrismaModule,
 		AuthModule,
