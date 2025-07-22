@@ -22,14 +22,14 @@ import { ApiArrayResponse } from '@/common';
 export class AIThesisController {
 	constructor(private readonly service: AIThesisService) {}
 
-	@Roles(Role.MODERATOR)
+	@Roles(Role.MODERATOR, Role.LECTURER)
 	@HttpCode(HttpStatus.OK)
-	@Get('check-duplicates/:thesisId')
-	@ApiOperation(AIThesisDocs.checkDuplicates)
+	@Get('check-duplicate/:thesisId')
+	@ApiOperation(AIThesisDocs.checkDuplicate)
 	@ApiArrayResponse(DuplicateThesisResponse, HttpStatus.OK)
-	async checkDuplicates(
+	async checkDuplicate(
 		@Param('thesisId') thesisId: string,
 	): Promise<DuplicateThesisResponse[]> {
-		return await this.service.checkDuplicates(thesisId);
+		return await this.service.checkDuplicate(thesisId);
 	}
 }

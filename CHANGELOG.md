@@ -5,6 +5,107 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-07-22
+
+### Added
+
+- **Google Gemini AI Integration**:
+  - `GeminiProviderModule` - New provider module for Google Gemini AI integration
+  - `GeminiProviderService` - Service for managing Gemini AI client and model configuration
+  - Enhanced AI-powered document processing capabilities with Gemini integration
+
+- **Enhanced Environment Configuration**:
+  - Added `GEMINI_API_KEY` environment variable for Google Gemini authentication
+  - Added `GEMINI_MODEL_NAME` environment variable for Gemini model selection (e.g., `gemini-2.5-flash`)
+  - Updated environment setup documentation with comprehensive Gemini configuration guide
+
+- **Milestone Management System Refactoring**:
+  - `MilestoneAdminController` - New dedicated controller for admin milestone operations (`POST /milestones`, `PUT /milestones/:id`, `DELETE /milestones/:id`)
+  - `MilestonePublicController` - New controller for public milestone operations (`GET /milestones`, `GET /milestones/semester/:semesterId`, `GET /milestones/:id`)
+  - `MilestoneAdminService` - Specialized service for milestone admin operations
+  - `MilestonePublicService` - Dedicated service for public milestone operations
+  - `MilestoneService` - Core service for milestone validation and submission creation
+  - `MilestoneResponse` - Structured response class for milestone data
+  - Enhanced milestone mapping functions for consistent API responses
+
+### Changed
+
+- **AI-Powered Thesis Duplicate Detection Enhancement**:
+  - **API Endpoint Update**: Renamed `GET /admins/thesis/check-duplicates/:thesisId` to `GET /ai/check-duplicate/:thesisId`
+  - **Enhanced Access Control**: Extended access from `MODERATOR` only to both `MODERATOR` and `LECTURER` roles
+  - **Service Method Refactoring**: Renamed `checkDuplicates` to `checkDuplicate` for consistency
+  - **Enhanced Response Data**: Added `description` field to `DuplicateThesisResponse` for more detailed duplicate information
+
+- **Milestone Architecture Improvements**:
+  - **Module Restructuring**: Split milestone functionality into separate admin and public controllers and services
+  - **Enhanced API Documentation**: Improved Swagger documentation with dedicated docs for admin and public operations
+  - **Response Standardization**: All milestone endpoints now return structured `MilestoneResponse` objects with proper HTTP status codes
+  - **Database Schema Update**: Updated relationship between milestone and checklist models for better flexibility
+
+- **Application Configuration Optimization**:
+  - **Configuration Consolidation**: Streamlined Redis and Pinecone configurations by integrating directly into app module
+  - **Environment Validation**: Added comprehensive environment variable checks for email, JWT, and Redis configurations
+  - **Removed Unused Utilities**: Cleaned up unused configuration utilities for better maintainability
+
+- **Pinecone Integration Enhancement**:
+  - **Document Processing**: Enhanced `PineconeThesisProcessor` with Gemini integration for improved document formatting
+  - **Content Extraction**: Improved error handling and content extraction in document processing methods
+
+### Fixed
+
+- **Milestone Service Improvements**:
+  - Enhanced milestone creation to include automatic submission creation in a transaction
+  - Streamlined submission creation logic with better error handling
+  - Improved caching for milestone retrieval and management
+
+- **Dependency Management**:
+  - Added `@google/genai` dependency for Google Gemini AI integration
+  - Added `minimatch` override to resolve dependency conflicts
+  - Updated `brace-expansion` dependency with proper overrides
+
+- **Code Organization**:
+  - Consolidated milestone exports with comprehensive index files
+  - Improved import path consistency across milestone modules
+  - Enhanced TypeScript configuration with proper path mappings
+
+### Enhanced
+
+- **Developer Experience**:
+  - Updated environment setup documentation with complete Google Gemini configuration examples
+  - Improved code organization with modular milestone architecture
+  - Enhanced logging and return types in milestone services
+
+- **API Documentation**:
+  - Comprehensive Swagger documentation for all milestone endpoints
+  - Enhanced API operation descriptions for admin and public milestone operations
+  - Improved response schema documentation with structured response classes
+
+- **Performance Optimization**:
+  - Implemented caching for milestone retrieval operations
+  - Enhanced transaction management for milestone and submission creation
+  - Improved background processing with Gemini integration
+
+### Database Migration
+
+- **Migration 20250722093712**: Update relationship between milestone and checklist
+  - Enhanced database schema for better milestone-checklist relationship management
+  - Improved data integrity with updated foreign key constraints
+
+### Technical Improvements
+
+- **Module Architecture**: Enhanced domain module structure with separated admin and public operations
+- **Service Layer**: Improved service architecture with dedicated functionality separation
+- **Configuration Management**: Streamlined configuration with integrated environment validation
+- **Error Handling**: Enhanced error handling patterns across AI and milestone operations
+- **Code Quality**: Improved TypeScript configuration and import organization
+
+### Pull Requests
+
+- [#232](https://github.com/5-logic/the-sync-backend/pull/232) - Merge dev branch for v0.7.1 release
+- [#231](https://github.com/5-logic/the-sync-backend/pull/231) - AI-powered thesis duplicate detection enhancements
+- [#230](https://github.com/5-logic/the-sync-backend/pull/230) - Application refactoring and configuration optimization
+- [#229](https://github.com/5-logic/the-sync-backend/pull/229) - Milestone management system refactoring
+
 ## [0.7.0] - 2025-07-21
 
 ### Added
