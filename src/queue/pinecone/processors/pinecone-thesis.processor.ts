@@ -90,20 +90,31 @@ export class PineconeThesisProcessor extends WorkerHost {
 	// ------------------------------------------------------------------------------------------
 
 	async getContentFromDocument(dto: ThesisDetailResponse): Promise<string> {
-		if (dto.thesisVersions.length < 1) return '';
+		try {
+			if (dto.thesisVersions.length < 1) return '';
 
-		const response = await axios.get(dto.thesisVersions[0].supportingDocument, {
-			responseType: 'arraybuffer',
-		});
+			const response = await axios.get(
+				dto.thesisVersions[0].supportingDocument,
+				{
+					responseType: 'arraybuffer',
+				},
+			);
 
-		const result = await mammoth.extractRawText({ buffer: response.data });
+			const result = await mammoth.extractRawText({ buffer: response.data });
 
-		const content = result.value
-			.split('\n')
-			.map((line) => line.trim())
-			.filter((line) => line.length > 0)
-			.join('\n');
+			const content = result.value
+				.split('\n')
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+				.join('\n');
 
-		return content;
+			return content;
+		} catch (error) {
+			this.logger.error(
+				`Failed to get content from document: ${error.message}`,
+			);
+
+			return '';
+		}
 	}
 }
