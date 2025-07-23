@@ -1,4 +1,3 @@
-import { GroupResponse } from '../responses';
 import {
 	Controller,
 	Get,
@@ -10,9 +9,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
-import { ApiArrayResponse } from '@/common';
+import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { GROUP_API_TAGS, GROUP_CONSTANTS } from '@/groups/constants';
 import { GroupPublicDocs } from '@/groups/docs';
+import { GroupDetailResponse, GroupResponse } from '@/groups/responses';
 import { GroupPublicService } from '@/groups/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -33,7 +33,8 @@ export class GroupPublicController {
 	@HttpCode(HttpStatus.OK)
 	@Get(':id')
 	@ApiOperation(GroupPublicDocs.findOne)
-	async findOne(@Param('id') id: string) {
+	@ApiBaseResponse(GroupDetailResponse, HttpStatus.OK)
+	async findOne(@Param('id') id: string): Promise<GroupDetailResponse> {
 		return await this.service.findOne(id);
 	}
 

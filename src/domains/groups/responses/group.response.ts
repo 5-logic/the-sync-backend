@@ -14,7 +14,7 @@ export class Semester {
 	status: string;
 }
 
-class Thesis {
+export class Thesis {
 	@ApiProperty()
 	id: string;
 
@@ -23,6 +23,18 @@ class Thesis {
 
 	@ApiProperty()
 	vietnameseName: string;
+
+	@ApiProperty()
+	abbreviation: string;
+
+	@ApiProperty()
+	description: string;
+
+	@ApiProperty()
+	status: string;
+
+	@ApiPropertyOptional()
+	domain?: string;
 }
 
 export class Leader {
@@ -59,7 +71,7 @@ export class GroupResponse {
 	semester: Semester;
 
 	@ApiPropertyOptional()
-	thesis?: Thesis;
+	thesis?: Omit<Thesis, 'abbreviation' | 'description' | 'status' | 'domain'>;
 
 	@ApiProperty()
 	memberCount: number;
