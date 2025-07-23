@@ -1,3 +1,4 @@
+import { GroupResponse } from '../responses';
 import {
 	Controller,
 	Get,
@@ -9,6 +10,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth';
+import { ApiArrayResponse } from '@/common';
 import { GROUP_API_TAGS, GROUP_CONSTANTS } from '@/groups/constants';
 import { GroupPublicDocs } from '@/groups/docs';
 import { GroupPublicService } from '@/groups/services';
@@ -23,7 +25,8 @@ export class GroupPublicController {
 	@HttpCode(HttpStatus.OK)
 	@Get()
 	@ApiOperation(GroupPublicDocs.findAll)
-	async findAll() {
+	@ApiArrayResponse(GroupResponse, HttpStatus.OK)
+	async findAll(): Promise<GroupResponse[]> {
 		return await this.service.findAll();
 	}
 
