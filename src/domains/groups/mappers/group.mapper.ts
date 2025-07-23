@@ -5,11 +5,13 @@ import {
 	Semester,
 	Student,
 	StudentGroupParticipation,
+	Thesis,
 	User,
 } from '~/generated/prisma';
 
 type GroupData = Group & {
 	semester: Semester;
+	thesis: Thesis | null;
 	_count: {
 		studentGroupParticipations: number;
 	};
@@ -31,6 +33,13 @@ export const mapGroup = (group: GroupData): GroupResponse => ({
 		code: group.semester.code,
 		status: group.semester.status.toString(),
 	},
+	thesis: group.thesis
+		? {
+				id: group.thesis.id,
+				englishName: group.thesis.englishName,
+				vietnameseName: group.thesis.vietnameseName,
+			}
+		: undefined,
 	memberCount: group._count.studentGroupParticipations,
 	leader: {
 		id: group.studentGroupParticipations[0].studentId,

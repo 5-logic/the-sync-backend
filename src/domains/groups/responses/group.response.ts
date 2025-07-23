@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-class Semester {
+export class Semester {
 	@ApiProperty()
 	id: string;
 
@@ -12,6 +12,17 @@ class Semester {
 
 	@ApiProperty()
 	status: string;
+}
+
+class Thesis {
+	@ApiProperty()
+	id: string;
+
+	@ApiProperty()
+	englishName: string;
+
+	@ApiProperty()
+	vietnameseName: string;
 }
 
 export class Leader {
@@ -46,6 +57,9 @@ export class GroupResponse {
 
 	@ApiProperty()
 	semester: Semester;
+
+	@ApiPropertyOptional()
+	thesis?: Thesis;
 
 	@ApiProperty()
 	memberCount: number;

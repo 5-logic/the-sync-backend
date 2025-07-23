@@ -17,6 +17,7 @@ export class GroupPublicService {
 			const groups = await this.prisma.group.findMany({
 				include: {
 					semester: true,
+					thesis: true,
 					_count: {
 						select: { studentGroupParticipations: true },
 					},
