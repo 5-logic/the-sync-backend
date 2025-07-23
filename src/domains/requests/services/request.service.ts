@@ -39,6 +39,7 @@ export class RequestService {
 
 		if (!semester) {
 			this.logger.error(`Semester with ID ${semesterId} not found`);
+
 			throw new NotFoundException(`Semester not found`);
 		}
 
@@ -46,6 +47,7 @@ export class RequestService {
 			this.logger.error(
 				`Cannot send/process requests. Semester status must be ${SemesterStatus.Preparing}, current status is ${semester.status}`,
 			);
+
 			throw new ConflictException(
 				`Cannot send/process requests. Semester status must be ${SemesterStatus.Preparing}, current status is ${semester.status}`,
 			);
@@ -62,9 +64,11 @@ export class RequestService {
 			where: { studentId_semesterId: { studentId: userId, semesterId } },
 			select: { status: true },
 		});
+
 		if (!enrollment) {
 			throw new NotFoundException(`Student is not enrolled in this semester`);
 		}
+
 		if (enrollment.status !== EnrollmentStatus.NotYet) {
 			throw new ConflictException(
 				`Student enrollment status must be 'NotYet' to join/invite groups`,
@@ -80,6 +84,7 @@ export class RequestService {
 			where: { studentId: userId, semesterId },
 			select: { studentId: true },
 		});
+
 		if (exists) {
 			throw new ConflictException(
 				`Student is already a member of a group in this semester`,
@@ -96,6 +101,7 @@ export class RequestService {
 			},
 			select: { studentId: true },
 		});
+
 		if (exists) {
 			throw new ConflictException(
 				`Student already has a pending join request. Cancel it before sending a new one`,
@@ -107,11 +113,13 @@ export class RequestService {
 		const count = await this.prisma.studentGroupParticipation.count({
 			where: { groupId },
 		});
+
 		if (count >= 5) {
 			throw new ConflictException(
 				`Group is full. Maximum 5 members allowed, current: ${count}`,
 			);
 		}
+
 		return count;
 	}
 
@@ -125,14 +133,17 @@ export class RequestService {
 				select: { isLeader: true, semesterId: true },
 			},
 		);
+
 		if (!participation) {
 			throw new ForbiddenException(`Student is not a member of this group`);
 		}
+
 		if (!participation.isLeader) {
 			throw new ForbiddenException(
 				`Only group leader can manage group requests`,
 			);
 		}
+
 		return mapStudentGroupParticipationResponse({
 			studentId: userId,
 			groupId,
@@ -154,6 +165,7 @@ export class RequestService {
 			},
 			select: { studentId: true },
 		});
+
 		if (exists) {
 			throw new ConflictException(
 				`There is already a pending invite request for this student`,
@@ -182,6 +194,7 @@ export class RequestService {
 			this.logger.error(
 				`Student with ID ${userId} attempted to cancel join request not sent by them`,
 			);
+
 			throw new ForbiddenException(
 				`Only the student who sent the join request can cancel it`,
 			);
@@ -201,6 +214,7 @@ export class RequestService {
 			this.logger.error(
 				`Student with ID ${userId} attempted to respond to invite request not sent to them`,
 			);
+
 			throw new ForbiddenException(
 				`Only the invited student can respond to this invitation`,
 			);

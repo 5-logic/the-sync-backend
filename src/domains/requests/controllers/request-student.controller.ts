@@ -44,6 +44,7 @@ export class RequestStudentController {
 		@Body() dto: CreateJoinRequestDto,
 	): Promise<RequestResponse> {
 		const user = req.user as UserPayload;
+
 		return await this.service.createJoinRequest(user.id, dto);
 	}
 
@@ -58,6 +59,7 @@ export class RequestStudentController {
 		@Body() dto: CreateInviteRequestDto,
 	): Promise<RequestResponse[]> {
 		const user = req.user as UserPayload;
+
 		return await this.service.createInviteRequest(user.id, groupId, dto);
 	}
 
@@ -68,6 +70,7 @@ export class RequestStudentController {
 	@ApiArrayResponse(RequestResponse, HttpStatus.OK)
 	async getStudentRequests(@Req() req: Request) {
 		const user = req.user as UserPayload;
+
 		return await this.service.getStudentRequests(user.id);
 	}
 
@@ -81,6 +84,7 @@ export class RequestStudentController {
 		@Param('groupId') groupId: string,
 	) {
 		const user = req.user as UserPayload;
+
 		return await this.service.getGroupRequests(user.id, groupId);
 	}
 
@@ -91,6 +95,7 @@ export class RequestStudentController {
 	@ApiBaseResponse(RequestResponse, HttpStatus.OK)
 	async findOne(@Req() req: Request, @Param('requestId') requestId: string) {
 		const user = req.user as UserPayload;
+
 		return await this.service.findOne(user.id, requestId);
 	}
 
@@ -105,6 +110,7 @@ export class RequestStudentController {
 		@Body() dto: UpdateRequestStatusDto,
 	): Promise<RequestResponse> {
 		const user = req.user as UserPayload;
+
 		return await this.service.updateRequestStatus(user.id, requestId, dto);
 	}
 
@@ -118,6 +124,7 @@ export class RequestStudentController {
 		@Param('requestId') requestId: string,
 	): Promise<RequestResponse> {
 		const user = req.user as UserPayload;
+
 		return await this.service.cancelRequest(user.id, requestId);
 	}
 }

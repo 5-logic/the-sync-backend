@@ -32,6 +32,10 @@ export class RequestStudentService {
 		userId: string,
 		dto: CreateJoinRequestDto,
 	): Promise<RequestResponse> {
+		this.logger.log(
+			`Creating join request for user: ${userId} to group: ${dto.groupId}`,
+		);
+
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id: dto.groupId },
@@ -102,6 +106,7 @@ export class RequestStudentService {
 
 			if (!groupLeader) {
 				this.logger.error(`Group leader not found for group ${dto.groupId}`);
+
 				throw new NotFoundException(`Group leader not found`);
 			}
 
@@ -121,9 +126,12 @@ export class RequestStudentService {
 				},
 			);
 
-			return mapRequest(request);
+			const result: RequestResponse = mapRequest(request);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error creating join request', error);
+
 			throw error;
 		}
 	}
@@ -133,6 +141,10 @@ export class RequestStudentService {
 		groupId: string,
 		dto: CreateInviteRequestDto,
 	): Promise<RequestResponse[]> {
+		this.logger.log(
+			`Creating invite requests for group: ${groupId} by user: ${userId}`,
+		);
+
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id: groupId },
@@ -176,10 +188,10 @@ export class RequestStudentService {
 			}
 
 			const requests = await this.prisma.$transaction(
-				async (prisma) => {
+				async (txn) => {
 					const createdRequests: any[] = [];
 					for (const studentId of dto.studentIds) {
-						const request = await prisma.request.create({
+						const request = await txn.request.create({
 							data: {
 								type: RequestType.Invite,
 								status: RequestStatus.Pending,
@@ -229,6 +241,7 @@ export class RequestStudentService {
 
 			if (!groupLeader) {
 				this.logger.error(`Group leader not found for group ${groupId}`);
+
 				throw new NotFoundException(`Group leader not found`);
 			}
 
@@ -252,17 +265,18 @@ export class RequestStudentService {
 				),
 			);
 
-			return requests.map(mapRequest);
+			const result: RequestResponse[] = requests.map(mapRequest);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error creating invite requests', error);
+
 			throw error;
 		}
 	}
 
 	async getStudentRequests(userId: string) {
 		try {
-			this.logger.log(`Fetching requests for student: ${userId}`);
-
 			const requests = await this.prisma.request.findMany({
 				where: {
 					studentId: userId,
@@ -300,9 +314,10 @@ export class RequestStudentService {
 			this.logger.log(
 				`Found ${requests.length} requests for student ${userId}`,
 			);
-			return requests;
+			return requests.map(mapRequest);
 		} catch (error) {
 			this.logger.error('Error fetching student requests', error);
+
 			throw error;
 		}
 	}
@@ -341,9 +356,10 @@ export class RequestStudentService {
 			});
 
 			this.logger.log(`Found ${requests.length} requests for group ${groupId}`);
-			return requests;
+			return requests.map(mapRequest);
 		} catch (error) {
 			this.logger.error('Error fetching group requests', error);
+
 			throw error;
 		}
 	}
@@ -405,9 +421,10 @@ export class RequestStudentService {
 			}
 
 			this.logger.log(`Request found with ID: ${requestId}`);
-			return request;
+			return mapRequest(request);
 		} catch (error) {
 			this.logger.error('Error fetching request', error);
+
 			throw error;
 		}
 	}
@@ -417,6 +434,10 @@ export class RequestStudentService {
 		requestId: string,
 		dto: UpdateRequestStatusDto,
 	): Promise<RequestResponse> {
+		this.logger.log(
+			`Updating request status for request: ${requestId} by user: ${userId}`,
+		);
+
 		try {
 			const request = await this.prisma.request.findUnique({
 				where: { id: requestId },
@@ -496,7 +517,9 @@ export class RequestStudentService {
 					});
 				}
 
-				return updatedRequest;
+				const result: RequestResponse = mapRequest(updatedRequest);
+
+				return result;
 			});
 
 			this.logger.log(
@@ -508,9 +531,10 @@ export class RequestStudentService {
 				dto.status,
 			);
 
-			return mapRequest(result);
+			return result;
 		} catch (error) {
 			this.logger.error('Error updating request status', error);
+
 			throw error;
 		}
 	}
@@ -519,6 +543,8 @@ export class RequestStudentService {
 		userId: string,
 		requestId: string,
 	): Promise<RequestResponse> {
+		this.logger.log(`Cancelling request: ${requestId} by user: ${userId}`);
+
 		try {
 			const request = await this.prisma.request.findUnique({
 				where: { id: requestId },
@@ -566,9 +592,13 @@ export class RequestStudentService {
 			});
 
 			this.logger.log(`Request ${requestId} cancelled by student ${userId}`);
-			return mapRequest(cancelledRequest);
+
+			const result: RequestResponse = mapRequest(cancelledRequest);
+
+			return result;
 		} catch (error) {
 			this.logger.error('Error cancelling request', error);
+
 			throw error;
 		}
 	}
