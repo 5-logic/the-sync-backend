@@ -66,7 +66,7 @@ export class RequestStudentController {
 	@Get('student')
 	@ApiOperation(RequestStudentDocs.getStudentRequests)
 	@ApiArrayResponse(RequestResponse, HttpStatus.OK)
-	async getStudentRequests(@Req() req: Request): Promise<RequestResponse[]> {
+	async getStudentRequests(@Req() req: Request) {
 		const user = req.user as UserPayload;
 		return await this.service.getStudentRequests(user.id);
 	}
@@ -79,7 +79,7 @@ export class RequestStudentController {
 	async getGroupRequests(
 		@Req() req: Request,
 		@Param('groupId') groupId: string,
-	): Promise<RequestResponse[]> {
+	) {
 		const user = req.user as UserPayload;
 		return await this.service.getGroupRequests(user.id, groupId);
 	}
@@ -89,10 +89,7 @@ export class RequestStudentController {
 	@Get(':requestId')
 	@ApiOperation(RequestStudentDocs.findOne)
 	@ApiBaseResponse(RequestResponse, HttpStatus.OK)
-	async findOne(
-		@Req() req: Request,
-		@Param('requestId') requestId: string,
-	): Promise<RequestResponse> {
+	async findOne(@Req() req: Request, @Param('requestId') requestId: string) {
 		const user = req.user as UserPayload;
 		return await this.service.findOne(user.id, requestId);
 	}

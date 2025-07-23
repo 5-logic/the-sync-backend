@@ -259,7 +259,7 @@ export class RequestStudentService {
 		}
 	}
 
-	async getStudentRequests(userId: string): Promise<RequestResponse[]> {
+	async getStudentRequests(userId: string) {
 		try {
 			this.logger.log(`Fetching requests for student: ${userId}`);
 
@@ -300,17 +300,14 @@ export class RequestStudentService {
 			this.logger.log(
 				`Found ${requests.length} requests for student ${userId}`,
 			);
-			return requests.map(mapRequest);
+			return requests;
 		} catch (error) {
 			this.logger.error('Error fetching student requests', error);
 			throw error;
 		}
 	}
 
-	async getGroupRequests(
-		userId: string,
-		groupId: string,
-	): Promise<RequestResponse[]> {
+	async getGroupRequests(userId: string, groupId: string) {
 		try {
 			this.logger.log(`Fetching requests for group: ${groupId}`);
 
@@ -344,14 +341,14 @@ export class RequestStudentService {
 			});
 
 			this.logger.log(`Found ${requests.length} requests for group ${groupId}`);
-			return requests.map(mapRequest);
+			return requests;
 		} catch (error) {
 			this.logger.error('Error fetching group requests', error);
 			throw error;
 		}
 	}
 
-	async findOne(userId: string, requestId: string): Promise<RequestResponse> {
+	async findOne(userId: string, requestId: string) {
 		try {
 			this.logger.log(`Fetching request: ${requestId} for user: ${userId}`);
 
@@ -408,7 +405,7 @@ export class RequestStudentService {
 			}
 
 			this.logger.log(`Request found with ID: ${requestId}`);
-			return mapRequest(request);
+			return request;
 		} catch (error) {
 			this.logger.error('Error fetching request', error);
 			throw error;
