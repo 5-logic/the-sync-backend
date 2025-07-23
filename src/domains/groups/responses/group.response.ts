@@ -51,6 +51,9 @@ export class GroupResponse {
 	memberCount: number;
 
 	@ApiProperty()
+	leader: Leader;
+
+	@ApiProperty()
 	createdAt: string;
 
 	@ApiProperty()

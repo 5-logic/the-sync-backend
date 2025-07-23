@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { mapGroup } from '@/groups/mappers';
 import { GroupResponse } from '@/groups/responses';
 import { PrismaService } from '@/providers';
 
@@ -13,12 +14,25 @@ export class GroupPublicService {
 		this.logger.log('Fetching all groups');
 
 		try {
-			const groups = await this.prisma.group.findMany();
+			const groups = await this.prisma.group.findMany({
+				include: {
+					semester: true,
+					_count: {
+						select: { studentGroupParticipations: true },
+					},
+					studentGroupParticipations: {
+						where: { isLeader: true },
+						include: { student: { include: { user: true } } },
+						take: 1,
+					},
+				},
+				orderBy: { createdAt: 'desc' },
+			});
 
 			this.logger.log(`Found ${groups.length} groups`);
 			this.logger.debug('Groups:', JSON.stringify(groups));
 
-			const result: GroupResponse[] = [];
+			const result: GroupResponse[] = groups.map(mapGroup);
 
 			return result;
 		} catch (error) {
