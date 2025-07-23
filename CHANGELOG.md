@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2025-07-23
+
+### Fixed
+
+- **Semester Status Update Logic**:
+  - Fixed the `ensureUpdatableStatus` method in `SemesterStatusService` to correctly prevent updates to semesters that have already ended.
+  - Improved error handling and logging for semester status transitions.
+  - File changed: `src/domains/semesters/services/semester-status.service.ts`
+
+### Technical Improvements
+
+- Enhanced code reliability for semester status management.
+
+### Pull Requests
+
+- Direct commit: [87bffdb](https://github.com/5-logic/the-sync-backend/commit/87bffdb539912c2bd112feec7e46abe47db265b0) - fix: update ensureUpdatableStatus logic to correctly handle ended semesters
+
 ## [0.7.1] - 2025-07-22
 
 ### Added
