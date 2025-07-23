@@ -59,25 +59,13 @@ export class RequestService {
 		semesterId: string,
 	): Promise<void> {
 		const enrollment = await this.prisma.enrollment.findUnique({
-			where: {
-				studentId_semesterId: {
-					studentId: userId,
-					semesterId: semesterId,
-				},
-			},
+			where: { studentId_semesterId: { studentId: userId, semesterId } },
+			select: { status: true },
 		});
-
 		if (!enrollment) {
-			this.logger.error(
-				`Student with ID ${userId} is not enrolled in semester with ID ${semesterId}`,
-			);
 			throw new NotFoundException(`Student is not enrolled in this semester`);
 		}
-
 		if (enrollment.status !== EnrollmentStatus.NotYet) {
-			this.logger.error(
-				`Student with ID ${userId} has enrollment status ${enrollment.status}, expected NotYet`,
-			);
 			throw new ConflictException(
 				`Student enrollment status must be 'NotYet' to join/invite groups`,
 			);
@@ -88,18 +76,11 @@ export class RequestService {
 		userId: string,
 		semesterId: string,
 	): Promise<void> {
-		const existingParticipation =
-			await this.prisma.studentGroupParticipation.findFirst({
-				where: {
-					studentId: userId,
-					semesterId: semesterId,
-				},
-			});
-
-		if (existingParticipation) {
-			this.logger.error(
-				`Student with ID ${userId} is already in a group for semester with ID ${semesterId}`,
-			);
+		const exists = await this.prisma.studentGroupParticipation.findFirst({
+			where: { studentId: userId, semesterId },
+			select: { studentId: true },
+		});
+		if (exists) {
 			throw new ConflictException(
 				`Student is already a member of a group in this semester`,
 			);
@@ -107,18 +88,15 @@ export class RequestService {
 	}
 
 	async validateNoPendingJoinRequest(userId: string): Promise<void> {
-		const pendingRequest = await this.prisma.request.findFirst({
+		const exists = await this.prisma.request.findFirst({
 			where: {
 				studentId: userId,
 				type: RequestType.Join,
 				status: RequestStatus.Pending,
 			},
+			select: { studentId: true },
 		});
-
-		if (pendingRequest) {
-			this.logger.error(
-				`Student with ID ${userId} already has a pending join request`,
-			);
+		if (exists) {
 			throw new ConflictException(
 				`Student already has a pending join request. Cancel it before sending a new one`,
 			);
@@ -126,17 +104,15 @@ export class RequestService {
 	}
 
 	async validateGroupCapacity(groupId: string): Promise<number> {
-		const memberCount = await this.prisma.studentGroupParticipation.count({
-			where: { groupId: groupId },
+		const count = await this.prisma.studentGroupParticipation.count({
+			where: { groupId },
 		});
-
-		if (memberCount >= 5) {
+		if (count >= 5) {
 			throw new ConflictException(
-				`Group is full. Maximum 5 members allowed, current: ${memberCount}`,
+				`Group is full. Maximum 5 members allowed, current: ${count}`,
 			);
 		}
-
-		return memberCount;
+		return count;
 	}
 
 	async validateStudentIsGroupLeader(
@@ -145,49 +121,40 @@ export class RequestService {
 	): Promise<StudentGroupParticipationResponse> {
 		const participation = await this.prisma.studentGroupParticipation.findFirst(
 			{
-				where: {
-					studentId: userId,
-					groupId: groupId,
-				},
+				where: { studentId: userId, groupId },
+				select: { isLeader: true, semesterId: true },
 			},
 		);
-
 		if (!participation) {
-			this.logger.error(
-				`Student with ID ${userId} is not a member of group with ID ${groupId}`,
-			);
 			throw new ForbiddenException(`Student is not a member of this group`);
 		}
-
 		if (!participation.isLeader) {
-			this.logger.error(
-				`Student with ID ${userId} is not the group leader for group with ID ${groupId}`,
-			);
 			throw new ForbiddenException(
 				`Only group leader can manage group requests`,
 			);
 		}
-
-		return mapStudentGroupParticipationResponse(participation);
+		return mapStudentGroupParticipationResponse({
+			studentId: userId,
+			groupId,
+			semesterId: participation.semesterId,
+			isLeader: participation.isLeader,
+		});
 	}
 
 	async validateNoPendingInviteRequest(
 		studentId: string,
 		groupId: string,
 	): Promise<void> {
-		const pendingRequest = await this.prisma.request.findFirst({
+		const exists = await this.prisma.request.findFirst({
 			where: {
-				studentId: studentId,
-				groupId: groupId,
+				studentId,
+				groupId,
 				type: RequestType.Invite,
 				status: RequestStatus.Pending,
 			},
+			select: { studentId: true },
 		});
-
-		if (pendingRequest) {
-			this.logger.error(
-				`Pending invite request exists for student ${studentId} in group ${groupId}`,
-			);
+		if (exists) {
 			throw new ConflictException(
 				`There is already a pending invite request for this student`,
 			);
