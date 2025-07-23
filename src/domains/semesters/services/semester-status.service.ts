@@ -61,14 +61,12 @@ export class SemesterStatusService {
 	// ------------------------------------------------------------------------------------------
 
 	ensureUpdatableStatus(semester: Semester): void {
-		if (semester.status !== SemesterStatus.End) {
+		if (semester.status === SemesterStatus.End) {
 			this.logger.warn(
 				`Cannot update semester with ID ${semester.id}: semester has already ended`,
 			);
 
-			throw new ConflictException(
-				`Only semesters with status "${SemesterStatus.End}" can be updated.`,
-			);
+			throw new ConflictException(`Cannot update, semester has already ended`);
 		}
 	}
 
