@@ -77,13 +77,6 @@ export class RequestStudentService {
 							},
 						},
 					},
-					group: {
-						select: {
-							id: true,
-							code: true,
-							name: true,
-						},
-					},
 				},
 			});
 
@@ -203,13 +196,6 @@ export class RequestStudentService {
 												email: true,
 											},
 										},
-									},
-								},
-								group: {
-									select: {
-										id: true,
-										code: true,
-										name: true,
 									},
 								},
 							},
