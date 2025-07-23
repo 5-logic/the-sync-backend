@@ -314,7 +314,7 @@ export class RequestStudentService {
 			this.logger.log(
 				`Found ${requests.length} requests for student ${userId}`,
 			);
-			return requests.map(mapRequest);
+			return requests;
 		} catch (error) {
 			this.logger.error('Error fetching student requests', error);
 
@@ -356,7 +356,7 @@ export class RequestStudentService {
 			});
 
 			this.logger.log(`Found ${requests.length} requests for group ${groupId}`);
-			return requests.map(mapRequest);
+			return requests;
 		} catch (error) {
 			this.logger.error('Error fetching group requests', error);
 
@@ -421,7 +421,7 @@ export class RequestStudentService {
 			}
 
 			this.logger.log(`Request found with ID: ${requestId}`);
-			return mapRequest(request);
+			return request;
 		} catch (error) {
 			this.logger.error('Error fetching request', error);
 
