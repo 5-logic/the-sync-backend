@@ -44,7 +44,7 @@ export const mapGroupDetail = (
 		code: group.semester.code,
 		status: group.semester.status.toString(),
 	},
-	thesis: group.thesisId
+	thesis: group.thesis
 		? {
 				id: group.thesis?.id,
 				englishName: group.thesis?.englishName,
@@ -81,4 +81,6 @@ export const mapGroupDetail = (
 		},
 		isLeader: sgp.isLeader,
 	})),
+	createdAt: group.createdAt.toISOString(),
+	updatedAt: group.updatedAt.toISOString(),
 });
