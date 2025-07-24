@@ -181,12 +181,12 @@ export class ThesisLecturerService {
 	}
 
 	async update(
-		lecturerId: string,
+		userId: string,
 		id: string,
 		dto: UpdateThesisDto,
 	): Promise<ThesisDetailResponse> {
 		this.logger.log(
-			`Updating thesis with ID: ${id} by lecturer with ID: ${lecturerId}`,
+			`Updating thesis with ID: ${id} by user with ID: ${userId}`,
 		);
 
 		try {
@@ -207,9 +207,15 @@ export class ThesisLecturerService {
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			if (existingThesis.lecturerId !== lecturerId) {
+			const canUpdate = await this.validatePermissionUpdateThesis(
+				userId,
+				id,
+				existingThesis.lecturerId,
+			);
+
+			if (!canUpdate) {
 				this.logger.warn(
-					`Lecturer with ID ${lecturerId} is not authorized to update thesis with ID ${id}`,
+					`User with ID ${userId} is not authorized to update thesis with ID ${id}`,
 				);
 
 				throw new ForbiddenException(
@@ -273,6 +279,8 @@ export class ThesisLecturerService {
 						abbreviation: dto.abbreviation,
 						description: dto.description,
 						domain: dto.domain,
+						status: ThesisStatus.Pending,
+						isPublish: false,
 					},
 					include: {
 						thesisVersions: {
@@ -538,6 +546,37 @@ export class ThesisLecturerService {
 
 			throw new ConflictException('Thesis limit exceeded for this semester');
 		}
+	}
+
+	private async validatePermissionUpdateThesis(
+		userId: string,
+		thesisId: string,
+		lecturerId: string,
+	): Promise<boolean> {
+		// 1. Lecturer tạo thesis
+		if (lecturerId === userId) return true;
+
+		// 2. Supervisor của thesis
+		const supervisor = await this.prisma.supervision.findFirst({
+			where: { thesisId, lecturerId: userId },
+		});
+		if (supervisor) return true;
+
+		// 3. Leader của group pick thesis
+		const groupPicked = await this.prisma.group.findFirst({
+			where: { thesisId },
+		});
+		if (groupPicked) {
+			const leader = await this.prisma.studentGroupParticipation.findFirst({
+				where: {
+					groupId: groupPicked.id,
+					studentId: userId,
+					isLeader: true,
+				},
+			});
+			if (leader) return true;
+		}
+		return false;
 	}
 
 	// private async saveAndDeleteCache(
