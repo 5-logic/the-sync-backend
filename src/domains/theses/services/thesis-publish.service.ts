@@ -1,7 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CacheHelperService, PrismaService } from '@/providers';
-import { CACHE_KEY } from '@/theses/constants';
+import {
+	//  CacheHelperService,
+	PrismaService,
+} from '@/providers';
+// import { CACHE_KEY } from '@/theses/constants';
 import { mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse } from '@/theses/responses';
 
@@ -10,7 +13,7 @@ export class ThesisPublishService {
 	private readonly logger = new Logger(ThesisPublishService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 	) {}
 
@@ -18,14 +21,14 @@ export class ThesisPublishService {
 		this.logger.log('Fetching all theses');
 
 		try {
-			const cacheKey = `${CACHE_KEY}/`;
-			const cache =
-				await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
-			if (cache) {
-				this.logger.log('Returning theses from cache');
+			// const cacheKey = `${CACHE_KEY}/`;
+			// const cache =
+			// 	await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
+			// if (cache) {
+			// 	this.logger.log('Returning theses from cache');
 
-				return cache;
-			}
+			// 	return cache;
+			// }
 
 			const theses = await this.prisma.thesis.findMany({
 				include: {
@@ -49,7 +52,7 @@ export class ThesisPublishService {
 
 			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
 
-			await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -63,14 +66,14 @@ export class ThesisPublishService {
 		this.logger.log(`Fetching thesis with id: ${id}`);
 
 		try {
-			const cacheKey = `${CACHE_KEY}/${id}`;
-			const cache =
-				await this.cache.getFromCache<ThesisDetailResponse>(cacheKey);
-			if (cache) {
-				this.logger.log('Returning thesis from cache');
+			// const cacheKey = `${CACHE_KEY}/${id}`;
+			// const cache =
+			// 	await this.cache.getFromCache<ThesisDetailResponse>(cacheKey);
+			// if (cache) {
+			// 	this.logger.log('Returning thesis from cache');
 
-				return cache;
-			}
+			// 	return cache;
+			// }
 
 			const thesis = await this.prisma.thesis.findUnique({
 				where: { id },
@@ -100,7 +103,7 @@ export class ThesisPublishService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(thesis);
 
-			await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -116,14 +119,14 @@ export class ThesisPublishService {
 		this.logger.log(`Fetching all theses for semester with ID: ${semesterId}`);
 
 		try {
-			const cacheKey = `${CACHE_KEY}/semester/${semesterId}`;
-			const cache =
-				await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
-			if (cache) {
-				this.logger.log('Returning theses from cache');
+			// const cacheKey = `${CACHE_KEY}/semester/${semesterId}`;
+			// const cache =
+			// 	await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
+			// if (cache) {
+			// 	this.logger.log('Returning theses from cache');
 
-				return cache;
-			}
+			// 	return cache;
+			// }
 
 			const theses = await this.prisma.thesis.findMany({
 				where: { semesterId },
@@ -150,7 +153,7 @@ export class ThesisPublishService {
 
 			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
 
-			await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {

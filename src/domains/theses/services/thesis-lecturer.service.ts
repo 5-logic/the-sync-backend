@@ -7,9 +7,12 @@ import {
 } from '@nestjs/common';
 
 import { CONSTANTS } from '@/configs';
-import { CacheHelperService, PrismaService } from '@/providers';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
 import { PineconeJobType, PineconeThesisService } from '@/queue';
-import { CACHE_KEY } from '@/theses/constants';
+// import { CACHE_KEY } from '@/theses/constants';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
@@ -23,7 +26,7 @@ export class ThesisLecturerService {
 	private static readonly INITIAL_VERSION = 1;
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeThesisService,
 	) {}
@@ -107,7 +110,7 @@ export class ThesisLecturerService {
 			this.logger.log(`Thesis created with ID: ${result?.id}`);
 			this.logger.debug('New thesis detail', JSON.stringify(result));
 
-			await this.saveAndDeleteCache(result);
+			// await this.saveAndDeleteCache(result);
 
 			// Upsert thesis into Pinecone
 			await this.pinecone.processThesis(
@@ -130,14 +133,14 @@ export class ThesisLecturerService {
 		this.logger.log(`Fetching all theses for lecturer with ID: ${lecturerId}`);
 
 		try {
-			const cacheKey = `${CACHE_KEY}/lecturer/${lecturerId}`;
-			const cache =
-				await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
-			if (cache) {
-				this.logger.log('Returning theses from cache');
+			// const cacheKey = `${CACHE_KEY}/lecturer/${lecturerId}`;
+			// const cache =
+			// 	await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
+			// if (cache) {
+			// 	this.logger.log('Returning theses from cache');
 
-				return cache;
-			}
+			// 	return cache;
+			// }
 
 			const theses = await this.prisma.thesis.findMany({
 				where: { lecturerId: lecturerId },
@@ -164,7 +167,7 @@ export class ThesisLecturerService {
 
 			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
 
-			await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -294,7 +297,7 @@ export class ThesisLecturerService {
 			this.logger.log(`Thesis updated with ID: ${result.id}`);
 			this.logger.debug('Updated thesis detail', JSON.stringify(result));
 
-			await this.saveAndDeleteCache(result);
+			// await this.saveAndDeleteCache(result);
 
 			// Update thesis into Pinecone
 			await this.pinecone.processThesis(
@@ -380,7 +383,7 @@ export class ThesisLecturerService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			await this.saveAndDeleteCache(result);
+			// await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -463,7 +466,7 @@ export class ThesisLecturerService {
 
 			const result: ThesisResponse = mapThesis(deletedThesis);
 
-			await this.saveAndDeleteCache(result);
+			// await this.saveAndDeleteCache(result);
 
 			// Delete thesis from Pinecone
 			await this.pinecone.processThesis(
@@ -537,15 +540,15 @@ export class ThesisLecturerService {
 		}
 	}
 
-	private async saveAndDeleteCache(
-		result: ThesisDetailResponse | ThesisResponse,
-	) {
-		const cacheKey = `${CACHE_KEY}/${result.id}`;
-		await Promise.all([
-			this.cache.saveToCache(cacheKey, result),
-			this.cache.delete(`${CACHE_KEY}/`),
-			this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-			this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-		]);
-	}
+	// private async saveAndDeleteCache(
+	// 	result: ThesisDetailResponse | ThesisResponse,
+	// ) {
+	// 	const cacheKey = `${CACHE_KEY}/${result.id}`;
+	// 	await Promise.all([
+	// 		this.cache.saveToCache(cacheKey, result),
+	// 		this.cache.delete(`${CACHE_KEY}/`),
+	// 		this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+	// 		this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+	// 	]);
+	// }
 }
