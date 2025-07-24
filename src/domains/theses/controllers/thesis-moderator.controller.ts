@@ -5,7 +5,6 @@ import {
 	HttpStatus,
 	Param,
 	Post,
-	Put,
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -31,7 +30,7 @@ export class ThesisModeratorController {
 
 	@Roles(Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
-	@Put('publish')
+	@Post('publish')
 	@ApiOperation(ThesisModeratorDocs.publishTheses)
 	@ApiEmptyResponse(HttpStatus.OK)
 	async publishTheses(@Body() dto: PublishThesisDto): Promise<void> {
