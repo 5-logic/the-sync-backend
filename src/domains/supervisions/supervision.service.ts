@@ -26,7 +26,7 @@ type AssignmentStatus =
 export class SupervisionService {
 	private readonly logger = new Logger(SupervisionService.name);
 
-	private static readonly CACHE_KEY = 'cache:supervision';
+	// private static readonly CACHE_KEY = 'cache:supervision';
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -412,7 +412,7 @@ export class SupervisionService {
 			);
 
 			// No cache to clear since we don't cache list operations
-			this.logger.debug('No cache invalidation needed for supervision removal');
+			// this.logger.debug('No cache invalidation needed for supervision removal');
 
 			if (supervisionToDelete) {
 				await this.sendSupervisionNotificationEmail(

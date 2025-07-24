@@ -16,7 +16,7 @@ import { SemesterStatus } from '~/generated/prisma';
 export class SubmissionService {
 	private readonly logger = new Logger(SubmissionService.name);
 
-	private static readonly CACHE_KEY = 'cache:submission';
+	// private static readonly CACHE_KEY = 'cache:submission';
 
 	// Reusable include objects to eliminate duplication
 	private readonly basicGroupSelect = {
