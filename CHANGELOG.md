@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2025-07-24
+
+### Changed
+
+- **Thesis Publishing API**:
+  - Changed the publish endpoint in `ThesisModeratorController` from `PUT /theses/publish` to `POST /theses/publish` for better RESTful compliance.
+  - Enhanced validation logic for publishing/unpublishing theses: now requires exactly 2 supervisors for publishing, and prevents unpublishing if theses are assigned to groups.
+  - DTO affected: `PublishThesisDto` (ensure `isPublish` and `thesisIds` are required).
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/234)
+
+- **Thesis Assignment Logic**:
+  - Removed unpublished thesis assignment check in `assignThesis` method.
+  - Updated permission validation for thesis updates to use `userId` instead of `lecturerId`.
+  - Improved error handling and permission checks in thesis update endpoints.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/234)
+
+- **Semester Management**:
+  - Added `maxGroup` property to Summer 2025 semester for better group management.
+  - Enhanced validation for semester status transitions to check max group and approved public thesis count.
+  - Service affected: `SemesterService`, `SemesterStatusService`.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/234)
+
+- **Request Handling**:
+  - Added logic to automatically cancel opposite request type when a join or invite request is approved.
+  - Improved transaction reliability and error handling for request approval/cancellation.
+  - Service affected: `RequestService`.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/234)
+
+- **Caching Logic**:
+  - Temporarily commented out caching logic in review, submission, supervision, milestone, lecturer, thesis, student, and semester services to address performance and consistency issues.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/234)
+
+### Technical Improvements
+
+- Refactored multiple services and controllers for improved permission validation and error handling.
+- Enhanced logging for publish, assign, and update operations in thesis and semester modules.
+
+### Pull Requests
+
+- [#234](https://github.com/5-logic/the-sync-backend/pull/234) - Hotfix: refactor publish endpoint, permission validation, and caching logic
+
 ## [0.7.2] - 2025-07-23
 
 ### Fixed
