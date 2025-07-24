@@ -217,15 +217,6 @@ export class ThesisModeratorService {
 				);
 			}
 
-			// Check if thesis is published
-			if (!existingThesis.isPublish) {
-				this.logger.warn(`Cannot assign unpublished thesis with ID ${id}`);
-
-				throw new ConflictException(
-					`Can only assign published theses. This thesis is not published`,
-				);
-			}
-
 			// Check if thesis is already assigned
 			if (existingThesis.groupId) {
 				this.logger.warn(
