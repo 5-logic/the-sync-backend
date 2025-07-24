@@ -6,11 +6,14 @@ import {
 } from '@nestjs/common';
 
 import { CONSTANTS } from '@/configs';
-import { CACHE_KEY } from '@/lecturers/constants';
+// import { CACHE_KEY } from '@/lecturers/constants';
 import { ToggleLecturerStatusDto, UpdateLecturerDto } from '@/lecturers/dtos';
 import { mapLecturerV1, mapLecturerV3 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
-import { CacheHelperService, PrismaService } from '@/providers';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
 import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
 import { CreateUserDto } from '@/users/index';
 import { generateStrongPassword, hash } from '@/utils';
@@ -20,7 +23,7 @@ export class LecturerManagementService {
 	private readonly logger = new Logger(LecturerManagementService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
 	) {}
@@ -95,9 +98,9 @@ export class LecturerManagementService {
 			this.logger.log(`Lecturer created with ID: ${result.id}`);
 			this.logger.debug('Lecturer detail', JSON.stringify(result));
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await this.cache.saveToCache(cacheKey, result);
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// const cacheKey = `${CACHE_KEY}/${result.id}`;
+			// await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return result;
 		} catch (error) {
@@ -192,7 +195,7 @@ export class LecturerManagementService {
 
 			this.logger.log(`Successfully created ${results.length} lecturers`);
 
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return results;
 		} catch (error) {
@@ -235,9 +238,9 @@ export class LecturerManagementService {
 
 				const result: LecturerResponse = mapLecturerV3(updatedLecturer);
 
-				const cacheKey = `${CACHE_KEY}/${result.id}`;
-				await this.cache.saveToCache(cacheKey, result);
-				await this.cache.delete(`${CACHE_KEY}/`);
+				// const cacheKey = `${CACHE_KEY}/${result.id}`;
+				// await this.cache.saveToCache(cacheKey, result);
+				// await this.cache.delete(`${CACHE_KEY}/`);
 
 				return result;
 			});
@@ -306,9 +309,9 @@ export class LecturerManagementService {
 			);
 			this.logger.debug('Updated lecturer status', JSON.stringify(result));
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await this.cache.saveToCache(cacheKey, result);
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// const cacheKey = `${CACHE_KEY}/${result.id}`;
+			// await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return result;
 		} catch (error) {
@@ -364,9 +367,9 @@ export class LecturerManagementService {
 			this.logger.log(`Lecturer successfully deleted with ID: ${id}`);
 			this.logger.debug('Deleted lecturer details:', JSON.stringify(result));
 
-			const cacheKey = `${CACHE_KEY}/${result.id}`;
-			await this.cache.delete(cacheKey);
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// const cacheKey = `${CACHE_KEY}/${result.id}`;
+			// await this.cache.delete(cacheKey);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return result;
 		} catch (error) {

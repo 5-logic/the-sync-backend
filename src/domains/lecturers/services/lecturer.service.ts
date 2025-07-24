@@ -1,9 +1,12 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CACHE_KEY } from '@/lecturers/constants';
+// import { CACHE_KEY } from '@/lecturers/constants';
 import { mapLecturerV1, mapLecturerV2 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
-import { CacheHelperService, PrismaService } from '@/providers';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
 import { UpdateUserDto } from '@/users/index';
 
 @Injectable()
@@ -11,7 +14,7 @@ export class LecturerService {
 	private readonly logger = new Logger(LecturerService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 	) {}
 
@@ -19,13 +22,13 @@ export class LecturerService {
 		this.logger.log('Fetching all lecturers');
 
 		try {
-			const cacheKey = `${CACHE_KEY}/`;
-			const cache = await this.cache.getFromCache<LecturerResponse[]>(cacheKey);
-			if (cache) {
-				this.logger.log('Returning lecturers from cache');
+			// const cacheKey = `${CACHE_KEY}/`;
+			// const cache = await this.cache.getFromCache<LecturerResponse[]>(cacheKey);
+			// if (cache) {
+			// 	this.logger.log('Returning lecturers from cache');
 
-				return cache;
-			}
+			// 	return cache;
+			// }
 
 			const lecturers = await this.prisma.lecturer.findMany({
 				include: {
@@ -43,7 +46,7 @@ export class LecturerService {
 
 			const result: LecturerResponse[] = lecturers.map(mapLecturerV2);
 
-			await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -56,13 +59,13 @@ export class LecturerService {
 		this.logger.log(`Fetching lecturer with ID: ${id}`);
 
 		try {
-			const cacheKey = `${CACHE_KEY}/${id}`;
-			const cache = await this.cache.getFromCache<LecturerResponse>(cacheKey);
-			if (cache) {
-				this.logger.log(`Returning lecturer ${id} from cache`);
+			// const cacheKey = `${CACHE_KEY}/${id}`;
+			// const cache = await this.cache.getFromCache<LecturerResponse>(cacheKey);
+			// if (cache) {
+			// 	this.logger.log(`Returning lecturer ${id} from cache`);
 
-				return cache;
-			}
+			// 	return cache;
+			// }
 
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId: id },
@@ -82,7 +85,7 @@ export class LecturerService {
 
 			const result: LecturerResponse = mapLecturerV2(lecturer);
 
-			await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -126,9 +129,9 @@ export class LecturerService {
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', JSON.stringify(result));
 
-			const cacheKey = `${CACHE_KEY}/${id}`;
-			await this.cache.saveToCache(cacheKey, result);
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// const cacheKey = `${CACHE_KEY}/${id}`;
+			// await this.cache.saveToCache(cacheKey, result);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return result;
 		} catch (error) {
