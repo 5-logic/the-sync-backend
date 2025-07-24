@@ -8,6 +8,7 @@ import {
 	OngoingPhase,
 	Semester,
 	SemesterStatus,
+	ThesisStatus,
 } from '~/generated/prisma';
 
 @Injectable()
@@ -94,8 +95,29 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
+		const maxGroup = semester.maxGroup;
+		if (!maxGroup || maxGroup <= 0) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. maxGroup is not set or invalid.`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
+		const approvedPublicThesisCount = await this.prisma.thesis.count({
+			where: {
+				semesterId: semester.id,
+				status: ThesisStatus.Approved,
+				isPublish: true,
+			},
+		});
+
+		if (approvedPublicThesisCount < maxGroup) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. Approved & public thesis count (${approvedPublicThesisCount}) is less than maxGroup (${maxGroup}).`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
 		this.logger.log(
-			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups.`,
+			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups & approved public thesis count is sufficient.`,
 		);
 	}
 
