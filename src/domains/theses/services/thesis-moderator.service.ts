@@ -5,8 +5,11 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { CacheHelperService, PrismaService } from '@/providers';
-import { CACHE_KEY } from '@/theses/constants';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
+// import { CACHE_KEY } from '@/theses/constants';
 import {
 	AssignThesisDto,
 	PublishThesisDto,
@@ -22,7 +25,7 @@ export class ThesisModeratorService {
 	private readonly logger = new Logger(ThesisModeratorService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 	) {}
 
@@ -96,15 +99,15 @@ export class ThesisModeratorService {
 			);
 
 			// Update cache for each thesis
-			for (const thesis of theses) {
-				const cacheKey = `${CACHE_KEY}/${thesis.id}`;
-				await Promise.all([
-					this.cache.saveToCache(cacheKey, thesis),
-					this.cache.delete(`${CACHE_KEY}/lecturer/${thesis.lecturerId}`),
-				]);
-			}
-			await this.cache.delete(`${CACHE_KEY}/`);
-			await this.cache.delete(`${CACHE_KEY}/semester/${theses[0].semesterId}`);
+			// for (const thesis of theses) {
+			// 	const cacheKey = `${CACHE_KEY}/${thesis.id}`;
+			// 	await Promise.all([
+			// 		this.cache.saveToCache(cacheKey, thesis),
+			// 		this.cache.delete(`${CACHE_KEY}/lecturer/${thesis.lecturerId}`),
+			// 	]);
+			// }
+			// await this.cache.delete(`${CACHE_KEY}/`);
+			// await this.cache.delete(`${CACHE_KEY}/semester/${theses[0].semesterId}`);
 		} catch (error) {
 			this.logger.error('Error publishing theses', error);
 
@@ -174,7 +177,7 @@ export class ThesisModeratorService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			await this.saveAndDeleteCache(result);
+			// await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -211,15 +214,6 @@ export class ThesisModeratorService {
 
 				throw new ConflictException(
 					`Can only assign approved theses. Current status: ${existingThesis.status}`,
-				);
-			}
-
-			// Check if thesis is published
-			if (!existingThesis.isPublish) {
-				this.logger.warn(`Cannot assign unpublished thesis with ID ${id}`);
-
-				throw new ConflictException(
-					`Can only assign published theses. This thesis is not published`,
 				);
 			}
 
@@ -299,7 +293,7 @@ export class ThesisModeratorService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			await this.saveAndDeleteCache(result);
+			// await this.saveAndDeleteCache(result);
 
 			return result;
 		} catch (error) {
@@ -316,13 +310,13 @@ export class ThesisModeratorService {
 	// Additional methods for thesis management can be added here
 	// ------------------------------------------------------------------------------------------
 
-	private async saveAndDeleteCache(result: ThesisDetailResponse) {
-		const cacheKey = `${CACHE_KEY}/${result.id}`;
-		await Promise.all([
-			this.cache.saveToCache(cacheKey, result),
-			this.cache.delete(`${CACHE_KEY}/`),
-			this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-			this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-		]);
-	}
+	// private async saveAndDeleteCache(result: ThesisDetailResponse) {
+	// 	const cacheKey = `${CACHE_KEY}/${result.id}`;
+	// 	await Promise.all([
+	// 		this.cache.saveToCache(cacheKey, result),
+	// 		this.cache.delete(`${CACHE_KEY}/`),
+	// 		this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
+	// 		this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
+	// 	]);
+	// }
 }

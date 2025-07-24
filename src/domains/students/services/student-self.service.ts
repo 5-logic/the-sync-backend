@@ -1,7 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { CacheHelperService, PrismaService } from '@/providers';
-import { CACHE_KEY } from '@/students/constants';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
+// import { CACHE_KEY } from '@/students/constants';
 import { SelfUpdateStudentDto } from '@/students/dtos';
 import { mapStudentV1 } from '@/students/mappers';
 import { StudentResponse } from '@/students/responses';
@@ -11,7 +14,7 @@ export class StudentSelfService {
 	private readonly logger = new Logger(StudentSelfService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 	) {}
 
@@ -93,8 +96,8 @@ export class StudentSelfService {
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', JSON.stringify(result));
 
-			const cacheKey = `${CACHE_KEY}/${id}`;
-			await this.cache.saveToCache(cacheKey, result);
+			// const cacheKey = `${CACHE_KEY}/${id}`;
+			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {

@@ -1510,6 +1510,7 @@ const seedSemesters = async () => {
 			id: '6969801d-77b6-48a3-b398-228971c80f40',
 			name: 'Summer 2025',
 			code: 'SU25',
+			maxGroup: 10,
 			status: SemesterStatus.Preparing,
 		},
 	});
