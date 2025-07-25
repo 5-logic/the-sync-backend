@@ -1,18 +1,21 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
-import { CACHE_KEY } from '@/milestones/constants';
+// import { CACHE_KEY } from '@/milestones/constants';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dtos';
 import { mapMilestone } from '@/milestones/mappers';
 import { MilestoneResponse } from '@/milestones/responses';
 import { MilestoneService } from '@/milestones/services/milestone.service';
-import { CacheHelperService, PrismaService } from '@/providers';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
 
 @Injectable()
 export class MilestoneAdminService {
 	private readonly logger = new Logger(MilestoneAdminService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly milestoneService: MilestoneService,
 	) {}
@@ -68,9 +71,9 @@ export class MilestoneAdminService {
 
 			const result: MilestoneResponse = mapMilestone(milestone);
 
-			const cacheKey = `${CACHE_KEY}/${milestone.id}`;
-			await this.cache.saveToCache(cacheKey, result);
-			await this.deleteCacheForMilestone(result);
+			// const cacheKey = `${CACHE_KEY}/${milestone.id}`;
+			// await this.cache.saveToCache(cacheKey, result);
+			// await this.deleteCacheForMilestone(result);
 
 			return result;
 		} catch (error) {
@@ -127,9 +130,9 @@ export class MilestoneAdminService {
 
 			const result: MilestoneResponse = mapMilestone(updated);
 
-			const cacheKey = `${CACHE_KEY}/${updated.id}`;
-			await this.cache.saveToCache(cacheKey, result);
-			await this.deleteCacheForMilestone(result);
+			// const cacheKey = `${CACHE_KEY}/${updated.id}`;
+			// await this.cache.saveToCache(cacheKey, result);
+			// await this.deleteCacheForMilestone(result);
 
 			return result;
 		} catch (error) {
@@ -261,8 +264,8 @@ export class MilestoneAdminService {
 
 			const result: MilestoneResponse = mapMilestone(deleted);
 
-			await this.cache.delete(`${CACHE_KEY}/${id}`);
-			await this.deleteCacheForMilestone(result);
+			// await this.cache.delete(`${CACHE_KEY}/${id}`);
+			// await this.deleteCacheForMilestone(result);
 
 			return result;
 		} catch (error) {
@@ -296,10 +299,10 @@ export class MilestoneAdminService {
 		}
 	}
 
-	async deleteCacheForMilestone(milestone: MilestoneResponse): Promise<void> {
-		await Promise.all([
-			await this.cache.delete(`${CACHE_KEY}/`),
-			await this.cache.delete(`${CACHE_KEY}/semester/${milestone.semesterId}`),
-		]);
-	}
+	// async deleteCacheForMilestone(milestone: MilestoneResponse): Promise<void> {
+	// 	await Promise.all([
+	// 		await this.cache.delete(`${CACHE_KEY}/`),
+	// 		await this.cache.delete(`${CACHE_KEY}/semester/${milestone.semesterId}`),
+	// 	]);
+	// }
 }

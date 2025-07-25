@@ -592,8 +592,30 @@ export class RequestService {
 			await this.validateUpdatePermissions(userId, request, dto.status);
 
 			// If approving, perform additional validations
-			if (dto.status === RequestStatus.Approved) {
+			if (
+				dto.status === RequestStatus.Approved ||
+				dto.status === RequestStatus.Rejected
+			) {
 				await this.validateRequestApproval(request);
+
+				let oppositeType;
+				if (request.type === RequestType.Join) {
+					oppositeType = RequestType.Invite;
+				} else if (request.type === RequestType.Invite) {
+					oppositeType = RequestType.Join;
+				}
+
+				if (oppositeType) {
+					await this.prisma.request.updateMany({
+						where: {
+							studentId: request.studentId,
+							groupId: request.groupId,
+							type: oppositeType,
+							status: RequestStatus.Pending,
+						},
+						data: { status: RequestStatus.Cancelled },
+					});
+				}
 			}
 
 			// Update request and potentially add student to group

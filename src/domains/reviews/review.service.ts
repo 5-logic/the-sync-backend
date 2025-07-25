@@ -21,7 +21,7 @@ import {
 export class ReviewService {
 	protected readonly logger = new Logger(ReviewService.name);
 
-	private static readonly CACHE_KEY = 'cache:review';
+	// private static readonly CACHE_KEY = 'cache:review';
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -177,7 +177,7 @@ export class ReviewService {
 			);
 
 			// Clear relevant caches after bulk assignment
-			await this.clearSubmissionRelatedCaches(assignments);
+			// await this.clearSubmissionRelatedCaches(assignments);
 
 			// Send email notifications to assigned reviewers
 			await this.sendReviewerAssignmentNotifications(assignments);
@@ -467,7 +467,7 @@ export class ReviewService {
 			this.logger.debug(`Review: ${JSON.stringify(result, null, 2)}`);
 
 			// Clear submission caches since review count has changed
-			await this.clearSubmissionRelatedCaches([{ submissionId }]);
+			// await this.clearSubmissionRelatedCaches([{ submissionId }]);
 
 			// Send email notification for review completion
 			await this.sendReviewCompletedNotifications(
@@ -1020,74 +1020,73 @@ export class ReviewService {
 	/**
 	 * Clear caches related to submissions and assignments
 	 */
-	private async clearSubmissionRelatedCaches(
-		assignments: Array<{ submissionId: string; lecturerIds?: string[] }>,
-	) {
-		try {
-			const cacheKeysToInvalidate: string[] = [];
+	// private async clearSubmissionRelatedCaches(
+	// 	assignments: Array<{ submissionId: string; lecturerIds?: string[] }>,
+	// ) {
+	// 	try {
+	// 		const cacheKeysToInvalidate: string[] = [];
 
-			// Clear submission list caches (all variants)
-			cacheKeysToInvalidate.push(
-				`${ReviewService.CACHE_KEY}:submissions:all:all`,
-			);
+	// 		// Clear submission list caches (all variants)
+	// 		cacheKeysToInvalidate.push(
+	// 			`${ReviewService.CACHE_KEY}:submissions:all:all`,
+	// 		);
 
-			// For each assignment, clear related caches
-			for (const assignment of assignments) {
-				const { submissionId, lecturerIds } = assignment;
+	// 		// For each assignment, clear related caches
+	// 		for (const assignment of assignments) {
+	// 			const { submissionId, lecturerIds } = assignment;
 
-				// Clear eligible reviewers cache for this submission
-				cacheKeysToInvalidate.push(
-					`${ReviewService.CACHE_KEY}:eligible-reviewers:${submissionId}`,
-				);
+	// 			// Clear eligible reviewers cache for this submission
+	// 			cacheKeysToInvalidate.push(
+	// 				`${ReviewService.CACHE_KEY}:eligible-reviewers:${submissionId}`,
+	// 			);
 
-				// Clear review form cache for this submission
-				cacheKeysToInvalidate.push(
-					`${ReviewService.CACHE_KEY}:review-form:${submissionId}`,
-				);
+	// 			// Clear review form cache for this submission
+	// 			cacheKeysToInvalidate.push(
+	// 				`${ReviewService.CACHE_KEY}:review-form:${submissionId}`,
+	// 			);
 
-				// Clear assigned reviews cache for each affected lecturer
-				if (lecturerIds && lecturerIds.length > 0) {
-					for (const lecturerId of lecturerIds) {
-						cacheKeysToInvalidate.push(
-							`${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`,
-						);
-					}
-				}
+	// 			// Clear assigned reviews cache for each affected lecturer
+	// 			if (lecturerIds && lecturerIds.length > 0) {
+	// 				for (const lecturerId of lecturerIds) {
+	// 					cacheKeysToInvalidate.push(
+	// 						`${ReviewService.CACHE_KEY}:assigned-reviews:${lecturerId}`,
+	// 					);
+	// 				}
+	// 			}
 
-				// Get submission to clear semester/milestone specific caches
-				const submission = await this.prisma.submission.findUnique({
-					where: { id: submissionId },
-					include: {
-						milestone: {
-							select: { id: true, semesterId: true },
-						},
-					},
-				});
+	// 			// Get submission to clear semester/milestone specific caches
+	// 			const submission = await this.prisma.submission.findUnique({
+	// 				where: { id: submissionId },
+	// 				include: {
+	// 					milestone: {
+	// 						select: { id: true, semesterId: true },
+	// 					},
+	// 				},
+	// 			});
 
-				if (submission) {
-					// Clear semester-specific cache
-					cacheKeysToInvalidate.push(
-						`${ReviewService.CACHE_KEY}:submissions:${submission.milestone.semesterId}:all`,
-					);
+	// 			// if (submission) {
+	// 			// 	// Clear semester-specific cache
+	// 			// 	cacheKeysToInvalidate.push(
+	// 			// 		`${ReviewService.CACHE_KEY}:submissions:${submission.milestone.semesterId}:all`,
+	// 			// 	);
 
-					// Clear milestone-specific cache
-					cacheKeysToInvalidate.push(
-						`${ReviewService.CACHE_KEY}:submissions:all:${submission.milestone.id}`,
-					);
+	// 			// 	// Clear milestone-specific cache
+	// 			// 	cacheKeysToInvalidate.push(
+	// 			// 		`${ReviewService.CACHE_KEY}:submissions:all:${submission.milestone.id}`,
+	// 			// 	);
 
-					// Clear semester+milestone specific cache
-					cacheKeysToInvalidate.push(
-						`${ReviewService.CACHE_KEY}:submissions:${submission.milestone.semesterId}:${submission.milestone.id}`,
-					);
-				}
-			}
+	// 			// 	// Clear semester+milestone specific cache
+	// 			// 	cacheKeysToInvalidate.push(
+	// 			// 		`${ReviewService.CACHE_KEY}:submissions:${submission.milestone.semesterId}:${submission.milestone.id}`,
+	// 			// 	);
+	// 			// }
+	// 		}
 
-			this.logger.log(
-				`Cleared ${cacheKeysToInvalidate.length} cache keys for ${assignments.length} assignments`,
-			);
-		} catch (error) {
-			this.logger.warn('Error clearing submission-related caches', error);
-			// Don't throw error to prevent main operation from failing
-		}
-	}
+	// 		// this.logger.log(
+	// 		// 	`Cleared ${cacheKeysToInvalidate.length} cache keys for ${assignments.length} assignments`,
+	// 		// );
+	// 	} catch (error) {
+	// 		this.logger.warn('Error clearing submission-related caches', error);
+	// 	}
+	// }
 }

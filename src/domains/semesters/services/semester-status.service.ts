@@ -8,6 +8,7 @@ import {
 	OngoingPhase,
 	Semester,
 	SemesterStatus,
+	ThesisStatus,
 } from '~/generated/prisma';
 
 @Injectable()
@@ -61,14 +62,12 @@ export class SemesterStatusService {
 	// ------------------------------------------------------------------------------------------
 
 	ensureUpdatableStatus(semester: Semester): void {
-		if (semester.status !== SemesterStatus.End) {
+		if (semester.status === SemesterStatus.End) {
 			this.logger.warn(
 				`Cannot update semester with ID ${semester.id}: semester has already ended`,
 			);
 
-			throw new ConflictException(
-				`Only semesters with status "${SemesterStatus.End}" can be updated.`,
-			);
+			throw new ConflictException(`Cannot update, semester has already ended`);
 		}
 	}
 
@@ -96,15 +95,36 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
+		const maxGroup = semester.maxGroup;
+		if (!maxGroup || maxGroup <= 0) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. maxGroup is not set or invalid.`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
+		const approvedPublicThesisCount = await this.prisma.thesis.count({
+			where: {
+				semesterId: semester.id,
+				status: ThesisStatus.Approved,
+				isPublish: true,
+			},
+		});
+
+		if (approvedPublicThesisCount < maxGroup) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. Approved & public thesis count (${approvedPublicThesisCount}) is less than maxGroup (${maxGroup}).`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
 		this.logger.log(
-			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups.`,
+			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups & approved public thesis count is sufficient.`,
 		);
 	}
 
-	validateStatusTransition__Picking_To_Ongoing(
+	async validateStatusTransition__Picking_To_Ongoing(
 		semester: Semester,
 		dto: UpdateSemesterDto,
-	): void {
+	): Promise<void> {
 		const currentMaxGroup = dto.maxGroup ?? semester.maxGroup;
 
 		if (!currentMaxGroup) {
@@ -117,8 +137,21 @@ export class SemesterStatusService {
 			);
 		}
 
+		const groupsWithoutThesisCount = await this.prisma.group.count({
+			where: {
+				semesterId: semester.id,
+				thesisId: null,
+			},
+		});
+
+		if (groupsWithoutThesisCount > 0) {
+			const message = `Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
 		this.logger.log(
-			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. All students have groups.`,
+			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. All students have groups and picked theses.`,
 		);
 	}
 
@@ -208,7 +241,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Picking &&
 			newStatus === SemesterStatus.Ongoing
 		) {
-			this.validateStatusTransition__Picking_To_Ongoing(semester, dto);
+			await this.validateStatusTransition__Picking_To_Ongoing(semester, dto);
 		}
 
 		// Check if move from Ongoing to End
