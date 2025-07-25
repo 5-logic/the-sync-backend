@@ -32,26 +32,23 @@ export class LecturerManagementService {
 		this.logger.log(`Creating lecturer with email: ${dto.email}`);
 
 		try {
+			// Validate duplicate email in system before create
+			const existingUser = await this.prisma.user.findUnique({
+				where: { email: dto.email },
+			});
+			if (existingUser) {
+				this.logger.warn(`Lecturer with email ${dto.email} already exists`);
+				throw new ConflictException(
+					`Lecturer with email ${dto.email} already exists`,
+				);
+			}
+
 			let emailDto: EmailJobDto | undefined = undefined;
 
 			const plainPassword = generateStrongPassword();
 			const hashedPassword = await hash(plainPassword);
 
 			const result = await this.prisma.$transaction(async (txn) => {
-				const existingUser = await txn.user.findUnique({
-					where: {
-						email: dto.email,
-					},
-				});
-
-				if (existingUser) {
-					this.logger.warn(`Lecturer with email ${dto.email} already exists`);
-
-					throw new ConflictException(
-						`Lecturer with  email ${dto.email} already exists`,
-					);
-				}
-
 				const newUser = await txn.user.create({
 					data: {
 						email: dto.email,
@@ -114,6 +111,19 @@ export class LecturerManagementService {
 		this.logger.log(`Creating lecturers in batch: ${dto.length} records`);
 
 		try {
+			// Validate duplicate emails in system before import
+			const emails = dto.map((d) => d.email);
+			const existingUsers = await this.prisma.user.findMany({
+				where: { email: { in: emails } },
+				select: { email: true },
+			});
+			if (existingUsers.length > 0) {
+				const existEmails = existingUsers.map((u) => u.email).join(', ');
+				throw new ConflictException(
+					`The following emails already exist: ${existEmails}`,
+				);
+			}
+
 			const emailsToSend: EmailJobDto[] = [];
 
 			const results = await this.prisma.$transaction(

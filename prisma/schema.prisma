@@ -268,6 +268,7 @@ model Milestone {
   startDate  DateTime @map("start_date")
   endDate    DateTime @map("end_date")
   semesterId String   @map("semester_id")
+	note			 String?  @map("note")
   documents  String[] @map("documents")
 
   createdAt DateTime @default(now()) @map("created_at")

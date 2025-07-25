@@ -44,6 +44,26 @@ export class StudentAdminService {
 			await this.validateMajorForEnrollment(dto.majorId);
 			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 
+			// Validate duplicate studentCode or email in system before create
+			const [existingStudentCode, existingUserEmail] = await Promise.all([
+				this.prisma.student.findUnique({
+					where: { studentCode: dto.studentCode },
+				}),
+				this.prisma.user.findUnique({
+					where: { email: dto.email },
+				}),
+			]);
+			if (existingStudentCode) {
+				throw new ConflictException(
+					`StudentCode ${dto.studentCode} already exists in the system.`,
+				);
+			}
+			if (existingUserEmail) {
+				throw new ConflictException(
+					`Email ${dto.email} already exists in the system.`,
+				);
+			}
+
 			let emailDto: EmailJobDto | undefined = undefined;
 			let isNewStudent = false;
 
@@ -193,6 +213,34 @@ export class StudentAdminService {
 			// Validate semester and major before starting the import process
 			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 			await this.validateMajorForEnrollment(dto.majorId);
+
+			// Validate duplicate studentCode or email in system before import
+			const studentCodes = dto.students.map((s) => s.studentCode);
+			const emails = dto.students.map((s) => s.email);
+
+			const [existingStudents, existingUsers] = await Promise.all([
+				this.prisma.student.findMany({
+					where: { studentCode: { in: studentCodes } },
+					select: { studentCode: true },
+				}),
+				this.prisma.user.findMany({
+					where: { email: { in: emails } },
+					select: { email: true },
+				}),
+			]);
+
+			if (existingStudents.length > 0) {
+				const codes = existingStudents.map((s) => s.studentCode).join(', ');
+				throw new ConflictException(
+					`The following studentCodes already exist: ${codes}`,
+				);
+			}
+			if (existingUsers.length > 0) {
+				const existEmails = existingUsers.map((u) => u.email).join(', ');
+				throw new ConflictException(
+					`The following emails already exist: ${existEmails}`,
+				);
+			}
 
 			const emailsToSend: EmailJobDto[] = [];
 

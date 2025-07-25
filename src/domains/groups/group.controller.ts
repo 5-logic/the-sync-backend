@@ -163,7 +163,7 @@ export class GroupController {
 		return await this.groupService.unpickThesis(id, user.id);
 	}
 
-	@Roles(Role.STUDENT)
+	@Roles(Role.MODERATOR, Role.STUDENT)
 	@Delete(':id')
 	@SwaggerDoc('group', 'delete')
 	async delete(@Req() req: Request, @Param('id') id: string) {
