@@ -2075,90 +2075,64 @@ export class GroupService {
 		}
 	}
 
-	async delete(groupId: string, leaderId: string) {
+	async delete(groupId: string, userId: string) {
 		try {
-			this.logger.log(
-				`Deleting group with ID: ${groupId} by leader: ${leaderId}`,
-			);
+			this.logger.log(`Deleting group with ID: ${groupId} by user: ${userId}`);
 
 			// Get group details with all necessary data for validation
-			const [group, leaderParticipation] = await Promise.all([
+			const [group, leaderParticipation, moderator] = await Promise.all([
 				this.prisma.group.findUnique({
 					where: { id: groupId },
 					include: {
 						semester: {
-							select: {
-								id: true,
-								status: true,
-								name: true,
-								code: true,
-							},
+							select: { id: true, status: true, name: true, code: true },
 						},
-						thesis: {
-							select: {
-								id: true,
-							},
-						},
+						thesis: { select: { id: true } },
 						_count: {
-							select: {
-								studentGroupParticipations: true,
-								submissions: true,
-							},
+							select: { studentGroupParticipations: true, submissions: true },
 						},
 					},
 				}),
 				this.prisma.studentGroupParticipation.findFirst({
-					where: {
-						studentId: leaderId,
-						groupId: groupId,
+					where: { studentId: userId, groupId },
+					select: {
+						isLeader: true,
+						group: { select: { code: true, name: true } },
 					},
-					include: {
-						group: {
-							select: {
-								code: true,
-								name: true,
-							},
-						},
-					},
+				}),
+				this.prisma.lecturer.findUnique({
+					where: { userId },
+					select: { isModerator: true },
 				}),
 			]);
 
-			// Validate group exists
-			if (!group) {
-				throw new NotFoundException(`Group not found`);
-			}
+			if (!group) throw new NotFoundException('Group not found');
+			if (!leaderParticipation && !moderator?.isModerator)
+				throw new NotFoundException('Student is not a member of this group');
 
-			// Validate current user is the leader
-			if (!leaderParticipation) {
-				throw new NotFoundException(`Student is not a member of this group`);
-			}
+			const isLeader = leaderParticipation?.isLeader;
+			const isModerator = moderator?.isModerator;
 
-			if (!leaderParticipation.isLeader) {
+			if (!isLeader && !isModerator) {
 				throw new ConflictException(
-					`Access denied. Only the group leader can delete group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+					`Access denied. Only the group leader or a moderator can delete group "${leaderParticipation?.group?.name ?? ''}" (${leaderParticipation?.group?.code ?? ''})`,
 				);
 			}
 
-			// Validate semester status - only allow deletion during PREPARING phase
-			if (group.semester.status !== SemesterStatus.Preparing) {
+			if (group.semester.status !== SemesterStatus.Preparing)
 				throw new ConflictException(
 					`Cannot delete group. Groups can only be deleted during the PREPARING semester status. Current status is ${group.semester.status}`,
 				);
-			}
 
-			// Validate group doesn't have assigned thesis
-			if (group.thesis) {
+			if (group.thesis)
 				throw new ConflictException(
-					`Cannot delete group. Group has an assigned thesis. Please remove the thesis assignment first or contact a moderator for assistance.`,
+					'Cannot delete group. Group has an assigned thesis. Please remove the thesis assignment first or contact a moderator for assistance.',
 				);
-			}
 
-			// Validate group doesn't have any submissions
-			if (group._count.submissions > 0) {
+			if (group._count.submissions > 0)
 				throw new ConflictException(
 					`Cannot delete group. Group has ${group._count.submissions} milestone submission(s). Groups with submissions cannot be deleted.`,
 				);
-			}
 
 			// Get all group members for email notification before deletion
 			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
