@@ -36,20 +36,34 @@ export class ThesisModeratorService {
 			// Validate input
 			if (dto.thesisIds.length === 0) {
 				this.logger.warn('No thesis IDs provided for publishing');
-
 				throw new NotFoundException('No thesis IDs provided');
 			}
 
-			// Fetch theses with required data
+			// Fetch theses with required data (kèm semester)
 			const theses = await this.prisma.thesis.findMany({
 				where: { id: { in: dto.thesisIds } },
+				include: { semester: true },
 			});
 
 			// Validate theses exist
 			if (theses.length !== dto.thesisIds.length) {
 				this.logger.warn(`Some theses not found for publishing`);
-
 				throw new NotFoundException('Some theses not found');
+			}
+
+			// Validate semester status for publish
+			const invalidSemester = theses.filter(
+				(t) =>
+					t.semester.status !== 'Preparing' && t.semester.status !== 'Picking',
+			);
+			if (invalidSemester.length > 0) {
+				const thesisIds = invalidSemester.map((t) => t.id).join(', ');
+				this.logger.warn(
+					`Cannot publish theses because their semester is not in Preparing or Picking: ${thesisIds}`,
+				);
+				throw new ConflictException(
+					`Cannot publish theses when semester are not in Preparing or Picking.`,
+				);
 			}
 
 			// Get supervision counts for all theses
@@ -65,22 +79,24 @@ export class ThesisModeratorService {
 					this.logger.warn(
 						`Thesis ${item.thesisId} does not have exactly 2 supervisors`,
 					);
-
 					throw new ConflictException(
 						`All theses must have exactly 2 supervisors to be published.`,
 					);
 				}
 			});
 
-			if (!dto.isPublish) {
-				// Validate can unpublish
+			if (dto.isPublish === false) {
+				// Validate can unpublish: không cho unpublish nếu thesis đã có group pick
 				const thesesWithGroups = theses.filter((thesis) => thesis.groupId);
-
 				if (thesesWithGroups.length > 0) {
-					this.logger.warn('Cannot unpublish theses that have groups');
-
+					const thesisIdsWithGroups = thesesWithGroups
+						.map((t) => t.id)
+						.join(', ');
+					this.logger.warn(
+						'Cannot unpublish theses that have groups: ' + thesisIdsWithGroups,
+					);
 					throw new ConflictException(
-						`Cannot unpublish theses that are already assigned to groups.`,
+						`Cannot unpublish theses that are already assigned to groups`,
 					);
 				}
 			}
@@ -100,17 +116,16 @@ export class ThesisModeratorService {
 
 			// Update cache for each thesis
 			// for (const thesis of theses) {
-			// 	const cacheKey = `${CACHE_KEY}/${thesis.id}`;
-			// 	await Promise.all([
-			// 		this.cache.saveToCache(cacheKey, thesis),
-			// 		this.cache.delete(`${CACHE_KEY}/lecturer/${thesis.lecturerId}`),
-			// 	]);
+			//  const cacheKey = `${CACHE_KEY}/${thesis.id}`;
+			//  await Promise.all([
+			//      this.cache.saveToCache(cacheKey, thesis),
+			//      this.cache.delete(`${CACHE_KEY}/lecturer/${thesis.lecturerId}`),
+			//  ]);
 			// }
 			// await this.cache.delete(`${CACHE_KEY}/`);
 			// await this.cache.delete(`${CACHE_KEY}/semester/${theses[0].semesterId}`);
 		} catch (error) {
 			this.logger.error('Error publishing theses', error);
-
 			throw error;
 		}
 	}
