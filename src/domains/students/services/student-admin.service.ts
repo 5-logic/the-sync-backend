@@ -194,6 +194,34 @@ export class StudentAdminService {
 			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 			await this.validateMajorForEnrollment(dto.majorId);
 
+			// Validate duplicate studentCode or email in system before import
+			const studentCodes = dto.students.map((s) => s.studentCode);
+			const emails = dto.students.map((s) => s.email);
+
+			const [existingStudents, existingUsers] = await Promise.all([
+				this.prisma.student.findMany({
+					where: { studentCode: { in: studentCodes } },
+					select: { studentCode: true },
+				}),
+				this.prisma.user.findMany({
+					where: { email: { in: emails } },
+					select: { email: true },
+				}),
+			]);
+
+			if (existingStudents.length > 0) {
+				const codes = existingStudents.map((s) => s.studentCode).join(', ');
+				throw new ConflictException(
+					`The following studentCodes already exist: ${codes}`,
+				);
+			}
+			if (existingUsers.length > 0) {
+				const existEmails = existingUsers.map((u) => u.email).join(', ');
+				throw new ConflictException(
+					`The following emails already exist: ${existEmails}`,
+				);
+			}
+
 			const emailsToSend: EmailJobDto[] = [];
 
 			const results = await this.prisma.$transaction(
