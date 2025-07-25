@@ -1,4 +1,5 @@
 import {
+	BadGatewayException,
 	ConflictException,
 	Inject,
 	Injectable,
@@ -1378,6 +1379,26 @@ export class GroupService {
 			if (group._count.studentGroupParticipations >= maxMembersPerGroup) {
 				throw new ConflictException(
 					`Cannot assign student to this group. Group has reached maximum capacity of ${maxMembersPerGroup} members. Please assign the student to another group.`,
+				);
+			}
+
+			// Validate số lượng student chưa có group trong semester
+			const studentsWithoutGroup = await this.prisma.enrollment.count({
+				where: {
+					semesterId: group.semesterId,
+					status: 'NotYet',
+					student: {
+						studentGroupParticipations: {
+							every: {
+								semesterId: { not: group.semesterId },
+							},
+						},
+					},
+				},
+			});
+			if (studentsWithoutGroup >= 4) {
+				throw new BadGatewayException(
+					`Cannot assign student to group. There are already ${studentsWithoutGroup} students without a group in this semester. You can notify them to create / join a group.`,
 				);
 			}
 
