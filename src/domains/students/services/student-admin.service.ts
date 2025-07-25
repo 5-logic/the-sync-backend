@@ -44,6 +44,26 @@ export class StudentAdminService {
 			await this.validateMajorForEnrollment(dto.majorId);
 			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 
+			// Validate duplicate studentCode or email in system before create
+			const [existingStudentCode, existingUserEmail] = await Promise.all([
+				this.prisma.student.findUnique({
+					where: { studentCode: dto.studentCode },
+				}),
+				this.prisma.user.findUnique({
+					where: { email: dto.email },
+				}),
+			]);
+			if (existingStudentCode) {
+				throw new ConflictException(
+					`StudentCode ${dto.studentCode} already exists in the system.`,
+				);
+			}
+			if (existingUserEmail) {
+				throw new ConflictException(
+					`Email ${dto.email} already exists in the system.`,
+				);
+			}
+
 			let emailDto: EmailJobDto | undefined = undefined;
 			let isNewStudent = false;
 
