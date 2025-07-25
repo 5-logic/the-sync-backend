@@ -67,7 +67,7 @@ export class PineconeThesisProcessor extends WorkerHost {
 
 		const record = {
 			_id: dto.id,
-			text: JSON.stringify({ ...value, documentContent: formattedContent }),
+			text: formattedContent,
 			...value,
 		};
 
