@@ -1650,10 +1650,10 @@ export class GroupService {
 				);
 			}
 
-			// Check semester status - allow removal only in Preparing or Picking phases
-			if (!['Preparing', 'Picking'].includes(group.semester.status)) {
+			// Check semester status - allow removal only in Preparing phases
+			if (!['Preparing'].includes(group.semester.status)) {
 				throw new ConflictException(
-					`Cannot remove student from group. Semester status must be 'Preparing' or 'Picking', current status is '${group.semester.status}'`,
+					`Cannot remove student from group. Semester status must be 'Preparing', current status is '${group.semester.status}'`,
 				);
 			}
 
