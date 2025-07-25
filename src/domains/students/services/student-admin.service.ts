@@ -6,9 +6,12 @@ import {
 } from '@nestjs/common';
 
 import { CONSTANTS } from '@/configs';
-import { CacheHelperService, PrismaService } from '@/providers';
+import {
+	// CacheHelperService,
+	PrismaService,
+} from '@/providers';
 import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
-import { CACHE_KEY } from '@/students/constants';
+// import { CACHE_KEY } from '@/students/constants';
 import {
 	CreateStudentDto,
 	ImportStudentDto,
@@ -26,7 +29,7 @@ export class StudentAdminService {
 	private readonly logger = new Logger(StudentAdminService.name);
 
 	constructor(
-		private readonly cache: CacheHelperService,
+		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
 	) {}
@@ -171,7 +174,7 @@ export class StudentAdminService {
 			this.logger.log(`Student operation completed with userId: ${result.id}`);
 			this.logger.debug('Student detail', JSON.stringify(result));
 
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return result;
 		} catch (error) {
@@ -329,7 +332,7 @@ export class StudentAdminService {
 
 			this.logger.log(`Successfully processed ${results.length} students`);
 
-			await this.cache.delete(`${CACHE_KEY}/`);
+			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return results;
 		} catch (error) {
@@ -386,7 +389,7 @@ export class StudentAdminService {
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', JSON.stringify(result));
 
-			await this.cache.delete(`${CACHE_KEY}/${id}`);
+			// await this.cache.delete(`${CACHE_KEY}/${id}`);
 
 			return result;
 		} catch (error) {
@@ -436,7 +439,7 @@ export class StudentAdminService {
 			);
 			this.logger.debug('Updated student status', JSON.stringify(result));
 
-			await this.cache.delete(`${CACHE_KEY}/${id}`);
+			// await this.cache.delete(`${CACHE_KEY}/${id}`);
 
 			return result;
 		} catch (error) {
@@ -535,9 +538,9 @@ export class StudentAdminService {
 			this.logger.log(`Student deleted with ID: ${result.id}`);
 			this.logger.debug('Deleted Student', JSON.stringify(result));
 
-			await this.cache.delete(`${CACHE_KEY}/`);
-			await this.cache.delete(`${CACHE_KEY}/${id}`);
-			await this.cache.delete(`${CACHE_KEY}/semester/${semesterId}`);
+			// await this.cache.delete(`${CACHE_KEY}/`);
+			// await this.cache.delete(`${CACHE_KEY}/${id}`);
+			// await this.cache.delete(`${CACHE_KEY}/semester/${semesterId}`);
 
 			return result;
 		} catch (error) {

@@ -60,7 +60,7 @@ export class ThesisLecturerController {
 		return await this.service.findAllByLecturerId(lecturerId);
 	}
 
-	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Roles(Role.MODERATOR, Role.LECTURER, Role.STUDENT)
 	@HttpCode(HttpStatus.OK)
 	@Put(':id')
 	@ApiOperation(ThesisLecturerDocs.update)
