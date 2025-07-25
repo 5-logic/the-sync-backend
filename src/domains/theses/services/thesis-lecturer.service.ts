@@ -223,11 +223,9 @@ export class ThesisLecturerService {
 				// Chỉ lecturer tạo thesis mới được update
 				if (existingThesis.lecturerId === userId) {
 					canUpdate = true;
-					// Nếu thesis đã được publish thì sẽ unpublish và chuyển status về Pending
-					if (existingThesis.isPublish) {
-						newIsPublish = false;
-						newStatus = ThesisStatus.Pending;
-					} else if (
+					// Nếu thesis đã được publish hoặc đã được duyệt/từ chối thì sẽ unpublish và chuyển status về Pending
+					if (
+						existingThesis.isPublish ||
 						existingThesis.status === ThesisStatus.Approved ||
 						existingThesis.status === ThesisStatus.Rejected
 					) {
