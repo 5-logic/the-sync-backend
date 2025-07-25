@@ -237,6 +237,20 @@ export class SupervisionService {
 			throw new BadRequestException(errorMessage);
 		}
 
+		// Xóa supervisor cũ nếu có trước khi tạo mới
+		for (const assignment of dto.assignments) {
+			const { thesisId } = assignment;
+			// Kiểm tra thesis đã có supervisor chưa
+			const oldSupervisions = await this.prisma.supervision.findMany({
+				where: { thesisId },
+				select: { thesisId: true, lecturerId: true },
+			});
+			if (oldSupervisions.length > 0) {
+				// Xóa hết supervisor cũ
+				await this.prisma.supervision.deleteMany({ where: { thesisId } });
+			}
+		}
+
 		const results: Array<{
 			thesisId: string;
 			lecturerId: string;
