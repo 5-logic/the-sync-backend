@@ -243,15 +243,33 @@ export class ThesisModeratorService {
 				);
 			}
 
-			// Validate group exists and meets assignment criteria
+			// Validate group exists và kiểm tra điều kiện assignment
 			const targetGroup = await this.prisma.group.findUnique({
 				where: { id: dto.groupId },
 			});
 
 			if (!targetGroup) {
 				this.logger.warn(`Group with ID ${dto.groupId} not found`);
-
 				throw new NotFoundException(`Group not found`);
+			}
+
+			// Check semester status - chỉ cho phép assign khi là Preparing hoặc Picking
+			if (targetGroup.semesterId) {
+				const semester = await this.prisma.semester.findUnique({
+					where: { id: targetGroup.semesterId },
+					select: { status: true },
+				});
+				if (
+					!semester ||
+					(semester.status !== 'Preparing' && semester.status !== 'Picking')
+				) {
+					this.logger.warn(
+						`Cannot assign thesis. Semester status must be Preparing or Picking. Current status: ${semester?.status}`,
+					);
+					throw new ConflictException(
+						`Can only assign thesis to group in Preparing or Picking semester. Current status: ${semester?.status}`,
+					);
+				}
 			}
 
 			// Check if group already has a thesis
