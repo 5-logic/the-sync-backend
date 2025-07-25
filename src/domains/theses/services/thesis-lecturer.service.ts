@@ -190,6 +190,7 @@ export class ThesisLecturerService {
 		);
 
 		try {
+			// Lấy thesis, semester, group pick và phase
 			const existingThesis = await this.prisma.thesis.findUnique({
 				where: { id },
 				include: {
@@ -198,26 +199,71 @@ export class ThesisLecturerService {
 						orderBy: { version: 'desc' },
 						take: 1,
 					},
+					semester: true,
+					group: true,
 				},
 			});
 
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for update`);
-
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			const canUpdate = await this.validatePermissionUpdateThesis(
-				userId,
-				id,
-				existingThesis.lecturerId,
-			);
+			const semester = existingThesis.semester;
+			const groupPicked = existingThesis.group;
+
+			// Logic kiểm tra quyền update và cập nhật status/publish
+			let canUpdate = false;
+			let shouldUpdateStatus = true;
+			let shouldUpdatePublish = true;
+			let newStatus: ThesisStatus | undefined = undefined;
+			let newIsPublish: boolean | undefined = undefined;
+
+			if (semester.status === 'Preparing') {
+				// Chỉ lecturer tạo thesis mới được update
+				if (existingThesis.lecturerId === userId) {
+					canUpdate = true;
+					// Nếu thesis đã được publish thì sẽ unpublish và chuyển status về Pending
+					if (existingThesis.isPublish) {
+						newIsPublish = false;
+						newStatus = ThesisStatus.Pending;
+					} else if (
+						existingThesis.status === ThesisStatus.Approved ||
+						existingThesis.status === ThesisStatus.Rejected
+					) {
+						newIsPublish = false;
+						newStatus = ThesisStatus.Pending;
+					} else {
+						// Nếu không thì giữ nguyên status và publish hiện tại
+						newIsPublish = existingThesis.isPublish;
+						newStatus = existingThesis.status;
+					}
+				}
+			} else if (
+				(semester.status === 'Picking' || semester.status === 'Ongoing') &&
+				semester.ongoingPhase === 'ScopeAdjustable' &&
+				groupPicked
+			) {
+				// Chỉ leader của group pick thesis đó mới được update
+				const leader = await this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						groupId: groupPicked.id,
+						studentId: userId,
+						isLeader: true,
+					},
+				});
+				if (leader) {
+					canUpdate = true;
+					// Không chuyển status và publish khi leader update
+					shouldUpdateStatus = false;
+					shouldUpdatePublish = false;
+				}
+			}
 
 			if (!canUpdate) {
 				this.logger.warn(
 					`User with ID ${userId} is not authorized to update thesis with ID ${id}`,
 				);
-
 				throw new ForbiddenException(
 					`You do not have permission to update this thesis`,
 				);
@@ -271,17 +317,27 @@ export class ThesisLecturerService {
 					);
 				}
 
+				// Chuẩn bị dữ liệu update
+				const updateData: any = {
+					englishName: dto.englishName,
+					vietnameseName: dto.vietnameseName,
+					abbreviation: dto.abbreviation,
+					description: dto.description,
+					domain: dto.domain,
+				};
+				if (shouldUpdateStatus) {
+					updateData.status = newStatus ?? existingThesis.status;
+				}
+				if (shouldUpdatePublish) {
+					updateData.isPublish =
+						typeof newIsPublish === 'boolean'
+							? newIsPublish
+							: existingThesis.isPublish;
+				}
+
 				const updateThesis = await txn.thesis.update({
 					where: { id: id },
-					data: {
-						englishName: dto.englishName,
-						vietnameseName: dto.vietnameseName,
-						abbreviation: dto.abbreviation,
-						description: dto.description,
-						domain: dto.domain,
-						status: ThesisStatus.Pending,
-						isPublish: false,
-					},
+					data: updateData,
 					include: {
 						thesisVersions: {
 							orderBy: { version: 'desc' },
@@ -298,7 +354,6 @@ export class ThesisLecturerService {
 				});
 
 				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
-
 				return result;
 			});
 
@@ -317,7 +372,6 @@ export class ThesisLecturerService {
 			return result;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
-
 			throw error;
 		}
 	}
