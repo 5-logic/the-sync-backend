@@ -408,11 +408,10 @@ export class GroupService {
 					status: true,
 				},
 			},
+			thesis: true,
 			_count: {
 				select: {
 					studentGroupParticipations: true,
-					groupRequiredSkills: true,
-					groupExpectedResponsibilities: true,
 				},
 			},
 			studentGroupParticipations: {
@@ -465,9 +464,8 @@ export class GroupService {
 				createdAt: group.createdAt,
 				updatedAt: group.updatedAt,
 				semester: group.semester,
+				thesis: group.thesis,
 				memberCount: group._count.studentGroupParticipations,
-				skillCount: group._count.groupRequiredSkills,
-				responsibilityCount: group._count.groupExpectedResponsibilities,
 				leader: group.studentGroupParticipations[0] ?? null,
 			}));
 
