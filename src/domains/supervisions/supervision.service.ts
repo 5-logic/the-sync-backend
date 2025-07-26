@@ -220,11 +220,18 @@ export class SupervisionService {
 	async assignBulkSupervisor(dto: AssignBulkSupervisionDto) {
 		// Lấy tất cả thesisId cần kiểm tra
 		const thesisIds = dto.assignments.map((a) => a.thesisId);
+		// Lấy thông tin thesis kèm semester
 		const theses = await this.prisma.thesis.findMany({
 			where: { id: { in: thesisIds } },
-			select: { id: true, englishName: true, status: true },
+			select: {
+				id: true,
+				englishName: true,
+				status: true,
+				semester: true,
+			},
 		});
 
+		// Validate thesis đã được duyệt
 		const notApproved = theses.filter((t) => t.status !== 'Approved');
 		if (notApproved.length > 0) {
 			const thesisNames = notApproved
@@ -234,6 +241,24 @@ export class SupervisionService {
 				.join(', ');
 			const errorMessage =
 				'The following theses are not approved: ' + thesisNames;
+			throw new BadRequestException(errorMessage);
+		}
+
+		// Validate semester status
+		const invalidSemester = theses.filter(
+			(t) =>
+				!t.semester ||
+				(t.semester.status !== 'Preparing' && t.semester.status !== 'Picking'),
+		);
+		if (invalidSemester.length > 0) {
+			const thesisNames = invalidSemester
+				.map(function (t) {
+					return t.englishName ? t.englishName : t.id;
+				})
+				.join(', ');
+			const errorMessage =
+				'Supervisors can only be assigned when the semester is in Preparing or Picking. The following theses do not meet this requirement: ' +
+				thesisNames;
 			throw new BadRequestException(errorMessage);
 		}
 
