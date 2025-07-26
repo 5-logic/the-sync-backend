@@ -2342,14 +2342,7 @@ export class GroupService {
 				this.prisma.group.findUnique({
 					where: { id: groupId },
 					include: {
-						semester: {
-							select: {
-								id: true,
-								name: true,
-								code: true,
-								status: true,
-							},
-						},
+						semester: true,
 						thesis: {
 							select: {
 								id: true,
@@ -2422,12 +2415,16 @@ export class GroupService {
 			if (!thesis) {
 				throw new NotFoundException(`Thesis not found`);
 			}
-			// Check semester status - only allow picking during PICKING phase
-			this.validateSemesterStatus(
-				group.semester.status,
-				[SemesterStatus.Picking],
-				'pick thesis',
-			);
+			// Check semester status - only allow picking during PICKING or ONGOING (ScopeAdjustable)
+			const isPicking = group.semester.status === SemesterStatus.Picking;
+			const isOngoingAdjustable =
+				group.semester.status === SemesterStatus.Ongoing &&
+				group.semester.ongoingPhase === 'ScopeAdjustable';
+			if (!(isPicking || isOngoingAdjustable)) {
+				throw new ConflictException(
+					'Can only pick thesis during Picking or Ongoing (ScopeAdjustable) phase',
+				);
+			}
 
 			// Check if group is in same semester as thesis
 			if (group.semesterId !== thesis.semesterId) {
@@ -2524,9 +2521,7 @@ export class GroupService {
 				this.prisma.group.findUnique({
 					where: { id: groupId },
 					include: {
-						semester: {
-							select: { id: true, status: true, name: true, code: true },
-						},
+						semester: true,
 						thesis: {
 							include: {
 								lecturer: { include: { user: true } },
@@ -2558,11 +2553,15 @@ export class GroupService {
 					'unpick thesis',
 				);
 			} else if (isLeader) {
-				this.validateSemesterStatus(
-					group.semester.status as string,
-					[SemesterStatus.Picking],
-					'unpick thesis',
-				);
+				const isPicking = group.semester.status === SemesterStatus.Picking;
+				const isOngoingAdjustable =
+					group.semester.status === SemesterStatus.Ongoing &&
+					group.semester.ongoingPhase === 'ScopeAdjustable';
+				if (!(isPicking || isOngoingAdjustable)) {
+					throw new ConflictException(
+						'Can only unpick thesis during Picking or Ongoing (ScopeAdjustable) phase',
+					);
+				}
 			} else {
 				throw new ConflictException(
 					'You do not have permission to unpick thesis for this group',
