@@ -52,9 +52,7 @@ export class ReviewService {
 					select: {
 						thesis: {
 							select: {
-								supervisions: {
-									select: { lecturerId: true },
-								},
+								supervisions: true,
 							},
 						},
 					},
@@ -76,22 +74,9 @@ export class ReviewService {
 						: {}),
 				},
 				include: {
-					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-						},
-					},
+					user: true,
 				},
 			});
-
-			const mappedReviewers = lecturers.map((lecturer) => ({
-				id: lecturer.userId,
-				name: lecturer.user.fullName,
-				email: lecturer.user.email,
-				isModerator: lecturer.isModerator,
-			}));
 
 			this.logger.log(
 				`Found ${lecturers.length} eligible reviewers for submission ID ${submissionId}`,
@@ -99,7 +84,7 @@ export class ReviewService {
 			this.logger.debug(
 				`Eligible reviewers: ${JSON.stringify(lecturers, null, 2)}`,
 			);
-			return mappedReviewers;
+			return lecturers;
 		} catch (error) {
 			this.logger.error(
 				`Error fetching eligible reviewers for submission ID ${submissionId}`,
@@ -300,28 +285,19 @@ export class ReviewService {
 				include: {
 					submission: {
 						include: {
-							group: {
-								select: { id: true, name: true, code: true },
-							},
-							milestone: {
-								select: { id: true, name: true },
-							},
+							group: true,
+							milestone: true,
 						},
 					},
 				},
 			});
-
-			const mappedAssignments = assignments.map((assignment) => ({
-				submissionId: assignment.submissionId,
-				submission: assignment.submission,
-			}));
 
 			this.logger.log(
 				`Fetched ${assignments.length} assigned reviews for lecturer ID ${lecturerId}`,
 			);
 			this.logger.debug(`Assignments: ${JSON.stringify(assignments, null, 2)}`);
 
-			return mappedAssignments;
+			return assignments;
 		} catch (error) {
 			this.logger.error('Error fetching assigned reviews', error);
 			throw error;
@@ -336,9 +312,7 @@ export class ReviewService {
 			const submission = await this.prisma.submission.findUnique({
 				where: { id: submissionId },
 				include: {
-					group: {
-						select: { id: true, name: true, code: true },
-					},
+					group: true,
 					milestone: {
 						include: {
 							checklist: {
@@ -609,26 +583,15 @@ export class ReviewService {
 				include: {
 					lecturer: {
 						include: {
-							user: {
-								select: { id: true, fullName: true, email: true },
-							},
+							user: true,
 						},
 					},
 					reviewItems: {
 						include: {
-							checklistItem: {
-								select: {
-									id: true,
-									name: true,
-									description: true,
-									isRequired: true,
-								},
-							},
+							checklistItem: true,
 						},
 					},
-					checklist: {
-						select: { id: true, name: true, description: true },
-					},
+					checklist: true,
 				},
 				orderBy: { createdAt: 'desc' },
 			});
