@@ -536,7 +536,6 @@ export class StudentAdminService {
 					this.logger.warn(
 						`Cannot delete student in semester ${semesterId} with status ${existingSemester.status}`,
 					);
-
 					throw new ConflictException(
 						`Cannot delete student in semester ${existingSemester.name}. Only ${SemesterStatus.Preparing} semesters allow student deletion.`,
 					);
@@ -551,9 +550,25 @@ export class StudentAdminService {
 					this.logger.warn(
 						`Student with ID ${id} is not enrolled in semester ${semesterId}`,
 					);
-
 					throw new NotFoundException(
 						`Student is not enrolled in semester ${existingSemester.name}`,
+					);
+				}
+
+				// Validate: Nếu student đã có group trong semester này thì không cho xóa
+				const groupParticipation =
+					await prisma.studentGroupParticipation.findFirst({
+						where: {
+							studentId: id,
+							semesterId: semesterId,
+						},
+					});
+				if (groupParticipation) {
+					this.logger.warn(
+						`Cannot delete student with ID ${id} in semester ${semesterId} because student has already joined a group`,
+					);
+					throw new ConflictException(
+						`Cannot delete student in semester ${existingSemester.name} because this student has already joined a group.`,
 					);
 				}
 
