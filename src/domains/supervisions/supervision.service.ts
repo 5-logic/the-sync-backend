@@ -262,6 +262,17 @@ export class SupervisionService {
 			throw new BadRequestException(errorMessage);
 		}
 
+		// Validate: mỗi thesis phải có đúng 2 lecturerIds
+		const invalidAssignments = dto.assignments.filter(
+			(a) => !a.lecturerIds || a.lecturerIds.length !== 2,
+		);
+		if (invalidAssignments.length > 0) {
+			const thesisIds = invalidAssignments.map((a) => a.thesisId).join(', ');
+			throw new BadRequestException(
+				`Each thesis must be assigned exactly 2 lecturers. The following thesis do not meet this requirement: ${thesisIds}`,
+			);
+		}
+
 		// Xóa supervisor cũ nếu có trước khi tạo mới
 		for (const assignment of dto.assignments) {
 			const { thesisId } = assignment;
