@@ -257,21 +257,71 @@ export class SemesterStatusService {
 		);
 	}
 
-	validateMaxGroup(semester: Semester, dto: UpdateSemesterDto): void {
+	async validateMaxGroup(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
 		const statusToCheck = dto.status ?? semester.status;
-
 		if (statusToCheck !== SemesterStatus.Preparing) {
 			this.logger.warn(
 				`Cannot update maxGroup when status is ${statusToCheck}`,
 			);
-
 			throw new ConflictException(
-				`maxGroup can only be updated when status is ${SemesterStatus.Preparing}`,
+				`Maximum number of Groups can only be updated when status is ${SemesterStatus.Preparing}`,
 			);
 		}
-
+		// Nếu có update maxGroup thì kiểm tra số lượng group hiện tại
+		if (dto.maxGroup) {
+			const groupCount = await this.prisma.group.count({
+				where: { semesterId: semester.id },
+			});
+			if (dto.maxGroup < groupCount) {
+				this.logger.warn(
+					`Cannot set maxGroup (${dto.maxGroup}) < current group count (${groupCount}) in semester ${semester.id}`,
+				);
+				throw new ConflictException(
+					`Maximum number of Groups cannot be less than the current number of groups (${groupCount}) in this semester`,
+				);
+			}
+		}
 		this.logger.log(
 			`Max group validation passed for semester with ID ${semester.id}`,
+		);
+	}
+
+	async validateMaxThesesPerLecturer(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
+		const statusToCheck = dto.status ?? semester.status;
+		if (statusToCheck !== SemesterStatus.Preparing) {
+			this.logger.warn(
+				`Cannot update maxThesesPerLecturer when status is ${statusToCheck}`,
+			);
+			throw new ConflictException(
+				`Max Theses Per Lecturer can only be updated when status is ${SemesterStatus.Preparing}`,
+			);
+		}
+		if (dto.maxThesesPerLecturer) {
+			// Tìm số lượng thesis lớn nhất mà một lecturer đã tạo trong semester này
+			const result = await this.prisma.thesis.groupBy({
+				by: ['lecturerId'],
+				where: { semesterId: semester.id },
+				_count: { id: true },
+			});
+			const maxThesisCount =
+				result.length > 0 ? Math.max(...result.map((r) => r._count.id)) : 0;
+			if (dto.maxThesesPerLecturer < maxThesisCount) {
+				this.logger.warn(
+					`Cannot set maxThesesPerLecturer (${dto.maxThesesPerLecturer}) < current max thesis count per lecturer (${maxThesisCount}) in semester ${semester.id}`,
+				);
+				throw new ConflictException(
+					`Max Theses Per Lecturer cannot be less than the current maximum number of theses created by a lecturer (${maxThesisCount}) in this semester`,
+				);
+			}
+		}
+		this.logger.log(
+			`Max Theses Per Lecturer validation passed for semester with ID ${semester.id}`,
 		);
 	}
 
@@ -282,7 +332,7 @@ export class SemesterStatusService {
 			);
 
 			throw new ConflictException(
-				`ongoingPhase can only be updated when status is ${SemesterStatus.Ongoing}`,
+				`Ongoing phase can only be updated when status is ${SemesterStatus.Ongoing}`,
 			);
 		}
 
@@ -303,10 +353,33 @@ export class SemesterStatusService {
 			await this.validateStatusTransition(semester, dto);
 		}
 
-		if (dto.maxGroup) {
-			this.validateMaxGroup(semester, dto);
+		// Chỉ cho phép update các trường liên quan khi status là Preparing
+		const statusToCheck = dto.status ?? semester.status;
+		const updatingFields = [
+			'maxGroup',
+			'defaultThesesPerLecturer',
+			'maxThesesPerLecturer',
+		];
+		for (const field of updatingFields) {
+			if (
+				dto[field] !== undefined &&
+				statusToCheck !== SemesterStatus.Preparing
+			) {
+				this.logger.warn(
+					`Cannot update ${field} when status is ${statusToCheck}`,
+				);
+				throw new ConflictException(
+					`${field} can only be updated when status is ${SemesterStatus.Preparing}`,
+				);
+			}
 		}
 
+		if (dto.maxGroup !== undefined) {
+			await this.validateMaxGroup(semester, dto);
+		}
+		if (dto.maxThesesPerLecturer !== undefined) {
+			await this.validateMaxThesesPerLecturer(semester, dto);
+		}
 		if (dto.ongoingPhase) {
 			this.validateOngoingPhase(semester);
 		}
