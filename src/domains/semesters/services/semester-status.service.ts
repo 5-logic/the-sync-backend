@@ -17,6 +17,29 @@ export class SemesterStatusService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Validate khi chuyển ongoingPhase từ ScopeAdjustable sang ScopeLocked:
+	 * tất cả group phải pick thesis
+	 */
+	async validateOngoingPhaseTransition__ScopeAdjustable_To_ScopeLocked(
+		semester: Semester,
+	): Promise<void> {
+		const groupsWithoutThesisCount = await this.prisma.group.count({
+			where: {
+				semesterId: semester.id,
+				thesisId: null,
+			},
+		});
+		if (groupsWithoutThesisCount > 0) {
+			const message = `Cannot transition ongoingPhase from ScopeAdjustable to ScopeLocked. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+		this.logger.log(
+			'OngoingPhase transition ScopeAdjustable -> ScopeLocked validation passed. All groups have picked theses.',
+		);
+	}
+
 	// ------------------------------------------------------------------------------------------
 	// Create
 	// ------------------------------------------------------------------------------------------
@@ -372,6 +395,20 @@ export class SemesterStatusService {
 			await this.validateStatusTransition(semester, dto);
 		}
 
+		// Không cho phép chuyển từ Picking sang Ongoing mà phase là ScopeLocked
+		if (
+			semester.status === SemesterStatus.Picking &&
+			dto.status === SemesterStatus.Ongoing &&
+			dto.ongoingPhase === OngoingPhase.ScopeLocked
+		) {
+			this.logger.warn(
+				'Cannot update from Picking to Ongoing with phase ScopeLocked. Must go through ScopeAdjustable first.',
+			);
+			throw new ConflictException(
+				'Cannot update from Picking to Ongoing with phase Scope Locked. Must go through Scope Adjustable first.',
+			);
+		}
+
 		// Chỉ cho phép update các trường liên quan khi status là Preparing
 		const statusToCheck = dto.status ?? semester.status;
 		const updatingFields = [
@@ -399,7 +436,24 @@ export class SemesterStatusService {
 		if (dto.maxThesesPerLecturer !== undefined) {
 			await this.validateMaxThesesPerLecturer(semester, dto);
 		}
-		if (dto.ongoingPhase) {
+		// Validate chuyển ongoingPhase từ ScopeAdjustable sang ScopeLocked
+		if (
+			dto.ongoingPhase === OngoingPhase.ScopeLocked &&
+			semester.ongoingPhase === OngoingPhase.ScopeAdjustable &&
+			semester.status === SemesterStatus.Ongoing
+		) {
+			await this.validateOngoingPhaseTransition__ScopeAdjustable_To_ScopeLocked(
+				semester,
+			);
+		}
+		// Chỉ validateOngoingPhase nếu KHÔNG đồng thời chuyển status từ Picking sang Ongoing
+		if (
+			dto.ongoingPhase &&
+			!(
+				semester.status === SemesterStatus.Picking &&
+				dto.status === SemesterStatus.Ongoing
+			)
+		) {
 			this.validateOngoingPhase(semester);
 		}
 	}
