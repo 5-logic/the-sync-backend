@@ -141,33 +141,34 @@ export class ReviewService {
 			const results: Array<{
 				submissionId: string;
 				assignedCount: number;
-				lecturerIds: string[];
+				reviewerAssignments: { lecturerId: string; isMainReviewer?: boolean }[];
 			}> = [];
 			let totalAssignedCount = 0;
 
 			for (const assignment of assignments) {
 				const submissionId = assignment.submissionId;
-				const lecturerIds = assignment.lecturerIds ?? [];
+				const reviewerAssignments = assignment.reviewerAssignments ?? [];
 
 				// Xóa hết các assignment cũ của submission này
 				await this.prisma.assignmentReview.deleteMany({
 					where: { submissionId },
 				});
 
-				// Nếu không có lecturerIds thì bỏ qua tạo mới
-				if (lecturerIds.length === 0) {
+				// Nếu không có reviewerAssignments thì bỏ qua tạo mới
+				if (reviewerAssignments.length === 0) {
 					this.logger.log(
 						`No reviewers specified for submission ${submissionId}`,
 					);
 					results.push({
 						submissionId,
 						assignedCount: 0,
-						lecturerIds: [],
+						reviewerAssignments: [],
 					});
 					continue;
 				}
 
 				// Validate lecturers
+				const lecturerIds = reviewerAssignments.map((r) => r.lecturerId);
 				await this.validateLecturersExistAndNotSupervisor(
 					lecturerIds,
 					submissionId,
@@ -177,9 +178,11 @@ export class ReviewService {
 				const assignmentData: Array<{
 					reviewerId: string;
 					submissionId: string;
-				}> = lecturerIds.slice(0, 2).map((lecturerId) => ({
-					reviewerId: lecturerId,
+					isMainReviewer: boolean;
+				}> = reviewerAssignments.slice(0, 2).map((r) => ({
+					reviewerId: r.lecturerId,
 					submissionId: submissionId,
+					isMainReviewer: !!r.isMainReviewer,
 				}));
 
 				const submissionAssignments =
@@ -192,7 +195,7 @@ export class ReviewService {
 				results.push({
 					submissionId,
 					assignedCount: submissionAssignments.count,
-					lecturerIds: lecturerIds.slice(0, 2),
+					reviewerAssignments: reviewerAssignments.slice(0, 2),
 				});
 			}
 
