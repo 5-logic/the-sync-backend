@@ -281,10 +281,10 @@ export class SubmissionService {
 
 		const now = new Date();
 
-		// Check if submission update is only allowed before endDate
-		if (now >= milestone.endDate) {
+		// Check if submission update is only allowed before startDate (giống create)
+		if (now > milestone.startDate) {
 			throw new ConflictException(
-				`Submission updates are only allowed before the milestone end date. End date: ${milestone.endDate.toISOString()}`,
+				`Submission updates are only allowed before the milestone start date. Start date: ${milestone.startDate.toISOString()}`,
 			);
 		}
 

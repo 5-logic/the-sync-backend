@@ -105,12 +105,9 @@ export class ReviewController {
 	}
 
 	@Roles(Role.STUDENT, Role.LECTURER, Role.MODERATOR)
-	@Get('groups/:groupId/submissions/:submissionId/reviews')
+	@Get('submissions/:submissionId/reviews')
 	@SwaggerDoc('review', 'findBySubmission')
-	async getSubmissionReviews(
-		@Param('groupId') groupId: string,
-		@Param('submissionId') submissionId: string,
-	) {
-		return await this.reviewService.getSubmissionReviews(groupId, submissionId);
+	async getSubmissionReviews(@Param('submissionId') submissionId: string) {
+		return await this.reviewService.getSubmissionReviews(submissionId);
 	}
 }

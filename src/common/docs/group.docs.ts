@@ -1,6 +1,11 @@
 import { ApiOperationOptions } from '@nestjs/swagger';
 
 export const GroupDocs = {
+	findSupervisedGroups: {
+		summary: 'Get all groups supervised by lecturer in a semester',
+		description: `Retrieve all groups in a specific semester where the authenticated lecturer (or moderator) is a supervisor of the group's thesis.\n\n- **Lecturer or Moderator access only** (authentication and LECTURER or MODERATOR role required).\n- Returns all groups in the given semester for which the user is a supervisor (via the Supervision table).\n- Each group includes:\n  - Group details (id, code, name, project direction, created/updated date)\n  - Semester info\n  - Thesis info (with lecturer details)\n  - All group members (with user and major info, leader flag)\n  - Required skills and expected responsibilities\n- Useful for lecturers to track/manage all groups they are supervising in a semester.\n- Returns empty array if the lecturer supervises no groups in the semester.\n- Results are always real-time (no cache).\n- Returns 404 if semester does not exist.\n- Logs all fetch attempts and errors.\n`,
+	} as ApiOperationOptions,
+
 	create: {
 		summary: 'Create group',
 		description: `Create a new group with required skills and expected responsibilities.\n\n- **Student access only** (authentication and STUDENT role required).\n- Only allowed during PREPARING semester status.\n- Each student can only be a member of one group per semester.\n- Enforces maximum group limits per semester.\n- Group code is auto-generated.\n- The creator automatically becomes the group leader.\n- Validates that all specified skills and responsibilities exist.\n- Returns error if group creation rules are violated.\n- Logs all creation attempts and errors.`,

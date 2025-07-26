@@ -68,6 +68,18 @@ export class GroupController {
 		return await this.groupService.findOne(id);
 	}
 
+	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Get('supervise/semester/:semesterId')
+	@SwaggerDoc('group', 'findSupervisedGroups')
+	async findSupervisedGroups(
+		@Req() req: Request,
+		@Param('semesterId') semesterId: string,
+	) {
+		const user = req.user as UserPayload;
+
+		return await this.groupService.findSupervisedGroups(user.id, semesterId);
+	}
+
 	@Roles(Role.STUDENT)
 	@Put(':id')
 	@SwaggerDoc('group', 'update')
@@ -154,7 +166,7 @@ export class GroupController {
 		return await this.groupService.pickThesis(id, user.id, dto);
 	}
 
-	@Roles(Role.STUDENT)
+	@Roles(Role.MODERATOR, Role.STUDENT)
 	@Put(':id/unpick-thesis')
 	@SwaggerDoc('group', 'unpickThesis')
 	async unpickThesis(@Req() req: Request, @Param('id') id: string) {
@@ -163,7 +175,7 @@ export class GroupController {
 		return await this.groupService.unpickThesis(id, user.id);
 	}
 
-	@Roles(Role.STUDENT)
+	@Roles(Role.MODERATOR, Role.STUDENT)
 	@Delete(':id')
 	@SwaggerDoc('group', 'delete')
 	async delete(@Req() req: Request, @Param('id') id: string) {

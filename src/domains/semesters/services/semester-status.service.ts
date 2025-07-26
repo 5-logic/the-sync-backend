@@ -17,6 +17,29 @@ export class SemesterStatusService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Validate khi chuyển ongoingPhase từ ScopeAdjustable sang ScopeLocked:
+	 * tất cả group phải pick thesis
+	 */
+	async validateOngoingPhaseTransition__ScopeAdjustable_To_ScopeLocked(
+		semester: Semester,
+	): Promise<void> {
+		const groupsWithoutThesisCount = await this.prisma.group.count({
+			where: {
+				semesterId: semester.id,
+				thesisId: null,
+			},
+		});
+		if (groupsWithoutThesisCount > 0) {
+			const message = `Cannot transition ongoingPhase from ScopeAdjustable to ScopeLocked. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+		this.logger.log(
+			'OngoingPhase transition ScopeAdjustable -> ScopeLocked validation passed. All groups have picked theses.',
+		);
+	}
+
 	// ------------------------------------------------------------------------------------------
 	// Create
 	// ------------------------------------------------------------------------------------------
@@ -89,9 +112,7 @@ export class SemesterStatusService {
 
 		if (studentsWithoutGroupCount > 0) {
 			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. ${studentsWithoutGroupCount} students do not have groups.`;
-
 			this.logger.warn(message);
-
 			throw new ConflictException(message);
 		}
 
@@ -116,8 +137,29 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
+		// Validate: không có group nào có số lượng members < 4
+		const groupsWithFewMembers = await this.prisma.group.findMany({
+			where: { semesterId: semester.id },
+			select: {
+				id: true,
+				code: true,
+				_count: {
+					select: { studentGroupParticipations: true },
+				},
+			},
+		});
+		const invalidGroups = groupsWithFewMembers.filter(
+			(g) => g._count.studentGroupParticipations < 4,
+		);
+		if (invalidGroups.length > 0) {
+			const groupCodes = invalidGroups.map((g) => g.code).join(', ');
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. The following groups have less than 4 members: ${groupCodes}`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
 		this.logger.log(
-			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups & approved public thesis count is sufficient.`,
+			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups, approved public thesis count is sufficient, and all groups have at least 4 members.`,
 		);
 	}
 
@@ -257,21 +299,71 @@ export class SemesterStatusService {
 		);
 	}
 
-	validateMaxGroup(semester: Semester, dto: UpdateSemesterDto): void {
+	async validateMaxGroup(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
 		const statusToCheck = dto.status ?? semester.status;
-
 		if (statusToCheck !== SemesterStatus.Preparing) {
 			this.logger.warn(
 				`Cannot update maxGroup when status is ${statusToCheck}`,
 			);
-
 			throw new ConflictException(
-				`maxGroup can only be updated when status is ${SemesterStatus.Preparing}`,
+				`Maximum number of Groups can only be updated when status is ${SemesterStatus.Preparing}`,
 			);
 		}
-
+		// Nếu có update maxGroup thì kiểm tra số lượng group hiện tại
+		if (dto.maxGroup) {
+			const groupCount = await this.prisma.group.count({
+				where: { semesterId: semester.id },
+			});
+			if (dto.maxGroup < groupCount) {
+				this.logger.warn(
+					`Cannot set maxGroup (${dto.maxGroup}) < current group count (${groupCount}) in semester ${semester.id}`,
+				);
+				throw new ConflictException(
+					`Maximum number of Groups cannot be less than the current number of groups (${groupCount}) in this semester`,
+				);
+			}
+		}
 		this.logger.log(
 			`Max group validation passed for semester with ID ${semester.id}`,
+		);
+	}
+
+	async validateMaxThesesPerLecturer(
+		semester: Semester,
+		dto: UpdateSemesterDto,
+	): Promise<void> {
+		const statusToCheck = dto.status ?? semester.status;
+		if (statusToCheck !== SemesterStatus.Preparing) {
+			this.logger.warn(
+				`Cannot update maxThesesPerLecturer when status is ${statusToCheck}`,
+			);
+			throw new ConflictException(
+				`Max Theses Per Lecturer can only be updated when status is ${SemesterStatus.Preparing}`,
+			);
+		}
+		if (dto.maxThesesPerLecturer) {
+			// Tìm số lượng thesis lớn nhất mà một lecturer đã tạo trong semester này
+			const result = await this.prisma.thesis.groupBy({
+				by: ['lecturerId'],
+				where: { semesterId: semester.id },
+				_count: { id: true },
+			});
+			const maxThesisCount =
+				result.length > 0 ? Math.max(...result.map((r) => r._count.id)) : 0;
+			if (dto.maxThesesPerLecturer < maxThesisCount) {
+				this.logger.warn(
+					`Cannot set maxThesesPerLecturer (${dto.maxThesesPerLecturer}) < current max thesis count per lecturer (${maxThesisCount}) in semester ${semester.id}`,
+				);
+				throw new ConflictException(
+					`Max Theses Per Lecturer cannot be less than the current maximum number of theses created by a lecturer (${maxThesisCount}) in this semester`,
+				);
+			}
+		}
+		this.logger.log(
+			`Max Theses Per Lecturer validation passed for semester with ID ${semester.id}`,
 		);
 	}
 
@@ -282,7 +374,7 @@ export class SemesterStatusService {
 			);
 
 			throw new ConflictException(
-				`ongoingPhase can only be updated when status is ${SemesterStatus.Ongoing}`,
+				`Ongoing phase can only be updated when status is ${SemesterStatus.Ongoing}`,
 			);
 		}
 
@@ -303,11 +395,65 @@ export class SemesterStatusService {
 			await this.validateStatusTransition(semester, dto);
 		}
 
-		if (dto.maxGroup) {
-			this.validateMaxGroup(semester, dto);
+		// Không cho phép chuyển từ Picking sang Ongoing mà phase là ScopeLocked
+		if (
+			semester.status === SemesterStatus.Picking &&
+			dto.status === SemesterStatus.Ongoing &&
+			dto.ongoingPhase === OngoingPhase.ScopeLocked
+		) {
+			this.logger.warn(
+				'Cannot update from Picking to Ongoing with phase ScopeLocked. Must go through ScopeAdjustable first.',
+			);
+			throw new ConflictException(
+				'Cannot update from Picking to Ongoing with phase Scope Locked. Must go through Scope Adjustable first.',
+			);
 		}
 
-		if (dto.ongoingPhase) {
+		// Chỉ cho phép update các trường liên quan khi status là Preparing
+		const statusToCheck = dto.status ?? semester.status;
+		const updatingFields = [
+			'maxGroup',
+			'defaultThesesPerLecturer',
+			'maxThesesPerLecturer',
+		];
+		for (const field of updatingFields) {
+			if (
+				dto[field] !== undefined &&
+				statusToCheck !== SemesterStatus.Preparing
+			) {
+				this.logger.warn(
+					`Cannot update ${field} when status is ${statusToCheck}`,
+				);
+				throw new ConflictException(
+					`${field} can only be updated when status is ${SemesterStatus.Preparing}`,
+				);
+			}
+		}
+
+		if (dto.maxGroup !== undefined) {
+			await this.validateMaxGroup(semester, dto);
+		}
+		if (dto.maxThesesPerLecturer !== undefined) {
+			await this.validateMaxThesesPerLecturer(semester, dto);
+		}
+		// Validate chuyển ongoingPhase từ ScopeAdjustable sang ScopeLocked
+		if (
+			dto.ongoingPhase === OngoingPhase.ScopeLocked &&
+			semester.ongoingPhase === OngoingPhase.ScopeAdjustable &&
+			semester.status === SemesterStatus.Ongoing
+		) {
+			await this.validateOngoingPhaseTransition__ScopeAdjustable_To_ScopeLocked(
+				semester,
+			);
+		}
+		// Chỉ validateOngoingPhase nếu KHÔNG đồng thời chuyển status từ Picking sang Ongoing
+		if (
+			dto.ongoingPhase &&
+			!(
+				semester.status === SemesterStatus.Picking &&
+				dto.status === SemesterStatus.Ongoing
+			)
+		) {
 			this.validateOngoingPhase(semester);
 		}
 	}

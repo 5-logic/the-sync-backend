@@ -1,4 +1,5 @@
 import {
+	BadGatewayException,
 	ConflictException,
 	Inject,
 	Injectable,
@@ -408,11 +409,10 @@ export class GroupService {
 					status: true,
 				},
 			},
+			thesis: true,
 			_count: {
 				select: {
 					studentGroupParticipations: true,
-					groupRequiredSkills: true,
-					groupExpectedResponsibilities: true,
 				},
 			},
 			studentGroupParticipations: {
@@ -465,9 +465,8 @@ export class GroupService {
 				createdAt: group.createdAt,
 				updatedAt: group.updatedAt,
 				semester: group.semester,
+				thesis: group.thesis,
 				memberCount: group._count.studentGroupParticipations,
-				skillCount: group._count.groupRequiredSkills,
-				responsibilityCount: group._count.groupExpectedResponsibilities,
 				leader: group.studentGroupParticipations[0] ?? null,
 			}));
 
@@ -1230,6 +1229,59 @@ export class GroupService {
 		}
 	}
 
+	async findSupervisedGroups(userId: string, semesterId: string) {
+		try {
+			// Find all theses supervised by this lecturer in the semester
+			const supervisedThesisIds = await this.prisma.supervision.findMany({
+				where: {
+					lecturerId: userId,
+					thesis: {
+						semesterId: semesterId,
+					},
+				},
+				select: { thesisId: true },
+			});
+
+			const thesisIds = supervisedThesisIds.map((s) => s.thesisId);
+			if (thesisIds.length === 0) return [];
+
+			// Find all groups in this semester that have a thesis supervised by this lecturer
+			const groups = await this.prisma.group.findMany({
+				where: {
+					semesterId: semesterId,
+					thesisId: { in: thesisIds },
+				},
+				include: {
+					thesis: {
+						include: {
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
+						},
+					},
+					semester: true,
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: true,
+									major: true,
+								},
+							},
+						},
+					},
+					groupRequiredSkills: true,
+					groupExpectedResponsibilities: true,
+				},
+			});
+			return groups;
+		} catch (error) {
+			this.handleError('finding supervised groups', error);
+		}
+	}
+
 	async assignStudent(groupId: string, studentId: string, moderatorId: string) {
 		try {
 			this.logger.log(
@@ -1380,6 +1432,26 @@ export class GroupService {
 			if (group._count.studentGroupParticipations >= maxMembersPerGroup) {
 				throw new ConflictException(
 					`Cannot assign student to this group. Group has reached maximum capacity of ${maxMembersPerGroup} members. Please assign the student to another group.`,
+				);
+			}
+
+			// Validate số lượng student chưa có group trong semester
+			const studentsWithoutGroup = await this.prisma.enrollment.count({
+				where: {
+					semesterId: group.semesterId,
+					status: 'NotYet',
+					student: {
+						studentGroupParticipations: {
+							every: {
+								semesterId: { not: group.semesterId },
+							},
+						},
+					},
+				},
+			});
+			if (studentsWithoutGroup >= 4) {
+				throw new BadGatewayException(
+					`Cannot assign student to group. There are already ${studentsWithoutGroup} students without a group in this semester. You can notify them to create / join a group.`,
 				);
 			}
 
@@ -1650,10 +1722,10 @@ export class GroupService {
 				);
 			}
 
-			// Check semester status - allow removal only in Preparing or Picking phases
-			if (!['Preparing', 'Picking'].includes(group.semester.status)) {
+			// Check semester status - allow removal only in Preparing phases
+			if (!['Preparing'].includes(group.semester.status)) {
 				throw new ConflictException(
-					`Cannot remove student from group. Semester status must be 'Preparing' or 'Picking', current status is '${group.semester.status}'`,
+					`Cannot remove student from group. Semester status must be 'Preparing', current status is '${group.semester.status}'`,
 				);
 			}
 
@@ -2075,90 +2147,64 @@ export class GroupService {
 		}
 	}
 
-	async delete(groupId: string, leaderId: string) {
+	async delete(groupId: string, userId: string) {
 		try {
-			this.logger.log(
-				`Deleting group with ID: ${groupId} by leader: ${leaderId}`,
-			);
+			this.logger.log(`Deleting group with ID: ${groupId} by user: ${userId}`);
 
 			// Get group details with all necessary data for validation
-			const [group, leaderParticipation] = await Promise.all([
+			const [group, leaderParticipation, moderator] = await Promise.all([
 				this.prisma.group.findUnique({
 					where: { id: groupId },
 					include: {
 						semester: {
-							select: {
-								id: true,
-								status: true,
-								name: true,
-								code: true,
-							},
+							select: { id: true, status: true, name: true, code: true },
 						},
-						thesis: {
-							select: {
-								id: true,
-							},
-						},
+						thesis: { select: { id: true } },
 						_count: {
-							select: {
-								studentGroupParticipations: true,
-								submissions: true,
-							},
+							select: { studentGroupParticipations: true, submissions: true },
 						},
 					},
 				}),
 				this.prisma.studentGroupParticipation.findFirst({
-					where: {
-						studentId: leaderId,
-						groupId: groupId,
+					where: { studentId: userId, groupId },
+					select: {
+						isLeader: true,
+						group: { select: { code: true, name: true } },
 					},
-					include: {
-						group: {
-							select: {
-								code: true,
-								name: true,
-							},
-						},
-					},
+				}),
+				this.prisma.lecturer.findUnique({
+					where: { userId },
+					select: { isModerator: true },
 				}),
 			]);
 
-			// Validate group exists
-			if (!group) {
-				throw new NotFoundException(`Group not found`);
-			}
+			if (!group) throw new NotFoundException('Group not found');
+			if (!leaderParticipation && !moderator?.isModerator)
+				throw new NotFoundException('Student is not a member of this group');
 
-			// Validate current user is the leader
-			if (!leaderParticipation) {
-				throw new NotFoundException(`Student is not a member of this group`);
-			}
+			const isLeader = leaderParticipation?.isLeader;
+			const isModerator = moderator?.isModerator;
 
-			if (!leaderParticipation.isLeader) {
+			if (!isLeader && !isModerator) {
 				throw new ConflictException(
-					`Access denied. Only the group leader can delete group "${leaderParticipation.group.name}" (${leaderParticipation.group.code})`,
+					`Access denied. Only the group leader or a moderator can delete group "${leaderParticipation?.group?.name ?? ''}" (${leaderParticipation?.group?.code ?? ''})`,
 				);
 			}
 
-			// Validate semester status - only allow deletion during PREPARING phase
-			if (group.semester.status !== SemesterStatus.Preparing) {
+			if (group.semester.status !== SemesterStatus.Preparing)
 				throw new ConflictException(
 					`Cannot delete group. Groups can only be deleted during the PREPARING semester status. Current status is ${group.semester.status}`,
 				);
-			}
 
-			// Validate group doesn't have assigned thesis
-			if (group.thesis) {
+			if (group.thesis)
 				throw new ConflictException(
-					`Cannot delete group. Group has an assigned thesis. Please remove the thesis assignment first or contact a moderator for assistance.`,
+					'Cannot delete group. Group has an assigned thesis. Please remove the thesis assignment first or contact a moderator for assistance.',
 				);
-			}
 
-			// Validate group doesn't have any submissions
-			if (group._count.submissions > 0) {
+			if (group._count.submissions > 0)
 				throw new ConflictException(
 					`Cannot delete group. Group has ${group._count.submissions} milestone submission(s). Groups with submissions cannot be deleted.`,
 				);
-			}
 
 			// Get all group members for email notification before deletion
 			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
@@ -2296,14 +2342,7 @@ export class GroupService {
 				this.prisma.group.findUnique({
 					where: { id: groupId },
 					include: {
-						semester: {
-							select: {
-								id: true,
-								name: true,
-								code: true,
-								status: true,
-							},
-						},
+						semester: true,
 						thesis: {
 							select: {
 								id: true,
@@ -2376,12 +2415,16 @@ export class GroupService {
 			if (!thesis) {
 				throw new NotFoundException(`Thesis not found`);
 			}
-			// Check semester status - only allow picking during PICKING phase
-			this.validateSemesterStatus(
-				group.semester.status,
-				[SemesterStatus.Picking],
-				'pick thesis',
-			);
+			// Check semester status - only allow picking during PICKING or ONGOING (ScopeAdjustable)
+			const isPicking = group.semester.status === SemesterStatus.Picking;
+			const isOngoingAdjustable =
+				group.semester.status === SemesterStatus.Ongoing &&
+				group.semester.ongoingPhase === 'ScopeAdjustable';
+			if (!(isPicking || isOngoingAdjustable)) {
+				throw new ConflictException(
+					'Can only pick thesis during Picking or Ongoing (ScopeAdjustable) phase',
+				);
+			}
 
 			// Check if group is in same semester as thesis
 			if (group.semesterId !== thesis.semesterId) {
@@ -2467,25 +2510,63 @@ export class GroupService {
 		}
 	}
 
-	async unpickThesis(groupId: string, leaderId: string) {
+	async unpickThesis(groupId: string, userId: string) {
 		try {
 			this.logger.log(
-				`Group leader ${leaderId} is unpicking thesis for group ${groupId}`,
+				`User ${userId} is unpicking thesis for group ${groupId}`,
 			);
 
-			// Validate inputs and get required data
-			const { group } = await this.validateGroupAndLeader(
-				groupId,
-				leaderId,
-				'unpick thesis',
-			);
+			// Lấy thông tin group, leaderParticipation, moderator
+			const [group, leaderParticipation, moderator] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: true,
+						thesis: {
+							include: {
+								lecturer: { include: { user: true } },
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: { studentId: userId, groupId },
+					select: { isLeader: true },
+				}),
+				this.prisma.lecturer.findUnique({
+					where: { userId },
+					select: { isModerator: true },
+				}),
+			]);
 
-			// Check semester status - only allow unpicking during PICKING phase
-			this.validateSemesterStatus(
-				group.semester.status as string,
-				[SemesterStatus.Picking],
-				'unpick thesis',
-			);
+			if (!group) {
+				throw new NotFoundException('Group not found');
+			}
+
+			const isLeader = leaderParticipation?.isLeader;
+			const isModerator = moderator?.isModerator;
+
+			if (isModerator) {
+				this.validateSemesterStatus(
+					group.semester.status as string,
+					[SemesterStatus.Preparing],
+					'unpick thesis',
+				);
+			} else if (isLeader) {
+				const isPicking = group.semester.status === SemesterStatus.Picking;
+				const isOngoingAdjustable =
+					group.semester.status === SemesterStatus.Ongoing &&
+					group.semester.ongoingPhase === 'ScopeAdjustable';
+				if (!(isPicking || isOngoingAdjustable)) {
+					throw new ConflictException(
+						'Can only unpick thesis during Picking or Ongoing (ScopeAdjustable) phase',
+					);
+				}
+			} else {
+				throw new ConflictException(
+					'You do not have permission to unpick thesis for this group',
+				);
+			}
 
 			// Check if group has a thesis assigned
 			if (!group.thesis) {
@@ -2523,7 +2604,7 @@ export class GroupService {
 			});
 
 			this.logger.log(
-				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
+				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by ${isModerator ? 'moderator' : 'leader'}`,
 			);
 
 			// Send email notifications

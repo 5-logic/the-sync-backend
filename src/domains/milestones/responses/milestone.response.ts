@@ -17,6 +17,9 @@ export class MilestoneResponse {
 	semesterId: string;
 
 	@ApiProperty()
+	note: string;
+
+	@ApiProperty()
 	documents: string[];
 
 	@ApiProperty()
