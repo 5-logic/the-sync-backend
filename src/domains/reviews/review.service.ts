@@ -435,6 +435,7 @@ export class ReviewService {
 	/**
 	 * Update a review with review items
 	 */
+	// Both reviewers (main and secondary) are allowed to update feedback and review items
 	async updateReview(
 		lecturerId: string,
 		reviewId: string,
@@ -455,16 +456,24 @@ export class ReviewService {
 				);
 			}
 
-			if (existingReview.lecturerId !== lecturerId) {
+			const isReviewer = await this.prisma.assignmentReview.findFirst({
+				where: {
+					reviewerId: lecturerId,
+					submissionId: existingReview.submissionId,
+				},
+			});
+
+			if (!isReviewer) {
 				this.logger.warn(
-					`Lecturer ID ${lecturerId} is not authorized to update review ID ${reviewId}`,
+					`Lecturer ID ${lecturerId} is not assigned to review submission ID ${existingReview.submissionId}`,
 				);
+
 				throw new NotFoundException(
-					'You are not authorized to edit this review',
+					'You are not assigned to review this submission',
 				);
 			}
 
-			// Update review and review items in a transaction
+			// No isMainReviewer check: both reviewers can update feedback and review items
 			const result = await this.prisma.$transaction(async (prisma) => {
 				// Update the review
 				await prisma.review.update({
