@@ -101,7 +101,7 @@ export class ReviewService {
 	async assignBulkReviewer(assignDto: AssignBulkLecturerReviewerDto) {
 		try {
 			const { assignments } = assignDto;
-			// Validate all submissions exist và milestone chưa end
+			// Validate all submissions exist, milestone chưa end, và semester phải Ongoing
 			const submissionIds = assignments.map((a) => a.submissionId);
 			const submissions = await this.prisma.submission.findMany({
 				where: { id: { in: submissionIds } },
@@ -110,6 +110,7 @@ export class ReviewService {
 						select: {
 							id: true,
 							endDate: true,
+							semester: true,
 						},
 					},
 				},
@@ -127,6 +128,20 @@ export class ReviewService {
 				);
 				throw new BadRequestException(
 					'Cannot assign reviewers to submissions whose milestone has ended',
+				);
+			}
+
+			// Kiểm tra semester phải Ongoing
+			const notOngoingSemesterSubmissions = submissions.filter(
+				(s) => s.milestone?.semester?.status !== 'Ongoing',
+			);
+			if (notOngoingSemesterSubmissions.length > 0) {
+				const ids = notOngoingSemesterSubmissions.map((s) => s.id).join(', ');
+				this.logger.warn(
+					`Cannot assign reviewers: semester is not Ongoing for submissions: ${ids}`,
+				);
+				throw new BadRequestException(
+					'Can only assign reviewers when the semester is in Ongoing status.',
 				);
 			}
 
