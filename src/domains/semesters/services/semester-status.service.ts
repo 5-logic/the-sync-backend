@@ -89,9 +89,7 @@ export class SemesterStatusService {
 
 		if (studentsWithoutGroupCount > 0) {
 			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. ${studentsWithoutGroupCount} students do not have groups.`;
-
 			this.logger.warn(message);
-
 			throw new ConflictException(message);
 		}
 
@@ -116,8 +114,29 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
+		// Validate: không có group nào có số lượng members < 4
+		const groupsWithFewMembers = await this.prisma.group.findMany({
+			where: { semesterId: semester.id },
+			select: {
+				id: true,
+				code: true,
+				_count: {
+					select: { studentGroupParticipations: true },
+				},
+			},
+		});
+		const invalidGroups = groupsWithFewMembers.filter(
+			(g) => g._count.studentGroupParticipations < 4,
+		);
+		if (invalidGroups.length > 0) {
+			const groupCodes = invalidGroups.map((g) => g.code).join(', ');
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. The following groups have less than 4 members: ${groupCodes}`;
+			this.logger.warn(message);
+			throw new ConflictException(message);
+		}
+
 		this.logger.log(
-			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups & approved public thesis count is sufficient.`,
+			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups, approved public thesis count is sufficient, and all groups have at least 4 members.`,
 		);
 	}
 
