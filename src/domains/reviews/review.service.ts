@@ -139,24 +139,21 @@ export class ReviewService {
 
 			for (const assignment of assignments) {
 				const submissionId = assignment.submissionId;
-				const reviewerAssignments = assignment.reviewerAssignments ?? [];
+				const reviewerAssignments = assignment.reviewerAssignments;
 
 				// Xóa hết các assignment cũ của submission này
 				await this.prisma.assignmentReview.deleteMany({
 					where: { submissionId },
 				});
 
-				// Nếu không có reviewerAssignments thì bỏ qua tạo mới
-				if (reviewerAssignments.length === 0) {
-					this.logger.log(
-						`No reviewers specified for submission ${submissionId}`,
+				// Bắt buộc phải có đúng 2 reviewer cho mỗi submission
+				if (!reviewerAssignments || reviewerAssignments.length !== 2) {
+					this.logger.warn(
+						`Submission ${submissionId} must have exactly 2 reviewers. Provided: ${reviewerAssignments ? reviewerAssignments.length : 0}`,
 					);
-					results.push({
-						submissionId,
-						assignedCount: 0,
-						reviewerAssignments: [],
-					});
-					continue;
+					throw new BadRequestException(
+						`Each submission must have exactly 2 reviewers. Submission ${submissionId} does not meet this requirement.`,
+					);
 				}
 
 				// Validate lecturers
@@ -171,7 +168,7 @@ export class ReviewService {
 					reviewerId: string;
 					submissionId: string;
 					isMainReviewer: boolean;
-				}> = reviewerAssignments.slice(0, 2).map((r) => ({
+				}> = reviewerAssignments.map((r) => ({
 					reviewerId: r.lecturerId,
 					submissionId: submissionId,
 					isMainReviewer: !!r.isMainReviewer,
@@ -187,7 +184,7 @@ export class ReviewService {
 				results.push({
 					submissionId,
 					assignedCount: submissionAssignments.count,
-					reviewerAssignments: reviewerAssignments.slice(0, 2),
+					reviewerAssignments,
 				});
 			}
 
