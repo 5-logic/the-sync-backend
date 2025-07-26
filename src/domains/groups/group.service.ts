@@ -1229,6 +1229,59 @@ export class GroupService {
 		}
 	}
 
+	async findSupervisedGroups(userId: string, semesterId: string) {
+		try {
+			// Find all theses supervised by this lecturer in the semester
+			const supervisedThesisIds = await this.prisma.supervision.findMany({
+				where: {
+					lecturerId: userId,
+					thesis: {
+						semesterId: semesterId,
+					},
+				},
+				select: { thesisId: true },
+			});
+
+			const thesisIds = supervisedThesisIds.map((s) => s.thesisId);
+			if (thesisIds.length === 0) return [];
+
+			// Find all groups in this semester that have a thesis supervised by this lecturer
+			const groups = await this.prisma.group.findMany({
+				where: {
+					semesterId: semesterId,
+					thesisId: { in: thesisIds },
+				},
+				include: {
+					thesis: {
+						include: {
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
+						},
+					},
+					semester: true,
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: true,
+									major: true,
+								},
+							},
+						},
+					},
+					groupRequiredSkills: true,
+					groupExpectedResponsibilities: true,
+				},
+			});
+			return groups;
+		} catch (error) {
+			this.handleError('finding supervised groups', error);
+		}
+	}
+
 	async assignStudent(groupId: string, studentId: string, moderatorId: string) {
 		try {
 			this.logger.log(
