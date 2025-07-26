@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.4] - 2025-07-25
+
+### Added
+
+- **Milestone API**:
+  - Added optional `note` field to `CreateMilestoneDto` and database (`note` column in `milestones` table).
+  - Migration: `20250725024909_add_note_into_model_milestone`.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/235)
+
+- **Lecturer & Student Validation**:
+  - Added validation to prevent duplicate emails during lecturer creation and import.
+  - Added validation to prevent duplicate student codes and emails during student creation and import.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/235)
+
+### Changed
+
+- **Thesis API**:
+  - Enhanced update logic: now unpublishes and sets status to `Pending` for theses that are published or reviewed when updated.
+  - Refactored update logic to separate permission checks into `getUpdatePermissions` method.
+  - Enhanced permission checks and status handling in `ThesisLecturerService`.
+  - Enhanced thesis publishing logic: added semester validation and unpublish checks.
+  - When assigning supervisors, existing supervisors are now removed before assigning new ones.
+  - Added semester status validation for thesis assignment: only allows assignment in `Preparing` or `Picking` semesters.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/235)
+
+- **Group API**:
+  - Group deletion logic updated: now allows moderators to delete groups and includes enhanced validation checks.
+  - Group details retrieval now includes thesis information.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/235)
+
+- **Student & Enrollment Logic**:
+  - Student removal is now restricted to semesters with `Preparing` status only.
+  - Added validation to limit ungrouped students in a semester during group assignment.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/235)
+
+- **Review API**:
+  - Simplified submission reviews retrieval by removing the `groupId` parameter.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/235)
+
+### Technical Improvements
+
+- Refactored and improved error handling, logging, and permission validation across multiple services and controllers.
+- Improved transaction reliability and validation logic for group, thesis, and student operations.
+- [#235](https://github.com/5-logic/the-sync-backend/pull/235) - Hotfix round 2
+
 ## [0.7.3] - 2025-07-24
 
 ### Changed
