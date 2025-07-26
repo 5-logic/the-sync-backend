@@ -100,7 +100,6 @@ export class ReviewService {
 	async assignBulkReviewer(assignDto: AssignBulkLecturerReviewerDto) {
 		try {
 			const { assignments } = assignDto;
-
 			// Validate all submissions exist và milestone chưa end
 			const submissionIds = assignments.map((a) => a.submissionId);
 			const submissions = await this.prisma.submission.findMany({
@@ -147,14 +146,54 @@ export class ReviewService {
 			let totalAssignedCount = 0;
 
 			for (const assignment of assignments) {
-				// Đảm bảo lecturerIds luôn là mảng (nếu undefined thì thành [])
-				const safeAssignment = {
-					submissionId: assignment.submissionId,
-					lecturerIds: assignment.lecturerIds ?? [],
-				};
-				const result = await this.processSingleAssignment(safeAssignment);
-				totalAssignedCount += result.assignedCount;
-				results.push(result);
+				const submissionId = assignment.submissionId;
+				const lecturerIds = assignment.lecturerIds ?? [];
+
+				// Xóa hết các assignment cũ của submission này
+				await this.prisma.assignmentReview.deleteMany({
+					where: { submissionId },
+				});
+
+				// Nếu không có lecturerIds thì bỏ qua tạo mới
+				if (lecturerIds.length === 0) {
+					this.logger.log(
+						`No reviewers specified for submission ${submissionId}`,
+					);
+					results.push({
+						submissionId,
+						assignedCount: 0,
+						lecturerIds: [],
+					});
+					continue;
+				}
+
+				// Validate lecturers
+				await this.validateLecturersExistAndNotSupervisor(
+					lecturerIds,
+					submissionId,
+				);
+
+				// Tạo lại assignment mới
+				const assignmentData: Array<{
+					reviewerId: string;
+					submissionId: string;
+				}> = lecturerIds.slice(0, 2).map((lecturerId) => ({
+					reviewerId: lecturerId,
+					submissionId: submissionId,
+				}));
+
+				const submissionAssignments =
+					await this.prisma.assignmentReview.createMany({
+						data: assignmentData,
+						skipDuplicates: true,
+					});
+
+				totalAssignedCount += submissionAssignments.count;
+				results.push({
+					submissionId,
+					assignedCount: submissionAssignments.count,
+					lecturerIds: lecturerIds.slice(0, 2),
+				});
 			}
 
 			this.logger.log(
