@@ -1,6 +1,7 @@
 import {
 	BadRequestException,
 	ConflictException,
+	ForbiddenException,
 	Inject,
 	Injectable,
 	Logger,
@@ -114,15 +115,6 @@ export class ReviewService {
 				},
 			});
 
-			if (submissions.length !== submissionIds.length) {
-				const foundIds = submissions.map((s) => s.id);
-				const missingIds = submissionIds.filter((id) => !foundIds.includes(id));
-				this.logger.warn(
-					`Some submissions with IDs ${missingIds.join(', ')} do not exist`,
-				);
-				throw new NotFoundException('Some submissions not found');
-			}
-
 			// Kiểm tra milestone đã end chưa
 			const now = new Date();
 			const endedMilestoneSubmissions = submissions.filter(
@@ -220,79 +212,6 @@ export class ReviewService {
 				error,
 			);
 			throw error;
-		}
-	}
-
-	private async processSingleAssignment(assignment: {
-		submissionId: string;
-		lecturerIds: string[];
-	}) {
-		const { submissionId, lecturerIds } = assignment;
-		const currentReviewerCount = await this.prisma.assignmentReview.count({
-			where: { submissionId },
-		});
-
-		if (lecturerIds && lecturerIds.length > 0) {
-			if (currentReviewerCount >= 2) {
-				this.logger.warn(
-					`Submission ${submissionId} already has 2 reviewers, you can only change reviewers!`,
-				);
-				return {
-					submissionId,
-					assignedCount: 0,
-					lecturerIds: [],
-				};
-			}
-
-			const availableSlots = 2 - currentReviewerCount;
-			const lecturerIdsToAssign = lecturerIds.slice(0, availableSlots);
-
-			if (lecturerIdsToAssign.length === 0) {
-				this.logger.warn(
-					`Không còn slot reviewer cho submission ${submissionId}`,
-				);
-				return {
-					submissionId,
-					assignedCount: 0,
-					lecturerIds: [],
-				};
-			}
-
-			await this.validateLecturersExistAndNotSupervisor(
-				lecturerIdsToAssign,
-				submissionId,
-			);
-
-			const assignmentData: Array<{
-				reviewerId: string;
-				submissionId: string;
-			}> = lecturerIdsToAssign.map((lecturerId) => ({
-				reviewerId: lecturerId,
-				submissionId: submissionId,
-			}));
-
-			const submissionAssignments =
-				await this.prisma.assignmentReview.createMany({
-					data: assignmentData,
-					skipDuplicates: true,
-				});
-
-			this.logger.log(
-				`Assigned ${submissionAssignments.count} reviewer(s) to submission ${submissionId}`,
-			);
-
-			return {
-				submissionId,
-				assignedCount: submissionAssignments.count,
-				lecturerIds: lecturerIdsToAssign,
-			};
-		} else {
-			this.logger.log(`No reviewers specified for submission ${submissionId}`);
-			return {
-				submissionId,
-				assignedCount: 0,
-				lecturerIds: [],
-			};
 		}
 	}
 
@@ -413,6 +332,20 @@ export class ReviewService {
 				);
 			}
 
+			// Validate reviewer role for review items
+			const isMainReviewer = assignment.isMainReviewer;
+			const hasReviewItems =
+				Array.isArray(reviewDto.reviewItems) &&
+				reviewDto.reviewItems.length > 0;
+			if (hasReviewItems && isMainReviewer) {
+				this.logger.warn(
+					`Main reviewer (isMainReviewer=true) is not allowed to submit detailed review items for submission ID ${submissionId}`,
+				);
+				throw new ForbiddenException(
+					'Only the secondary reviewer can submit detailed review items.',
+				);
+			}
+
 			// Check if review already exists
 			const existingReview = await this.prisma.review.findFirst({
 				where: {
@@ -443,17 +376,18 @@ export class ReviewService {
 					},
 				});
 
-				// Create review items
-				const reviewItemsData = reviewDto.reviewItems.map((item) => ({
-					reviewId: review.id,
-					checklistItemId: item.checklistItemId,
-					acceptance: item.acceptance,
-					note: item.note,
-				}));
-
-				await prisma.reviewItem.createMany({
-					data: reviewItemsData,
-				});
+				// Only create review items if reviewer is allowed (isMainReviewer === false)
+				if (hasReviewItems && !isMainReviewer) {
+					const reviewItemsData = reviewDto.reviewItems.map((item) => ({
+						reviewId: review.id,
+						checklistItemId: item.checklistItemId,
+						acceptance: item.acceptance,
+						note: item.note,
+					}));
+					await prisma.reviewItem.createMany({
+						data: reviewItemsData,
+					});
+				}
 
 				// Return review with relations
 				return await prisma.review.findUnique({
@@ -461,16 +395,12 @@ export class ReviewService {
 					include: {
 						lecturer: {
 							include: {
-								user: {
-									select: { id: true, fullName: true, email: true },
-								},
+								user: true,
 							},
 						},
 						reviewItems: {
 							include: {
-								checklistItem: {
-									select: { id: true, name: true, description: true },
-								},
+								checklistItem: true,
 							},
 						},
 					},
