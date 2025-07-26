@@ -2460,25 +2460,61 @@ export class GroupService {
 		}
 	}
 
-	async unpickThesis(groupId: string, leaderId: string) {
+	async unpickThesis(groupId: string, userId: string) {
 		try {
 			this.logger.log(
-				`Group leader ${leaderId} is unpicking thesis for group ${groupId}`,
+				`User ${userId} is unpicking thesis for group ${groupId}`,
 			);
 
-			// Validate inputs and get required data
-			const { group } = await this.validateGroupAndLeader(
-				groupId,
-				leaderId,
-				'unpick thesis',
-			);
+			// Lấy thông tin group, leaderParticipation, moderator
+			const [group, leaderParticipation, moderator] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: {
+							select: { id: true, status: true, name: true, code: true },
+						},
+						thesis: {
+							include: {
+								lecturer: { include: { user: true } },
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: { studentId: userId, groupId },
+					select: { isLeader: true },
+				}),
+				this.prisma.lecturer.findUnique({
+					where: { userId },
+					select: { isModerator: true },
+				}),
+			]);
 
-			// Check semester status - only allow unpicking during PICKING phase
-			this.validateSemesterStatus(
-				group.semester.status as string,
-				[SemesterStatus.Picking],
-				'unpick thesis',
-			);
+			if (!group) {
+				throw new NotFoundException('Group not found');
+			}
+
+			const isLeader = leaderParticipation?.isLeader;
+			const isModerator = moderator?.isModerator;
+
+			if (isModerator) {
+				this.validateSemesterStatus(
+					group.semester.status as string,
+					[SemesterStatus.Preparing],
+					'unpick thesis',
+				);
+			} else if (isLeader) {
+				this.validateSemesterStatus(
+					group.semester.status as string,
+					[SemesterStatus.Picking],
+					'unpick thesis',
+				);
+			} else {
+				throw new ConflictException(
+					'You do not have permission to unpick thesis for this group',
+				);
+			}
 
 			// Check if group has a thesis assigned
 			if (!group.thesis) {
@@ -2516,7 +2552,7 @@ export class GroupService {
 			});
 
 			this.logger.log(
-				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
+				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by ${isModerator ? 'moderator' : 'leader'}`,
 			);
 
 			// Send email notifications

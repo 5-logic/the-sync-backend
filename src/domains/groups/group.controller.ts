@@ -154,7 +154,7 @@ export class GroupController {
 		return await this.groupService.pickThesis(id, user.id, dto);
 	}
 
-	@Roles(Role.STUDENT)
+	@Roles(Role.MODERATOR, Role.STUDENT)
 	@Put(':id/unpick-thesis')
 	@SwaggerDoc('group', 'unpickThesis')
 	async unpickThesis(@Req() req: Request, @Param('id') id: string) {
