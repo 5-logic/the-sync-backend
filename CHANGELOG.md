@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.5] - 2025-07-26
+
+### Changed
+
+- **Review API**:
+  - Refactored bulk reviewer assignment: now requires exactly two reviewers per submission, with a new `reviewerAssignments` structure specifying both `lecturerId` and `isMainReviewer` (boolean).
+  - Main reviewer is now restricted from submitting detailed review items; only the secondary reviewer can submit them.
+  - Both main and secondary reviewers can update feedback and review items.
+  - Reviewer assignment now validates that the semester is in `Ongoing` status before allowing assignment.
+  - See [PR #236](https://github.com/5-logic/the-sync-backend/pull/236)
+
+- **DTO Changes**:
+  - `AssignBulkLecturerReviewerDto` and related DTOs updated: replaced `lecturerIds` array with `reviewerAssignments` array, each containing `lecturerId` and `isMainReviewer`.
+  - Enforced validation for exactly two reviewers per submission in bulk assignment.
+  - See [PR #236](https://github.com/5-logic/the-sync-backend/pull/236)
+
+- **Group API**:
+  - Added endpoint: `GET /groups/supervise/semester/:semesterId` for moderators and lecturers to retrieve all groups they supervise in a specific semester.
+  - Updated `PUT /groups/:id/unpick-thesis`: now allows both moderators and students to unpick a thesis, with enhanced validation.
+  - Improved validation for group picking/unpicking during ongoing semester phases.
+  - See [PR #236](https://github.com/5-logic/the-sync-backend/pull/236)
+
+- **Semester API**:
+  - Enhanced transition validation from `Preparing` to `Picking`: now checks that all groups have at least 4 members and all students are in groups.
+  - Added validation for updating `maxGroup` and `maxThesesPerLecturer`: cannot set these values below the current number of groups/theses.
+  - Added validation for ongoing phase transition from `ScopeAdjustable` to `ScopeLocked`: all groups must have picked a thesis.
+  - Improved error messages and logging for all validation steps.
+  - See [PR #236](https://github.com/5-logic/the-sync-backend/pull/236)
+
+- **Milestone API**:
+  - Ensured `note` property is included in `MilestoneResponse` and mapped correctly.
+  - See [PR #236](https://github.com/5-logic/the-sync-backend/pull/236)
+
+### Technical Improvements
+
+- Refactored reviewer assignment and validation logic for clarity and robustness.
+- Optimized dependency checks for lecturer deletion using count queries.
+- Improved data retrieval in `ReviewService` by using direct inclusion for related entities.
+- Enhanced validation and error handling across group, review, and semester modules.
+- See [PR #236](https://github.com/5-logic/the-sync-backend/pull/236)
+
+---
+
 ## [0.7.4] - 2025-07-25
 
 ### Added
