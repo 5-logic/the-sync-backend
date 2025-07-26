@@ -1229,6 +1229,59 @@ export class GroupService {
 		}
 	}
 
+	async findSupervisedGroups(userId: string, semesterId: string) {
+		try {
+			// Find all theses supervised by this lecturer in the semester
+			const supervisedThesisIds = await this.prisma.supervision.findMany({
+				where: {
+					lecturerId: userId,
+					thesis: {
+						semesterId: semesterId,
+					},
+				},
+				select: { thesisId: true },
+			});
+
+			const thesisIds = supervisedThesisIds.map((s) => s.thesisId);
+			if (thesisIds.length === 0) return [];
+
+			// Find all groups in this semester that have a thesis supervised by this lecturer
+			const groups = await this.prisma.group.findMany({
+				where: {
+					semesterId: semesterId,
+					thesisId: { in: thesisIds },
+				},
+				include: {
+					thesis: {
+						include: {
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
+						},
+					},
+					semester: true,
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: true,
+									major: true,
+								},
+							},
+						},
+					},
+					groupRequiredSkills: true,
+					groupExpectedResponsibilities: true,
+				},
+			});
+			return groups;
+		} catch (error) {
+			this.handleError('finding supervised groups', error);
+		}
+	}
+
 	async assignStudent(groupId: string, studentId: string, moderatorId: string) {
 		try {
 			this.logger.log(
@@ -2289,14 +2342,7 @@ export class GroupService {
 				this.prisma.group.findUnique({
 					where: { id: groupId },
 					include: {
-						semester: {
-							select: {
-								id: true,
-								name: true,
-								code: true,
-								status: true,
-							},
-						},
+						semester: true,
 						thesis: {
 							select: {
 								id: true,
@@ -2369,12 +2415,16 @@ export class GroupService {
 			if (!thesis) {
 				throw new NotFoundException(`Thesis not found`);
 			}
-			// Check semester status - only allow picking during PICKING phase
-			this.validateSemesterStatus(
-				group.semester.status,
-				[SemesterStatus.Picking],
-				'pick thesis',
-			);
+			// Check semester status - only allow picking during PICKING or ONGOING (ScopeAdjustable)
+			const isPicking = group.semester.status === SemesterStatus.Picking;
+			const isOngoingAdjustable =
+				group.semester.status === SemesterStatus.Ongoing &&
+				group.semester.ongoingPhase === 'ScopeAdjustable';
+			if (!(isPicking || isOngoingAdjustable)) {
+				throw new ConflictException(
+					'Can only pick thesis during Picking or Ongoing (ScopeAdjustable) phase',
+				);
+			}
 
 			// Check if group is in same semester as thesis
 			if (group.semesterId !== thesis.semesterId) {
@@ -2460,25 +2510,63 @@ export class GroupService {
 		}
 	}
 
-	async unpickThesis(groupId: string, leaderId: string) {
+	async unpickThesis(groupId: string, userId: string) {
 		try {
 			this.logger.log(
-				`Group leader ${leaderId} is unpicking thesis for group ${groupId}`,
+				`User ${userId} is unpicking thesis for group ${groupId}`,
 			);
 
-			// Validate inputs and get required data
-			const { group } = await this.validateGroupAndLeader(
-				groupId,
-				leaderId,
-				'unpick thesis',
-			);
+			// Lấy thông tin group, leaderParticipation, moderator
+			const [group, leaderParticipation, moderator] = await Promise.all([
+				this.prisma.group.findUnique({
+					where: { id: groupId },
+					include: {
+						semester: true,
+						thesis: {
+							include: {
+								lecturer: { include: { user: true } },
+							},
+						},
+					},
+				}),
+				this.prisma.studentGroupParticipation.findFirst({
+					where: { studentId: userId, groupId },
+					select: { isLeader: true },
+				}),
+				this.prisma.lecturer.findUnique({
+					where: { userId },
+					select: { isModerator: true },
+				}),
+			]);
 
-			// Check semester status - only allow unpicking during PICKING phase
-			this.validateSemesterStatus(
-				group.semester.status as string,
-				[SemesterStatus.Picking],
-				'unpick thesis',
-			);
+			if (!group) {
+				throw new NotFoundException('Group not found');
+			}
+
+			const isLeader = leaderParticipation?.isLeader;
+			const isModerator = moderator?.isModerator;
+
+			if (isModerator) {
+				this.validateSemesterStatus(
+					group.semester.status as string,
+					[SemesterStatus.Preparing],
+					'unpick thesis',
+				);
+			} else if (isLeader) {
+				const isPicking = group.semester.status === SemesterStatus.Picking;
+				const isOngoingAdjustable =
+					group.semester.status === SemesterStatus.Ongoing &&
+					group.semester.ongoingPhase === 'ScopeAdjustable';
+				if (!(isPicking || isOngoingAdjustable)) {
+					throw new ConflictException(
+						'Can only unpick thesis during Picking or Ongoing (ScopeAdjustable) phase',
+					);
+				}
+			} else {
+				throw new ConflictException(
+					'You do not have permission to unpick thesis for this group',
+				);
+			}
 
 			// Check if group has a thesis assigned
 			if (!group.thesis) {
@@ -2516,7 +2604,7 @@ export class GroupService {
 			});
 
 			this.logger.log(
-				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by leader`,
+				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by ${isModerator ? 'moderator' : 'leader'}`,
 			);
 
 			// Send email notifications

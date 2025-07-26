@@ -394,37 +394,16 @@ export class LecturerManagementService {
 	// ------------------------------------------------------------------------------------------
 
 	private async ensureNoDependencies(lecturerId: string): Promise<void> {
-		const counts = await this.prisma.$queryRaw<
-			{
-				supervisionCount: number;
-				assignmentReviewCount: number;
-				reviewCount: number;
-				thesisCount: number;
-			}[]
-		>`
-			SELECT
-				COUNT(DISTINCT s.thesis_id) AS supervisionCount,
-				COUNT(DISTINCT ar.submission_id) AS assignmentReviewCount,
-				COUNT(DISTINCT r.id) AS reviewCount,
-				COUNT(DISTINCT t.id) AS thesisCount
-			FROM
-				_supervisions s
-			LEFT JOIN
-				_assignment_reviews ar ON ar.reviewer_id = s.lecturer_id AND s.lecturer_id = ${lecturerId}
-			LEFT JOIN
-				reviews r ON r.lecturer_id = s.lecturer_id AND s.lecturer_id = ${lecturerId}
-			LEFT JOIN
-				theses t ON t.lecturer_id = s.lecturer_id AND s.lecturer_id = ${lecturerId}
-			WHERE
-				s.lecturer_id = ${lecturerId};
-		`;
-
-		const {
-			supervisionCount,
-			assignmentReviewCount,
-			reviewCount,
-			thesisCount,
-		} = counts[0];
+		// Kiểm tra từng bảng liên quan trực tiếp foreign key tới lecturer
+		const [supervisionCount, assignmentReviewCount, reviewCount, thesisCount] =
+			await Promise.all([
+				this.prisma.supervision.count({ where: { lecturerId: lecturerId } }),
+				this.prisma.assignmentReview.count({
+					where: { reviewerId: lecturerId },
+				}),
+				this.prisma.review.count({ where: { lecturerId: lecturerId } }),
+				this.prisma.thesis.count({ where: { lecturerId: lecturerId } }),
+			]);
 
 		const hasRelations =
 			supervisionCount > 0 ||
@@ -434,7 +413,6 @@ export class LecturerManagementService {
 
 		if (hasRelations) {
 			this.logger.warn(`Lecturer ${lecturerId} has dependent relationships`);
-
 			throw new ConflictException(
 				`Cannot delete lecturer: it has related data.`,
 			);

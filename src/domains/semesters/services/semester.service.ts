@@ -157,7 +157,7 @@ export class SemesterService {
 			});
 
 			this.logger.log(`Semester with ID ${id} updated successfully`);
-			this.logger.debug('Updated semester details', JSON.stringify(updated));
+			this.logger.debug('Updated semester details', updated);
 
 			const result: SemesterResponse = mapSemester(updated);
 

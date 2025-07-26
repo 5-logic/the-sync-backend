@@ -268,7 +268,7 @@ model Milestone {
   startDate  DateTime @map("start_date")
   endDate    DateTime @map("end_date")
   semesterId String   @map("semester_id")
-	note			 String?  @map("note")
+  note       String?  @map("note")
   documents  String[] @map("documents")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -503,8 +503,9 @@ model Supervision {
 }
 
 model AssignmentReview {
-  reviewerId   String @map("reviewer_id")
-  submissionId String @map("submission_id")
+  reviewerId     String  @map("reviewer_id")
+  submissionId   String  @map("submission_id")
+  isMainReviewer Boolean @default(false) @map("is_main_reviewer")
 
   reviewer   Lecturer   @relation(fields: [reviewerId], references: [userId])
   submission Submission @relation(fields: [submissionId], references: [id])

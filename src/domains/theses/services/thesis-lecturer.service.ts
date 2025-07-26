@@ -362,9 +362,10 @@ export class ThesisLecturerService {
 				}
 			}
 		} else if (
-			(semester.status === 'Picking' || semester.status === 'Ongoing') &&
-			semester.ongoingPhase === 'ScopeAdjustable' &&
-			groupPicked
+			(semester.status === 'Picking' && groupPicked) ||
+			(semester.status === 'Ongoing' &&
+				semester.ongoingPhase === 'ScopeAdjustable' &&
+				groupPicked)
 		) {
 			const leader = await this.prisma.studentGroupParticipation.findFirst({
 				where: {
