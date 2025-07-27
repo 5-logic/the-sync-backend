@@ -5,6 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7] - 2025-07-28
+
+### Added
+
+- **AI Student API**:
+  - New endpoint: `GET /ai/students/suggest-for-group/:groupId` to get AI-powered student suggestions for a specific group.
+    - Controller: `AIStudentController` (`suggestStudentsForGroup` method)
+    - Service: `AIStudentService.suggestStudentsForGroup`
+    - Uses vector similarity search to find compatible students based on skills, responsibilities, and thesis content
+    - Returns top 10 student suggestions with compatibility scores (40% skill matching, 30% responsibility matching, 30% base compatibility)
+    - Excludes students already in the group
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+  - New endpoint: `GET /ai/students/suggest-groups-for-student/:studentId` to get AI-powered group suggestions for a specific student.
+    - Controller: `AIStudentController` (`suggestGroupsForStudent` method)
+    - Service: `AIStudentService.suggestGroupsForStudent`
+    - Analyzes student skills, responsibilities, and interests to find suitable groups
+    - Returns top 10 group suggestions with compatibility scores
+    - Only includes groups with available member slots
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+  - New endpoint: `GET /ai/students/compatibility/:studentId/:groupId` to analyze detailed compatibility between a student and group.
+    - Controller: `AIStudentController` (`getStudentGroupCompatibility` method)
+    - Service: `AIStudentService.getStudentGroupCompatibility`
+    - Provides comprehensive compatibility scoring (0-100) with detailed breakdown
+    - Includes skill match analysis, responsibility alignment, and thesis content relevance
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **AI Thesis API**:
+  - New endpoint: `GET /ai/thesis/check-duplicate/:thesisId` for moderators and lecturers to check potential thesis duplicates using AI.
+    - Controller: `AIThesisController` (`checkDuplicate` method)
+    - Service: `AIThesisService.checkDuplicate`
+    - Requires `MODERATOR` or `LECTURER` role
+    - Uses AI algorithms to compare thesis content, titles, and abstracts
+    - Returns similarity scores and confidence levels for potential matches
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+  - New endpoint: `GET /ai/thesis/suggest-for-group/:groupId` to get AI-powered thesis suggestions for a specific group.
+    - Controller: `AIThesisController` (`suggestThesesForGroup` method)
+    - Service: `AIThesisService.suggestThesesForGroup`
+    - Analyzes group skills, responsibilities, and project direction to suggest suitable theses
+    - Only suggests available theses (not selected by other groups)
+    - Returns top 10 thesis suggestions with relevance scores
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Pinecone Vector Database Integration**:
+  - New background job processing system for automatic vector synchronization:
+    - `PineconeStudentService` and `PineconeStudentProcessor` for student data sync
+    - `PineconeGroupService` and `PineconeGroupProcessor` for group data sync
+    - `PineconeThesisService` and `PineconeThesisProcessor` for thesis data sync
+    - Automatic embedding generation and upsert to Pinecone on data changes
+    - Exponential backoff retry mechanism with 3 attempts for failed jobs
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Enhanced Group Response Models**:
+  - New `GroupDetailResponse` with comprehensive group information including thesis details and formatted timestamps
+  - New `GroupResponse` model for consistent group data representation
+  - Updated group mappers for improved data transformation and response structure
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+### Changed
+
+- **Group Architecture Refactor**:
+  - Consolidated group functionality: removed separate `GroupModeratorController`, `GroupPublicController`, and `GroupStudentController`
+  - Merged all group operations into main `GroupService` for better maintainability
+  - Simplified service layer by removing `GroupModeratorService`, `GroupPublicService`, and `GroupStudentService`
+  - Improved group data fetching with enhanced response mapping and error handling
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Student and Group Services Integration**:
+  - Updated `StudentAdminService` and `StudentSelfService` to automatically sync data with Pinecone on student creation, update, and deletion
+  - Enhanced `GroupService` and `RequestService` to trigger Pinecone sync for group operations
+  - Improved error handling and logging for vector database operations
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+### Technical Improvements
+
+- **AI Service Enhancement**:
+  - Improved vector search algorithms with better namespace handling and query text building
+  - Enhanced type handling in AI services for more accurate similarity calculations
+  - Optimized embedding generation process by removing manual embedding steps
+  - Better documentation and service method organization
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Data Processing Improvements**:
+  - Enhanced thesis processor to include additional fields in processing payload
+  - Better null value handling for domain and groupId in thesis record creation
+  - Improved thesis record structure to store formatted content directly
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+### Documentation
+
+- Added comprehensive Swagger documentation for all new AI endpoints
+- Enhanced API documentation with detailed parameter descriptions and use cases
+- Added response model documentation for new data structures
+- Improved internal documentation for Pinecone integration and job processing
+
+---
+
 ## [0.7.6] - 2025-07-27
 
 ### Added
