@@ -16,6 +16,50 @@ export class SemesterEnrollmentService {
 
 	constructor(private readonly prisma: PrismaService) {}
 
+	async findGroups(semesterId: string) {
+		this.logger.log(`Finding groups for semester ID: ${semesterId}`);
+		try {
+			const groups = await this.prisma.group.findMany({
+				where: { semesterId },
+				include: {
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									major: true,
+									user: true,
+									enrollments: {
+										where: { semesterId },
+									},
+								},
+							},
+						},
+					},
+					thesis: {
+						include: {
+							supervisions: {
+								include: {
+									lecturer: {
+										include: { user: true },
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+			return groups;
+		} catch (error) {
+			this.logger.error(
+				`Failed to find groups for semester ID: ${semesterId}`,
+				error,
+			);
+			throw new NotFoundException(
+				`Groups for semester ID ${semesterId} not found`,
+			);
+		}
+	}
+
 	async update(id: string, dto: UpdateEnrollmentsDto) {
 		this.logger.log(`Updating enrollments for semester ID: ${id}`);
 
