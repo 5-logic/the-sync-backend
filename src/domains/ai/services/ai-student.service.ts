@@ -377,4 +377,217 @@ export class AIStudentService {
 			throw error;
 		}
 	}
+
+	/**
+	 * Suggest groups for a student based on skills, responsibilities, and interests
+	 */
+	async suggestGroupsForStudent(studentId: string, topK: number = 10) {
+		try {
+			this.logger.log(`Suggesting groups for student: ${studentId}`);
+
+			// Get student with full information
+			const student = await this.prisma.student.findUnique({
+				where: { userId: studentId },
+				include: {
+					user: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							fullName: true,
+							email: true,
+						},
+					},
+					studentSkills: {
+						include: {
+							skill: true,
+						},
+					},
+					studentExpectedResponsibilities: {
+						include: {
+							responsibility: true,
+						},
+					},
+					enrollments: {
+						where: {
+							status: 'ACTIVE',
+						},
+						include: {
+							semester: true,
+						},
+					},
+				},
+			});
+
+			if (!student) {
+				throw new NotFoundException(`Student with ID ${studentId} not found`);
+			}
+
+			// Build student query text for vector search
+			const studentQueryText = this.buildStudentQueryText(student);
+
+			// Get available groups (not full and in same semester)
+			const availableGroups = await this.prisma.group.findMany({
+				where: {
+					isDeleted: false,
+					studentGroupParticipations: {
+						none: {
+							studentId: student.userId,
+						},
+					},
+					// Only groups with available slots
+					_count: {
+						studentGroupParticipations: {
+							lt: 4, // Assuming max 4 members per group
+						},
+					},
+				},
+				include: {
+					thesis: {
+						select: {
+							id: true,
+							englishName: true,
+							vietnameseName: true,
+							description: true,
+						},
+					},
+					groupRequiredSkills: {
+						include: {
+							skill: true,
+						},
+					},
+					groupExpectedResponsibilities: {
+						include: {
+							responsibility: true,
+						},
+					},
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											firstName: true,
+											lastName: true,
+											fullName: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					_count: {
+						select: {
+							studentGroupParticipations: true,
+						},
+					},
+				},
+			});
+
+			// TODO: Implement vector search to find similar groups
+			// For now, use compatibility scoring algorithm
+			const groupSuggestions = availableGroups
+				.map((group) => {
+					const compatibilityScore = this.calculateStudentGroupCompatibility(
+						student,
+						group,
+					);
+
+					return {
+						group: {
+							id: group.id,
+							code: group.code,
+							name: group.name,
+							projectDirection: group.projectDirection,
+							thesis: group.thesis,
+							currentMembersCount: group._count.studentGroupParticipations,
+							members: group.studentGroupParticipations.map((sgp) => ({
+								id: sgp.student.userId,
+								name: sgp.student.user.fullName,
+							})),
+						},
+						compatibilityScore,
+						matchingSkills: this.countMatchingSkills(
+							student.studentSkills || [],
+							group.groupRequiredSkills || [],
+						),
+						matchingResponsibilities: this.countMatchingResponsibilities(
+							student.studentExpectedResponsibilities || [],
+							group.groupExpectedResponsibilities || [],
+						),
+					};
+				})
+				.sort((a, b) => b.compatibilityScore - a.compatibilityScore)
+				.slice(0, topK);
+
+			return {
+				student: {
+					id: student.userId,
+					studentCode: student.studentCode,
+					name: student.user.fullName,
+					email: student.user.email,
+				},
+				suggestions: groupSuggestions,
+				totalGroups: availableGroups.length,
+			};
+		} catch (error) {
+			this.logger.error('Error suggesting groups for student', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Build query text for student for vector search
+	 */
+	private buildStudentQueryText(student: any): string {
+		const parts: string[] = [];
+
+		// Add student basic info
+		parts.push(`Student: ${student.user.fullName}`);
+
+		// Student skills
+		if (student.studentSkills?.length > 0) {
+			const skillsText = student.studentSkills
+				.map((ss: any) => `- ${ss.skill.name} (Level ${ss.level})`)
+				.join('\n');
+			parts.push(`Student Skills:\n${skillsText}`);
+		}
+
+		// Student expected responsibilities
+		if (student.studentExpectedResponsibilities?.length > 0) {
+			const responsibilitiesText = student.studentExpectedResponsibilities
+				.map((sr: any) => `- ${sr.responsibility.name}`)
+				.join('\n');
+			parts.push(`Expected Responsibilities:\n${responsibilitiesText}`);
+		}
+
+		return parts.join('\n\n');
+	}
+
+	/**
+	 * Count matching skills between student and group
+	 */
+	private countMatchingSkills(
+		studentSkills: any[],
+		groupRequiredSkills: any[],
+	): number {
+		return groupRequiredSkills.filter((grs) =>
+			studentSkills.some((ss) => ss.skill.id === grs.skill.id),
+		).length;
+	}
+
+	/**
+	 * Count matching responsibilities between student and group
+	 */
+	private countMatchingResponsibilities(
+		studentResponsibilities: any[],
+		groupResponsibilities: any[],
+	): number {
+		return groupResponsibilities.filter((gr) =>
+			studentResponsibilities.some(
+				(sr) => sr.responsibility.id === gr.responsibility.id,
+			),
+		).length;
+	}
 }

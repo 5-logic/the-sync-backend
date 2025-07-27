@@ -30,6 +30,14 @@ export class AIStudentController {
 	}
 
 	@HttpCode(HttpStatus.OK)
+	@Get('suggest-groups-for-student/:studentId')
+	@ApiOperation(AIStudentDocs.suggestGroupsForStudent)
+	@ApiArrayResponse(Object, HttpStatus.OK)
+	async suggestGroupsForStudent(@Param('studentId') studentId: string) {
+		return this.service.suggestGroupsForStudent(studentId);
+	}
+
+	@HttpCode(HttpStatus.OK)
 	@Get('compatibility/:studentId/:groupId')
 	@ApiOperation(AIStudentDocs.getStudentGroupCompatibility)
 	@ApiBaseResponse(Object, HttpStatus.OK)
