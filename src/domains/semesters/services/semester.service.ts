@@ -156,6 +156,15 @@ export class SemesterService {
 				data: updatedDto,
 			});
 
+			// Nếu status mới là Ongoing, cập nhật toàn bộ enrollment sang Ongoing
+			if (updated.status === 'Ongoing') {
+				await this.prisma.enrollment.updateMany({
+					where: { semesterId: id },
+					data: { status: 'Ongoing' },
+				});
+				this.logger.log(`All enrollments in semester ${id} set to Ongoing`);
+			}
+
 			this.logger.log(`Semester with ID ${id} updated successfully`);
 			this.logger.debug('Updated semester details', updated);
 
