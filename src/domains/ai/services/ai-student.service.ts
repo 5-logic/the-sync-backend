@@ -1,13 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PineconeProviderService, PrismaService } from '@/providers';
-import { PineconeStudentProcessor } from '@/queue';
+import { PineconeGroupProcessor, PineconeStudentProcessor } from '@/queue';
 
 @Injectable()
 export class AIStudentService {
 	private readonly logger = new Logger(AIStudentService.name);
 
-	private static readonly NAMESPACE = PineconeStudentProcessor.NAMESPACE;
+	// Namespace constants for different data types
+	private static readonly STUDENT_NAMESPACE =
+		PineconeStudentProcessor.NAMESPACE;
+	private static readonly GROUP_NAMESPACE = PineconeGroupProcessor.NAMESPACE;
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -85,7 +88,7 @@ export class AIStudentService {
 			const index = this.pinecone
 				.getClient()
 				.index(this.pinecone.getIndexName())
-				.namespace(AIStudentService.NAMESPACE);
+				.namespace(AIStudentService.STUDENT_NAMESPACE);
 
 			// Build query from group information
 			const queryText = this.buildGroupQueryText(group);
@@ -337,6 +340,16 @@ export class AIStudentService {
 								email: true,
 							},
 						},
+						studentSkills: {
+							include: {
+								skill: true,
+							},
+						},
+						studentExpectedResponsibilities: {
+							include: {
+								responsibility: true,
+							},
+						},
 					},
 				}),
 				this.prisma.group.findUnique({
@@ -347,6 +360,16 @@ export class AIStudentService {
 								englishName: true,
 								vietnameseName: true,
 								description: true,
+							},
+						},
+						groupRequiredSkills: {
+							include: {
+								skill: true,
+							},
+						},
+						groupExpectedResponsibilities: {
+							include: {
+								responsibility: true,
 							},
 						},
 					},
@@ -392,8 +415,6 @@ export class AIStudentService {
 					user: {
 						select: {
 							id: true,
-							firstName: true,
-							lastName: true,
 							fullName: true,
 							email: true,
 						},
@@ -410,7 +431,7 @@ export class AIStudentService {
 					},
 					enrollments: {
 						where: {
-							status: 'ACTIVE',
+							status: 'Ongoing',
 						},
 						include: {
 							semester: true,
@@ -426,19 +447,19 @@ export class AIStudentService {
 			// Build student query text for vector search
 			const studentQueryText = this.buildStudentQueryText(student);
 
+			// TODO: Implement vector search in GROUP namespace
+			// const groupIndex = this.pinecone
+			//   .getClient()
+			//   .index(this.pinecone.getIndexName())
+			//   .namespace(AIStudentService.GROUP_NAMESPACE);
+			// Use studentQueryText to find similar groups
+
 			// Get available groups (not full and in same semester)
 			const availableGroups = await this.prisma.group.findMany({
 				where: {
-					isDeleted: false,
 					studentGroupParticipations: {
 						none: {
 							studentId: student.userId,
-						},
-					},
-					// Only groups with available slots
-					_count: {
-						studentGroupParticipations: {
-							lt: 4, // Assuming max 4 members per group
 						},
 					},
 				},
@@ -468,8 +489,6 @@ export class AIStudentService {
 									user: {
 										select: {
 											id: true,
-											firstName: true,
-											lastName: true,
 											fullName: true,
 										},
 									},

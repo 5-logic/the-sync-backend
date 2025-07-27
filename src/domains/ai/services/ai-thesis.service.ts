@@ -160,7 +160,7 @@ export class AIThesisService {
 			const availableTheses = await this.prisma.thesis.findMany({
 				where: {
 					groupId: null, // No group has selected this thesis
-					status: 'APPROVED', // Only approved theses
+					status: 'Approved', // Only approved theses
 				},
 				include: {
 					lecturer: {
@@ -180,7 +180,13 @@ export class AIThesisService {
 			// Build group query text for vector search
 			const groupQueryText = this.buildGroupQueryTextForThesis(group);
 
-			// TODO: Implement vector search to find similar theses
+			// TODO: Implement vector search in THESIS namespace
+			// const thesisIndex = this.pinecone
+			//   .getClient()
+			//   .index(this.pinecone.getIndexName())
+			//   .namespace(AIThesisService.NAMESPACE);
+			// Use groupQueryText to find similar available theses
+
 			// For now, use basic text matching and scoring
 			const thesisSuggestions = availableTheses
 				.map((thesis) => {
