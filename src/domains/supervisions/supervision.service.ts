@@ -267,9 +267,14 @@ export class SupervisionService {
 			(a) => !a.lecturerIds || a.lecturerIds.length !== 2,
 		);
 		if (invalidAssignments.length > 0) {
-			const thesisIds = invalidAssignments.map((a) => a.thesisId).join(', ');
+			const thesisNames = invalidAssignments
+				.map((a) => {
+					const thesis = theses.find((t) => t.id === a.thesisId);
+					return thesis?.englishName;
+				})
+				.join(', ');
 			throw new BadRequestException(
-				`Each thesis must be assigned exactly 2 lecturers. The following thesis do not meet this requirement: ${thesisIds}`,
+				`Each thesis must be assigned exactly 2 lecturers. The following thesis do not meet this requirement: ${thesisNames}`,
 			);
 		}
 
