@@ -7,10 +7,12 @@ import { ConfigModule } from '@nestjs/config';
 import { pineconeConfig } from '@/configs';
 import { PINECONE_TOKENS } from '@/queue/pinecone/constants';
 import {
+	PineconeGroupProcessor,
 	PineconeStudentProcessor,
 	PineconeThesisProcessor,
 } from '@/queue/pinecone/processors';
 import {
+	PineconeGroupService,
 	PineconeStudentService,
 	PineconeThesisService,
 } from '@/queue/pinecone/services';
@@ -33,13 +35,26 @@ import {
 			name: PINECONE_TOKENS.STUDENT,
 			adapter: BullMQAdapter,
 		}),
+		BullModule.registerQueue({
+			name: PINECONE_TOKENS.GROUP,
+		}),
+		BullBoardModule.forFeature({
+			name: PINECONE_TOKENS.GROUP,
+			adapter: BullMQAdapter,
+		}),
 	],
 	providers: [
 		PineconeThesisProcessor,
 		PineconeThesisService,
 		PineconeStudentProcessor,
 		PineconeStudentService,
+		PineconeGroupProcessor,
+		PineconeGroupService,
 	],
-	exports: [PineconeStudentService, PineconeThesisService],
+	exports: [
+		PineconeStudentService,
+		PineconeThesisService,
+		PineconeGroupService,
+	],
 })
 export class PineconeModule {}
