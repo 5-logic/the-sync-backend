@@ -270,6 +270,16 @@ export class SemesterStatusService {
 			);
 		}
 
+		// Validate: tất cả thesis public phải có đủ 2 supervisor khi chuyển trạng thái
+		if (
+			(currentStatus === SemesterStatus.Preparing &&
+				newStatus === SemesterStatus.Picking) ||
+			(currentStatus === SemesterStatus.Picking &&
+				newStatus === SemesterStatus.Ongoing)
+		) {
+			await this.ensureAllPublicThesesHaveTwoSupervisors(semester.id);
+		}
+
 		// Check if move from Preparing to Picking
 		if (
 			currentStatus === SemesterStatus.Preparing &&
@@ -297,6 +307,41 @@ export class SemesterStatusService {
 		this.logger.log(
 			`Status transition validation passed: ${currentStatus} -> ${newStatus}`,
 		);
+	}
+	/**
+	 * Đảm bảo tất cả thesis public trong semester phải có đủ 2 supervisor
+	 */
+	private async ensureAllPublicThesesHaveTwoSupervisors(
+		semesterId: string,
+	): Promise<void> {
+		const theses = await this.prisma.thesis.findMany({
+			where: {
+				semesterId,
+				isPublish: true,
+			},
+			select: {
+				id: true,
+				englishName: true,
+				vietnameseName: true,
+				supervisions: true,
+			},
+		});
+
+		const notEnoughSupervisors = theses.filter(
+			(thesis) => thesis.supervisions.length !== 2,
+		);
+
+		if (notEnoughSupervisors.length > 0) {
+			const thesisNames = notEnoughSupervisors
+				.map((t) => `${t.englishName || t.vietnameseName}`)
+				.join(', ');
+			this.logger.warn(
+				`Some public theses in semester ${semesterId} do not have exactly 2 supervisors: ${thesisNames}`,
+			);
+			throw new ConflictException(
+				`All public theses in the semester must be assigned exactly 2 supervisors. The following theses do not meet this requirement: ${thesisNames}`,
+			);
+		}
 	}
 
 	async validateMaxGroup(

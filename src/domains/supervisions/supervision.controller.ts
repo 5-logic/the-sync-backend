@@ -69,4 +69,14 @@ export class SupervisionController {
 	async getSupervisionsByLecturer(@Param('lecturerId') lecturerId: string) {
 		return await this.supervisionsService.getSupervisionsByLecturer(lecturerId);
 	}
+
+	@SwaggerDoc('supervision', 'getSupervisionsGroupByLecturer')
+	@Get('lecturer/:lecturerId/groups')
+	async getSupervisionsGroupByLecturer(
+		@Param('lecturerId') lecturerId: string,
+	) {
+		return await this.supervisionsService.getSupervisionsGroupByLecturer(
+			lecturerId,
+		);
+	}
 }
