@@ -9,8 +9,12 @@ import {
 
 import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
-import { EmailQueueService } from '@/queue/email/email-queue.service';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
+import {
+	EmailJobType,
+	EmailQueueService,
+	PineconeGroupService,
+	PineconeJobType,
+} from '@/queue';
 import {
 	CreateInviteRequestDto,
 	CreateJoinRequestDto,
@@ -33,6 +37,7 @@ export class RequestService {
 		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
+		private readonly pineconeGroupService: PineconeGroupService,
 	) {}
 
 	// Validation methods
@@ -674,6 +679,14 @@ export class RequestService {
 			this.logger.log(
 				`Request ${requestId} ${dto.status.toLowerCase()} by user ${userId}`,
 			);
+
+			// If request was approved, sync updated group data to Pinecone
+			if (dto.status === RequestStatus.Approved) {
+				await this.pineconeGroupService.processGroup(
+					PineconeJobType.CREATE_OR_UPDATE,
+					request.groupId,
+				);
+			}
 
 			// Send email notification about request status update
 			await this.sendRequestStatusUpdateNotification(requestId, dto.status);
