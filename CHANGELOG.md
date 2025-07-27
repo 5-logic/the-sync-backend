@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Service: `SemesterService.getStatistics`
     - Requires `ADMIN` or `MODERATOR` role.
     - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+  - New endpoint: `GET /semesters/:id/groups` to retrieve all groups in a semester with full member, major, enrollment, and thesis (with supervisors) details.
+    - Controller: `SemesterController` (`findGroups` method)
+    - Service: `SemesterService.findGroups`
+    - Returns all groups in the semester, each with nested member, major, enrollment, and thesis (with supervisors) information.
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
 
 - **Supervision API**:
   - New endpoint: `GET /supervisions/lecturer/:lecturerId/groups` to retrieve all groups supervised by a specific lecturer (only theses with group pick).
