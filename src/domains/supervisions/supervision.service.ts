@@ -538,4 +538,51 @@ export class SupervisionService {
 			throw error;
 		}
 	}
+
+	async getSupervisionsGroupByLecturer(lecturerId: string) {
+		try {
+			this.logger.log(`Getting supervisions grouped by lecturer ${lecturerId}`);
+
+			// Lấy supervision mà thesis đã được group pick (thesis.groupId != null)
+			const supervisions = await this.prisma.supervision.findMany({
+				where: {
+					lecturerId,
+					thesis: {
+						groupId: { not: null },
+					},
+				},
+				include: {
+					thesis: {
+						include: {
+							group: {
+								include: {
+									studentGroupParticipations: {
+										include: {
+											student: {
+												include: {
+													user: true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+
+			this.logger.log(
+				`Found ${supervisions.length} supervisions grouped by lecturer ${lecturerId} (only thesis with group pick)`,
+			);
+
+			return supervisions;
+		} catch (error) {
+			this.logger.error(
+				`Failed to get supervisions grouped by lecturer ${lecturerId}`,
+				error,
+			);
+			throw error;
+		}
+	}
 }
