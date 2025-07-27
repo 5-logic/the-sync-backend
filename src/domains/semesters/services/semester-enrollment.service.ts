@@ -24,9 +24,11 @@ export class SemesterEnrollmentService {
 				where: { id: id },
 			});
 
+			this.logger.debug(`Found semester: ${JSON.stringify(semester)}`);
+
 			this.validateSemesterExists(semester);
 
-			await this.prisma.enrollment.updateMany({
+			const result = await this.prisma.enrollment.updateMany({
 				where: {
 					studentId: { in: dto.studentIds },
 					semesterId: id,
@@ -36,7 +38,11 @@ export class SemesterEnrollmentService {
 				},
 			});
 
-			return;
+			this.logger.log(
+				`Updated ${result.count} enrollments for semester ID: ${id}`,
+			);
+
+			return result;
 		} catch (error) {
 			this.logger.error(
 				`Failed to update enrollments for semester ID: ${id}`,
@@ -55,13 +61,16 @@ export class SemesterEnrollmentService {
 			throw new NotFoundException(message);
 		}
 
-		if (semester.status !== SemesterStatus.Ongoing) {
+		if (
+			semester.status !== SemesterStatus.Ongoing ||
+			semester.ongoingPhase !== 'ScopeLocked'
+		) {
 			this.logger.warn(
 				`Cannot update enrollments for semester ${semester.id}: status is ${semester.status}, must be ${SemesterStatus.Ongoing}`,
 			);
 
 			throw new ConflictException(
-				`Cannot update enrollments: semester status must be ${SemesterStatus.Ongoing}`,
+				`Cannot update enrollments: semester status must be ${SemesterStatus.Ongoing} & phase must be Scope Locked`,
 			);
 		}
 	}
