@@ -52,6 +52,14 @@ export class SemesterController {
 		return await this.service.findOne(id);
 	}
 
+	@Roles(Role.ADMIN, Role.MODERATOR)
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation(SemesterDocs.getStatistics)
+	@Get(':id/statistics')
+	async getStatistics(@Param('id') id: string) {
+		return await this.service.getStatistics(id);
+	}
+
 	@Roles(Role.ADMIN)
 	@HttpCode(HttpStatus.OK)
 	@Put(':id')
