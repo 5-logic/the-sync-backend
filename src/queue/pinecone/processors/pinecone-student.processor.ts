@@ -74,11 +74,10 @@ export class PineconeStudentProcessor extends WorkerHost {
 
 		const combinedText = `Skills: ${skillsText}. Expected Responsibilities: ${responsibilitiesText}`;
 
-		// Generate embeddings for the combined text
-		const embeddings = await this.pinecone.generateEmbeddings(combinedText);
-
-		// Prepare metadata
-		const metadata = {
+		// Prepare record data - Pinecone will automatically generate embeddings from text
+		const record = {
+			_id: student.userId,
+			text: combinedText,
 			studentCode: student.studentCode,
 			fullName: student.user.fullName,
 			email: student.user.email,
@@ -93,14 +92,8 @@ export class PineconeStudentProcessor extends WorkerHost {
 			.index(this.pinecone.getIndexName())
 			.namespace(PineconeStudentProcessor.NAMESPACE);
 
-		// Upsert to Pinecone
-		await index.upsert([
-			{
-				id: student.userId,
-				values: embeddings,
-				metadata,
-			},
-		]);
+		// Upsert to Pinecone using upsertRecords - Pinecone will auto-generate embeddings
+		await index.upsertRecords([record]);
 
 		this.logger.log(
 			`Student ${student.studentCode} upserted to Pinecone successfully.`,
