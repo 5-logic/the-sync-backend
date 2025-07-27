@@ -130,6 +130,57 @@ export class SemesterService {
 		}
 	}
 
+	async findGroups(id: string) {
+		this.logger.log(`Fetching groups for semester with ID: ${id}`);
+		try {
+			const groups = await this.prisma.group.findMany({
+				where: { semesterId: id },
+				include: {
+					thesis: {
+						include: {
+							lecturer: {
+								include: { user: true },
+							},
+							supervisions: {
+								include: {
+									lecturer: {
+										include: { user: true },
+									},
+								},
+							},
+						},
+					},
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: true,
+									major: true,
+									enrollments: {
+										where: { semesterId: id },
+									},
+								},
+							},
+						},
+					},
+				},
+			});
+
+			if (!groups || groups.length === 0) {
+				this.logger.warn(`No groups found for semester with ID ${id}`);
+			}
+
+			this.logger.log(`Found ${groups.length} groups for semester ${id}`);
+			this.logger.debug('Groups details', JSON.stringify(groups));
+
+			return groups;
+		} catch (error) {
+			this.logger.error('Error fetching groups for semester:', error);
+
+			throw error;
+		}
+	}
+
 	async getStatistics(semesterId: string) {
 		try {
 			// Summary card
