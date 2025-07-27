@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.6] - 2025-07-27
+
+### Added
+
+- **Semester API**:
+  - New endpoint: `GET /semesters/:id/statistics` for admins and moderators to retrieve dashboard statistics for a semester.
+    - Controller: `SemesterController` (`getStatistics` method)
+    - Service: `SemesterService.getStatistics`
+    - Requires `ADMIN` or `MODERATOR` role.
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+  - New endpoint: `GET /semesters/:id/groups` to retrieve all groups in a semester with full member, major, enrollment, and thesis (with supervisors) details.
+    - Controller: `SemesterController` (`findGroups` method)
+    - Service: `SemesterService.findGroups`
+    - Returns all groups in the semester, each with nested member, major, enrollment, and thesis (with supervisors) information.
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+
+- **Supervision API**:
+  - New endpoint: `GET /supervisions/lecturer/:lecturerId/groups` to retrieve all groups supervised by a specific lecturer (only theses with group pick).
+    - Controller: `SupervisionController` (`getSupervisionsGroupByLecturer` method)
+    - Service: `SupervisionService.getSupervisionsGroupByLecturer`
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+
+- **Semester Enrollment Service**:
+  - New method: `findGroups(semesterId)` to retrieve all groups in a semester with detailed member and thesis information.
+    - Used for internal logic and documentation.
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+
+### Changed
+
+- **Semester Enrollment Update Logic**:
+  - Now only allows updating enrollments if semester status is `Ongoing` **and** phase is `ScopeLocked`.
+  - Improved logging and error handling in `SemesterEnrollmentService`.
+  - The `update` method now returns the update result (number of enrollments updated).
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+
+- **Supervision Assignment Validation**:
+  - Improved error messages for bulk reviewer assignment: now lists thesis names instead of IDs when validation fails.
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/237)
+
+### Documentation
+
+- Added Swagger and internal documentation for new endpoints and service methods:
+  - `getStatistics` (Semester statistics)
+  - `getSupervisionsGroupByLecturer` (Supervision groups by lecturer)
+  - `findGroups` (Semester group details)
+
+### Technical Improvements
+
+- Enhanced logging and error handling in semester and supervision services.
+- Improved validation and response structure for group and supervision APIs.
+- [#237](https://github.com/5-logic/the-sync-backend/pull/237) - Hotfix: API and service improvements, new endpoints
+
+---
+
 ## [0.7.5] - 2025-07-26
 
 ### Changed
