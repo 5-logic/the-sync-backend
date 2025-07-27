@@ -11,7 +11,7 @@ import {
 	// CacheHelperService,
 	PrismaService,
 } from '@/providers';
-import { PineconeJobType, PineconeStudentService } from '@/queue';
+import { PineconeJobType, PineconeThesisService } from '@/queue';
 // import { CACHE_KEY } from '@/theses/constants';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
@@ -28,7 +28,7 @@ export class ThesisLecturerService {
 	constructor(
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
-		private readonly pinecone: PineconeStudentService,
+		private readonly pinecone: PineconeThesisService,
 	) {}
 
 	async create(
