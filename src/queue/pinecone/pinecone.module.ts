@@ -6,8 +6,16 @@ import { ConfigModule } from '@nestjs/config';
 
 import { pineconeConfig } from '@/configs';
 import { PINECONE_TOKENS } from '@/queue/pinecone/constants';
-import { PineconeThesisProcessor } from '@/queue/pinecone/processors';
-import { PineconeThesisService } from '@/queue/pinecone/services';
+import {
+	PineconeGroupProcessor,
+	PineconeStudentProcessor,
+	PineconeThesisProcessor,
+} from '@/queue/pinecone/processors';
+import {
+	PineconeGroupService,
+	PineconeStudentService,
+	PineconeThesisService,
+} from '@/queue/pinecone/services';
 
 @Global()
 @Module({
@@ -20,8 +28,33 @@ import { PineconeThesisService } from '@/queue/pinecone/services';
 			name: PINECONE_TOKENS.THESIS,
 			adapter: BullMQAdapter,
 		}),
+		BullModule.registerQueue({
+			name: PINECONE_TOKENS.STUDENT,
+		}),
+		BullBoardModule.forFeature({
+			name: PINECONE_TOKENS.STUDENT,
+			adapter: BullMQAdapter,
+		}),
+		BullModule.registerQueue({
+			name: PINECONE_TOKENS.GROUP,
+		}),
+		BullBoardModule.forFeature({
+			name: PINECONE_TOKENS.GROUP,
+			adapter: BullMQAdapter,
+		}),
 	],
-	providers: [PineconeThesisProcessor, PineconeThesisService],
-	exports: [PineconeThesisService],
+	providers: [
+		PineconeThesisProcessor,
+		PineconeThesisService,
+		PineconeStudentProcessor,
+		PineconeStudentService,
+		PineconeGroupProcessor,
+		PineconeGroupService,
+	],
+	exports: [
+		PineconeStudentService,
+		PineconeThesisService,
+		PineconeGroupService,
+	],
 })
 export class PineconeModule {}
