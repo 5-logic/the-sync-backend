@@ -21,4 +21,8 @@ export const SupervisionDocs: Record<string, ApiOperationOptions> = {
 		summary: 'Get supervisions by lecturer',
 		description: `Retrieve all supervision relationships for a specific lecturer.\n\n- **Authorization:** Authenticated users only.\n- **Business logic:**\n  - Returns all theses currently or previously supervised by the specified lecturer.\n  - Includes thesis information, student details, assignment dates, and workload metrics.\n- **Error handling:**\n  - 404 if lecturer not found.\n  - 500 on database errors.\n- **Logging:** Logs all fetch attempts and errors.`,
 	},
+	getSupervisionsGroupByLecturer: {
+		summary: 'Get all groups (with members) supervised by a lecturer',
+		description: `Returns a list of supervisions where the lecturer is supervising, only including theses that have been picked by a group (thesis.groupId != null).\n\n- **Authorization:** Authenticated users only.\n- **Business logic:**\n  - Only returns supervisions where the thesis has been picked by a group.\n  - Each supervision includes full thesis info, group info, and all members (student + user) of that group.\n  - The returned data helps to summarize and check the groups that the lecturer is actually supervising.\n- **Response:**\n  - Each item includes: supervision info, thesis info, group info, and a list of members (studentGroupParticipations -> student -> user).\n- **Error handling:**\n  - 404 if lecturer not found.\n  - 500 on database errors.\n- **Logging:** Logs all queries and errors.`,
+	},
 };
