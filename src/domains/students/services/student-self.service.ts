@@ -4,6 +4,7 @@ import {
 	// CacheHelperService,
 	PrismaService,
 } from '@/providers';
+import { PineconeJobType, PineconeStudentService } from '@/queue/pinecone';
 // import { CACHE_KEY } from '@/students/constants';
 import { SelfUpdateStudentDto } from '@/students/dtos';
 import { mapStudentV1 } from '@/students/mappers';
@@ -16,6 +17,7 @@ export class StudentSelfService {
 	constructor(
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
+		private readonly pineconeStudentService: PineconeStudentService,
 	) {}
 
 	async update(
@@ -95,6 +97,15 @@ export class StudentSelfService {
 
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', JSON.stringify(result));
+
+			// Sync updated student data to Pinecone
+			await this.pineconeStudentService.processStudent(
+				PineconeJobType.CREATE_OR_UPDATE,
+				result.id,
+			);
+			this.logger.log(
+				`Student ${result.id} queued for Pinecone sync after self-update`,
+			);
 
 			// const cacheKey = `${CACHE_KEY}/${id}`;
 			// await this.cache.saveToCache(cacheKey, result);
