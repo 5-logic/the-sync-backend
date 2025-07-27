@@ -60,7 +60,10 @@ export class PineconeThesisProcessor extends WorkerHost {
 			vietnameseName: dto.vietnameseName,
 			abbreviation: dto.abbreviation,
 			description: dto.description,
-			...(dto.domain && { domain: dto.domain }),
+			domain: dto.domain,
+			status: dto.status,
+			isPublish: dto.isPublish,
+			groupId: dto.groupId,
 			lecturerId: dto.lecturerId,
 			semesterId: dto.semesterId,
 		};
