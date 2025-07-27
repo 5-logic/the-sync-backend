@@ -130,6 +130,116 @@ export class SemesterService {
 		}
 	}
 
+	async getStatistics(semesterId: string) {
+		try {
+			// Summary card
+			const [totalStudents, totalLecturers, totalTheses, totalGroups] =
+				await Promise.all([
+					this.prisma.student.count({
+						where: {
+							enrollments: {
+								some: { semesterId },
+							},
+						},
+					}),
+					this.prisma.lecturer.count(),
+					this.prisma.thesis.count({ where: { semesterId } }),
+					this.prisma.group.count({ where: { semesterId } }),
+				]);
+
+			// Semester Progress Overview
+			// Tổng sinh viên đã vào group (có studentGroupParticipations trong semester)
+			const totalStudentGrouped =
+				await this.prisma.studentGroupParticipation.count({
+					where: {
+						group: { semesterId },
+					},
+				});
+
+			// Tổng group đã pick thesis (group có thesisId != null)
+			const totalGroupPickedThesis = await this.prisma.group.count({
+				where: {
+					semesterId,
+					thesisId: { not: null },
+				},
+			});
+
+			// Thesis đã được duyệt (status = 'Approved')
+			const thesisApproved = await this.prisma.thesis.count({
+				where: {
+					semesterId,
+					status: 'Approved', // enum value must match Prisma enum (capitalized)
+				},
+			});
+
+			// Tổng số supervisor đã được phân công (distinct lecturerId trong supervision của thesis thuộc semester)
+			const assignedSupervisors = await this.prisma.supervision.findMany({
+				where: {
+					thesis: {
+						semesterId,
+						groupId: { not: null },
+					},
+				},
+				select: { lecturerId: true },
+				distinct: ['lecturerId'],
+			});
+			const totalAssignedSupervisors = assignedSupervisors.length;
+
+			// Supervisor Load Distribution: số lượng thesis được pick mà lecturer hướng dẫn (từ bảng supervision)
+			const supervisions = await this.prisma.supervision.findMany({
+				where: {
+					thesis: {
+						semesterId,
+						groupId: { not: null },
+					},
+				},
+				include: {
+					lecturer: {
+						include: {
+							user: true,
+						},
+					},
+				},
+			});
+			// Group by lecturerId
+			const supervisorMap = new Map();
+			for (const s of supervisions) {
+				if (!supervisorMap.has(s.lecturerId)) {
+					supervisorMap.set(s.lecturerId, {
+						lecturerId: s.lecturerId,
+						fullName: s.lecturer.user.fullName,
+						thesisCount: 1,
+					});
+				} else {
+					supervisorMap.get(s.lecturerId).thesisCount++;
+				}
+			}
+			const supervisorLoadDistribution = Array.from(supervisorMap.values());
+
+			return {
+				summaryCard: {
+					totalStudents,
+					totalLecturers,
+					totalTheses,
+					totalGroups,
+				},
+				progressOverview: {
+					totalStudentGrouped,
+					totalGroupPickedThesis,
+					thesisApproved,
+					totalAssignedSupervisors,
+				},
+				supervisorLoadDistribution,
+			};
+		} catch (error) {
+			this.logger.error(
+				`Error fetching dashboard data for semester ${semesterId}`,
+				error.stack,
+			);
+			throw error;
+		}
+	}
+
 	async update(id: string, dto: UpdateSemesterDto): Promise<SemesterResponse> {
 		this.logger.log(`Updating semester with ID: ${id}`);
 
