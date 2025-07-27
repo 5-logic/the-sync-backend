@@ -198,26 +198,36 @@ export class ThesisLecturerService {
 						orderBy: { version: 'desc' },
 						take: 1,
 					},
+					semester: true,
+					group: true,
 				},
 			});
 
 			if (!existingThesis) {
 				this.logger.warn(`Thesis with ID ${id} not found for update`);
-
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			const canUpdate = await this.validatePermissionUpdateThesis(
+			const semester = existingThesis.semester;
+			const groupPicked = existingThesis.group;
+
+			const {
+				canUpdate,
+				shouldUpdateStatus,
+				shouldUpdatePublish,
+				newStatus,
+				newIsPublish,
+			} = await this.getUpdatePermissions(
 				userId,
-				id,
-				existingThesis.lecturerId,
+				existingThesis,
+				semester,
+				groupPicked,
 			);
 
 			if (!canUpdate) {
 				this.logger.warn(
 					`User with ID ${userId} is not authorized to update thesis with ID ${id}`,
 				);
-
 				throw new ForbiddenException(
 					`You do not have permission to update this thesis`,
 				);
@@ -251,37 +261,41 @@ export class ThesisLecturerService {
 
 				// Update thesis required skills if skillIds provided
 				if (dto.skillIds && dto.skillIds.length > 0) {
-					// Delete existing skills
 					await txn.thesisRequiredSkill.deleteMany({
 						where: { thesisId: id },
 					});
-
-					// Create new skills if any provided
-					if (dto.skillIds && dto.skillIds.length > 0) {
-						await txn.thesisRequiredSkill.createMany({
-							data: dto.skillIds.map((skillId) => ({
-								thesisId: id,
-								skillId,
-							})),
-						});
-					}
-
+					await txn.thesisRequiredSkill.createMany({
+						data: dto.skillIds.map((skillId) => ({
+							thesisId: id,
+							skillId,
+						})),
+					});
 					this.logger.log(
 						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
 					);
 				}
 
+				// Chuẩn bị dữ liệu update
+				const updateData: any = {
+					englishName: dto.englishName,
+					vietnameseName: dto.vietnameseName,
+					abbreviation: dto.abbreviation,
+					description: dto.description,
+					domain: dto.domain,
+				};
+				if (shouldUpdateStatus) {
+					updateData.status = newStatus ?? existingThesis.status;
+				}
+				if (shouldUpdatePublish) {
+					updateData.isPublish =
+						typeof newIsPublish === 'boolean'
+							? newIsPublish
+							: existingThesis.isPublish;
+				}
+
 				const updateThesis = await txn.thesis.update({
 					where: { id: id },
-					data: {
-						englishName: dto.englishName,
-						vietnameseName: dto.vietnameseName,
-						abbreviation: dto.abbreviation,
-						description: dto.description,
-						domain: dto.domain,
-						status: ThesisStatus.Pending,
-						isPublish: false,
-					},
+					data: updateData,
 					include: {
 						thesisVersions: {
 							orderBy: { version: 'desc' },
@@ -298,7 +312,6 @@ export class ThesisLecturerService {
 				});
 
 				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
-
 				return result;
 			});
 
@@ -317,9 +330,63 @@ export class ThesisLecturerService {
 			return result;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
-
 			throw error;
 		}
+	}
+
+	private async getUpdatePermissions(
+		userId: string,
+		existingThesis: any,
+		semester: any,
+		groupPicked: any,
+	) {
+		let canUpdate = false;
+		let shouldUpdateStatus = true;
+		let shouldUpdatePublish = true;
+		let newStatus: ThesisStatus | undefined = undefined;
+		let newIsPublish: boolean | undefined = undefined;
+
+		if (semester.status === 'Preparing') {
+			if (existingThesis.lecturerId === userId) {
+				canUpdate = true;
+				if (
+					existingThesis.isPublish ||
+					existingThesis.status === ThesisStatus.Approved ||
+					existingThesis.status === ThesisStatus.Rejected
+				) {
+					newIsPublish = false;
+					newStatus = ThesisStatus.Pending;
+				} else {
+					newIsPublish = existingThesis.isPublish;
+					newStatus = existingThesis.status;
+				}
+			}
+		} else if (
+			(semester.status === 'Picking' && groupPicked) ||
+			(semester.status === 'Ongoing' &&
+				semester.ongoingPhase === 'ScopeAdjustable' &&
+				groupPicked)
+		) {
+			const leader = await this.prisma.studentGroupParticipation.findFirst({
+				where: {
+					groupId: groupPicked.id,
+					studentId: userId,
+					isLeader: true,
+				},
+			});
+			if (leader) {
+				canUpdate = true;
+				shouldUpdateStatus = false;
+				shouldUpdatePublish = false;
+			}
+		}
+		return {
+			canUpdate,
+			shouldUpdateStatus,
+			shouldUpdatePublish,
+			newStatus,
+			newIsPublish,
+		};
 	}
 
 	async submitForReview(

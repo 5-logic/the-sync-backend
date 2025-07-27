@@ -1,17 +1,58 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsUUID, ValidateNested } from 'class-validator';
+import {
+	ArrayMaxSize,
+	ArrayMinSize,
+	IsArray,
+	IsBoolean,
+	IsOptional,
+	IsUUID,
+	ValidateNested,
+} from 'class-validator';
+
+export class ReviewerAssignmentDto {
+	@ApiProperty()
+	@IsUUID('4')
+	lecturerId: string;
+
+	@ApiPropertyOptional({ default: false })
+	@IsOptional()
+	@IsBoolean()
+	isMainReviewer?: boolean;
+}
 
 export class SingleSubmissionAssignmentDto {
 	@ApiProperty()
 	@IsUUID('4')
 	submissionId: string;
 
-	@ApiPropertyOptional()
+	@ApiPropertyOptional({
+		type: 'array',
+		items: {
+			type: 'object',
+			properties: {
+				lecturerId: { type: 'string', format: 'uuid' },
+				isMainReviewer: { type: 'boolean', default: false },
+			},
+		},
+		maxItems: 2,
+		example: [
+			{
+				lecturerId: '123e4567-e89b-12d3-a456-426614174001',
+				isMainReviewer: true,
+			},
+			{
+				lecturerId: '123e4567-e89b-12d3-a456-426614174002',
+				isMainReviewer: false,
+			},
+		],
+	})
 	@IsArray()
-	@IsUUID('4', { each: true })
 	@ArrayMaxSize(2)
-	lecturerIds?: string[];
+	@ArrayMinSize(2)
+	@ValidateNested({ each: true })
+	@Type(() => ReviewerAssignmentDto)
+	reviewerAssignments: ReviewerAssignmentDto[];
 }
 
 export class AssignBulkLecturerReviewerDto {
@@ -19,14 +60,16 @@ export class AssignBulkLecturerReviewerDto {
 		example: [
 			{
 				submissionId: '123e4567-e89b-12d3-a456-426614174000',
-				lecturerIds: [
-					'123e4567-e89b-12d3-a456-426614174001',
-					'123e4567-e89b-12d3-a456-426614174002',
+				reviewerAssignments: [
+					{
+						lecturerId: '123e4567-e89b-12d3-a456-426614174001',
+						isMainReviewer: true,
+					},
+					{
+						lecturerId: '123e4567-e89b-12d3-a456-426614174002',
+						isMainReviewer: false,
+					},
 				],
-			},
-			{
-				submissionId: '123e4567-e89b-12d3-a456-426614174003',
-				lecturerIds: ['123e4567-e89b-12d3-a456-426614174004'],
 			},
 		],
 	})
