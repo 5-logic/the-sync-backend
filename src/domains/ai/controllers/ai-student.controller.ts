@@ -1,69 +1,42 @@
 import {
 	Controller,
 	Get,
+	HttpCode,
+	HttpStatus,
 	Param,
-	Query,
 	UseGuards,
-	ValidationPipe,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { AI_API_TAGS, AI_CONSTANTS } from '@/ai/constants';
+import { AIStudentDocs } from '@/ai/docs';
 import { AIStudentService } from '@/ai/services';
 import { JwtAccessAuthGuard } from '@/auth/guards';
+import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 
-@ApiTags('AI Student Suggestions')
-@Controller('ai/students')
 @UseGuards(JwtAccessAuthGuard)
+@ApiBearerAuth()
+@ApiTags(AI_API_TAGS)
+@Controller(AI_CONSTANTS.STUDENTS)
 export class AIStudentController {
-	constructor(private readonly aiStudentService: AIStudentService) {}
+	constructor(private readonly service: AIStudentService) {}
 
+	@HttpCode(HttpStatus.OK)
 	@Get('suggest-for-group/:groupId')
-	@ApiOperation({
-		summary: 'Suggest students for a group',
-		description:
-			'Get AI-powered suggestions for students that would be a good fit for the specified group based on skills, responsibilities, and thesis content.',
-	})
-	@ApiParam({
-		name: 'groupId',
-		description: 'The ID of the group to suggest students for',
-		type: 'string',
-	})
-	@ApiQuery({
-		name: 'topK',
-		description: 'Number of suggestions to return (default: 5)',
-		required: false,
-		type: 'number',
-	})
-	async suggestStudentsForGroup(
-		@Param('groupId') groupId: string,
-		@Query('topK', new ValidationPipe({ transform: true })) topK: number = 5,
-	) {
-		return this.aiStudentService.suggestStudentsForGroup(groupId, topK);
+	@ApiOperation(AIStudentDocs.suggestStudentsForGroup)
+	@ApiArrayResponse(Object, HttpStatus.OK)
+	async suggestStudentsForGroup(@Param('groupId') groupId: string) {
+		return this.service.suggestStudentsForGroup(groupId);
 	}
 
+	@HttpCode(HttpStatus.OK)
 	@Get('compatibility/:studentId/:groupId')
-	@ApiOperation({
-		summary: 'Analyze student-group compatibility',
-		description:
-			'Get detailed compatibility analysis between a specific student and group.',
-	})
-	@ApiParam({
-		name: 'studentId',
-		description: 'The ID of the student to analyze',
-		type: 'string',
-	})
-	@ApiParam({
-		name: 'groupId',
-		description: 'The ID of the group to analyze compatibility with',
-		type: 'string',
-	})
+	@ApiOperation(AIStudentDocs.getStudentGroupCompatibility)
+	@ApiBaseResponse(Object, HttpStatus.OK)
 	async getStudentGroupCompatibility(
 		@Param('studentId') studentId: string,
 		@Param('groupId') groupId: string,
 	) {
-		return this.aiStudentService.getStudentGroupCompatibility(
-			studentId,
-			groupId,
-		);
+		return this.service.getStudentGroupCompatibility(studentId, groupId);
 	}
 }

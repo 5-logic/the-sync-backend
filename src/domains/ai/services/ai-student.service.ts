@@ -17,7 +17,7 @@ export class AIStudentService {
 	/**
 	 * Suggest students for a group based on skills, responsibilities, and thesis content
 	 */
-	async suggestStudentsForGroup(groupId: string, topK: number = 5) {
+	async suggestStudentsForGroup(groupId: string, topK: number = 10) {
 		try {
 			this.logger.log(`Suggesting students for group: ${groupId}`);
 
