@@ -84,14 +84,15 @@ export class AIStudentService {
 				throw new NotFoundException('Group not found');
 			}
 
-			// Get Pinecone index for students
-			const index = this.pinecone
-				.getClient()
-				.index(this.pinecone.getIndexName())
-				.namespace(AIStudentService.STUDENT_NAMESPACE);
-
 			// Build query from group information
 			const queryText = this.buildGroupQueryText(group);
+
+			// TODO: Implement vector search using queryText in STUDENT namespace
+			// const index = this.pinecone
+			//   .getClient()
+			//   .index(this.pinecone.getIndexName())
+			//   .namespace(AIStudentService.STUDENT_NAMESPACE);
+			// Use queryText to find similar students in vector database
 
 			// For now, we'll use a simple approach - fetch some vectors and calculate similarity manually
 			// In a full implementation, you would generate embeddings for queryText and use vector search
@@ -240,8 +241,8 @@ export class AIStudentService {
 		// Check skill matching
 		if (group.groupRequiredSkills?.length > 0) {
 			const skillMatchScore = this.calculateSkillMatch(
-				student.studentSkills || [],
-				group.groupRequiredSkills,
+				(student.studentSkills as any[]) || [],
+				group.groupRequiredSkills as any[],
 			);
 			totalScore += skillMatchScore * 0.4; // 40% weight for skills
 			factors += 0.4;
@@ -250,8 +251,8 @@ export class AIStudentService {
 		// Check responsibility matching
 		if (group.groupExpectedResponsibilities?.length > 0) {
 			const responsibilityMatchScore = this.calculateResponsibilityMatch(
-				student.studentExpectedResponsibilities || [],
-				group.groupExpectedResponsibilities,
+				(student.studentExpectedResponsibilities as any[]) || [],
+				group.groupExpectedResponsibilities as any[],
 			);
 			totalScore += responsibilityMatchScore * 0.3; // 30% weight for responsibilities
 			factors += 0.3;
@@ -278,7 +279,7 @@ export class AIStudentService {
 
 		for (const requiredSkill of groupRequiredSkills) {
 			const studentSkill = studentSkills.find(
-				(ss) => ss.skill.id === requiredSkill.skill.id,
+				(ss: any) => ss.skill.id === requiredSkill.skill.id,
 			);
 
 			if (studentSkill) {
@@ -311,7 +312,7 @@ export class AIStudentService {
 
 		for (const expectedResp of groupExpectedResponsibilities) {
 			const studentHasResp = studentResponsibilities.some(
-				(sr) => sr.responsibility.id === expectedResp.responsibility.id,
+				(sr: any) => sr.responsibility.id === expectedResp.responsibility.id,
 			);
 
 			if (studentHasResp) {
@@ -445,7 +446,7 @@ export class AIStudentService {
 			}
 
 			// Build student query text for vector search
-			const studentQueryText = this.buildStudentQueryText(student);
+			// const studentQueryText = this.buildStudentQueryText(student);
 
 			// TODO: Implement vector search in GROUP namespace
 			// const groupIndex = this.pinecone

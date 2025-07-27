@@ -178,7 +178,7 @@ export class AIThesisService {
 			});
 
 			// Build group query text for vector search
-			const groupQueryText = this.buildGroupQueryTextForThesis(group);
+			// const groupQueryText = this.buildGroupQueryTextForThesis(group);
 
 			// TODO: Implement vector search in THESIS namespace
 			// const thesisIndex = this.pinecone
@@ -266,7 +266,7 @@ export class AIThesisService {
 			.map((ss: any) => ss.skill.name);
 
 		if (allMemberSkills.length > 0) {
-			const uniqueSkills = [...new Set(allMemberSkills)];
+			const uniqueSkills = [...new Set(allMemberSkills as string[])];
 			parts.push(`Members Skills: ${uniqueSkills.join(', ')}`);
 		}
 
@@ -303,7 +303,7 @@ export class AIThesisService {
 		if (group.groupRequiredSkills?.length > 0) {
 			const skillsRelevance = this.calculateSkillsRelevanceForThesis(
 				thesis,
-				group.groupRequiredSkills,
+				group.groupRequiredSkills as any[],
 			);
 			totalScore += skillsRelevance * 0.3; // 30% weight for skills
 			factors += 0.3;
@@ -330,7 +330,7 @@ export class AIThesisService {
 
 		let matchingSkills = 0;
 		for (const groupSkill of groupSkills) {
-			const skillName = groupSkill.skill.name.toLowerCase();
+			const skillName = String(groupSkill.skill.name).toLowerCase();
 			if (thesisText.includes(skillName)) {
 				matchingSkills++;
 			}
@@ -359,7 +359,7 @@ export class AIThesisService {
 		// Check skill relevance
 		if (group.groupRequiredSkills?.length > 0) {
 			const relevantSkills = group.groupRequiredSkills.filter((gs: any) => {
-				const skillName = gs.skill.name.toLowerCase();
+				const skillName = String(gs.skill.name).toLowerCase();
 				const thesisText =
 					`${thesis.englishName} ${thesis.description}`.toLowerCase();
 				return thesisText.includes(skillName);
