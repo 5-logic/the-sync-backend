@@ -205,14 +205,7 @@ export class ChecklistModeratorService {
 
 			this.logger.log(`Successfully deleted checklist: ${id}`);
 
-			return {
-				message: `Checklist "${existingChecklist.name}" has been successfully deleted`,
-				deletedChecklist: {
-					id: existingChecklist.id,
-					name: existingChecklist.name,
-					itemCount: existingChecklist._count.checklistItems,
-				},
-			};
+			return;
 		} catch (error) {
 			this.logger.error(
 				`Error deleting checklist ${id}: ${error.message}`,
