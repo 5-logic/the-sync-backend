@@ -1290,8 +1290,20 @@ export class GroupService {
 							},
 						},
 					},
-					groupRequiredSkills: true,
-					groupExpectedResponsibilities: true,
+					groupRequiredSkills: {
+						include: {
+							skill: {
+								include: {
+									skillSet: true,
+								},
+							},
+						},
+					},
+					groupExpectedResponsibilities: {
+						include: {
+							responsibility: true,
+						},
+					},
 				},
 			});
 			return groups;
