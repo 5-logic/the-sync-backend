@@ -456,6 +456,11 @@ export class AIStudentService {
 						group,
 					);
 
+					// Find the leader of the group
+					const leaderParticipation = group.studentGroupParticipations.find(
+						(sgp) => sgp.isLeader,
+					);
+
 					return {
 						group: {
 							id: group.id,
@@ -464,9 +469,16 @@ export class AIStudentService {
 							projectDirection: group.projectDirection,
 							thesis: group.thesis,
 							currentMembersCount: group._count.studentGroupParticipations,
+							leader: leaderParticipation
+								? {
+										id: leaderParticipation.student.userId,
+										name: leaderParticipation.student.user.fullName,
+									}
+								: null,
 							members: group.studentGroupParticipations.map((sgp) => ({
 								id: sgp.student.userId,
 								name: sgp.student.user.fullName,
+								isLeader: sgp.isLeader,
 							})),
 						},
 						compatibilityScore,
