@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { ChecklistItemModule } from '@/checklists/checklist-items/checklist-item.module';
+import { ChecklistItemModule } from '@/checklists/checklist-items';
 import {
 	ChecklistLecturerController,
 	ChecklistModeratorController,
