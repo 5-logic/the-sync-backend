@@ -6,7 +6,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
-import { GroupPublicService } from '@/groups/services';
+import { GroupPublicService } from '@/groups/services/group-public.service';
 import { GroupService } from '@/groups/services/group.service';
 import { PrismaService } from '@/providers';
 

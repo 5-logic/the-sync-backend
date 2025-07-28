@@ -1,16 +1,12 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { GroupService } from '@/groups/services/group.service';
 import { PrismaService } from '@/providers';
 
 @Injectable()
 export class GroupPublicService {
 	private readonly logger = new Logger(GroupPublicService.name);
 
-	constructor(
-		private readonly prisma: PrismaService,
-		private readonly groupService: GroupService,
-	) {}
+	constructor(private readonly prisma: PrismaService) {}
 
 	private getGroupListIncludeOptions() {
 		return {

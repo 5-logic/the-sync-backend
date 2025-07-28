@@ -26,7 +26,6 @@ export class GroupStudentService {
 		private readonly prisma: PrismaService,
 		private readonly groupService: GroupService,
 		private readonly groupPublicService: GroupPublicService,
-
 		private readonly pineconeGroupService: PineconeGroupService,
 	) {}
 
