@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsUUID, ValidateNested } from 'class-validator';
 
-import { CreateChecklistItemDto } from '@/checklists/checklist-items/dto';
+import { CreateChecklistItemDto } from '@/checklists/checklist-items/dtos';
 
 export class CreateManyChecklistItemsDto {
 	@ApiProperty({
