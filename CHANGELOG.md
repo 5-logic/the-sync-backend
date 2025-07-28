@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.8] - 2025-07-28
+
+### Added
+
+- **AI Student API Enhancement**:
+  - New endpoint: `POST /ai/students/suggest-groups-for-student` to get AI-powered group suggestions for a specific student with semester filtering (replaces previous GET endpoint)
+  - New `SuggestGroupsForStudentDto` with `studentId` and `semesterId` fields for request body validation
+  - Enhanced algorithm to only suggest groups with less than 5 members for better group management
+
+- **Checklist Management System**:
+  - New **Lecturer API**:
+    - `GET /checklists` - View all checklists (lecturers and moderators)
+    - `GET /checklists/:id` - View specific checklist details
+    - `GET /checklists/milestone/:milestoneId` - View checklists by milestone
+  - New **Moderator API**:
+    - `POST /checklists` - Create new checklist (requires `CreateChecklistDto` with `name`, optional `description`, and optional `milestoneId`)
+    - `PUT /checklists/:id` - Update existing checklist (requires `UpdateChecklistDto`)
+    - `DELETE /checklists/:id` - Delete checklist
+
+- **Enhanced Group Data Retrieval**:
+  - Group endpoints now include comprehensive thesis required skills information
+  - Enhanced group details with skills and responsibilities for better matching algorithms
+
+### Changed
+
+- **AI API Architecture Refactoring**:
+  - **Breaking Change**: `GET /ai/students/suggest-groups-for-student/:studentId` changed to `POST /ai/students/suggest-groups-for-student`
+  - Request data moved from URL parameters to request body with structured DTO validation
+  - Enhanced API documentation with detailed semester filtering and member count restrictions
+
+- **Checklist Module Restructuring**:
+  - Split checklist functionality into role-based controllers: `ChecklistLecturerController` and `ChecklistModeratorController`
+  - Enhanced service architecture with dedicated `ChecklistLecturerService` and `ChecklistModeratorService`
+  - Improved module organization with proper role-based access control
+
+- **Milestone Management Enhancement**:
+  - `CreateMilestoneDto` now includes optional `note` and `documents` fields for comprehensive milestone configuration
+  - Enhanced milestone creation workflow with better documentation support
+
+### Removed
+
+- **Deprecated AI Endpoints**:
+  - Removed `GET /ai/students/compatibility/:studentId/:groupId` endpoint for simplified API surface
+  - Cleaned up unused compatibility analysis functionality from `AIStudentService`
+
+### Enhanced
+
+- **API Documentation**: Comprehensive Swagger documentation updates for all new checklist and AI endpoints
+- **Type Safety**: Enhanced TypeScript validation with proper DTO structures across all new endpoints
+- **Code Organization**: Better separation of concerns with role-based controller and service architecture
+
+### Technical Improvements
+
+- **Service Layer**: Enhanced group service to include detailed thesis skills in retrieval operations
+- **Module Architecture**: Improved checklist module structure with proper dependency injection and exports
+- **Validation**: Enhanced input validation for all new DTOs with comprehensive field validation
+
+### Pull Requests
+
+- [#242](https://github.com/5-logic/the-sync-backend/pull/242) - Hotfix: AI student endpoint enhancements and checklist management system
+
+---
+
 ## [0.7.7] - 2025-07-28
 
 ### Added

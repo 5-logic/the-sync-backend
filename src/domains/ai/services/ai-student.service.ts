@@ -326,88 +326,17 @@ export class AIStudentService {
 	}
 
 	/**
-	 * Get basic compatibility analysis between student and group
-	 */
-	async getStudentGroupCompatibility(studentId: string, groupId: string) {
-		try {
-			const [student, group] = await Promise.all([
-				this.prisma.student.findUnique({
-					where: { userId: studentId },
-					include: {
-						user: {
-							select: {
-								id: true,
-								fullName: true,
-								email: true,
-							},
-						},
-						studentSkills: {
-							include: {
-								skill: true,
-							},
-						},
-						studentExpectedResponsibilities: {
-							include: {
-								responsibility: true,
-							},
-						},
-					},
-				}),
-				this.prisma.group.findUnique({
-					where: { id: groupId },
-					include: {
-						thesis: {
-							select: {
-								englishName: true,
-								vietnameseName: true,
-								description: true,
-							},
-						},
-						groupRequiredSkills: {
-							include: {
-								skill: true,
-							},
-						},
-						groupExpectedResponsibilities: {
-							include: {
-								responsibility: true,
-							},
-						},
-					},
-				}),
-			]);
-
-			if (!student || !group) {
-				throw new NotFoundException('Student or group not found');
-			}
-
-			return {
-				student: {
-					id: student.userId,
-					name: student.user.fullName,
-					email: student.user.email,
-				},
-				group: {
-					id: group.id,
-					code: group.code,
-					name: group.name,
-					thesis: group.thesis,
-				},
-				compatibilityScore: 75, // Placeholder
-				recommendation: 'Good match based on basic criteria',
-			};
-		} catch (error) {
-			this.logger.error('Error analyzing student-group compatibility', error);
-			throw error;
-		}
-	}
-
-	/**
 	 * Suggest groups for a student based on skills, responsibilities, and interests
 	 */
-	async suggestGroupsForStudent(studentId: string, topK: number = 10) {
+	async suggestGroupsForStudent(
+		studentId: string,
+		semesterId: string,
+		topK: number = 10,
+	) {
 		try {
-			this.logger.log(`Suggesting groups for student: ${studentId}`);
+			this.logger.log(
+				`Suggesting groups for student: ${studentId} in semester: ${semesterId}`,
+			);
 
 			// Get student with full information
 			const student = await this.prisma.student.findUnique({
@@ -432,7 +361,7 @@ export class AIStudentService {
 					},
 					enrollments: {
 						where: {
-							status: 'Ongoing',
+							semesterId: semesterId,
 						},
 						include: {
 							semester: true,
@@ -443,6 +372,13 @@ export class AIStudentService {
 
 			if (!student) {
 				throw new NotFoundException(`Student with ID ${studentId} not found`);
+			}
+
+			// Check if student is enrolled in the specified semester
+			if (!student.enrollments || student.enrollments.length === 0) {
+				throw new NotFoundException(
+					`Student with ID ${studentId} is not enrolled in semester ${semesterId}`,
+				);
 			}
 
 			// Build student query text for vector search
@@ -456,8 +392,9 @@ export class AIStudentService {
 			// Use studentQueryText to find similar groups
 
 			// Get available groups (not full and in same semester)
-			const availableGroups = await this.prisma.group.findMany({
+			const allGroups = await this.prisma.group.findMany({
 				where: {
+					semesterId: semesterId, // Filter by semester
 					studentGroupParticipations: {
 						none: {
 							studentId: student.userId,
@@ -504,6 +441,11 @@ export class AIStudentService {
 					},
 				},
 			});
+
+			// Filter groups with less than 5 members
+			const availableGroups = allGroups.filter(
+				(group) => group._count.studentGroupParticipations < 5,
+			);
 
 			// TODO: Implement vector search to find similar groups
 			// For now, use compatibility scoring algorithm
