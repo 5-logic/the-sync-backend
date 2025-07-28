@@ -31,19 +31,19 @@ export class GroupPublicController {
 	}
 
 	@HttpCode(HttpStatus.OK)
-	@Get(':id')
-	@ApiOperation(GroupPublicDocs.findOne)
-	async findOne(@Param('id') id: string) {
-		return await this.service.findOne(id);
-	}
-
-	@HttpCode(HttpStatus.OK)
 	@Get('student')
 	@ApiOperation(GroupPublicDocs.findDetailedByStudentId)
 	async findMyGroups(@Req() req: Request) {
 		const user = req.user as UserPayload;
 
 		return await this.service.findDetailedByStudentId(user.id);
+	}
+
+	@HttpCode(HttpStatus.OK)
+	@Get(':id')
+	@ApiOperation(GroupPublicDocs.findOne)
+	async findOne(@Param('id') id: string) {
+		return await this.service.findOne(id);
 	}
 
 	@HttpCode(HttpStatus.OK)
