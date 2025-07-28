@@ -8,8 +8,12 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
-import { EmailQueueService } from '@/queue/email/email-queue.service';
-import { EmailJobType } from '@/queue/email/enums/type.enum';
+import {
+	EmailJobType,
+	EmailQueueService,
+	PineconeGroupService,
+	PineconeJobType,
+} from '@/queue';
 
 import { EnrollmentStatus, SemesterStatus } from '~/generated/prisma';
 import {
@@ -32,6 +36,7 @@ export class GroupService {
 		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
+		private readonly pineconeGroupService: PineconeGroupService,
 	) {}
 
 	private async validateSkills(skillIds: string[]) {
@@ -234,6 +239,13 @@ export class GroupService {
 			);
 
 			const completeGroup = await this.findOne(result.id);
+
+			// Sync group data to Pinecone
+			await this.pineconeGroupService.processGroup(
+				PineconeJobType.CREATE_OR_UPDATE,
+				result.id,
+			);
+
 			return completeGroup;
 		} catch (error) {
 			this.handleError('creating group', error);
@@ -620,6 +632,12 @@ export class GroupService {
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
 			const completeGroup = await this.findOne(result.id);
+
+			// Sync group data to Pinecone
+			await this.pineconeGroupService.processGroup(
+				PineconeJobType.CREATE_OR_UPDATE,
+				result.id,
+			);
 
 			return completeGroup;
 		} catch (error) {
@@ -1777,6 +1795,12 @@ export class GroupService {
 			// Return the updated group
 			const updatedGroup = await this.findOne(groupId);
 
+			// Sync updated group data to Pinecone (member list changed)
+			await this.pineconeGroupService.processGroup(
+				PineconeJobType.CREATE_OR_UPDATE,
+				groupId,
+			);
+
 			return {
 				success: true,
 				message: `Student "${student.user.fullName}" has been successfully removed from group "${group.name}" (${group.code})`,
@@ -2259,6 +2283,12 @@ export class GroupService {
 			});
 			this.logger.log(
 				`Group "${result.name}" (${result.code}) successfully deleted by leader. ${groupMembers.length} members affected.`,
+			);
+
+			// Delete group data from Pinecone
+			await this.pineconeGroupService.processGroup(
+				PineconeJobType.DELETE,
+				groupId,
 			);
 
 			// Send email notifications to all group members

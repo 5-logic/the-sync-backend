@@ -32,4 +32,12 @@ export class AIThesisController {
 	): Promise<DuplicateThesisResponse[]> {
 		return await this.service.checkDuplicate(thesisId);
 	}
+
+	@HttpCode(HttpStatus.OK)
+	@Get('suggest-for-group/:groupId')
+	@ApiOperation(AIThesisDocs.suggestThesesForGroup)
+	@ApiArrayResponse(Object, HttpStatus.OK)
+	async suggestThesesForGroup(@Param('groupId') groupId: string) {
+		return await this.service.suggestThesesForGroup(groupId);
+	}
 }

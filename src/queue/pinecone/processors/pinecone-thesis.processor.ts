@@ -60,14 +60,17 @@ export class PineconeThesisProcessor extends WorkerHost {
 			vietnameseName: dto.vietnameseName,
 			abbreviation: dto.abbreviation,
 			description: dto.description,
-			...(dto.domain && { domain: dto.domain }),
+			domain: dto.domain ?? 'null',
+			status: dto.status.toString(),
+			isPublish: dto.isPublish,
+			groupId: dto.groupId ?? 'null',
 			lecturerId: dto.lecturerId,
 			semesterId: dto.semesterId,
 		};
 
 		const record = {
 			_id: dto.id,
-			text: JSON.stringify({ ...value, documentContent: formattedContent }),
+			text: formattedContent,
 			...value,
 		};
 

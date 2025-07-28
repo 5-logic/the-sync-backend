@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 
-import { AIThesisController } from '@/ai/controllers';
-import { AIThesisService } from '@/ai/services';
+import { AIStudentController, AIThesisController } from '@/ai/controllers';
+import { AIStudentService, AIThesisService } from '@/ai/services';
 
 @Module({
-	controllers: [AIThesisController],
-	providers: [AIThesisService],
+	controllers: [AIThesisController, AIStudentController],
+	providers: [AIThesisService, AIStudentService],
 })
 export class AIModule {}

@@ -52,6 +52,13 @@ export class SemesterController {
 		return await this.service.findOne(id);
 	}
 
+	@HttpCode(HttpStatus.OK)
+	@Get(':id/groups')
+	@ApiOperation(SemesterDocs.findGroups)
+	async findGroups(@Param('id') id: string) {
+		return await this.service.findGroups(id);
+	}
+
 	@Roles(Role.ADMIN, Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation(SemesterDocs.getStatistics)
