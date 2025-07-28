@@ -39,15 +39,4 @@ export class AIStudentController {
 	async suggestGroupsForStudent(@Body() dto: SuggestGroupsForStudentDto) {
 		return this.service.suggestGroupsForStudent(dto.studentId, dto.semesterId);
 	}
-
-	@HttpCode(HttpStatus.OK)
-	@Get('compatibility/:studentId/:groupId')
-	@ApiOperation(AIStudentDocs.getStudentGroupCompatibility)
-	@ApiBaseResponse(Object, HttpStatus.OK)
-	async getStudentGroupCompatibility(
-		@Param('studentId') studentId: string,
-		@Param('groupId') groupId: string,
-	) {
-		return this.service.getStudentGroupCompatibility(studentId, groupId);
-	}
 }
