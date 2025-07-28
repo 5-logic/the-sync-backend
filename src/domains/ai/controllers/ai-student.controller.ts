@@ -1,15 +1,18 @@
 import {
+	Body,
 	Controller,
 	Get,
 	HttpCode,
 	HttpStatus,
 	Param,
+	Post,
 	UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AI_API_TAGS, AI_CONSTANTS } from '@/ai/constants';
 import { AIStudentDocs } from '@/ai/docs';
+import { SuggestGroupsForStudentDto } from '@/ai/dtos';
 import { AIStudentService } from '@/ai/services';
 import { JwtAccessAuthGuard } from '@/auth/guards';
 import { ApiArrayResponse, ApiBaseResponse } from '@/common';
@@ -30,11 +33,11 @@ export class AIStudentController {
 	}
 
 	@HttpCode(HttpStatus.OK)
-	@Get('suggest-groups-for-student/:studentId')
+	@Post('suggest-groups-for-student')
 	@ApiOperation(AIStudentDocs.suggestGroupsForStudent)
 	@ApiArrayResponse(Object, HttpStatus.OK)
-	async suggestGroupsForStudent(@Param('studentId') studentId: string) {
-		return this.service.suggestGroupsForStudent(studentId);
+	async suggestGroupsForStudent(@Body() dto: SuggestGroupsForStudentDto) {
+		return this.service.suggestGroupsForStudent(dto.studentId, dto.semesterId);
 	}
 
 	@HttpCode(HttpStatus.OK)

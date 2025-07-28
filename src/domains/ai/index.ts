@@ -1,6 +1,7 @@
 export * from '@/ai/constants';
 export * from '@/ai/controllers';
 export * from '@/ai/docs';
+export * from '@/ai/dtos';
 export * from '@/ai/mappers';
 export * from '@/ai/responses';
 export * from '@/ai/services';

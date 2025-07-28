@@ -405,9 +405,15 @@ export class AIStudentService {
 	/**
 	 * Suggest groups for a student based on skills, responsibilities, and interests
 	 */
-	async suggestGroupsForStudent(studentId: string, topK: number = 10) {
+	async suggestGroupsForStudent(
+		studentId: string,
+		semesterId: string,
+		topK: number = 10,
+	) {
 		try {
-			this.logger.log(`Suggesting groups for student: ${studentId}`);
+			this.logger.log(
+				`Suggesting groups for student: ${studentId} in semester: ${semesterId}`,
+			);
 
 			// Get student with full information
 			const student = await this.prisma.student.findUnique({
@@ -432,7 +438,7 @@ export class AIStudentService {
 					},
 					enrollments: {
 						where: {
-							status: 'Ongoing',
+							semesterId: semesterId,
 						},
 						include: {
 							semester: true,
@@ -443,6 +449,13 @@ export class AIStudentService {
 
 			if (!student) {
 				throw new NotFoundException(`Student with ID ${studentId} not found`);
+			}
+
+			// Check if student is enrolled in the specified semester
+			if (!student.enrollments || student.enrollments.length === 0) {
+				throw new NotFoundException(
+					`Student with ID ${studentId} is not enrolled in semester ${semesterId}`,
+				);
 			}
 
 			// Build student query text for vector search
@@ -456,8 +469,9 @@ export class AIStudentService {
 			// Use studentQueryText to find similar groups
 
 			// Get available groups (not full and in same semester)
-			const availableGroups = await this.prisma.group.findMany({
+			const allGroups = await this.prisma.group.findMany({
 				where: {
+					semesterId: semesterId, // Filter by semester
 					studentGroupParticipations: {
 						none: {
 							studentId: student.userId,
@@ -504,6 +518,11 @@ export class AIStudentService {
 					},
 				},
 			});
+
+			// Filter groups with less than 5 members
+			const availableGroups = allGroups.filter(
+				(group) => group._count.studentGroupParticipations < 5,
+			);
 
 			// TODO: Implement vector search to find similar groups
 			// For now, use compatibility scoring algorithm
