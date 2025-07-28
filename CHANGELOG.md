@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.10] - 2025-07-28
+
+### Changed
+
+- **Group Module Refactor & API Restructuring**:
+  - Major refactor of group management architecture. Consolidated and split group logic into dedicated controllers and services for each role:
+    - Added: `GroupLecturerController`, `GroupModeratorController`, `GroupPublicController`, `GroupStudentController` (see new files in `src/domains/groups/controllers/`)
+    - Added: `GroupLecturerService`, `GroupModeratorService`, `GroupPublicService`, `GroupStudentService`, and refactored `GroupService` (see new files in `src/domains/groups/services/`)
+    - Removed: legacy `group.controller.ts`, `group.service.ts`, mappers, and response models (see deleted files)
+    - Created index files for streamlined exports and documentation
+  - **API Changes**:
+    - Endpoints for group management are now split by role:
+      - Lecturer: `/groups/lecturer/*` (supervised groups retrieval)
+      - Moderator: `/groups/moderator/*` (student assignment to groups)
+      - Public: `/groups/public/*` (public group access and info)
+      - Student: `/groups/student/*` (student group management)
+    - Request/response models for group endpoints have been updated for consistency and maintainability
+    - Email notification logic in `GroupService` streamlined for better reliability
+  - **DTO/Docs**:
+    - Updated documentation files for each controller/service
+    - No breaking changes to request payloads, but response structures may differ for group endpoints
+
+### Technical Improvements
+
+- Improved code organization and maintainability by splitting logic into role-based files
+- Removed unused mappers and response models for groups
+- Enhanced notification and export logic for group documentation
+
+### Pull Requests
+
+- [#244](https://github.com/5-logic/the-sync-backend/pull/244) - Hotfix: Group module refactor, role-based controllers/services, notification improvements
+
 ## [0.7.9] - 2025-07-28
 
 ### Added
