@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
-import { EmailJobType, EmailQueueService, PineconeGroupService } from '@/queue';
+import { EmailJobType, EmailQueueService } from '@/queue';
 
 import { EnrollmentStatus } from '~/generated/prisma';
 
@@ -21,7 +21,6 @@ export class GroupService {
 		private readonly prisma: PrismaService,
 		@Inject(EmailQueueService)
 		private readonly emailQueueService: EmailQueueService,
-		private readonly pineconeGroupService: PineconeGroupService,
 	) {}
 
 	public static validateSemesterStatus(
@@ -396,6 +395,27 @@ export class GroupService {
 		}
 	}
 
+	private async sendGroupMemberNotification(
+		email: string,
+		subject: string,
+		context: any,
+		recipientType: string,
+	) {
+		if (!email) return;
+		await this.emailQueueService.sendEmail(
+			EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
+			{
+				to: email,
+				subject,
+				context: {
+					...context,
+					recipientName: context.recipientName,
+					recipientType,
+				},
+			},
+		);
+	}
+
 	async sendStudentRemovalNotification(
 		group: any,
 		removedStudent: any,
@@ -428,39 +448,21 @@ export class GroupService {
 			};
 
 			// Send email to the removed student
-			if (removedStudent.user.email) {
-				await this.emailQueueService.sendEmail(
-					EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
-					{
-						to: removedStudent.user.email,
-						subject: `You have been removed from Group ${group.code}`,
-						context: {
-							...baseContext,
-							recipientName: removedStudent.user.fullName,
-							recipientType: 'target_student',
-						},
-					},
-				);
-			}
+			await this.sendGroupMemberNotification(
+				removedStudent.user.email,
+				`You have been removed from Group ${group.code}`,
+				{ ...baseContext, recipientName: removedStudent.user.fullName },
+				'target_student',
+			);
 
 			// Send email to all remaining group members
 			for (const member of remainingMembers) {
-				if (member.student.user.email) {
-					await this.emailQueueService.sendEmail(
-						EmailJobType.SEND_GROUP_MEMBER_CHANGE_NOTIFICATION,
-						{
-							to: member.student.user.email,
-							subject: `Member removed from Group ${group.code}`,
-							context: {
-								...baseContext,
-								recipientName: member.student.user.fullName,
-								recipientType: member.isLeader
-									? 'group_leader'
-									: 'group_member',
-							},
-						},
-					);
-				}
+				await this.sendGroupMemberNotification(
+					member.student.user.email,
+					`Member removed from Group ${group.code}`,
+					{ ...baseContext, recipientName: member.student.user.fullName },
+					member.isLeader ? 'group_leader' : 'group_member',
+				);
 			}
 
 			this.logger.log(
