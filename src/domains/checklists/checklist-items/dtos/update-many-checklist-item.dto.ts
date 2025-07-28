@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsString, ValidateNested } from 'class-validator';
 
-import { UpdateChecklistItemDto } from '@/checklists/checklist-items/dto';
+import { UpdateChecklistItemDto } from '@/checklists/checklist-items/dtos';
 
 export class UpdateChecklistItemWithIdDto extends UpdateChecklistItemDto {
 	@ApiProperty({
