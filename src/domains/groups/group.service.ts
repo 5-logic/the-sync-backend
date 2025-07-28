@@ -1277,6 +1277,15 @@ export class GroupService {
 									user: true,
 								},
 							},
+							thesisRequiredSkills: {
+								include: {
+									skill: {
+										include: {
+											skillSet: true,
+										},
+									},
+								},
+							},
 						},
 					},
 					semester: true,
