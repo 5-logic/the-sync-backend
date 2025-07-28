@@ -15,7 +15,7 @@ import { AIStudentDocs } from '@/ai/docs';
 import { SuggestGroupsForStudentDto } from '@/ai/dtos';
 import { AIStudentService } from '@/ai/services';
 import { JwtAccessAuthGuard } from '@/auth/guards';
-import { ApiArrayResponse, ApiBaseResponse } from '@/common';
+import { ApiArrayResponse } from '@/common';
 
 @UseGuards(JwtAccessAuthGuard)
 @ApiBearerAuth()
