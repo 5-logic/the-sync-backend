@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.9] - 2025-07-28
+
+### Added
+
+- **Checklist Items Management System**:
+  - New **Lecturer API**:
+    - `GET /checklist-items` - View all checklist items (lecturers and moderators)
+    - `GET /checklist-items/:id` - View specific checklist item details
+  - New **Moderator API**:
+    - `POST /checklist-items/create-list` - Create multiple checklist items (requires `CreateManyChecklistItemsDto` with `checklistId` and `checklistItems` array)
+    - `PUT /checklist-items/checklist/:checklistId/update-list` - Update multiple checklist items (requires `UpdateManyChecklistItemsDto`)
+    - `DELETE /checklist-items/:id` - Delete checklist item
+  - New DTOs:
+    - `CreateChecklistItemDto` - Single item creation with `name`, optional `description`, and `isRequired` fields
+    - `CreateManyChecklistItemsDto` - Bulk creation with `checklistId` and array of checklist items
+    - `UpdateChecklistItemDto` - Item updates based on creation DTO
+    - `UpdateManyChecklistItemsDto` - Bulk updates with item modifications
+
+- **Enhanced Group Suggestion Response**:
+  - Added leader information to AI group suggestions response
+  - New response fields:
+    - `leader` object with `id` and `name` of group leader (or null if no leader)
+    - `isLeader` boolean flag for each member in the members array
+
+### Changed
+
+- **Checklist Architecture Restructuring**:
+  - **Module Separation**: Split checklist items into dedicated `ChecklistItemModule` with separate controllers and services
+  - **Role-Based Controllers**: Created `ChecklistItemLecturerController` and `ChecklistItemModeratorController` for proper access control
+  - **Service Architecture**: Added `ChecklistItemLecturerService` and `ChecklistItemModeratorService` for specialized functionality
+
+- **AI Group Suggestions Enhancement**:
+  - Enhanced `POST /ai/students/suggest-groups-for-student` response to include comprehensive leader information
+  - Improved group member data structure with leadership indicators for better group analysis
+
+- **Submission Service Optimization**:
+  - **Supervisor Data Extraction**: Streamlined supervisor information retrieval using `supervisions` relationship instead of direct `lecturer` field
+  - **Improved Data Mapping**: Enhanced supervisor data mapping for better performance and consistency
+  - **Simplified Response Structure**: Consolidated supervisor information extraction logic
+
+### Fixed
+
+- **Checklist Module Organization**: Improved import paths and module structure for better maintainability
+- **Response Data Consistency**: Enhanced data consistency in submission service supervisor information
+- **Service Integration**: Better integration between checklist and checklist items modules
+
+### Enhanced
+
+- **API Documentation**: Comprehensive Swagger documentation for all new checklist item endpoints
+- **Type Safety**: Enhanced TypeScript validation with proper DTO structures for checklist item operations
+- **Code Organization**: Better separation of concerns with dedicated checklist item controllers and services
+- **Module Architecture**: Improved module structure with clear separation between checklist and checklist item functionality
+
+### Technical Improvements
+
+- **Service Layer**: Enhanced service architecture with specialized checklist item operations
+- **Module Structure**: Improved domain module organization with dedicated checklist item functionality
+- **Validation**: Enhanced input validation for checklist item creation and updates
+- **Code Quality**: Better code organization with proper index files and module exports
+
+### Pull Requests
+
+- [#243](https://github.com/5-logic/the-sync-backend/pull/243) - Hotfix: Checklist items management system and AI group suggestions enhancement
+
+---
+
 ## [0.7.8] - 2025-07-28
 
 ### Added

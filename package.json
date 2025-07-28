@@ -1,6 +1,6 @@
 {
 	"name": "the-sync-backend",
-	"version": "0.7.8",
+	"version": "0.7.9",
 	"private": true,
 	"scripts": {
 		"build": "nest build",
