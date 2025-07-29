@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 
-import { RequestService } from '@/domains/requests/request.service';
-import { EmailModule } from '@/queue/email/email.module';
-import { RequestController } from '@/requests/request.controller';
+import { RequestStudentController } from '@/requests/controllers';
+import { RequestStudentService } from '@/requests/services';
+import { RequestService } from '@/requests/services/request.service';
 
 @Module({
-	imports: [EmailModule],
-	controllers: [RequestController],
-	providers: [RequestService],
+	controllers: [RequestStudentController],
+	providers: [RequestService, RequestStudentService],
 })
 export class RequestModule {}
