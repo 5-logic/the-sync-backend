@@ -159,4 +159,13 @@ export class SubmissionService {
 			},
 		},
 	};
+
+	public static readonly basicSubmissionInclude = {
+		group: {
+			select: SubmissionService.basicGroupSelect,
+		},
+		milestone: {
+			select: SubmissionService.basicMilestoneSelect,
+		},
+	};
 }
