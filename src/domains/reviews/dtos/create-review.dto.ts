@@ -8,7 +8,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { CreateReviewItemDto } from './create-review-item.dto';
+import { CreateReviewItemDto } from '@/reviews/dtos/create-review-item.dto';
 
 export class CreateReviewDto {
 	@ApiProperty()

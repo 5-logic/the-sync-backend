@@ -2,7 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsString, ValidateNested } from 'class-validator';
 
-import { UpdateReviewItemDto } from './update-review-item.dto';
+import { UpdateReviewItemDto } from '@/reviews/dtos/update-review-item.dto';
 
 export class UpdateReviewDto {
 	@ApiPropertyOptional()
