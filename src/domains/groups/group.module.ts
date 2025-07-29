@@ -5,23 +5,31 @@ import {
 	GroupModeratorController,
 	GroupPublicController,
 	GroupStudentController,
+	GroupSubmissionPublicController,
+	GroupSubmissionStudentController,
 } from '@/groups/controllers';
 import {
 	GroupLecturerService,
 	GroupModeratorService,
 	GroupPublicService,
 	GroupStudentService,
+	GroupSubmissionPublicService,
+	GroupSubmissionService,
+	GroupSubmissionStudentService,
 } from '@/groups/services';
 import { GroupService } from '@/groups/services/group.service';
 import { EmailModule } from '@/queue/email/email.module';
+import { SubmissionModule } from '@/submissions/submission.module';
 
 @Module({
-	imports: [EmailModule],
+	imports: [EmailModule, SubmissionModule],
 	controllers: [
 		GroupModeratorController,
 		GroupStudentController,
 		GroupPublicController,
 		GroupLecturerController,
+		GroupSubmissionPublicController,
+		GroupSubmissionStudentController,
 	],
 	providers: [
 		GroupModeratorService,
@@ -29,6 +37,9 @@ import { EmailModule } from '@/queue/email/email.module';
 		GroupPublicService,
 		GroupLecturerService,
 		GroupService,
+		GroupSubmissionPublicService,
+		GroupSubmissionStudentService,
+		GroupSubmissionService,
 	],
 	exports: [
 		GroupModeratorService,

@@ -1,4 +1,4 @@
-import { CreateSubmissionDto } from './create-submission.dto';
+import { CreateSubmissionDto } from '@/submissions/dtos/create-submission.dto';
 
 export interface CreateSubmissionServiceDto extends CreateSubmissionDto {
 	groupId: string;
