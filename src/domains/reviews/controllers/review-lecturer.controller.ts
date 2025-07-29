@@ -29,7 +29,7 @@ import { ReviewLecturerService } from '@/reviews/services';
 @ApiBearerAuth()
 @ApiTags(REVIEW_API_TAGS)
 @Controller(REVIEW_CONSTANTS.BASE)
-export class ReviewController {
+export class ReviewLecturerController {
 	constructor(private readonly service: ReviewLecturerService) {}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
