@@ -1,6 +1,7 @@
 import {
 	ConflictException,
 	ForbiddenException,
+	Injectable,
 	Logger,
 	NotFoundException,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { RequestService } from '@/requests/services/request.service';
 
 import { RequestStatus, RequestType } from '~/generated/prisma';
 
+@Injectable()
 export class RequestStudentService {
 	private readonly logger = new Logger(RequestStudentService.name);
 
