@@ -7,8 +7,8 @@ import {
 import {
 	MilestoneAdminService,
 	MilestonePublicService,
-	MilestoneService,
 } from '@/milestones/services';
+import { MilestoneService } from '@/milestones/services/milestone.service';
 
 @Module({
 	controllers: [MilestoneAdminController, MilestonePublicController],
