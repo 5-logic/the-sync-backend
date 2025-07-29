@@ -25,14 +25,4 @@ export const SubmissionPublicDocs = {
 		summary: 'Get submissions for review by semester and milestone',
 		description: `Retrieve all submissions for a specific semester and milestone, including group, milestone, thesis, supervisors, and review lecturers.\n\n- **Authorization:** Requires authentication.\n- **Business logic:**\n  - Returns submissions for review, each with: id, status, documents, createdAt, group (id, name, code), milestone (id, name), thesis (with supervisors), and reviewLecturers (reviewer info).\n  - Results are ordered by creation date (newest first).\n  - Results may be cached for performance.\n- **Response:**\n  - Returns an array of submission objects as described above.\n- **Error handling:**\n  - 401 if not authenticated.\n  - 404 if semester or milestone not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
 	} as ApiOperationOptions,
-
-	findByGroupId: {
-		summary: 'Get group submissions',
-		description: `Retrieve all submissions for a specific group across all milestones, including document attachments.\n\n- **Authorization:** Group members, Admin, and Lecturer.\n- **Business logic:**\n  - Returns submission history with milestone info, document files, and review details.\n  - Results are cached for performance.\n- **Error handling:**\n  - 403 if not a group member.\n  - 404 if group not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
-	} as ApiOperationOptions,
-
-	findOne: {
-		summary: 'Get submission for specific milestone',
-		description: `Get detailed submission information for a specific group and milestone, including all document attachments.\n\n- **Authorization:** Group members, Admin, and Lecturer.\n- **Business logic:**\n  - Returns group details, milestone info, document files, assignment reviews, and lecturer feedback.\n  - Includes checklist reviews and evaluation details.\n- **Error handling:**\n  - 403 if not a group member.\n  - 404 if submission, group, or milestone not found.\n  - 500 on database/cache errors.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
-	} as ApiOperationOptions,
 };
