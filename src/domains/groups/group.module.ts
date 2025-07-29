@@ -19,9 +19,10 @@ import {
 } from '@/groups/services';
 import { GroupService } from '@/groups/services/group.service';
 import { EmailModule } from '@/queue/email/email.module';
+import { SubmissionModule } from '@/submissions/submission.module';
 
 @Module({
-	imports: [EmailModule],
+	imports: [EmailModule, SubmissionModule],
 	controllers: [
 		GroupModeratorController,
 		GroupStudentController,
