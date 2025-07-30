@@ -5,7 +5,6 @@ import {
 	HttpCode,
 	HttpStatus,
 	Param,
-	Post,
 	Put,
 	UseGuards,
 } from '@nestjs/common';
@@ -14,10 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { REVIEW_API_TAGS, REVIEW_CONSTANTS } from '@/reviews/constants';
 import { ReviewModeratorDocs } from '@/reviews/docs';
-import {
-	AssignBulkLecturerReviewerDto,
-	UpdateReviewerAssignmentDto,
-} from '@/reviews/dtos';
+import { UpdateReviewerAssignmentDto } from '@/reviews/dtos';
 import { ReviewModeratorService } from '@/reviews/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -33,14 +29,6 @@ export class ReviewModeratorController {
 	@ApiOperation(ReviewModeratorDocs.getEligibleReviewers)
 	async getEligibleReviewers(@Param('submissionId') submissionId: string) {
 		return await this.service.getEligibleReviewers(submissionId);
-	}
-
-	@Roles(Role.MODERATOR)
-	@HttpCode(HttpStatus.CREATED)
-	@Post('assign-reviewer')
-	@ApiOperation(ReviewModeratorDocs.assignBulkReviewer)
-	async assignBulkReviewer(@Body() assignDto: AssignBulkLecturerReviewerDto) {
-		return await this.service.assignBulkReviewer(assignDto);
 	}
 
 	@Roles(Role.MODERATOR)

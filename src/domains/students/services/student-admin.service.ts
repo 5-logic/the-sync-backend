@@ -43,6 +43,16 @@ export class StudentAdminService {
 
 		try {
 			// Validate major and semester
+			const emailExists = await this.prisma.user.findUnique({
+				where: { email: dto.email },
+			});
+
+			if (emailExists) {
+				throw new ConflictException(
+					`Email ${dto.email} already exists in the system.`,
+				);
+			}
+
 			await this.validateMajorForEnrollment(dto.majorId);
 			const semester = await this.validateSemesterForEnrollment(dto.semesterId);
 
@@ -417,6 +427,30 @@ export class StudentAdminService {
 		this.logger.log(`Updating student by admin with ID: ${id}`);
 
 		try {
+			// Only check for email conflict if dto.email is provided
+			if (dto.email) {
+				const emailExists = await this.prisma.user.findUnique({
+					where: { email: dto.email },
+				});
+				if (emailExists && emailExists.id !== id) {
+					throw new ConflictException(
+						`Email ${dto.email} already exists in the system.`,
+					);
+				}
+			}
+
+			// Only check for studentCode conflict if dto.studentCode is provided
+			if (dto.studentCode) {
+				const studentCodeExists = await this.prisma.student.findUnique({
+					where: { studentCode: dto.studentCode },
+				});
+				if (studentCodeExists && studentCodeExists.userId !== id) {
+					throw new ConflictException(
+						`StudentCode ${dto.studentCode} already exists in the system.`,
+					);
+				}
+			}
+
 			const result = await this.prisma.$transaction(async (txn) => {
 				const existingStudent = await txn.user.findUnique({
 					where: { id: id },
