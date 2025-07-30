@@ -15,7 +15,6 @@ import { AIStudentDocs } from '@/ai/docs';
 import { SuggestGroupsForStudentDto } from '@/ai/dtos';
 import { AIStudentService } from '@/ai/services';
 import { JwtAccessAuthGuard } from '@/auth/guards';
-import { ApiArrayResponse } from '@/common';
 
 @UseGuards(JwtAccessAuthGuard)
 @ApiBearerAuth()
@@ -27,7 +26,6 @@ export class AIStudentController {
 	@HttpCode(HttpStatus.OK)
 	@Get('suggest-for-group/:groupId')
 	@ApiOperation(AIStudentDocs.suggestStudentsForGroup)
-	@ApiArrayResponse(Object, HttpStatus.OK)
 	async suggestStudentsForGroup(@Param('groupId') groupId: string) {
 		return this.service.suggestStudentsForGroup(groupId);
 	}
@@ -35,7 +33,6 @@ export class AIStudentController {
 	@HttpCode(HttpStatus.OK)
 	@Post('suggest-groups-for-student')
 	@ApiOperation(AIStudentDocs.suggestGroupsForStudent)
-	@ApiArrayResponse(Object, HttpStatus.OK)
 	async suggestGroupsForStudent(@Body() dto: SuggestGroupsForStudentDto) {
 		return this.service.suggestGroupsForStudent(dto.studentId, dto.semesterId);
 	}
