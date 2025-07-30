@@ -22,8 +22,11 @@ import {
 } from '@/auth';
 import { REVIEW_API_TAGS, REVIEW_CONSTANTS } from '@/reviews/constants';
 import { ReviewLecturerDocs, ReviewModeratorDocs } from '@/reviews/docs';
-import { CreateReviewDto, UpdateReviewDto } from '@/reviews/dtos';
-import { AssignBulkLecturerReviewerDto } from '@/reviews/dtos';
+import {
+	AssignBulkLecturerReviewerDto,
+	CreateReviewDto,
+	UpdateReviewDto,
+} from '@/reviews/dtos';
 import {
 	ReviewLecturerService,
 	ReviewModeratorService,
