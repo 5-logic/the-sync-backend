@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 
 import { AIStudentController, AIThesisController } from '@/ai/controllers';
-import { AILoggingInterceptor } from '@/ai/interceptors';
 import {
 	AIStatisticsService,
 	AIStudentService,
@@ -10,12 +9,7 @@ import {
 
 @Module({
 	controllers: [AIThesisController, AIStudentController],
-	providers: [
-		AIThesisService,
-		AIStudentService,
-		AIStatisticsService,
-		AILoggingInterceptor,
-	],
-	exports: [AIStatisticsService, AILoggingInterceptor],
+	providers: [AIThesisService, AIStudentService, AIStatisticsService],
+	exports: [AIStatisticsService],
 })
 export class AIModule {}
