@@ -25,7 +25,11 @@ export class ReviewLecturerService {
 				include: {
 					submission: {
 						include: {
-							group: true,
+							group: {
+								include: {
+									thesis: true,
+								},
+							},
 							milestone: true,
 						},
 					},

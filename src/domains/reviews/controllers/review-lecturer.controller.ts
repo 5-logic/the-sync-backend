@@ -21,16 +21,23 @@ import {
 	UserPayload,
 } from '@/auth';
 import { REVIEW_API_TAGS, REVIEW_CONSTANTS } from '@/reviews/constants';
-import { ReviewLecturerDocs } from '@/reviews/docs';
+import { ReviewLecturerDocs, ReviewModeratorDocs } from '@/reviews/docs';
 import { CreateReviewDto, UpdateReviewDto } from '@/reviews/dtos';
-import { ReviewLecturerService } from '@/reviews/services';
+import { AssignBulkLecturerReviewerDto } from '@/reviews/dtos';
+import {
+	ReviewLecturerService,
+	ReviewModeratorService,
+} from '@/reviews/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
 @ApiBearerAuth()
 @ApiTags(REVIEW_API_TAGS)
 @Controller(REVIEW_CONSTANTS.BASE)
 export class ReviewLecturerController {
-	constructor(private readonly service: ReviewLecturerService) {}
+	constructor(
+		private readonly service: ReviewLecturerService,
+		private readonly moderatorService: ReviewModeratorService,
+	) {}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
@@ -48,6 +55,14 @@ export class ReviewLecturerController {
 	@ApiOperation(ReviewLecturerDocs.getReviewForm)
 	async getReviewForm(@Param('submissionId') submissionId: string) {
 		return await this.service.getReviewForm(submissionId);
+	}
+
+	@Roles(Role.MODERATOR)
+	@HttpCode(HttpStatus.CREATED)
+	@Post('assign-reviewer')
+	@ApiOperation(ReviewModeratorDocs.assignBulkReviewer)
+	async assignBulkReviewer(@Body() assignDto: AssignBulkLecturerReviewerDto) {
+		return await this.moderatorService.assignBulkReviewer(assignDto);
 	}
 
 	@Roles(Role.LECTURER, Role.MODERATOR)
