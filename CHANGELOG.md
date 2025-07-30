@@ -5,6 +5,263 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.10] - 2025-07-28
+
+### Changed
+
+- **Group Module Refactor & API Restructuring**:
+  - Major refactor of group management architecture. Consolidated and split group logic into dedicated controllers and services for each role:
+    - Added: `GroupLecturerController`, `GroupModeratorController`, `GroupPublicController`, `GroupStudentController` (see new files in `src/domains/groups/controllers/`)
+    - Added: `GroupLecturerService`, `GroupModeratorService`, `GroupPublicService`, `GroupStudentService`, and refactored `GroupService` (see new files in `src/domains/groups/services/`)
+    - Removed: legacy `group.controller.ts`, `group.service.ts`, mappers, and response models (see deleted files)
+    - Created index files for streamlined exports and documentation
+  - **API Changes**:
+    - Endpoints for group management are now split by role:
+      - Lecturer: `/groups/lecturer/*` (supervised groups retrieval)
+      - Moderator: `/groups/moderator/*` (student assignment to groups)
+      - Public: `/groups/public/*` (public group access and info)
+      - Student: `/groups/student/*` (student group management)
+    - Request/response models for group endpoints have been updated for consistency and maintainability
+    - Email notification logic in `GroupService` streamlined for better reliability
+  - **DTO/Docs**:
+    - Updated documentation files for each controller/service
+    - No breaking changes to request payloads, but response structures may differ for group endpoints
+
+### Technical Improvements
+
+- Improved code organization and maintainability by splitting logic into role-based files
+- Removed unused mappers and response models for groups
+- Enhanced notification and export logic for group documentation
+
+### Pull Requests
+
+- [#244](https://github.com/5-logic/the-sync-backend/pull/244) - Hotfix: Group module refactor, role-based controllers/services, notification improvements
+
+## [0.7.9] - 2025-07-28
+
+### Added
+
+- **Checklist Items Management System**:
+  - New **Lecturer API**:
+    - `GET /checklist-items` - View all checklist items (lecturers and moderators)
+    - `GET /checklist-items/:id` - View specific checklist item details
+  - New **Moderator API**:
+    - `POST /checklist-items/create-list` - Create multiple checklist items (requires `CreateManyChecklistItemsDto` with `checklistId` and `checklistItems` array)
+    - `PUT /checklist-items/checklist/:checklistId/update-list` - Update multiple checklist items (requires `UpdateManyChecklistItemsDto`)
+    - `DELETE /checklist-items/:id` - Delete checklist item
+  - New DTOs:
+    - `CreateChecklistItemDto` - Single item creation with `name`, optional `description`, and `isRequired` fields
+    - `CreateManyChecklistItemsDto` - Bulk creation with `checklistId` and array of checklist items
+    - `UpdateChecklistItemDto` - Item updates based on creation DTO
+    - `UpdateManyChecklistItemsDto` - Bulk updates with item modifications
+
+- **Enhanced Group Suggestion Response**:
+  - Added leader information to AI group suggestions response
+  - New response fields:
+    - `leader` object with `id` and `name` of group leader (or null if no leader)
+    - `isLeader` boolean flag for each member in the members array
+
+### Changed
+
+- **Checklist Architecture Restructuring**:
+  - **Module Separation**: Split checklist items into dedicated `ChecklistItemModule` with separate controllers and services
+  - **Role-Based Controllers**: Created `ChecklistItemLecturerController` and `ChecklistItemModeratorController` for proper access control
+  - **Service Architecture**: Added `ChecklistItemLecturerService` and `ChecklistItemModeratorService` for specialized functionality
+
+- **AI Group Suggestions Enhancement**:
+  - Enhanced `POST /ai/students/suggest-groups-for-student` response to include comprehensive leader information
+  - Improved group member data structure with leadership indicators for better group analysis
+
+- **Submission Service Optimization**:
+  - **Supervisor Data Extraction**: Streamlined supervisor information retrieval using `supervisions` relationship instead of direct `lecturer` field
+  - **Improved Data Mapping**: Enhanced supervisor data mapping for better performance and consistency
+  - **Simplified Response Structure**: Consolidated supervisor information extraction logic
+
+### Fixed
+
+- **Checklist Module Organization**: Improved import paths and module structure for better maintainability
+- **Response Data Consistency**: Enhanced data consistency in submission service supervisor information
+- **Service Integration**: Better integration between checklist and checklist items modules
+
+### Enhanced
+
+- **API Documentation**: Comprehensive Swagger documentation for all new checklist item endpoints
+- **Type Safety**: Enhanced TypeScript validation with proper DTO structures for checklist item operations
+- **Code Organization**: Better separation of concerns with dedicated checklist item controllers and services
+- **Module Architecture**: Improved module structure with clear separation between checklist and checklist item functionality
+
+### Technical Improvements
+
+- **Service Layer**: Enhanced service architecture with specialized checklist item operations
+- **Module Structure**: Improved domain module organization with dedicated checklist item functionality
+- **Validation**: Enhanced input validation for checklist item creation and updates
+- **Code Quality**: Better code organization with proper index files and module exports
+
+### Pull Requests
+
+- [#243](https://github.com/5-logic/the-sync-backend/pull/243) - Hotfix: Checklist items management system and AI group suggestions enhancement
+
+---
+
+## [0.7.8] - 2025-07-28
+
+### Added
+
+- **AI Student API Enhancement**:
+  - New endpoint: `POST /ai/students/suggest-groups-for-student` to get AI-powered group suggestions for a specific student with semester filtering (replaces previous GET endpoint)
+  - New `SuggestGroupsForStudentDto` with `studentId` and `semesterId` fields for request body validation
+  - Enhanced algorithm to only suggest groups with less than 5 members for better group management
+
+- **Checklist Management System**:
+  - New **Lecturer API**:
+    - `GET /checklists` - View all checklists (lecturers and moderators)
+    - `GET /checklists/:id` - View specific checklist details
+    - `GET /checklists/milestone/:milestoneId` - View checklists by milestone
+  - New **Moderator API**:
+    - `POST /checklists` - Create new checklist (requires `CreateChecklistDto` with `name`, optional `description`, and optional `milestoneId`)
+    - `PUT /checklists/:id` - Update existing checklist (requires `UpdateChecklistDto`)
+    - `DELETE /checklists/:id` - Delete checklist
+
+- **Enhanced Group Data Retrieval**:
+  - Group endpoints now include comprehensive thesis required skills information
+  - Enhanced group details with skills and responsibilities for better matching algorithms
+
+### Changed
+
+- **AI API Architecture Refactoring**:
+  - **Breaking Change**: `GET /ai/students/suggest-groups-for-student/:studentId` changed to `POST /ai/students/suggest-groups-for-student`
+  - Request data moved from URL parameters to request body with structured DTO validation
+  - Enhanced API documentation with detailed semester filtering and member count restrictions
+
+- **Checklist Module Restructuring**:
+  - Split checklist functionality into role-based controllers: `ChecklistLecturerController` and `ChecklistModeratorController`
+  - Enhanced service architecture with dedicated `ChecklistLecturerService` and `ChecklistModeratorService`
+  - Improved module organization with proper role-based access control
+
+- **Milestone Management Enhancement**:
+  - `CreateMilestoneDto` now includes optional `note` and `documents` fields for comprehensive milestone configuration
+  - Enhanced milestone creation workflow with better documentation support
+
+### Removed
+
+- **Deprecated AI Endpoints**:
+  - Removed `GET /ai/students/compatibility/:studentId/:groupId` endpoint for simplified API surface
+  - Cleaned up unused compatibility analysis functionality from `AIStudentService`
+
+### Enhanced
+
+- **API Documentation**: Comprehensive Swagger documentation updates for all new checklist and AI endpoints
+- **Type Safety**: Enhanced TypeScript validation with proper DTO structures across all new endpoints
+- **Code Organization**: Better separation of concerns with role-based controller and service architecture
+
+### Technical Improvements
+
+- **Service Layer**: Enhanced group service to include detailed thesis skills in retrieval operations
+- **Module Architecture**: Improved checklist module structure with proper dependency injection and exports
+- **Validation**: Enhanced input validation for all new DTOs with comprehensive field validation
+
+### Pull Requests
+
+- [#242](https://github.com/5-logic/the-sync-backend/pull/242) - Hotfix: AI student endpoint enhancements and checklist management system
+
+---
+
+## [0.7.7] - 2025-07-28
+
+### Added
+
+- **AI Student API**:
+  - New endpoint: `GET /ai/students/suggest-for-group/:groupId` to get AI-powered student suggestions for a specific group.
+    - Controller: `AIStudentController` (`suggestStudentsForGroup` method)
+    - Service: `AIStudentService.suggestStudentsForGroup`
+    - Uses vector similarity search to find compatible students based on skills, responsibilities, and thesis content
+    - Returns top 10 student suggestions with compatibility scores (40% skill matching, 30% responsibility matching, 30% base compatibility)
+    - Excludes students already in the group
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+  - New endpoint: `GET /ai/students/suggest-groups-for-student/:studentId` to get AI-powered group suggestions for a specific student.
+    - Controller: `AIStudentController` (`suggestGroupsForStudent` method)
+    - Service: `AIStudentService.suggestGroupsForStudent`
+    - Analyzes student skills, responsibilities, and interests to find suitable groups
+    - Returns top 10 group suggestions with compatibility scores
+    - Only includes groups with available member slots
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+  - New endpoint: `GET /ai/students/compatibility/:studentId/:groupId` to analyze detailed compatibility between a student and group.
+    - Controller: `AIStudentController` (`getStudentGroupCompatibility` method)
+    - Service: `AIStudentService.getStudentGroupCompatibility`
+    - Provides comprehensive compatibility scoring (0-100) with detailed breakdown
+    - Includes skill match analysis, responsibility alignment, and thesis content relevance
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **AI Thesis API**:
+  - New endpoint: `GET /ai/thesis/check-duplicate/:thesisId` for moderators and lecturers to check potential thesis duplicates using AI.
+    - Controller: `AIThesisController` (`checkDuplicate` method)
+    - Service: `AIThesisService.checkDuplicate`
+    - Requires `MODERATOR` or `LECTURER` role
+    - Uses AI algorithms to compare thesis content, titles, and abstracts
+    - Returns similarity scores and confidence levels for potential matches
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+  - New endpoint: `GET /ai/thesis/suggest-for-group/:groupId` to get AI-powered thesis suggestions for a specific group.
+    - Controller: `AIThesisController` (`suggestThesesForGroup` method)
+    - Service: `AIThesisService.suggestThesesForGroup`
+    - Analyzes group skills, responsibilities, and project direction to suggest suitable theses
+    - Only suggests available theses (not selected by other groups)
+    - Returns top 10 thesis suggestions with relevance scores
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Pinecone Vector Database Integration**:
+  - New background job processing system for automatic vector synchronization:
+    - `PineconeStudentService` and `PineconeStudentProcessor` for student data sync
+    - `PineconeGroupService` and `PineconeGroupProcessor` for group data sync
+    - `PineconeThesisService` and `PineconeThesisProcessor` for thesis data sync
+    - Automatic embedding generation and upsert to Pinecone on data changes
+    - Exponential backoff retry mechanism with 3 attempts for failed jobs
+    - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Enhanced Group Response Models**:
+  - New `GroupDetailResponse` with comprehensive group information including thesis details and formatted timestamps
+  - New `GroupResponse` model for consistent group data representation
+  - Updated group mappers for improved data transformation and response structure
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+### Changed
+
+- **Group Architecture Refactor**:
+  - Consolidated group functionality: removed separate `GroupModeratorController`, `GroupPublicController`, and `GroupStudentController`
+  - Merged all group operations into main `GroupService` for better maintainability
+  - Simplified service layer by removing `GroupModeratorService`, `GroupPublicService`, and `GroupStudentService`
+  - Improved group data fetching with enhanced response mapping and error handling
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Student and Group Services Integration**:
+  - Updated `StudentAdminService` and `StudentSelfService` to automatically sync data with Pinecone on student creation, update, and deletion
+  - Enhanced `GroupService` and `RequestService` to trigger Pinecone sync for group operations
+  - Improved error handling and logging for vector database operations
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+### Technical Improvements
+
+- **AI Service Enhancement**:
+  - Improved vector search algorithms with better namespace handling and query text building
+  - Enhanced type handling in AI services for more accurate similarity calculations
+  - Optimized embedding generation process by removing manual embedding steps
+  - Better documentation and service method organization
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+- **Data Processing Improvements**:
+  - Enhanced thesis processor to include additional fields in processing payload
+  - Better null value handling for domain and groupId in thesis record creation
+  - Improved thesis record structure to store formatted content directly
+  - [See implementation](https://github.com/5-logic/the-sync-backend/pull/240)
+
+### Documentation
+
+- Added comprehensive Swagger documentation for all new AI endpoints
+- Enhanced API documentation with detailed parameter descriptions and use cases
+- Added response model documentation for new data structures
+- Improved internal documentation for Pinecone integration and job processing
+
+---
+
 ## [0.7.6] - 2025-07-27
 
 ### Added

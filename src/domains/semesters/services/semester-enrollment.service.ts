@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '@/providers';
 import { UpdateEnrollmentsDto } from '@/semesters/dto';
 
-import { Semester, SemesterStatus } from '~/generated/prisma';
+import { OngoingPhase, Semester, SemesterStatus } from '~/generated/prisma';
 
 @Injectable()
 export class SemesterEnrollmentService {
@@ -71,6 +71,7 @@ export class SemesterEnrollmentService {
 			this.logger.debug(`Found semester: ${JSON.stringify(semester)}`);
 
 			this.validateSemesterExists(semester);
+			await this.validateOtherSemestersStatus(id);
 
 			const result = await this.prisma.enrollment.updateMany({
 				where: {
@@ -117,5 +118,53 @@ export class SemesterEnrollmentService {
 				`Cannot update enrollments: semester status must be ${SemesterStatus.Ongoing} & phase must be Scope Locked`,
 			);
 		}
+	}
+
+	private async validateOtherSemestersStatus(
+		currentSemesterId: string,
+	): Promise<void> {
+		this.logger.log(
+			`Validating other semesters status for current semester: ${currentSemesterId}`,
+		);
+
+		const otherSemesters = await this.prisma.semester.findMany({
+			where: {
+				id: { not: currentSemesterId },
+			},
+		});
+
+		for (const semester of otherSemesters) {
+			// Tất cả các kỳ khác phải có status là NotYet hoặc End
+			if (
+				semester.status !== SemesterStatus.NotYet &&
+				semester.status !== SemesterStatus.End
+			) {
+				// Nếu có kỳ khác đang Ongoing, thì phase phải là ScopeLocked
+				if (semester.status === SemesterStatus.Ongoing) {
+					if (semester.ongoingPhase !== OngoingPhase.ScopeLocked) {
+						this.logger.warn(
+							`Cannot update enrollments. Other semester ${semester.id} is in ${semester.status} status with phase ${semester.ongoingPhase}, but phase must be ScopeLocked`,
+						);
+
+						throw new ConflictException(
+							`Cannot update enrollments. Other semester (${semester.name}) is in ${semester.status} status with phase ${semester.ongoingPhase}. Phase must be Scope Locked to allow enrollment updates.`,
+						);
+					}
+				} else {
+					// Các trạng thái khác (Preparing, Picking) không được phép
+					this.logger.warn(
+						`Cannot update enrollments. Other semester ${semester.id} is in ${semester.status} status`,
+					);
+
+					throw new ConflictException(
+						`Cannot update enrollments. Other semester (${semester.name}) is in ${semester.status} status. Only semesters with NotYet, End, or Ongoing (ScopeLocked) status are allowed.`,
+					);
+				}
+			}
+		}
+
+		this.logger.log(
+			`Other semesters status validation passed for semester: ${currentSemesterId}`,
+		);
 	}
 }
