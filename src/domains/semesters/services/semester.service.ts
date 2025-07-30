@@ -31,7 +31,7 @@ export class SemesterService {
 		try {
 			await this.ensureNoDuplicate(dto.name, dto.code);
 
-			await this.statusService.ensureNoActiveSemester();
+			await this.statusService.ensureNoActiveSemesterOrScopeLocked();
 
 			const newSemester = await this.prisma.semester.create({
 				data: {
