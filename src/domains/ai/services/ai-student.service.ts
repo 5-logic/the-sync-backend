@@ -249,15 +249,9 @@ export class AIStudentService {
 				(student.studentSkills as any[]) || [],
 				group.groupRequiredSkills as any[],
 			);
-			console.log('skillMatchScore', skillMatchScore);
 			totalScore += skillMatchScore * 0.4; // 40% weight for skills
 			factors += 0.4;
 		}
-
-		console.log(
-			'oooooooooooooooooooooooooooooooooooooooooooooooooooo',
-			totalScore,
-		);
 
 		// Check responsibility matching
 		if (group.groupExpectedResponsibilities?.length > 0) {
@@ -265,25 +259,13 @@ export class AIStudentService {
 				(student.studentExpectedResponsibilities as any[]) || [],
 				group.groupExpectedResponsibilities as any[],
 			);
-			console.log('responsibilityMatchScore', responsibilityMatchScore);
 			totalScore += responsibilityMatchScore * 0.3; // 30% weight for responsibilities
 			factors += 0.3;
 		}
 
-		console.log(
-			'pppppppppppppppppppppppppppppppppppppppppppppppppp',
-			totalScore,
-		);
-
 		// Base compatibility (always included)
 		totalScore += 60 * 0.3; // 30% base score for basic enrollment criteria
 		factors += 0.3;
-
-		console.log(
-			'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh',
-			totalScore,
-			factors,
-		);
 
 		return factors > 0 ? Math.round(totalScore / factors) : 60;
 	}
@@ -295,18 +277,11 @@ export class AIStudentService {
 		studentSkills: any[],
 		groupRequiredSkills: any[],
 	): number {
-		console.log('calculateSkillMatch input:', {
-			studentSkills: studentSkills?.length || 0,
-			groupRequiredSkills: groupRequiredSkills?.length || 0,
-		});
-
 		if (!groupRequiredSkills || groupRequiredSkills.length === 0) {
-			console.log('No group required skills, returning 100');
 			return 100;
 		}
 
 		if (!studentSkills || studentSkills.length === 0) {
-			console.log('No student skills, returning 0');
 			return 0;
 		}
 
@@ -323,37 +298,20 @@ export class AIStudentService {
 				// Score based on skill level (assuming level 1-5, where each level = 20 points)
 				const levelScore = Math.min(studentSkill.level * 20, 100);
 				totalWeightedScore += levelScore;
-				console.log(
-					`Matched skill: ${requiredSkill.skill?.name}, level: ${studentSkill.level}, score: ${levelScore}`,
-				);
 			}
 		}
 
-		console.log('Skill matching results:', {
-			matchedSkills,
-			totalWeightedScore,
-			totalRequired: groupRequiredSkills.length,
-		});
-
 		if (matchedSkills === 0) {
-			console.log('No skills matched, returning 0');
 			return 0;
 		}
 
 		const matchPercentage = (matchedSkills / groupRequiredSkills.length) * 100;
 		const averageSkillScore = totalWeightedScore / matchedSkills;
 
-		console.log('Calculation values:', {
-			matchPercentage,
-			averageSkillScore,
-		});
-
 		// Combine match percentage and skill quality
 		const finalScore = Math.round(
 			matchPercentage * 0.6 + averageSkillScore * 0.4,
 		);
-
-		console.log('Final skill match score:', finalScore);
 
 		// Ensure we return a valid number
 		return isNaN(finalScore) ? 0 : finalScore;
@@ -366,21 +324,14 @@ export class AIStudentService {
 		studentResponsibilities: any[],
 		groupExpectedResponsibilities: any[],
 	): number {
-		console.log('calculateResponsibilityMatch input:', {
-			studentResponsibilities: studentResponsibilities?.length || 0,
-			groupExpectedResponsibilities: groupExpectedResponsibilities?.length || 0,
-		});
-
 		if (
 			!groupExpectedResponsibilities ||
 			groupExpectedResponsibilities.length === 0
 		) {
-			console.log('No group expected responsibilities, returning 100');
 			return 100;
 		}
 
 		if (!studentResponsibilities || studentResponsibilities.length === 0) {
-			console.log('No student responsibilities, returning 0');
 			return 0;
 		}
 
@@ -393,22 +344,12 @@ export class AIStudentService {
 
 			if (studentHasResp) {
 				matchedResponsibilities++;
-				console.log(
-					`Matched responsibility: ${expectedResp.responsibility?.name}`,
-				);
 			}
 		}
-
-		console.log('Responsibility matching results:', {
-			matchedResponsibilities,
-			totalRequired: groupExpectedResponsibilities.length,
-		});
 
 		const matchPercentage =
 			(matchedResponsibilities / groupExpectedResponsibilities.length) * 100;
 		const finalScore = Math.round(matchPercentage);
-
-		console.log('Final responsibility match score:', finalScore);
 
 		// Ensure we return a valid number
 		return isNaN(finalScore) ? 0 : finalScore;
