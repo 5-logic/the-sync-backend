@@ -304,6 +304,58 @@ export class SemesterService {
 		}
 	}
 
+	async getAIStatistics(semesterId: string) {
+		this.logger.log(
+			`Fetching AI statistics for semester with ID: ${semesterId}`,
+		);
+
+		try {
+			// Verify semester exists
+			const semester = await this.prisma.semester.findUnique({
+				where: { id: semesterId },
+			});
+
+			if (!semester) {
+				this.logger.warn(`Semester with ID ${semesterId} not found`);
+				throw new NotFoundException(`Semester not found`);
+			}
+
+			// Get AI statistics grouped by type
+			const aiStatistics = await this.prisma.statisticAI.groupBy({
+				by: ['type'],
+				where: {
+					semesterId,
+				},
+				_count: {
+					_all: true,
+				},
+			});
+
+			// Transform the data to a more readable format
+			const statistics = aiStatistics.map((stat) => ({
+				type: stat.type,
+				count: stat._count._all,
+			}));
+
+			// Get total count
+			const totalCalls = statistics.reduce((sum, stat) => sum + stat.count, 0);
+
+			this.logger.log(
+				`Found AI statistics for semester ${semesterId}: ${totalCalls} total calls`,
+			);
+			this.logger.debug('AI statistics details', JSON.stringify(statistics));
+
+			return {
+				semesterId,
+				totalCalls,
+				statistics,
+			};
+		} catch (error) {
+			this.logger.error('Error fetching AI statistics for semester:', error);
+			throw error;
+		}
+	}
+
 	async update(id: string, dto: UpdateSemesterDto): Promise<SemesterResponse> {
 		this.logger.log(`Updating semester with ID: ${id}`);
 

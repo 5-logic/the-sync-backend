@@ -384,4 +384,38 @@ export class AIThesisService {
 
 		return factors;
 	}
+
+	async getThesis(
+		thesisId: string,
+	): Promise<{ id: string; semesterId: string }> {
+		const thesis = await this.prisma.thesis.findUnique({
+			where: { id: thesisId },
+			select: {
+				id: true,
+				semesterId: true,
+			},
+		});
+
+		if (!thesis) {
+			throw new NotFoundException('Thesis not found');
+		}
+
+		return thesis;
+	}
+
+	async getGroup(groupId: string): Promise<{ id: string; semesterId: string }> {
+		const group = await this.prisma.group.findUnique({
+			where: { id: groupId },
+			select: {
+				id: true,
+				semesterId: true,
+			},
+		});
+
+		if (!group) {
+			throw new NotFoundException('Group not found');
+		}
+
+		return group;
+	}
 }
