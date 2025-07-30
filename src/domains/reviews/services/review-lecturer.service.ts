@@ -25,7 +25,21 @@ export class ReviewLecturerService {
 				include: {
 					submission: {
 						include: {
-							group: true,
+							group: {
+								include: {
+									thesis: true,
+									studentGroupParticipations: {
+										include: {
+											student: {
+												include: {
+													user: true,
+													major: true,
+												},
+											},
+										},
+									},
+								},
+							},
 							milestone: true,
 						},
 					},

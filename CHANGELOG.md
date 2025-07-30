@@ -5,6 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.11] - 2025-07-30
+
+### Added
+
+- **AI Statistics Tracking System**:
+  - New `StatisticAI` model and `AIAPIType` enum to track AI API usage across the platform
+  - New endpoint: `GET /semesters/:id/statistics-ai` for admins and moderators to retrieve AI usage statistics by semester
+  - Automatic logging of AI API calls for `SuggestParticipants`, `CheckDuplicateThesis`, and `SuggestThesis` operations
+
+- **Enhanced Group Submission Management**:
+  - New dedicated controllers for group submissions:
+    - `GroupSubmissionPublicController` - Public endpoint for retrieving group submissions
+    - `GroupSubmissionStudentController` - Student-specific submission management
+  - New endpoint: `GET /group-submissions/:groupId/submissions` to retrieve submissions by group ID
+
+- **Modular Architecture Improvements**:
+  - **Request Management Restructuring**: Split request functionality into role-based controllers and services
+    - `RequestStudentController` and `RequestStudentService` for student-specific request operations
+  - **Review System Refactoring**: Enhanced review module with specialized controllers
+    - `ReviewLecturerController`, `ReviewModeratorController`, and `ReviewPublicController`
+    - Dedicated services: `ReviewLecturerService`, `ReviewModeratorService`, and `ReviewPublicService`
+  - **Supervision Management**: New supervision module structure
+    - `SupervisionModeratorController` and `SupervisionPublicController`
+    - Corresponding services for modular supervision management
+  - **Submission Architecture**: Restructured submission module
+    - `SubmissionPublicController` and `SubmissionPublicService` for public submission operations
+
+### Changed
+
+- **Enhanced Data Validation**:
+  - Added `@IsNotEmpty()` validation to critical fields in DTOs:
+    - `CreateUserDto`: email, fullName, gender, phoneNumber fields now require non-empty values
+    - `CreateStudentDto`: studentCode, majorId, semesterId fields now require non-empty values
+  - Enhanced conflict validation in `StudentAdminService`:
+    - Email uniqueness validation during student creation and updates
+    - Student code uniqueness validation during student updates
+
+- **Semester Management Improvements**:
+  - Enhanced validation for thesis limits per lecturer:
+    - `defaultThesesPerLecturer` must be less than or equal to `maxThesesPerLecturer` in both create and update operations
+  - Updated semester status validation: `ensureNoActiveSemesterOrScopeLocked()` method for better semester lifecycle management
+
+- **AI Integration Enhancements**:
+  - AI controllers now automatically log API usage with `AIStatisticsService`
+  - Enhanced AI student and thesis controllers with role-based access and comprehensive logging
+  - Removed console debugging logs from `AIStudentService` for cleaner production logs
+
+- **Review Assignment Improvements**:
+  - Enhanced review data retrieval to include student group participations for better context
+  - Improved validation and error handling in review assignment operations
+
+### Fixed
+
+- **Module Dependencies**: Fixed import paths and dependency injection across refactored modules
+- **Service Integration**: Enhanced service integration between newly separated modules
+- **Validation Logic**: Improved validation error messages and conflict detection
+
+### Database Migration
+
+- **Migration 20250730081653**: Added `statistics_ai` table for tracking AI API usage
+  - New table with fields: `id`, `user_id`, `semester_id`, `type`, `timestamp`
+  - New `AIAPIType` enum with values: `check_duplicate_thesis`, `suggest_thesis`, `suggest_participants`
+
+### Enhanced
+
+- **Code Organization**: Significantly improved module structure with better separation of concerns
+- **API Documentation**: Enhanced Swagger documentation across all new controllers and endpoints
+- **Performance**: Optimized data retrieval patterns in refactored services
+- **Maintainability**: Better code organization with dedicated index files and proper module exports
+
+### Technical Improvements
+
+- **Architecture**: Enhanced domain module architecture with role-based separation
+- **Service Layer**: Improved service architecture with specialized functionality
+- **Module Structure**: Better dependency management and module organization
+- **Error Handling**: Enhanced error handling patterns across all refactored modules
+
+### Pull Requests
+
+- [#251](https://github.com/5-logic/the-sync-backend/pull/251) - AI statistics system and feature implementation (task-250)
+- [#249](https://github.com/5-logic/the-sync-backend/pull/249) - Architecture refactoring hotfix (issue-239)
+- [#248](https://github.com/5-logic/the-sync-backend/pull/248) - Module restructuring hotfix (issue-239)
+- [#247](https://github.com/5-logic/the-sync-backend/pull/247) - Submission management refactoring (issue-239)
+- [#246](https://github.com/5-logic/the-sync-backend/pull/246) - Review system enhancement (issue-239)
+- [#245](https://github.com/5-logic/the-sync-backend/pull/245) - Request management restructuring (issue-239)
+
+---
+
 ## [0.7.10] - 2025-07-28
 
 ### Changed

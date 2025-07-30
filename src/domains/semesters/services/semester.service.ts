@@ -29,6 +29,19 @@ export class SemesterService {
 		this.logger.log('Starting semester creation process');
 
 		try {
+			if (
+				dto.defaultThesesPerLecturer != null &&
+				dto.maxThesesPerLecturer != null &&
+				dto.defaultThesesPerLecturer > dto.maxThesesPerLecturer
+			) {
+				this.logger.warn(
+					`Default Theses Per Lecturer (${dto.defaultThesesPerLecturer}) must be less or equal to Max Theses Per Lecturer (${dto.maxThesesPerLecturer})`,
+				);
+				throw new ConflictException(
+					'Default Theses Per Lecturer must be less or equal to Max Theses Per Lecturer',
+				);
+			}
+
 			await this.ensureNoDuplicate(dto.name, dto.code);
 
 			await this.statusService.ensureNoActiveSemesterOrScopeLocked();
@@ -347,14 +360,29 @@ export class SemesterService {
 		this.logger.log(`Updating semester with ID: ${id}`);
 
 		try {
+			// Validation: defaultThesesPerLecturer must be less than maxThesesPerLecturer
 			const existingSemester = await this.prisma.semester.findUnique({
 				where: { id },
 			});
 
 			if (!existingSemester) {
 				this.logger.warn(`Semester with ID ${id} not found`);
-
 				throw new NotFoundException(`Semester with ID ${id} not found`);
+			}
+
+			// Validation: defaultThesesPerLecturer must be less than maxThesesPerLecturer
+			const newDefault =
+				dto.defaultThesesPerLecturer ??
+				existingSemester.defaultThesesPerLecturer;
+			const newMax =
+				dto.maxThesesPerLecturer ?? existingSemester.maxThesesPerLecturer;
+			if (newDefault != null && newMax != null && newDefault > newMax) {
+				this.logger.warn(
+					`Default Theses Per Lecturer (${newDefault}) must be less or equal to Max Theses Per Lecturer (${newMax})`,
+				);
+				throw new ConflictException(
+					'Default Theses Per Lecturer must be less or equal to Max Theses Per Lecturer',
+				);
 			}
 
 			await this.statusService.validateSemesterUpdate(existingSemester, dto);
