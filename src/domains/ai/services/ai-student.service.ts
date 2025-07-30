@@ -85,7 +85,7 @@ export class AIStudentService {
 			}
 
 			// Build query from group information
-			const queryText = this.buildGroupQueryText(group);
+			// const queryText = this.buildGroupQueryText(group);
 
 			// TODO: Implement vector search using queryText in STUDENT namespace
 			// const index = this.pinecone
@@ -148,7 +148,21 @@ export class AIStudentService {
 					group,
 				);
 				return {
-					student,
+					id: student.userId,
+					studentCode: student.studentCode,
+					fullName: student.user.fullName,
+					email: student.user.email,
+					skills: student.studentSkills.map((ss: any) => ({
+						id: ss.skill.id,
+						name: ss.skill.name,
+						level: ss.level,
+					})),
+					responsibilities: student.studentExpectedResponsibilities.map(
+						(sr: any) => ({
+							id: sr.responsibility.id,
+							name: sr.responsibility.name,
+						}),
+					),
 					similarityScore: compatibilityScore / 100, // Convert to 0-1 scale
 					matchPercentage: compatibilityScore,
 				};
@@ -161,16 +175,7 @@ export class AIStudentService {
 				`Found ${suggestions.length} student suggestions for group ${groupId}`,
 			);
 
-			return {
-				group: {
-					id: group.id,
-					code: group.code,
-					name: group.name,
-					thesis: group.thesis,
-				},
-				suggestions,
-				queryContext: queryText,
-			};
+			return suggestions;
 		} catch (error) {
 			this.logger.error('Error suggesting students for group', error);
 			throw error;
