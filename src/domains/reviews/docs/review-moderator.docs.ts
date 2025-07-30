@@ -1,0 +1,18 @@
+import { ApiOperationOptions } from '@nestjs/swagger';
+
+export const ReviewModeratorDocs = {
+	getEligibleReviewers: {
+		summary: 'Get eligible reviewers for submission',
+		description: `Lists lecturers eligible to review a specific submission.\n\n- **Authorization:** Moderator role required.\n- **Business logic:**\n  - Excludes lecturers who are already assigned as reviewers for this submission.\n  - Excludes supervisors (lecturers supervising the thesis of the group).\n  - Returns lecturer details (name, email, moderator status, etc).\n  - Uses cache-aside pattern for performance (10 min TTL).\n- **Error handling:**\n  - Returns 404 if the submission is not found.\n  - Returns error if database or cache fails.\n- **Response:**\n  - Returns an array of eligible lecturer objects.\n- **Logging:** Logs all fetch attempts, cache hits, and errors.`,
+	} as ApiOperationOptions,
+
+	assignBulkReviewer: {
+		summary: 'Assign bulk reviewers to submissions',
+		description: `Assigns multiple lecturers as reviewers for multiple submissions in bulk.\n\n- **Authorization:** Moderator role required.\n- **Validations:**\n  - All submissions and lecturers must exist.\n  - Each submission must have exactly 2 reviewers assigned.\n  - Prevents duplicate assignments (a lecturer cannot be assigned more than once to the same submission).\n  - Lecturer assigned as reviewer must not be a supervisor (supervisions) of the thesis for the group.\n  - Cannot assign reviewers if the milestone of the submission has ended.\n  - Can only assign reviewers if the semester is in 'Ongoing' status.\n- **Business logic:**\n  - Deletes all previous reviewer assignments for each submission before assigning new ones.\n  - Assigns reviewers in bulk and sends email notifications to assigned lecturers.\n  - Returns assignment results for each submission (submissionId, assignedCount, reviewerAssignments).\n- **Error handling:**\n  - Returns 404 if any submission or lecturer is not found.\n  - Returns 400 if trying to assign a supervisor as reviewer, if milestone ended, if semester is not ongoing, or if the reviewer count is not exactly 2.\n  - Returns error if database or cache fails.\n- **Response:**\n  - Returns an object with totalAssignedCount, submissionCount, and results (per submission).\n- **Logging:** Logs all assignment attempts, notifications, and errors.`,
+	} as ApiOperationOptions,
+
+	changeReviewer: {
+		summary: 'Change reviewer assignment for a submission',
+		description: `Updates the reviewer assignment for a specific submission by replacing the current reviewer with a new one.\n\n- **Authorization:** Moderator role required.\n- **Validations:**\n  - Both current and new reviewers must exist.\n  - The current reviewer must be assigned to the submission.\n  - The new reviewer must not be the same as the current reviewer.\n  - The new reviewer must not be a supervisor (supervisions) of the thesis for the group.\n  - The new reviewer must not already be assigned to this submission.\n- **Business logic:**\n  - Updates the assignment to the new reviewer.\n  - Sends notification emails if needed.\n  - Returns the updated assignment object.\n- **Error handling:**\n  - Returns 404 if the submission or reviewer is not found, or if the current reviewer is not assigned.\n  - Returns 400 if trying to assign a supervisor as reviewer, if reviewers are the same, or if duplicate assignment.\n  - Returns error if database fails.\n- **Response:**\n  - Returns the updated assignmentReview object.\n- **Logging:** Logs all update attempts, notifications, and errors.`,
+	} as ApiOperationOptions,
+};

@@ -85,7 +85,7 @@ export class AIStudentService {
 			}
 
 			// Build query from group information
-			const queryText = this.buildGroupQueryText(group);
+			// const queryText = this.buildGroupQueryText(group);
 
 			// TODO: Implement vector search using queryText in STUDENT namespace
 			// const index = this.pinecone
@@ -148,7 +148,21 @@ export class AIStudentService {
 					group,
 				);
 				return {
-					student,
+					id: student.userId,
+					studentCode: student.studentCode,
+					fullName: student.user.fullName,
+					email: student.user.email,
+					skills: student.studentSkills.map((ss: any) => ({
+						id: ss.skill.id,
+						name: ss.skill.name,
+						level: ss.level,
+					})),
+					responsibilities: student.studentExpectedResponsibilities.map(
+						(sr: any) => ({
+							id: sr.responsibility.id,
+							name: sr.responsibility.name,
+						}),
+					),
 					similarityScore: compatibilityScore / 100, // Convert to 0-1 scale
 					matchPercentage: compatibilityScore,
 				};
@@ -161,16 +175,7 @@ export class AIStudentService {
 				`Found ${suggestions.length} student suggestions for group ${groupId}`,
 			);
 
-			return {
-				group: {
-					id: group.id,
-					code: group.code,
-					name: group.name,
-					thesis: group.thesis,
-				},
-				suggestions,
-				queryContext: queryText,
-			};
+			return suggestions;
 		} catch (error) {
 			this.logger.error('Error suggesting students for group', error);
 			throw error;
@@ -272,31 +277,44 @@ export class AIStudentService {
 		studentSkills: any[],
 		groupRequiredSkills: any[],
 	): number {
-		if (groupRequiredSkills.length === 0) return 100;
+		if (!groupRequiredSkills || groupRequiredSkills.length === 0) {
+			return 100;
+		}
+
+		if (!studentSkills || studentSkills.length === 0) {
+			return 0;
+		}
 
 		let matchedSkills = 0;
 		let totalWeightedScore = 0;
 
 		for (const requiredSkill of groupRequiredSkills) {
 			const studentSkill = studentSkills.find(
-				(ss: any) => ss.skill.id === requiredSkill.skill.id,
+				(ss: any) => ss.skill?.id === requiredSkill.skill?.id,
 			);
 
-			if (studentSkill) {
+			if (studentSkill && studentSkill.level) {
 				matchedSkills++;
-				// Score based on skill level (assuming level 1-5, where 3+ is good)
+				// Score based on skill level (assuming level 1-5, where each level = 20 points)
 				const levelScore = Math.min(studentSkill.level * 20, 100);
 				totalWeightedScore += levelScore;
 			}
 		}
 
-		if (matchedSkills === 0) return 0;
+		if (matchedSkills === 0) {
+			return 0;
+		}
 
 		const matchPercentage = (matchedSkills / groupRequiredSkills.length) * 100;
 		const averageSkillScore = totalWeightedScore / matchedSkills;
 
 		// Combine match percentage and skill quality
-		return Math.round(matchPercentage * 0.6 + averageSkillScore * 0.4);
+		const finalScore = Math.round(
+			matchPercentage * 0.6 + averageSkillScore * 0.4,
+		);
+
+		// Ensure we return a valid number
+		return isNaN(finalScore) ? 0 : finalScore;
 	}
 
 	/**
@@ -306,13 +324,22 @@ export class AIStudentService {
 		studentResponsibilities: any[],
 		groupExpectedResponsibilities: any[],
 	): number {
-		if (groupExpectedResponsibilities.length === 0) return 100;
+		if (
+			!groupExpectedResponsibilities ||
+			groupExpectedResponsibilities.length === 0
+		) {
+			return 100;
+		}
+
+		if (!studentResponsibilities || studentResponsibilities.length === 0) {
+			return 0;
+		}
 
 		let matchedResponsibilities = 0;
 
 		for (const expectedResp of groupExpectedResponsibilities) {
 			const studentHasResp = studentResponsibilities.some(
-				(sr: any) => sr.responsibility.id === expectedResp.responsibility.id,
+				(sr: any) => sr.responsibility?.id === expectedResp.responsibility?.id,
 			);
 
 			if (studentHasResp) {
@@ -320,94 +347,26 @@ export class AIStudentService {
 			}
 		}
 
-		return Math.round(
-			(matchedResponsibilities / groupExpectedResponsibilities.length) * 100,
-		);
-	}
+		const matchPercentage =
+			(matchedResponsibilities / groupExpectedResponsibilities.length) * 100;
+		const finalScore = Math.round(matchPercentage);
 
-	/**
-	 * Get basic compatibility analysis between student and group
-	 */
-	async getStudentGroupCompatibility(studentId: string, groupId: string) {
-		try {
-			const [student, group] = await Promise.all([
-				this.prisma.student.findUnique({
-					where: { userId: studentId },
-					include: {
-						user: {
-							select: {
-								id: true,
-								fullName: true,
-								email: true,
-							},
-						},
-						studentSkills: {
-							include: {
-								skill: true,
-							},
-						},
-						studentExpectedResponsibilities: {
-							include: {
-								responsibility: true,
-							},
-						},
-					},
-				}),
-				this.prisma.group.findUnique({
-					where: { id: groupId },
-					include: {
-						thesis: {
-							select: {
-								englishName: true,
-								vietnameseName: true,
-								description: true,
-							},
-						},
-						groupRequiredSkills: {
-							include: {
-								skill: true,
-							},
-						},
-						groupExpectedResponsibilities: {
-							include: {
-								responsibility: true,
-							},
-						},
-					},
-				}),
-			]);
-
-			if (!student || !group) {
-				throw new NotFoundException('Student or group not found');
-			}
-
-			return {
-				student: {
-					id: student.userId,
-					name: student.user.fullName,
-					email: student.user.email,
-				},
-				group: {
-					id: group.id,
-					code: group.code,
-					name: group.name,
-					thesis: group.thesis,
-				},
-				compatibilityScore: 75, // Placeholder
-				recommendation: 'Good match based on basic criteria',
-			};
-		} catch (error) {
-			this.logger.error('Error analyzing student-group compatibility', error);
-			throw error;
-		}
+		// Ensure we return a valid number
+		return isNaN(finalScore) ? 0 : finalScore;
 	}
 
 	/**
 	 * Suggest groups for a student based on skills, responsibilities, and interests
 	 */
-	async suggestGroupsForStudent(studentId: string, topK: number = 10) {
+	async suggestGroupsForStudent(
+		studentId: string,
+		semesterId: string,
+		topK: number = 10,
+	) {
 		try {
-			this.logger.log(`Suggesting groups for student: ${studentId}`);
+			this.logger.log(
+				`Suggesting groups for student: ${studentId} in semester: ${semesterId}`,
+			);
 
 			// Get student with full information
 			const student = await this.prisma.student.findUnique({
@@ -432,7 +391,7 @@ export class AIStudentService {
 					},
 					enrollments: {
 						where: {
-							status: 'Ongoing',
+							semesterId: semesterId,
 						},
 						include: {
 							semester: true,
@@ -443,6 +402,13 @@ export class AIStudentService {
 
 			if (!student) {
 				throw new NotFoundException(`Student with ID ${studentId} not found`);
+			}
+
+			// Check if student is enrolled in the specified semester
+			if (!student.enrollments || student.enrollments.length === 0) {
+				throw new NotFoundException(
+					`Student with ID ${studentId} is not enrolled in semester ${semesterId}`,
+				);
 			}
 
 			// Build student query text for vector search
@@ -456,8 +422,9 @@ export class AIStudentService {
 			// Use studentQueryText to find similar groups
 
 			// Get available groups (not full and in same semester)
-			const availableGroups = await this.prisma.group.findMany({
+			const allGroups = await this.prisma.group.findMany({
 				where: {
+					semesterId: semesterId, // Filter by semester
 					studentGroupParticipations: {
 						none: {
 							studentId: student.userId,
@@ -505,6 +472,11 @@ export class AIStudentService {
 				},
 			});
 
+			// Filter groups with less than 5 members
+			const availableGroups = allGroups.filter(
+				(group) => group._count.studentGroupParticipations < 5,
+			);
+
 			// TODO: Implement vector search to find similar groups
 			// For now, use compatibility scoring algorithm
 			const groupSuggestions = availableGroups
@@ -512,6 +484,11 @@ export class AIStudentService {
 					const compatibilityScore = this.calculateStudentGroupCompatibility(
 						student,
 						group,
+					);
+
+					// Find the leader of the group
+					const leaderParticipation = group.studentGroupParticipations.find(
+						(sgp) => sgp.isLeader,
 					);
 
 					return {
@@ -522,9 +499,16 @@ export class AIStudentService {
 							projectDirection: group.projectDirection,
 							thesis: group.thesis,
 							currentMembersCount: group._count.studentGroupParticipations,
+							leader: leaderParticipation
+								? {
+										id: leaderParticipation.student.userId,
+										name: leaderParticipation.student.user.fullName,
+									}
+								: null,
 							members: group.studentGroupParticipations.map((sgp) => ({
 								id: sgp.student.userId,
 								name: sgp.student.user.fullName,
+								isLeader: sgp.isLeader,
 							})),
 						},
 						compatibilityScore,

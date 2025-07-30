@@ -64,6 +64,37 @@ export class SemesterStatusService {
 		}
 	}
 
+	async ensureNoActiveSemesterOrScopeLocked(): Promise<void> {
+		const activeSemester = await this.prisma.semester.findFirst({
+			where: {
+				status: {
+					notIn: [SemesterStatus.NotYet, SemesterStatus.End],
+				},
+			},
+		});
+
+		if (activeSemester) {
+			// Cho phép tạo semester mới nếu semester hiện tại đang ở trạng thái Ongoing và phase là ScopeLocked
+			const isOngoingScopeLocked =
+				activeSemester.status === SemesterStatus.Ongoing &&
+				activeSemester.ongoingPhase === OngoingPhase.ScopeLocked;
+
+			if (!isOngoingScopeLocked) {
+				this.logger.warn(
+					`Cannot create semester. Active semester found with ID: ${activeSemester.id}, status: ${activeSemester.status}, phase: ${activeSemester.ongoingPhase}`,
+				);
+
+				throw new ConflictException(
+					`Cannot create new semester. There is already an active semester (${activeSemester.name}) with status: ${activeSemester.status}${activeSemester.ongoingPhase ? ` and phase: ${activeSemester.ongoingPhase}` : ''}. New semester can only be created when current semester is in Ongoing status with ScopeLocked phase.`,
+				);
+			}
+
+			this.logger.log(
+				`Creating new semester allowed. Current semester ${activeSemester.id} is in Ongoing status with ScopeLocked phase.`,
+			);
+		}
+	}
+
 	// ------------------------------------------------------------------------------------------
 	// Delete
 	// ------------------------------------------------------------------------------------------
