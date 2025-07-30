@@ -1,12 +1,21 @@
 import { Module } from '@nestjs/common';
 
-import { SupervisionController } from '@/domains/supervisions/supervision.controller';
-import { SupervisionService } from '@/domains/supervisions/supervision.service';
-import { EmailModule } from '@/queue/email/email.module';
+import {
+	SupervisionModeratorController,
+	SupervisionPublicController,
+} from '@/supervisions/controllers';
+import {
+	SupervisionModeratorService,
+	SupervisionPublicService,
+} from '@/supervisions/services';
+import { SupervisionService } from '@/supervisions/services/supervision.service';
 
 @Module({
-	imports: [EmailModule],
-	controllers: [SupervisionController],
-	providers: [SupervisionService],
+	controllers: [SupervisionModeratorController, SupervisionPublicController],
+	providers: [
+		SupervisionModeratorService,
+		SupervisionPublicService,
+		SupervisionService,
+	],
 })
 export class SupervisionModule {}
