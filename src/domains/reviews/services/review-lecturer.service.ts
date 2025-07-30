@@ -28,6 +28,16 @@ export class ReviewLecturerService {
 							group: {
 								include: {
 									thesis: true,
+									studentGroupParticipations: {
+										include: {
+											student: {
+												include: {
+													user: true,
+													major: true,
+												},
+											},
+										},
+									},
 								},
 							},
 							milestone: true,
