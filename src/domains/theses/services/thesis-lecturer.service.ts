@@ -259,17 +259,19 @@ export class ThesisLecturerService {
 					);
 				}
 
-				// Update thesis required skills if skillIds provided
-				if (dto.skillIds && dto.skillIds.length > 0) {
+				// Update thesis required skills: nếu truyền skillIds (kể cả rỗng) thì xóa hết và tạo lại
+				if (dto.skillIds) {
 					await txn.thesisRequiredSkill.deleteMany({
 						where: { thesisId: id },
 					});
-					await txn.thesisRequiredSkill.createMany({
-						data: dto.skillIds.map((skillId) => ({
-							thesisId: id,
-							skillId,
-						})),
-					});
+					if (dto.skillIds.length > 0) {
+						await txn.thesisRequiredSkill.createMany({
+							data: dto.skillIds.map((skillId) => ({
+								thesisId: id,
+								skillId,
+							})),
+						});
+					}
 					this.logger.log(
 						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
 					);
