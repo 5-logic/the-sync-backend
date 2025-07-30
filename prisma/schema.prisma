@@ -102,6 +102,12 @@ enum ChecklistReviewAcceptance {
   @@map("checklist_review_acceptances")
 }
 
+enum AIAPIType {
+  CheckDuplicateThesis @map("check_duplicate_thesis")
+  SuggestThesis        @map("suggest_thesis")
+  SuggestParticipants  @map("suggest_participants")
+}
+
 // --------------------------------------------------------------------------------
 
 // Models with single primary key
@@ -406,6 +412,16 @@ model Request {
   group   Group   @relation(fields: [groupId], references: [id])
 
   @@map("requests")
+}
+
+model StatisticAI {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  semesterId String    @map("semester_id")
+  type       AIAPIType @map("type")
+  timestamp  DateTime  @default(now()) @map("timestamp")
+
+  @@map("statistics_ai")
 }
 
 // Models with composite primary key
