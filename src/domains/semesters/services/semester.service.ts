@@ -32,13 +32,13 @@ export class SemesterService {
 			if (
 				dto.defaultThesesPerLecturer != null &&
 				dto.maxThesesPerLecturer != null &&
-				dto.defaultThesesPerLecturer >= dto.maxThesesPerLecturer
+				dto.defaultThesesPerLecturer > dto.maxThesesPerLecturer
 			) {
 				this.logger.warn(
-					`Default Theses Per Lecturer (${dto.defaultThesesPerLecturer}) must be less than Max Theses Per Lecturer (${dto.maxThesesPerLecturer})`,
+					`Default Theses Per Lecturer (${dto.defaultThesesPerLecturer}) must be less or equal to Max Theses Per Lecturer (${dto.maxThesesPerLecturer})`,
 				);
 				throw new ConflictException(
-					'Default Theses Per Lecturer must be less than Max Theses Per Lecturer',
+					'Default Theses Per Lecturer must be less or equal to Max Theses Per Lecturer',
 				);
 			}
 
@@ -320,19 +320,16 @@ export class SemesterService {
 
 			// Validation: defaultThesesPerLecturer must be less than maxThesesPerLecturer
 			const newDefault =
-				dto.defaultThesesPerLecturer != null
-					? dto.defaultThesesPerLecturer
-					: existingSemester.defaultThesesPerLecturer;
+				dto.defaultThesesPerLecturer ??
+				existingSemester.defaultThesesPerLecturer;
 			const newMax =
-				dto.maxThesesPerLecturer != null
-					? dto.maxThesesPerLecturer
-					: existingSemester.maxThesesPerLecturer;
-			if (newDefault != null && newMax != null && newDefault >= newMax) {
+				dto.maxThesesPerLecturer ?? existingSemester.maxThesesPerLecturer;
+			if (newDefault != null && newMax != null && newDefault > newMax) {
 				this.logger.warn(
-					`Default Theses Per Lecturer (${newDefault}) must be less than Max Theses Per Lecturer (${newMax})`,
+					`Default Theses Per Lecturer (${newDefault}) must be less or equal to Max Theses Per Lecturer (${newMax})`,
 				);
 				throw new ConflictException(
-					'Default Theses Per Lecturer must be less than Max Theses Per Lecturer',
+					'Default Theses Per Lecturer must be less or equal to Max Theses Per Lecturer',
 				);
 			}
 
