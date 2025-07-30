@@ -594,4 +594,20 @@ export class AIStudentService {
 			),
 		).length;
 	}
+
+	async getGroup(groupId: string): Promise<{ id: string; semesterId: string }> {
+		const group = await this.prisma.group.findUnique({
+			where: { id: groupId },
+			select: {
+				id: true,
+				semesterId: true,
+			},
+		});
+
+		if (!group) {
+			throw new NotFoundException('Group not found');
+		}
+
+		return group;
+	}
 }
