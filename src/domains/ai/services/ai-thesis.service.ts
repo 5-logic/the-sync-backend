@@ -1,8 +1,14 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { DuplicateThesisResponse } from '@/ai/responses';
-import { PineconeProviderService, PrismaService } from '@/providers';
+import {
+	GeminiProviderService,
+	PineconeProviderService,
+	PrismaService,
+} from '@/providers';
 import { PineconeThesisProcessor } from '@/queue';
+
+import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class AIThesisService {
@@ -13,6 +19,7 @@ export class AIThesisService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeProviderService,
+		private readonly gemini: GeminiProviderService,
 	) {}
 
 	async checkDuplicate(thesisId: string): Promise<DuplicateThesisResponse[]> {
@@ -160,7 +167,8 @@ export class AIThesisService {
 			const availableTheses = await this.prisma.thesis.findMany({
 				where: {
 					groupId: null, // No group has selected this thesis
-					status: 'Approved', // Only approved theses
+					status: ThesisStatus.Approved, // Only approved theses
+					semesterId: group.semesterId, // Same semester as the group
 				},
 				include: {
 					lecturer: {
@@ -187,33 +195,35 @@ export class AIThesisService {
 			//   .namespace(AIThesisService.NAMESPACE);
 			// Use groupQueryText to find similar available theses
 
-			// For now, use basic text matching and scoring
-			const thesisSuggestions = availableTheses
-				.map((thesis) => {
-					const relevanceScore = this.calculateThesisGroupRelevance(
-						thesis,
-						group,
-					);
+			// Use AI to calculate relevance scores and matching factors
+			const aiScores = await this.calculateRelevanceWithAI(
+				group,
+				availableTheses,
+			);
 
-					return {
-						thesis: {
-							id: thesis.id,
-							englishName: thesis.englishName,
-							vietnameseName: thesis.vietnameseName,
-							description: thesis.description,
-							lecturer: {
-								id: thesis.lecturer.user.id,
-								name: thesis.lecturer.user.fullName,
-								email: thesis.lecturer.user.email,
-							},
+			// Map the AI scores back to full thesis information and limit to topK
+			const thesisSuggestions = aiScores.slice(0, topK).map((aiScore) => {
+				const thesis = availableTheses.find((t) => t.id === aiScore.id);
+				if (!thesis) {
+					throw new Error(`Thesis with ID ${aiScore.id} not found`);
+				}
+
+				return {
+					thesis: {
+						id: thesis.id,
+						englishName: thesis.englishName,
+						vietnameseName: thesis.vietnameseName,
+						description: thesis.description,
+						lecturer: {
+							id: thesis.lecturer.user.id,
+							name: thesis.lecturer.user.fullName,
+							email: thesis.lecturer.user.email,
 						},
-						relevanceScore,
-						matchingFactors: this.analyzeThesisGroupMatch(thesis, group),
-					};
-				})
-				.filter((suggestion) => suggestion.relevanceScore > 30) // Only include relevant suggestions
-				.sort((a, b) => b.relevanceScore - a.relevanceScore)
-				.slice(0, topK);
+					},
+					relevanceScore: aiScore.relevanceScore,
+					matchingFactors: aiScore.matchingFactors,
+				};
+			});
 
 			return {
 				group: {
@@ -230,47 +240,6 @@ export class AIThesisService {
 			this.logger.error('Error suggesting theses for group', error);
 			throw error;
 		}
-	}
-
-	/**
-	 * Build query text for group when searching for thesis
-	 */
-	private buildGroupQueryTextForThesis(group: any): string {
-		const parts: string[] = [];
-
-		// Add group basic info
-		parts.push(`Group: ${group.name}`);
-		if (group.projectDirection) {
-			parts.push(`Project Direction: ${group.projectDirection}`);
-		}
-
-		// Group required skills
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillsText = group.groupRequiredSkills
-				.map((gs: any) => `- ${gs.skill.name}`)
-				.join('\n');
-			parts.push(`Group Skills:\n${skillsText}`);
-		}
-
-		// Group expected responsibilities
-		if (group.groupExpectedResponsibilities?.length > 0) {
-			const responsibilitiesText = group.groupExpectedResponsibilities
-				.map((gr: any) => `- ${gr.responsibility.name}`)
-				.join('\n');
-			parts.push(`Group Responsibilities:\n${responsibilitiesText}`);
-		}
-
-		// Members skills aggregation
-		const allMemberSkills = group.studentGroupParticipations
-			.flatMap((sgp: any) => sgp.student.studentSkills || [])
-			.map((ss: any) => ss.skill.name);
-
-		if (allMemberSkills.length > 0) {
-			const uniqueSkills = [...new Set(allMemberSkills as string[])];
-			parts.push(`Members Skills: ${uniqueSkills.join(', ')}`);
-		}
-
-		return parts.join('\n\n');
 	}
 
 	/**
@@ -417,5 +386,249 @@ export class AIThesisService {
 		}
 
 		return group;
+	}
+
+	/**
+	 * Use AI to calculate relevance scores between theses and a group
+	 */
+	private async calculateRelevanceWithAI(
+		group: any,
+		theses: any[],
+	): Promise<
+		Array<{
+			id: string;
+			relevanceScore: number;
+			matchingFactors: string[];
+		}>
+	> {
+		try {
+			// Prepare group information for AI prompt
+			const groupInfo = {
+				name: group.name,
+				code: group.code,
+				projectDirection: group.projectDirection || 'Not specified',
+				requiredSkills:
+					group.groupRequiredSkills?.map((gs: any) => ({
+						name: gs.skill.name,
+					})) || [],
+				expectedResponsibilities:
+					group.groupExpectedResponsibilities?.map((gr: any) => ({
+						name: gr.responsibility.name,
+					})) || [],
+				currentMembers:
+					group.studentGroupParticipations?.map((sgp: any) => ({
+						name: sgp.student.user.fullName,
+						skills:
+							sgp.student.studentSkills?.map((ss: any) => ({
+								name: ss.skill.name,
+								level: ss.level,
+							})) || [],
+						responsibilities:
+							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
+								name: sr.responsibility.name,
+							})) || [],
+					})) || [],
+			};
+
+			// Get thesis content from Pinecone and prepare thesis information
+			const thesesWithContent = await this.getThesesContentFromPinecone(theses);
+
+			const prompt = `
+You are an AI assistant that evaluates thesis-group compatibility for academic projects. Your task is to analyze how well each thesis matches with a specific group based on skills, responsibilities, project requirements, and thesis content.
+
+## Group Information:
+- **Group Name**: ${groupInfo.name}
+- **Group Code**: ${groupInfo.code}
+- **Project Direction**: ${groupInfo.projectDirection}
+- **Required Skills**: ${groupInfo.requiredSkills.map((s) => s.name).join(', ') || 'None specified'}
+- **Expected Responsibilities**: ${groupInfo.expectedResponsibilities.map((r) => r.name).join(', ') || 'None specified'}
+- **Current Members**: ${
+				groupInfo.currentMembers.length > 0
+					? groupInfo.currentMembers
+							.map(
+								(m) =>
+									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
+							)
+							.join('; ')
+					: 'No current members'
+			}
+
+## Theses to Evaluate:
+${JSON.stringify(thesesWithContent, null, 2)}
+
+## Evaluation Criteria:
+1. **Content Relevance (40% weight)**: How well does the thesis content align with the group's project direction and interests?
+2. **Skill Requirements (25% weight)**: How well do the required skills for the thesis match the group's available skills?
+3. **Responsibility Alignment (20% weight)**: How well do the thesis responsibilities align with what group members expect to do?
+4. **Group Dynamics (10% weight)**: How suitable is the thesis complexity/scope for the current group size and composition?
+5. **Technical Fit (5% weight)**: How well does the thesis technical requirements match the group's capabilities?
+
+## Scoring Instructions:
+- **relevanceScore**: An integer between 0 and 100 representing overall relevance
+- **matchingFactors**: An array of strings describing specific reasons why this thesis matches the group
+
+## Output Format:
+Return ONLY a valid JSON array with objects containing exactly these three fields:
+[
+  {
+    "id": "thesis_id",
+    "relevanceScore": 85,
+    "matchingFactors": [
+      "Strong alignment with group's required skills in React and Node.js",
+      "Thesis complexity suitable for 3-member group",
+      "Project direction matches group's web development focus"
+    ]
+  }
+]
+
+## Important Notes:
+- Consider the thesis document content (if available) for better matching
+- Higher skill levels (Expert > Advanced > Proficient > Intermediate > Beginner) should result in better scores for matching technical requirements
+- Group size should influence complexity suitability
+- Ensure scores are realistic and well-distributed across the range
+- Return results in descending order by relevanceScore
+- Only include theses with relevanceScore > 30
+- Do not include any explanation or additional text, only the JSON array
+			`;
+
+			const ai = this.gemini.getClient();
+			const modelName = this.gemini.getModelName();
+
+			const response = await ai.models.generateContent({
+				model: modelName,
+				contents: prompt,
+			});
+
+			const responseText = response.text?.trim();
+			if (!responseText) {
+				throw new Error('Empty response from AI');
+			}
+
+			// Parse AI response
+			let aiScores: Array<{
+				id: string;
+				relevanceScore: number;
+				matchingFactors: string[];
+			}>;
+			try {
+				// Remove potential markdown code blocks
+				const cleanedResponse = responseText
+					.replace(/```json\n?|\n?```/g, '')
+					.trim();
+				aiScores = JSON.parse(cleanedResponse);
+			} catch (parseError) {
+				this.logger.error('Failed to parse AI response:', parseError);
+				this.logger.error('AI Response:', responseText);
+				throw new Error('Invalid JSON response from AI');
+			}
+
+			// Validate response format
+			if (!Array.isArray(aiScores)) {
+				throw new Error('AI response is not an array');
+			}
+
+			// Validate each score object
+			for (const score of aiScores) {
+				if (
+					!score.id ||
+					typeof score.relevanceScore !== 'number' ||
+					!Array.isArray(score.matchingFactors)
+				) {
+					throw new Error('Invalid score object format from AI');
+				}
+
+				// Ensure scores are within valid ranges
+				score.relevanceScore = Math.max(
+					0,
+					Math.min(100, Math.round(score.relevanceScore)),
+				);
+			}
+
+			// Sort by relevanceScore in descending order and filter > 30
+			const filteredScores = aiScores
+				.filter((score) => score.relevanceScore > 30)
+				.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+			this.logger.log(
+				`AI relevance calculation completed for ${filteredScores.length} theses`,
+			);
+			return filteredScores;
+		} catch (error) {
+			this.logger.error('Error calculating relevance with AI:', error);
+
+			// Fallback to manual calculation if AI fails
+			this.logger.warn('Falling back to manual relevance calculation');
+			return theses
+				.map((thesis) => {
+					const relevanceScore = this.calculateThesisGroupRelevance(
+						thesis,
+						group,
+					);
+					return {
+						id: thesis.id,
+						relevanceScore,
+						matchingFactors: this.analyzeThesisGroupMatch(thesis, group),
+					};
+				})
+				.filter((score) => score.relevanceScore > 30)
+				.sort((a, b) => b.relevanceScore - a.relevanceScore);
+		}
+	}
+
+	/**
+	 * Get thesis content from Pinecone vector database
+	 */
+	private async getThesesContentFromPinecone(theses: any[]): Promise<
+		Array<{
+			id: string;
+			englishName: string;
+			vietnameseName: string;
+			description: string;
+			content: string;
+		}>
+	> {
+		try {
+			const index = this.pinecone
+				.getClient()
+				.index(this.pinecone.getIndexName())
+				.namespace(AIThesisService.NAMESPACE);
+
+			// Get thesis IDs
+			const thesisIds = theses.map((t) => t.id);
+
+			// Fetch thesis content from Pinecone
+			const fetchResult = await index.fetch(thesisIds as string[]);
+
+			// Map theses with their content
+			return theses.map((thesis) => {
+				const pineconeRecord = fetchResult.records?.[thesis.id];
+				// Try to get content from metadata or fallback to description
+				const content =
+					(pineconeRecord?.metadata?.text as string) ||
+					(pineconeRecord?.metadata?.description as string) ||
+					thesis.description ||
+					'No content available';
+
+				return {
+					id: thesis.id,
+					englishName: thesis.englishName || 'Unknown',
+					vietnameseName: thesis.vietnameseName || 'Unknown',
+					description: thesis.description || 'No description',
+					content:
+						typeof content === 'string' ? content : 'No content available',
+				};
+			});
+		} catch (error) {
+			this.logger.error('Error fetching thesis content from Pinecone:', error);
+
+			// Fallback to basic thesis information without content
+			return theses.map((thesis) => ({
+				id: thesis.id,
+				englishName: thesis.englishName || 'Unknown',
+				vietnameseName: thesis.vietnameseName || 'Unknown',
+				description: thesis.description || 'No description',
+				content: 'Content not available',
+			}));
+		}
 	}
 }
