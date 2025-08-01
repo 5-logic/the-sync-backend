@@ -1,16 +1,12 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { GeminiProviderService, PrismaService } from '@/providers';
-import { PineconeGroupProcessor, PineconeStudentProcessor } from '@/queue';
+
+import { SkillLevel } from '~/generated/prisma';
 
 @Injectable()
 export class AIStudentService {
 	private readonly logger = new Logger(AIStudentService.name);
-
-	// Namespace constants for different data types
-	private static readonly STUDENT_NAMESPACE =
-		PineconeStudentProcessor.NAMESPACE;
-	private static readonly GROUP_NAMESPACE = PineconeGroupProcessor.NAMESPACE;
 
 	constructor(
 		private readonly prisma: PrismaService,
@@ -250,8 +246,10 @@ export class AIStudentService {
 
 			if (studentSkill && studentSkill.level) {
 				matchedSkills++;
-				// Score based on skill level (assuming level 1-5, where each level = 20 points)
-				const levelScore = Math.min(studentSkill.level * 20, 100);
+				// Convert skill level enum to score
+				const levelScore = this.getSkillLevelScore(
+					studentSkill.level as string,
+				);
 				totalWeightedScore += levelScore;
 			}
 		}
@@ -493,6 +491,26 @@ export class AIStudentService {
 	}
 
 	/**
+	 * Convert skill level enum to numerical score
+	 */
+	private getSkillLevelScore(level: string): number {
+		switch (level?.toLowerCase()) {
+			case SkillLevel.Expert.toLowerCase():
+				return 100;
+			case SkillLevel.Advanced.toLowerCase():
+				return 80;
+			case SkillLevel.Proficient.toLowerCase():
+				return 60;
+			case SkillLevel.Intermediate.toLowerCase():
+				return 40;
+			case SkillLevel.Beginner.toLowerCase():
+				return 20;
+			default:
+				return 0;
+		}
+	}
+
+	/**
 	 * Count matching skills between student and group
 	 */
 	private countMatchingSkills(
@@ -609,7 +627,7 @@ You are an AI assistant that evaluates student-group compatibility for academic 
 					? groupInfo.currentMembers
 							.map(
 								(m) =>
-									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} Level ${s.level}`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
+									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
 							)
 							.join('; ')
 					: 'No current members'
@@ -620,7 +638,7 @@ ${groupInfo.thesis ? `- **Thesis**: ${groupInfo.thesis.englishName || groupInfo.
 ${JSON.stringify(studentsInfo, null, 2)}
 
 ## Evaluation Criteria:
-1. **Skill Matching (40% weight)**: How well do the student's skills align with the group's required skills? Consider both skill presence and proficiency levels (1-5 scale).
+1. **Skill Matching (40% weight)**: How well do the student's skills align with the group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
 2. **Responsibility Alignment (30% weight)**: How well do the student's expected responsibilities match the group's expected responsibilities?
 3. **Group Dynamics (20% weight)**: How well would this student complement the existing team members' skills and responsibilities?
 4. **Project Fit (10% weight)**: How suitable is the student for the thesis/project direction (if available)?
@@ -640,7 +658,7 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 ]
 
 ## Important Notes:
-- Consider skill levels: Level 5 = Expert, Level 4 = Advanced, Level 3 = Intermediate, Level 2 = Basic, Level 1 = Beginner
+- Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
 - Higher skill levels should result in better scores for matching required skills
 - Students with responsibilities that complement existing members should score higher
 - Ensure scores are realistic and well-distributed across the range
@@ -806,7 +824,7 @@ ${JSON.stringify(studentInfo, null, 2)}
 ${JSON.stringify(groupsInfo, null, 2)}
 
 ## Evaluation Criteria:
-1. **Skill Matching (40% weight)**: How well do the student's skills align with each group's required skills? Consider both skill presence and proficiency levels (1-5 scale).
+1. **Skill Matching (40% weight)**: How well do the student's skills align with each group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
 2. **Responsibility Alignment (30% weight)**: How well do the student's expected responsibilities match each group's expected responsibilities?
 3. **Group Dynamics (20% weight)**: How well would this student complement the existing team members' skills and responsibilities?
 4. **Project Fit (10% weight)**: How suitable is the student for the group's thesis/project direction (if available)?
@@ -828,7 +846,7 @@ Return ONLY a valid JSON array with objects containing exactly these four fields
 ]
 
 ## Important Notes:
-- Consider skill levels: Level 5 = Expert, Level 4 = Advanced, Level 3 = Intermediate, Level 2 = Basic, Level 1 = Beginner
+- Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
 - Higher skill levels should result in better compatibility scores for matching required skills
 - Students should fit well with groups that complement their skills and interests
 - Groups with fewer members might be more welcoming but consider if the student adds value

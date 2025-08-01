@@ -447,7 +447,7 @@ You are an AI assistant that evaluates thesis-group compatibility for academic p
 					? groupInfo.currentMembers
 							.map(
 								(m) =>
-									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} Level ${s.level}`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
+									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
 							)
 							.join('; ')
 					: 'No current members'
@@ -483,7 +483,7 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 
 ## Important Notes:
 - Consider the thesis document content (if available) for better matching
-- Higher skill levels should result in better scores for matching technical requirements
+- Higher skill levels (Expert > Advanced > Proficient > Intermediate > Beginner) should result in better scores for matching technical requirements
 - Group size should influence complexity suitability
 - Ensure scores are realistic and well-distributed across the range
 - Return results in descending order by relevanceScore
