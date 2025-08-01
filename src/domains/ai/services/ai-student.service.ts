@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { PineconeProviderService, PrismaService } from '@/providers';
+import { GeminiProviderService, PrismaService } from '@/providers';
 import { PineconeGroupProcessor, PineconeStudentProcessor } from '@/queue';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class AIStudentService {
 
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly pinecone: PineconeProviderService,
+		private readonly gemini: GeminiProviderService,
 	) {}
 
 	/**
