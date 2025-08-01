@@ -1,20 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import { PineconeProviderService, PrismaService } from '@/providers';
-import { PineconeGroupProcessor, PineconeStudentProcessor } from '@/queue';
+import { GeminiProviderService, PrismaService } from '@/providers';
+
+import { SkillLevel } from '~/generated/prisma';
 
 @Injectable()
 export class AIStudentService {
 	private readonly logger = new Logger(AIStudentService.name);
 
-	// Namespace constants for different data types
-	private static readonly STUDENT_NAMESPACE =
-		PineconeStudentProcessor.NAMESPACE;
-	private static readonly GROUP_NAMESPACE = PineconeGroupProcessor.NAMESPACE;
-
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly pinecone: PineconeProviderService,
+		private readonly gemini: GeminiProviderService,
 	) {}
 
 	/**
@@ -141,12 +137,21 @@ export class AIStudentService {
 				take: topK * 2, // Get more than needed for filtering
 			});
 
-			// Calculate compatibility scores based on skills and responsibilities matching
-			const suggestions = availableStudents.slice(0, topK).map((student) => {
-				const compatibilityScore = this.calculateStudentGroupCompatibility(
-					student,
-					group,
+			// Use AI to calculate compatibility scores
+			const aiScores = await this.calculateCompatibilityWithAI(
+				group,
+				availableStudents.slice(0, topK),
+			);
+
+			// Map the AI scores back to full student information
+			const suggestions = aiScores.map((aiScore) => {
+				const student = availableStudents.find(
+					(s) => s.userId === aiScore.userId,
 				);
+				if (!student) {
+					throw new Error(`Student with ID ${aiScore.userId} not found`);
+				}
+
 				return {
 					id: student.userId,
 					studentCode: student.studentCode,
@@ -163,13 +168,10 @@ export class AIStudentService {
 							name: sr.responsibility.name,
 						}),
 					),
-					similarityScore: compatibilityScore / 100, // Convert to 0-1 scale
-					matchPercentage: compatibilityScore,
+					similarityScore: aiScore.similarityScore,
+					matchPercentage: aiScore.matchPercentage,
 				};
 			});
-
-			// Sort by compatibility score (highest first)
-			suggestions.sort((a, b) => b.matchPercentage - a.matchPercentage);
 
 			this.logger.log(
 				`Found ${suggestions.length} student suggestions for group ${groupId}`,
@@ -185,57 +187,6 @@ export class AIStudentService {
 	/**
 	 * Build comprehensive query text combining group requirements and thesis content
 	 */
-	private buildGroupQueryText(group: any): string {
-		const parts: string[] = [];
-
-		// Add group basic info
-		parts.push(`Group: ${group.name}`);
-		if (group.projectDirection) {
-			parts.push(`Project Direction: ${group.projectDirection}`);
-		}
-
-		// Group required skills
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillsText = group.groupRequiredSkills
-				.map((gs: any) => `- ${gs.skill.name}`)
-				.join('\n');
-			parts.push(`Required Skills:\n${skillsText}`);
-		}
-
-		// Group expected responsibilities
-		if (group.groupExpectedResponsibilities?.length > 0) {
-			const responsibilitiesText = group.groupExpectedResponsibilities
-				.map((gr: any) => `- ${gr.responsibility.name}`)
-				.join('\n');
-			parts.push(`Expected Responsibilities:\n${responsibilitiesText}`);
-		}
-
-		// Current members' skills and responsibilities
-		if (group.studentGroupParticipations?.length > 0) {
-			const membersText = group.studentGroupParticipations
-				.map((participation: any) => {
-					const student = participation.student;
-					const skills = student.studentSkills
-						.map((ss: any) => `${ss.skill.name} (level ${ss.level})`)
-						.join(', ');
-					const responsibilities = student.studentExpectedResponsibilities
-						.map((sr: any) => sr.responsibility.name)
-						.join(', ');
-					return `- ${student.user.fullName}: Skills: ${skills || 'No skills'}, Wants: ${responsibilities || 'No preferences'}`;
-				})
-				.join('\n');
-			parts.push(`Current Members:\n${membersText}`);
-		}
-
-		// Thesis content if available
-		if (group.thesis) {
-			const thesisText = `Thesis: "${group.thesis.englishName || group.thesis.vietnameseName}"\nDescription: ${group.thesis.description || 'No description available'}`;
-			parts.push(`Current Thesis:\n${thesisText}`);
-		}
-
-		return parts.join('\n\n');
-	}
-
 	/**
 	 * Calculate compatibility score between a student and group
 	 */
@@ -295,8 +246,10 @@ export class AIStudentService {
 
 			if (studentSkill && studentSkill.level) {
 				matchedSkills++;
-				// Score based on skill level (assuming level 1-5, where each level = 20 points)
-				const levelScore = Math.min(studentSkill.level * 20, 100);
+				// Convert skill level enum to score
+				const levelScore = this.getSkillLevelScore(
+					studentSkill.level as string,
+				);
 				totalWeightedScore += levelScore;
 			}
 		}
@@ -477,53 +430,49 @@ export class AIStudentService {
 				(group) => group._count.studentGroupParticipations < 5,
 			);
 
-			// TODO: Implement vector search to find similar groups
-			// For now, use compatibility scoring algorithm
-			const groupSuggestions = availableGroups
-				.map((group) => {
-					const compatibilityScore = this.calculateStudentGroupCompatibility(
-						student,
-						group,
-					);
+			// Use AI to calculate compatibility scores
+			const aiScores = await this.calculateGroupCompatibilityWithAI(
+				student,
+				availableGroups,
+			);
 
-					// Find the leader of the group
-					const leaderParticipation = group.studentGroupParticipations.find(
-						(sgp) => sgp.isLeader,
-					);
+			// Map the AI scores back to full group information and limit to topK
+			const groupSuggestions = aiScores.slice(0, topK).map((aiScore) => {
+				const group = availableGroups.find((g) => g.id === aiScore.id);
+				if (!group) {
+					throw new Error(`Group with ID ${aiScore.id} not found`);
+				}
 
-					return {
-						group: {
-							id: group.id,
-							code: group.code,
-							name: group.name,
-							projectDirection: group.projectDirection,
-							thesis: group.thesis,
-							currentMembersCount: group._count.studentGroupParticipations,
-							leader: leaderParticipation
-								? {
-										id: leaderParticipation.student.userId,
-										name: leaderParticipation.student.user.fullName,
-									}
-								: null,
-							members: group.studentGroupParticipations.map((sgp) => ({
-								id: sgp.student.userId,
-								name: sgp.student.user.fullName,
-								isLeader: sgp.isLeader,
-							})),
-						},
-						compatibilityScore,
-						matchingSkills: this.countMatchingSkills(
-							student.studentSkills || [],
-							group.groupRequiredSkills || [],
-						),
-						matchingResponsibilities: this.countMatchingResponsibilities(
-							student.studentExpectedResponsibilities || [],
-							group.groupExpectedResponsibilities || [],
-						),
-					};
-				})
-				.sort((a, b) => b.compatibilityScore - a.compatibilityScore)
-				.slice(0, topK);
+				// Find the leader of the group
+				const leaderParticipation = group.studentGroupParticipations.find(
+					(sgp) => sgp.isLeader,
+				);
+
+				return {
+					group: {
+						id: group.id,
+						code: group.code,
+						name: group.name,
+						projectDirection: group.projectDirection,
+						thesis: group.thesis,
+						currentMembersCount: group._count.studentGroupParticipations,
+						leader: leaderParticipation
+							? {
+									id: leaderParticipation.student.userId,
+									name: leaderParticipation.student.user.fullName,
+								}
+							: null,
+						members: group.studentGroupParticipations.map((sgp) => ({
+							id: sgp.student.userId,
+							name: sgp.student.user.fullName,
+							isLeader: sgp.isLeader,
+						})),
+					},
+					compatibilityScore: aiScore.compatibilityScore,
+					matchingSkills: aiScore.matchingSkills,
+					matchingResponsibilities: aiScore.matchingResponsibilities,
+				};
+			});
 
 			return {
 				student: {
@@ -542,31 +491,23 @@ export class AIStudentService {
 	}
 
 	/**
-	 * Build query text for student for vector search
+	 * Convert skill level enum to numerical score
 	 */
-	private buildStudentQueryText(student: any): string {
-		const parts: string[] = [];
-
-		// Add student basic info
-		parts.push(`Student: ${student.user.fullName}`);
-
-		// Student skills
-		if (student.studentSkills?.length > 0) {
-			const skillsText = student.studentSkills
-				.map((ss: any) => `- ${ss.skill.name} (Level ${ss.level})`)
-				.join('\n');
-			parts.push(`Student Skills:\n${skillsText}`);
+	private getSkillLevelScore(level: string): number {
+		switch (level?.toLowerCase()) {
+			case SkillLevel.Expert.toLowerCase():
+				return 100;
+			case SkillLevel.Advanced.toLowerCase():
+				return 80;
+			case SkillLevel.Proficient.toLowerCase():
+				return 60;
+			case SkillLevel.Intermediate.toLowerCase():
+				return 40;
+			case SkillLevel.Beginner.toLowerCase():
+				return 20;
+			default:
+				return 0;
 		}
-
-		// Student expected responsibilities
-		if (student.studentExpectedResponsibilities?.length > 0) {
-			const responsibilitiesText = student.studentExpectedResponsibilities
-				.map((sr: any) => `- ${sr.responsibility.name}`)
-				.join('\n');
-			parts.push(`Expected Responsibilities:\n${responsibilitiesText}`);
-		}
-
-		return parts.join('\n\n');
 	}
 
 	/**
@@ -609,5 +550,412 @@ export class AIStudentService {
 		}
 
 		return group;
+	}
+
+	/**
+	 * Use AI to calculate compatibility scores between students and a group
+	 */
+	private async calculateCompatibilityWithAI(
+		group: any,
+		students: any[],
+	): Promise<
+		Array<{
+			userId: string;
+			similarityScore: number;
+			matchPercentage: number;
+		}>
+	> {
+		try {
+			// Prepare group information for AI prompt
+			const groupInfo = {
+				name: group.name,
+				projectDirection: group.projectDirection || 'Not specified',
+				requiredSkills:
+					group.groupRequiredSkills?.map((gs: any) => ({
+						name: gs.skill.name,
+					})) || [],
+				expectedResponsibilities:
+					group.groupExpectedResponsibilities?.map((gr: any) => ({
+						name: gr.responsibility.name,
+					})) || [],
+				currentMembers:
+					group.studentGroupParticipations?.map((sgp: any) => ({
+						name: sgp.student.user.fullName,
+						skills:
+							sgp.student.studentSkills?.map((ss: any) => ({
+								name: ss.skill.name,
+								level: ss.level,
+							})) || [],
+						responsibilities:
+							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
+								name: sr.responsibility.name,
+							})) || [],
+					})) || [],
+				thesis: group.thesis
+					? {
+							englishName: group.thesis.englishName,
+							vietnameseName: group.thesis.vietnameseName,
+							description: group.thesis.description,
+						}
+					: null,
+			};
+
+			// Prepare student information for AI prompt
+			const studentsInfo = students.map((student) => ({
+				userId: student.userId,
+				skills:
+					student.studentSkills?.map((ss: any) => ({
+						name: ss.skill.name,
+						level: ss.level,
+					})) || [],
+				responsibilities:
+					student.studentExpectedResponsibilities?.map((sr: any) => ({
+						name: sr.responsibility.name,
+					})) || [],
+			}));
+
+			const prompt = `
+You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well each student matches with a specific group based on skills, responsibilities, and project requirements.
+
+## Group Information:
+- **Group Name**: ${groupInfo.name}
+- **Project Direction**: ${groupInfo.projectDirection}
+- **Required Skills**: ${groupInfo.requiredSkills.map((s) => s.name).join(', ') || 'None specified'}
+- **Expected Responsibilities**: ${groupInfo.expectedResponsibilities.map((r) => r.name).join(', ') || 'None specified'}
+- **Current Members**: ${
+				groupInfo.currentMembers.length > 0
+					? groupInfo.currentMembers
+							.map(
+								(m) =>
+									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
+							)
+							.join('; ')
+					: 'No current members'
+			}
+${groupInfo.thesis ? `- **Thesis**: ${groupInfo.thesis.englishName || groupInfo.thesis.vietnameseName} - ${groupInfo.thesis.description}` : '- **Thesis**: Not selected yet'}
+
+## Students to Evaluate:
+${JSON.stringify(studentsInfo, null, 2)}
+
+## Evaluation Criteria:
+1. **Skill Matching (40% weight)**: How well do the student's skills align with the group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
+2. **Responsibility Alignment (30% weight)**: How well do the student's expected responsibilities match the group's expected responsibilities?
+3. **Group Dynamics (20% weight)**: How well would this student complement the existing team members' skills and responsibilities?
+4. **Project Fit (10% weight)**: How suitable is the student for the thesis/project direction (if available)?
+
+## Scoring Instructions:
+- **similarityScore**: A decimal between 0.0 and 1.0 representing overall compatibility
+- **matchPercentage**: An integer between 0 and 100 representing the percentage match
+
+## Output Format:
+Return ONLY a valid JSON array with objects containing exactly these three fields:
+[
+  {
+    "userId": "student_user_id",
+    "similarityScore": 0.85,
+    "matchPercentage": 85
+  }
+]
+
+## Important Notes:
+- Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
+- Higher skill levels should result in better scores for matching required skills
+- Students with responsibilities that complement existing members should score higher
+- Ensure scores are realistic and well-distributed across the range
+- Return results in descending order by matchPercentage
+- Do not include any explanation or additional text, only the JSON array
+			`;
+
+			const ai = this.gemini.getClient();
+			const modelName = this.gemini.getModelName();
+
+			const response = await ai.models.generateContent({
+				model: modelName,
+				contents: prompt,
+			});
+
+			const responseText = response.text?.trim();
+			if (!responseText) {
+				throw new Error('Empty response from AI');
+			}
+
+			// Parse AI response
+			let aiScores: Array<{
+				userId: string;
+				similarityScore: number;
+				matchPercentage: number;
+			}>;
+			try {
+				// Remove potential markdown code blocks
+				const cleanedResponse = responseText
+					.replace(/```json\n?|\n?```/g, '')
+					.trim();
+				aiScores = JSON.parse(cleanedResponse);
+			} catch (parseError) {
+				this.logger.error('Failed to parse AI response:', parseError);
+				this.logger.error('AI Response:', responseText);
+				throw new Error('Invalid JSON response from AI');
+			}
+
+			// Validate response format
+			if (!Array.isArray(aiScores)) {
+				throw new Error('AI response is not an array');
+			}
+
+			// Validate each score object
+			for (const score of aiScores) {
+				if (
+					!score.userId ||
+					typeof score.similarityScore !== 'number' ||
+					typeof score.matchPercentage !== 'number'
+				) {
+					throw new Error('Invalid score object format from AI');
+				}
+
+				// Ensure scores are within valid ranges
+				score.similarityScore = Math.max(0, Math.min(1, score.similarityScore));
+				score.matchPercentage = Math.max(
+					0,
+					Math.min(100, Math.round(score.matchPercentage)),
+				);
+			}
+
+			// Sort by matchPercentage in descending order
+			aiScores.sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+			this.logger.log(
+				`AI compatibility calculation completed for ${aiScores.length} students`,
+			);
+			return aiScores;
+		} catch (error) {
+			this.logger.error('Error calculating compatibility with AI:', error);
+
+			// Fallback to manual calculation if AI fails
+			this.logger.warn('Falling back to manual compatibility calculation');
+			return students
+				.map((student) => {
+					const compatibilityScore = this.calculateStudentGroupCompatibility(
+						student,
+						group,
+					);
+					return {
+						userId: student.userId,
+						similarityScore: compatibilityScore / 100,
+						matchPercentage: compatibilityScore,
+					};
+				})
+				.sort((a, b) => b.matchPercentage - a.matchPercentage);
+		}
+	}
+
+	/**
+	 * Use AI to calculate compatibility scores between a student and groups
+	 */
+	private async calculateGroupCompatibilityWithAI(
+		student: any,
+		groups: any[],
+	): Promise<
+		Array<{
+			id: string;
+			compatibilityScore: number;
+			matchingSkills: number;
+			matchingResponsibilities: number;
+		}>
+	> {
+		try {
+			// Prepare student information for AI prompt
+			const studentInfo = {
+				userId: student.userId,
+				skills:
+					student.studentSkills?.map((ss: any) => ({
+						name: ss.skill.name,
+						level: ss.level,
+					})) || [],
+				responsibilities:
+					student.studentExpectedResponsibilities?.map((sr: any) => ({
+						name: sr.responsibility.name,
+					})) || [],
+			};
+
+			// Prepare groups information for AI prompt
+			const groupsInfo = groups.map((group) => ({
+				id: group.id,
+				name: group.name,
+				code: group.code,
+				projectDirection: group.projectDirection || 'Not specified',
+				requiredSkills:
+					group.groupRequiredSkills?.map((gs: any) => ({
+						name: gs.skill.name,
+					})) || [],
+				expectedResponsibilities:
+					group.groupExpectedResponsibilities?.map((gr: any) => ({
+						name: gr.responsibility.name,
+					})) || [],
+				currentMembers:
+					group.studentGroupParticipations?.map((sgp: any) => ({
+						name: sgp.student.user.fullName,
+						skills:
+							sgp.student.studentSkills?.map((ss: any) => ({
+								name: ss.skill.name,
+								level: ss.level,
+							})) || [],
+						responsibilities:
+							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
+								name: sr.responsibility.name,
+							})) || [],
+					})) || [],
+				thesis: group.thesis
+					? {
+							englishName: group.thesis.englishName,
+							vietnameseName: group.thesis.vietnameseName,
+							description: group.thesis.description,
+						}
+					: null,
+				currentMembersCount: group._count.studentGroupParticipations,
+			}));
+
+			const prompt = `
+You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well a student fits with various groups based on skills, responsibilities, and project requirements.
+
+## Student Information:
+${JSON.stringify(studentInfo, null, 2)}
+
+## Groups to Evaluate:
+${JSON.stringify(groupsInfo, null, 2)}
+
+## Evaluation Criteria:
+1. **Skill Matching (40% weight)**: How well do the student's skills align with each group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
+2. **Responsibility Alignment (30% weight)**: How well do the student's expected responsibilities match each group's expected responsibilities?
+3. **Group Dynamics (20% weight)**: How well would this student complement the existing team members' skills and responsibilities?
+4. **Project Fit (10% weight)**: How suitable is the student for the group's thesis/project direction (if available)?
+
+## Scoring Instructions:
+- **compatibilityScore**: An integer between 0 and 100 representing overall compatibility
+- **matchingSkills**: Count of skills that match between student and group requirements
+- **matchingResponsibilities**: Count of responsibilities that match between student expectations and group expectations
+
+## Output Format:
+Return ONLY a valid JSON array with objects containing exactly these four fields:
+[
+  {
+    "id": "group_id",
+    "compatibilityScore": 85,
+    "matchingSkills": 3,
+    "matchingResponsibilities": 2
+  }
+]
+
+## Important Notes:
+- Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
+- Higher skill levels should result in better compatibility scores for matching required skills
+- Students should fit well with groups that complement their skills and interests
+- Groups with fewer members might be more welcoming but consider if the student adds value
+- Ensure scores are realistic and well-distributed across the range
+- Return results in descending order by compatibilityScore
+- Only include groups with compatibilityScore > 30
+- Do not include any explanation or additional text, only the JSON array
+			`;
+
+			const ai = this.gemini.getClient();
+			const modelName = this.gemini.getModelName();
+
+			const response = await ai.models.generateContent({
+				model: modelName,
+				contents: prompt,
+			});
+
+			const responseText = response.text?.trim();
+			if (!responseText) {
+				throw new Error('Empty response from AI');
+			}
+
+			// Parse AI response
+			let aiScores: Array<{
+				id: string;
+				compatibilityScore: number;
+				matchingSkills: number;
+				matchingResponsibilities: number;
+			}>;
+			try {
+				// Remove potential markdown code blocks
+				const cleanedResponse = responseText
+					.replace(/```json\n?|\n?```/g, '')
+					.trim();
+				aiScores = JSON.parse(cleanedResponse);
+			} catch (parseError) {
+				this.logger.error('Failed to parse AI response:', parseError);
+				this.logger.error('AI Response:', responseText);
+				throw new Error('Invalid JSON response from AI');
+			}
+
+			// Validate response format
+			if (!Array.isArray(aiScores)) {
+				throw new Error('AI response is not an array');
+			}
+
+			// Validate each score object
+			for (const score of aiScores) {
+				if (
+					!score.id ||
+					typeof score.compatibilityScore !== 'number' ||
+					typeof score.matchingSkills !== 'number' ||
+					typeof score.matchingResponsibilities !== 'number'
+				) {
+					throw new Error('Invalid score object format from AI');
+				}
+
+				// Ensure scores are within valid ranges
+				score.compatibilityScore = Math.max(
+					0,
+					Math.min(100, Math.round(score.compatibilityScore)),
+				);
+				score.matchingSkills = Math.max(0, Math.round(score.matchingSkills));
+				score.matchingResponsibilities = Math.max(
+					0,
+					Math.round(score.matchingResponsibilities),
+				);
+			}
+
+			// Sort by compatibilityScore in descending order and filter > 30
+			const filteredScores = aiScores
+				.filter((score) => score.compatibilityScore > 30)
+				.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+
+			this.logger.log(
+				`AI group compatibility calculation completed for ${filteredScores.length} groups`,
+			);
+			return filteredScores;
+		} catch (error) {
+			this.logger.error(
+				'Error calculating group compatibility with AI:',
+				error,
+			);
+
+			// Fallback to manual calculation if AI fails
+			this.logger.warn(
+				'Falling back to manual group compatibility calculation',
+			);
+			return groups
+				.map((group) => {
+					const compatibilityScore = this.calculateStudentGroupCompatibility(
+						student,
+						group,
+					);
+					return {
+						id: group.id,
+						compatibilityScore,
+						matchingSkills: this.countMatchingSkills(
+							(student.studentSkills as any[]) || [],
+							(group.groupRequiredSkills as any[]) || [],
+						),
+						matchingResponsibilities: this.countMatchingResponsibilities(
+							(student.studentExpectedResponsibilities as any[]) || [],
+							(group.groupExpectedResponsibilities as any[]) || [],
+						),
+					};
+				})
+				.filter((score) => score.compatibilityScore > 30)
+				.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
+		}
 	}
 }
