@@ -23,6 +23,11 @@ export class ReviewLecturerService {
 			const assignments = await this.prisma.assignmentReview.findMany({
 				where: { reviewerId: lecturerId },
 				include: {
+					reviewer: {
+						include: {
+							user: true,
+						},
+					},
 					submission: {
 						include: {
 							group: {
@@ -41,6 +46,36 @@ export class ReviewLecturerService {
 								},
 							},
 							milestone: true,
+							assignmentReviews: {
+								include: {
+									reviewer: {
+										include: {
+											user: {
+												select: {
+													id: true,
+													fullName: true,
+													email: true,
+												},
+											},
+										},
+									},
+								},
+							},
+							reviews: {
+								include: {
+									lecturer: {
+										include: {
+											user: {
+												select: {
+													id: true,
+													fullName: true,
+													email: true,
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 				},
