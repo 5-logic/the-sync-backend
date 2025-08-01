@@ -243,47 +243,6 @@ export class AIThesisService {
 	}
 
 	/**
-	 * Build query text for group when searching for thesis
-	 */
-	private buildGroupQueryTextForThesis(group: any): string {
-		const parts: string[] = [];
-
-		// Add group basic info
-		parts.push(`Group: ${group.name}`);
-		if (group.projectDirection) {
-			parts.push(`Project Direction: ${group.projectDirection}`);
-		}
-
-		// Group required skills
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillsText = group.groupRequiredSkills
-				.map((gs: any) => `- ${gs.skill.name}`)
-				.join('\n');
-			parts.push(`Group Skills:\n${skillsText}`);
-		}
-
-		// Group expected responsibilities
-		if (group.groupExpectedResponsibilities?.length > 0) {
-			const responsibilitiesText = group.groupExpectedResponsibilities
-				.map((gr: any) => `- ${gr.responsibility.name}`)
-				.join('\n');
-			parts.push(`Group Responsibilities:\n${responsibilitiesText}`);
-		}
-
-		// Members skills aggregation
-		const allMemberSkills = group.studentGroupParticipations
-			.flatMap((sgp: any) => sgp.student.studentSkills || [])
-			.map((ss: any) => ss.skill.name);
-
-		if (allMemberSkills.length > 0) {
-			const uniqueSkills = [...new Set(allMemberSkills as string[])];
-			parts.push(`Members Skills: ${uniqueSkills.join(', ')}`);
-		}
-
-		return parts.join('\n\n');
-	}
-
-	/**
 	 * Calculate relevance score between thesis and group
 	 */
 	private calculateThesisGroupRelevance(thesis: any, group: any): number {

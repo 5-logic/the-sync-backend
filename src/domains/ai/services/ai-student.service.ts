@@ -191,57 +191,6 @@ export class AIStudentService {
 	/**
 	 * Build comprehensive query text combining group requirements and thesis content
 	 */
-	private buildGroupQueryText(group: any): string {
-		const parts: string[] = [];
-
-		// Add group basic info
-		parts.push(`Group: ${group.name}`);
-		if (group.projectDirection) {
-			parts.push(`Project Direction: ${group.projectDirection}`);
-		}
-
-		// Group required skills
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillsText = group.groupRequiredSkills
-				.map((gs: any) => `- ${gs.skill.name}`)
-				.join('\n');
-			parts.push(`Required Skills:\n${skillsText}`);
-		}
-
-		// Group expected responsibilities
-		if (group.groupExpectedResponsibilities?.length > 0) {
-			const responsibilitiesText = group.groupExpectedResponsibilities
-				.map((gr: any) => `- ${gr.responsibility.name}`)
-				.join('\n');
-			parts.push(`Expected Responsibilities:\n${responsibilitiesText}`);
-		}
-
-		// Current members' skills and responsibilities
-		if (group.studentGroupParticipations?.length > 0) {
-			const membersText = group.studentGroupParticipations
-				.map((participation: any) => {
-					const student = participation.student;
-					const skills = student.studentSkills
-						.map((ss: any) => `${ss.skill.name} (level ${ss.level})`)
-						.join(', ');
-					const responsibilities = student.studentExpectedResponsibilities
-						.map((sr: any) => sr.responsibility.name)
-						.join(', ');
-					return `- ${student.user.fullName}: Skills: ${skills || 'No skills'}, Wants: ${responsibilities || 'No preferences'}`;
-				})
-				.join('\n');
-			parts.push(`Current Members:\n${membersText}`);
-		}
-
-		// Thesis content if available
-		if (group.thesis) {
-			const thesisText = `Thesis: "${group.thesis.englishName || group.thesis.vietnameseName}"\nDescription: ${group.thesis.description || 'No description available'}`;
-			parts.push(`Current Thesis:\n${thesisText}`);
-		}
-
-		return parts.join('\n\n');
-	}
-
 	/**
 	 * Calculate compatibility score between a student and group
 	 */
@@ -541,34 +490,6 @@ export class AIStudentService {
 			this.logger.error('Error suggesting groups for student', error);
 			throw error;
 		}
-	}
-
-	/**
-	 * Build query text for student for vector search
-	 */
-	private buildStudentQueryText(student: any): string {
-		const parts: string[] = [];
-
-		// Add student basic info
-		parts.push(`Student: ${student.user.fullName}`);
-
-		// Student skills
-		if (student.studentSkills?.length > 0) {
-			const skillsText = student.studentSkills
-				.map((ss: any) => `- ${ss.skill.name} (Level ${ss.level})`)
-				.join('\n');
-			parts.push(`Student Skills:\n${skillsText}`);
-		}
-
-		// Student expected responsibilities
-		if (student.studentExpectedResponsibilities?.length > 0) {
-			const responsibilitiesText = student.studentExpectedResponsibilities
-				.map((sr: any) => `- ${sr.responsibility.name}`)
-				.join('\n');
-			parts.push(`Expected Responsibilities:\n${responsibilitiesText}`);
-		}
-
-		return parts.join('\n\n');
 	}
 
 	/**
