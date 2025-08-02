@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.13] - 2025-08-02
+
+### Changed
+
+- **AI Thesis Service Enhancement**:
+  - **Improved Thesis Filtering**: Enhanced `getThesis()` method in `AIThesisService` to filter only published theses (`isPublish: true`) when suggesting available theses for groups
+  - **Better Data Quality**: Ensures AI thesis recommendations only include theses that are both approved and published, improving recommendation accuracy
+
+- **Database Schema Optimization**:
+  - **Enum Mapping Enhancement**: Renamed `AIAPIType` enum to use proper database mapping (`@@map("ai_api_types")`) for better database schema consistency
+  - **Migration Cleanup**: Updated enum type mapping in database with proper migration script to maintain data integrity
+
+### Fixed
+
+- **AI Thesis Recommendations**: Fixed thesis suggestion algorithm to exclude unpublished theses from AI-powered recommendations, ensuring only available and published theses are suggested to groups
+
+### Database Migration
+
+- **Migration 20250802091936**: Rename enum in database
+  - Renamed `AIAPIType` enum to `ai_api_types` with proper database mapping
+  - Updated `statistics_ai` table to use the new enum type
+  - Maintained data consistency during enum type transition
+
+### Technical Improvements
+
+- **Code Quality**: Enhanced AI service filtering logic for more accurate thesis recommendations
+- **Database Schema**: Improved enum naming consistency between Prisma schema and database implementation
+- **Data Integrity**: Better validation of thesis availability in AI recommendation systems
+
+---
+
 ## [0.7.12] - 2025-08-01
 
 ### Added
