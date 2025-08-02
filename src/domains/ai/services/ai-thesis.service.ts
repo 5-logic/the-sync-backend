@@ -168,6 +168,7 @@ export class AIThesisService {
 				where: {
 					groupId: null, // No group has selected this thesis
 					status: ThesisStatus.Approved, // Only approved theses
+					isPublish: true, // Only published theses
 					semesterId: group.semesterId, // Same semester as the group
 				},
 				include: {
