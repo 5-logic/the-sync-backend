@@ -142,6 +142,13 @@ export class AIThesisService {
 											fullName: true,
 										},
 									},
+									major: {
+										select: {
+											id: true,
+											name: true,
+											code: true,
+										},
+									},
 									studentSkills: {
 										include: {
 											skill: true,
@@ -419,6 +426,12 @@ export class AIThesisService {
 				currentMembers:
 					group.studentGroupParticipations?.map((sgp: any) => ({
 						name: sgp.student.user.fullName,
+						major: sgp.student.major
+							? {
+									name: sgp.student.major.name,
+									code: sgp.student.major.code,
+								}
+							: null,
 						skills:
 							sgp.student.studentSkills?.map((ss: any) => ({
 								name: ss.skill.name,
@@ -435,7 +448,7 @@ export class AIThesisService {
 			const thesesWithContent = await this.getThesesContentFromPinecone(theses);
 
 			const prompt = `
-You are an AI assistant that evaluates thesis-group compatibility for academic projects. Your task is to analyze how well each thesis matches with a specific group based on skills, responsibilities, project requirements, and thesis content.
+You are an AI assistant that evaluates thesis-group compatibility for academic projects. Your task is to analyze how well each thesis matches with a specific group based on skills, responsibilities, academic backgrounds (majors), project requirements, and thesis content.
 
 ## Group Information:
 - **Group Name**: ${groupInfo.name}
@@ -448,7 +461,7 @@ You are an AI assistant that evaluates thesis-group compatibility for academic p
 					? groupInfo.currentMembers
 							.map(
 								(m) =>
-									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
+									`${m.name} [Major: ${m.major?.name || 'Unknown'}] (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
 							)
 							.join('; ')
 					: 'No current members'
@@ -458,11 +471,11 @@ You are an AI assistant that evaluates thesis-group compatibility for academic p
 ${JSON.stringify(thesesWithContent, null, 2)}
 
 ## Evaluation Criteria:
-1. **Content Relevance (40% weight)**: How well does the thesis content align with the group's project direction and interests?
-2. **Skill Requirements (25% weight)**: How well do the required skills for the thesis match the group's available skills?
-3. **Responsibility Alignment (20% weight)**: How well do the thesis responsibilities align with what group members expect to do?
-4. **Group Dynamics (10% weight)**: How suitable is the thesis complexity/scope for the current group size and composition?
-5. **Technical Fit (5% weight)**: How well does the thesis technical requirements match the group's capabilities?
+1. **Content Relevance (30% weight)**: How well does the thesis content align with the group's project direction and interests?
+2. **Major Compatibility (25% weight)**: How well does the thesis align with the academic majors of the group members? Consider if the thesis requirements match their academic backgrounds.
+3. **Skill Requirements (25% weight)**: How well do the required skills for the thesis match the group's available skills?
+4. **Responsibility Alignment (15% weight)**: How well do the thesis responsibilities align with what group members expect to do?
+5. **Group Dynamics (5% weight)**: How suitable is the thesis complexity/scope for the current group size and composition?
 
 ## Scoring Instructions:
 - **relevanceScore**: An integer between 0 and 100 representing overall relevance
@@ -485,6 +498,8 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 ## Important Notes:
 - Consider the thesis document content (if available) for better matching
 - Higher skill levels (Expert > Advanced > Proficient > Intermediate > Beginner) should result in better scores for matching technical requirements
+- Consider if the thesis topic and requirements align with the academic majors of group members
+- Some interdisciplinary projects may benefit from diverse majors while others require specific academic backgrounds
 - Group size should influence complexity suitability
 - Ensure scores are realistic and well-distributed across the range
 - Return results in descending order by relevanceScore
