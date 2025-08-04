@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-08-04
+
+### Changed
+
+- **Review System Enhancement**:
+  - **API Response Structure**: Modified `GET /reviews/submissions/:submissionId/reviews` endpoint to return structured response with separate `assignmentReviews` and `reviews` objects
+  - **Assignment Review Integration**: Enhanced review fetching logic to properly retrieve assignment reviews with reviewer information
+  - **Response Format**: Changed from returning a single array of reviews to an object containing both assignment reviews and submission reviews
+
+### Fixed
+
+- **Review Fetching Logic**: Corrected assignment review retrieval in `ReviewPublicService.getSubmissionReviews()` method
+  - **Database Query Optimization**: Separated assignment review queries from submission review queries for better data organization
+  - **Reviewer Information**: Fixed reviewer data inclusion with proper user relationship mapping
+  - **Main Reviewer Prioritization**: Added proper ordering by `isMainReviewer` for assignment reviews
+  - **Enhanced Logging**: Improved logging for assignment review fetching with detailed debug information
+
+### Enhanced
+
+- **Service Architecture**: Better separation of assignment reviews and submission reviews in the review public service
+- **Data Structure**: More organized response structure for better frontend integration and data consumption
+- **Logging**: Enhanced logging capabilities for better debugging and monitoring of review operations
+
+---
+
 ## [0.7.14] - 2025-08-04
 
 ### Added
