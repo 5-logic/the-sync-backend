@@ -1,0 +1,81 @@
+//- Data to be rendered in the email template
+//- + recipientName: Name of the recipient (student)
+//- + recipientType: Type of recipient (group_leader, group_member)
+//- + groupName: Name of the group (if applicable)
+//- + groupCode: Code of the group (if applicable)
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+//- + pickingDeadline: Deadline for thesis selection
+//- + availableThesisCount: Number of available thesis
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{recipientName},
+
+  if recipientType === 'group_leader'
+    p The semester #{semesterName} (#{semesterCode}) has moved to the #[strong "Picking"] phase. As the group leader, you can now select a thesis for your group.
+  else if recipientType === 'group_member'
+    p The semester #{semesterName} (#{semesterCode}) has moved to the #[strong "Picking"] phase. Your group can now select a thesis topic.
+  else
+    p The semester #{semesterName} (#{semesterCode}) has moved to the #[strong "Picking"] phase. You can now select a thesis topic.
+
+  .info-box
+    h3 📋 Semester Information
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName} (#{semesterCode})
+    .info-item
+      span.info-label Current Phase:
+      span.info-value Picking
+    .info-item
+      span.info-label Selection Deadline:
+      span.info-value #{pickingDeadline}
+    if availableThesisCount
+      .info-item
+        span.info-label Available Thesis:
+        span.info-value #{availableThesisCount} thesis topics
+
+  if groupName && groupCode
+    .info-box
+      h3 👥 Your Group Information
+      .info-item
+        span.info-label Group Name:
+        span.info-value #{groupName}
+      .info-item
+        span.info-label Group Code:
+        span.info-value #{groupCode}
+      .info-item
+        span.info-label Your Role:
+        span.info-value #{recipientType === 'group_leader' ? 'Group Leader' : 'Group Member'}
+
+  if recipientType === 'group_leader'
+    .success-box
+      h3 🎯 Your Responsibilities as Group Leader
+      p You are responsible for selecting a thesis for your group:
+      ul
+        li Browse available thesis topics in the system
+        li Discuss with your group members about preferred topics
+        li Consider your group's skills and interests
+        li Select a thesis before the deadline: #{pickingDeadline}
+        li Ensure all group members agree with the selection
+  else
+    .success-box
+      h3 📚 What Happens Next
+      p During the picking phase:
+      ul
+        li Your group leader will browse available thesis topics
+        li Discuss with your group about thesis preferences
+        li Support your leader in making the final decision
+        li Prepare for the thesis work once selection is made
+
+  .warning-box
+    h3 ⚠️ Important Reminders
+    ul
+      li Thesis selection must be completed before #{pickingDeadline}
+      li Each thesis can only be selected by one group (first-come, first-served)
+      li Groups without a selected thesis may be assigned one automatically
+      li Contact your supervisor if you need guidance on thesis selection
+
+  p Please log into TheSync system to view available thesis topics and make your selection.

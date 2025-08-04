@@ -449,7 +449,7 @@ export class GroupService {
 
 			// Send email to the removed student
 			await this.sendGroupMemberNotification(
-				removedStudent.user.email,
+				removedStudent.user.email as string,
 				`You have been removed from Group ${group.code}`,
 				{ ...baseContext, recipientName: removedStudent.user.fullName },
 				'target_student',
@@ -458,7 +458,7 @@ export class GroupService {
 			// Send email to all remaining group members
 			for (const member of remainingMembers) {
 				await this.sendGroupMemberNotification(
-					member.student.user.email,
+					member.student.user.email as string,
 					`Member removed from Group ${group.code}`,
 					{ ...baseContext, recipientName: member.student.user.fullName },
 					member.isLeader ? 'group_leader' : 'group_member',

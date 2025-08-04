@@ -1,150 +1,141 @@
-  extends layouts/email-layout
+extends layouts/email-layout
 
-  block content
-  .header
-  h1 
-    if actionType === 'assigned'
-    | Thesis Assignment Notification
-    else if actionType === 'picked'
-    | Thesis Selection Notification
-    else if actionType === 'unpicked'
-    | Thesis Removal Notification
-
+block content
   .greeting
-  | Dear #{recipientName},
+    | Dear #{recipientName},
 
   if actionType === 'assigned'
-  p We are pleased to inform you that a thesis has been assigned to your group.
+    p We are pleased to inform you that a thesis has been assigned to your group.
   else if actionType === 'picked'
-  p We are pleased to inform you that your group has successfully selected a thesis.
+    p We are pleased to inform you that your group has successfully selected a thesis.
   else if actionType === 'unpicked'
-  p This is to inform you that a thesis has been removed from your group.
+    p This is to inform you that a thesis has been removed from your group.
 
   .info-box
-  h3 Group Information
-  .info-item
-    span.info-label Group Name:
-    span.info-value #{groupName}
-  .info-item
-    span.info-label Group Code:
-    span.info-value #{groupCode}
-  .info-item
-    span.info-label Semester:
-    span.info-value #{semesterName}
-  if leaderName
+    h3 Group Information
     .info-item
-    span.info-label Group Leader:
-    span.info-value #{leaderName}
+      span.info-label Group Name:
+      span.info-value #{groupName}
+    .info-item
+      span.info-label Group Code:
+      span.info-value #{groupCode}
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName}
+    if leaderName
+      .info-item
+        span.info-label Group Leader:
+        span.info-value #{leaderName}
 
   if actionType === 'assigned' || actionType === 'picked'
-  .info-box
-    h3 Thesis Details
-    .info-item
-    span.info-label English Name:
-    span.info-value #{thesisEnglishName}
-    .info-item
-    span.info-label Vietnamese Name:
-    span.info-value #{thesisVietnameseName}
-    if thesisAbbreviation
-    .info-item
-      span.info-label Abbreviation:
-      span.info-value #{thesisAbbreviation}
-    .info-item
-    span.info-label Supervisor:
-    span.info-value #{lecturerName}
+    .info-box
+      h3 Thesis Details
+      .info-item
+        span.info-label English Name:
+        span.info-value #{thesisEnglishName}
+      .info-item
+        span.info-label Vietnamese Name:
+        span.info-value #{thesisVietnameseName}
+      if thesisAbbreviation
+        .info-item
+          span.info-label Abbreviation:
+          span.info-value #{thesisAbbreviation}
+      .info-item
+        span.info-label Supervisor:
+        span.info-value #{lecturerName}
 
-  if actionType === 'assigned'
-    .success-box
-    h3 Assignment Details
-    .info-item
-      span.info-label Assignment Date:
-      span.info-value #{assignDate}
-    .info-item
-      span.info-label Assigned By:
-      span.info-value System/Moderator
-    .info-item
-      span.info-label Status:
-      span.info-value Active
-  else
-    .success-box
-    h3 Selection Details
-    .info-item
-      span.info-label Selection Date:
-      span.info-value #{pickDate}
-    .info-item
-      span.info-label Selected By:
-      span.info-value #{leaderName}
-    .info-item
-      span.info-label Status:
-      span.info-value Active
+    if actionType === 'assigned'
+      .success-box
+        h3 Assignment Details
+        .info-item
+          span.info-label Assignment Date:
+          span.info-value #{assignDate}
+        .info-item
+          span.info-label Assigned By:
+          span.info-value System/Moderator
+        .info-item
+          span.info-label Status:
+          span.info-value Active
+    else
+      .success-box
+        h3 Selection Details
+        .info-item
+          span.info-label Selection Date:
+          span.info-value #{pickDate}
+        .info-item
+          span.info-label Selected By:
+          span.info-value #{leaderName}
+        .info-item
+          span.info-label Status:
+          span.info-value Active
 
   else if actionType === 'unpicked'
-  .warning-box
-    h3 Removed Thesis Details
-    .info-item
-    span.info-label Vietnamese Name:
-    span.info-value #{thesisVietnameseName}
-    .info-item
-    span.info-label English Name:
-    span.info-value #{thesisEnglishName}
-    if thesisAbbreviation
-    .info-item
-      span.info-label Abbreviation:
-      span.info-value #{thesisAbbreviation}
-    .info-item
-    span.info-label Previous Supervisor:
-    span.info-value #{lecturerName}
-    .info-item
-    span.info-label Removal Date:
-    span.info-value #{unpickDate}
-    .info-item
-    span.info-label Removed By:
-    span.info-value #{leaderName}
+    .warning-box
+      h3 Removed Thesis Details
+      .info-item
+        span.info-label Vietnamese Name:
+        span.info-value #{thesisVietnameseName}
+      .info-item
+        span.info-label English Name:
+        span.info-value #{thesisEnglishName}
+      if thesisAbbreviation
+        .info-item
+          span.info-label Abbreviation:
+          span.info-value #{thesisAbbreviation}
+      .info-item
+        span.info-label Previous Supervisor:
+        span.info-value #{lecturerName}
+      .info-item
+        span.info-label Removal Date:
+        span.info-value #{unpickDate}
+      .info-item
+        span.info-label Removed By:
+        span.info-value #{leaderName}
 
   if recipientType === 'lecturer'
-  if actionType === 'assigned' || actionType === 'picked'
-    .warning-box
-    h3 Next Steps for Supervisor
-    p As the thesis supervisor, please:
-    ul
-      li Review the group composition and member qualifications
-      li Contact the group leader to establish communication
-      li Schedule initial meetings to discuss project requirements
-      li Provide guidance on thesis objectives and methodology
+    if actionType === 'assigned' || actionType === 'picked'
+      .warning-box
+        h3 Next Steps for Supervisor
+        p As the thesis supervisor, please:
+        ul
+          li Review the group composition and member qualifications
+          li Contact the group leader to establish communication
+          li Schedule initial meetings to discuss project requirements
+          li Provide guidance on thesis objectives and methodology
 
-  else if actionType === 'unpicked'
-    .warning-box
-    h3 Information for Previous Supervisor
-    p The thesis is now available for selection by other groups. You may:
-    ul
-      li Update the thesis description if needed
-      li Make the thesis available for other groups
-      li Contact administration if you have any questions
+    else if actionType === 'unpicked'
+      .warning-box
+        h3 Information for Previous Supervisor
+        p The thesis is now available for selection by other groups. You may:
+        ul
+          li Update the thesis description if needed
+          li Make the thesis available for other groups
+          li Contact administration if you have any questions
 
   else
-  if actionType === 'assigned' || actionType === 'picked'
-    .success-box
-    h3 Next Steps for Group Members
-    p Now that your group has a thesis assignment:
-    ul
-      li Contact your thesis supervisor to introduce yourselves
-      li Schedule regular meetings with your supervisor
-      li Begin preliminary research on your thesis topic
-      li Coordinate group responsibilities and timeline
+    if actionType === 'assigned' || actionType === 'picked'
+      .success-box
+        h3 Next Steps for Group Members
+        p Now that your group has a thesis assignment:
+        ul
+          li Contact your thesis supervisor to introduce yourselves
+          li Schedule regular meetings with your supervisor
+          li Begin preliminary research on your thesis topic
+          li Coordinate group responsibilities and timeline
 
-  else if actionType === 'unpicked'
-    .warning-box
-    h3 Next Steps for Group
-    p Since the thesis has been removed:
-    ul
-      li Your group can now select a different thesis
-      li Browse available theses in the system
-      li Discuss with group members before making a new selection
-      li Ensure the selection is made before the deadline
+    else if actionType === 'unpicked'
+      .warning-box
+        h3 Next Steps for Group
+        p Since the thesis has been removed:
+        ul
+          li Your group can now select a different thesis
+          li Browse available theses in the system
+          li Discuss with group members before making a new selection
+          li Ensure the selection is made before the deadline
 
   if recipientType === 'group_leader'
-  p <strong>Note:</strong> As the group leader, you are responsible for coordinating with both your group members and the thesis supervisor.
+    p <strong>Note:</strong> As the group leader, you are responsible for coordinating with both your group members and the thesis supervisor.
   else if recipientType === 'group_member'
-  p <strong>Note:</strong> Please coordinate with your group leader regarding thesis-related activities.
+    p <strong>Note:</strong> Please coordinate with your group leader regarding thesis-related activities.
 
   p If you have any questions or concerns, please contact the academic administration.

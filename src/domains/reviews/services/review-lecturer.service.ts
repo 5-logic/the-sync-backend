@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
 import { CreateReviewDto, UpdateReviewDto } from '@/reviews/dtos';
 import { ReviewService } from '@/reviews/services/review.service';
@@ -23,6 +24,11 @@ export class ReviewLecturerService {
 			const assignments = await this.prisma.assignmentReview.findMany({
 				where: { reviewerId: lecturerId },
 				include: {
+					reviewer: {
+						include: {
+							user: true,
+						},
+					},
 					submission: {
 						include: {
 							group: {
@@ -41,6 +47,36 @@ export class ReviewLecturerService {
 								},
 							},
 							milestone: true,
+							assignmentReviews: {
+								include: {
+									reviewer: {
+										include: {
+											user: {
+												select: {
+													id: true,
+													fullName: true,
+													email: true,
+												},
+											},
+										},
+									},
+								},
+							},
+							reviews: {
+								include: {
+									lecturer: {
+										include: {
+											user: {
+												select: {
+													id: true,
+													fullName: true,
+													email: true,
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -148,44 +184,47 @@ export class ReviewLecturerService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const review = await prisma.review.create({
-					data: {
-						lecturerId: lecturerId,
-						submissionId: submissionId,
-						checklistId: reviewDto.checklistId,
-						feedback: reviewDto.feedback,
-					},
-				});
-
-				if (hasReviewItems && !isMainReviewer) {
-					const reviewItemsData = reviewDto.reviewItems.map((item) => ({
-						reviewId: review.id,
-						checklistItemId: item.checklistItemId,
-						acceptance: item.acceptance,
-						note: item.note,
-					}));
-					await prisma.reviewItem.createMany({
-						data: reviewItemsData,
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const review = await prisma.review.create({
+						data: {
+							lecturerId: lecturerId,
+							submissionId: submissionId,
+							checklistId: reviewDto.checklistId,
+							feedback: reviewDto.feedback,
+						},
 					});
-				}
 
-				return await prisma.review.findUnique({
-					where: { id: review.id },
-					include: {
-						lecturer: {
-							include: {
-								user: true,
+					if (hasReviewItems && !isMainReviewer) {
+						const reviewItemsData = reviewDto.reviewItems.map((item) => ({
+							reviewId: review.id,
+							checklistItemId: item.checklistItemId,
+							acceptance: item.acceptance,
+							note: item.note,
+						}));
+						await prisma.reviewItem.createMany({
+							data: reviewItemsData,
+						});
+					}
+
+					return await prisma.review.findUnique({
+						where: { id: review.id },
+						include: {
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
+							reviewItems: {
+								include: {
+									checklistItem: true,
+								},
 							},
 						},
-						reviewItems: {
-							include: {
-								checklistItem: true,
-							},
-						},
-					},
-				});
-			});
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Review submitted successfully for submission ID ${submissionId} by lecturer ID ${lecturerId}`,
@@ -245,59 +284,62 @@ export class ReviewLecturerService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				await prisma.review.update({
-					where: { id: reviewId },
-					data: {
-						feedback: updateDto.feedback,
-					},
-				});
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					await prisma.review.update({
+						where: { id: reviewId },
+						data: {
+							feedback: updateDto.feedback,
+						},
+					});
 
-				if (updateDto.reviewItems && updateDto.reviewItems.length > 0) {
-					for (const item of updateDto.reviewItems) {
-						if (item.checklistItemId) {
-							await prisma.reviewItem.upsert({
-								where: {
-									reviewId_checklistItemId: {
+					if (updateDto.reviewItems && updateDto.reviewItems.length > 0) {
+						for (const item of updateDto.reviewItems) {
+							if (item.checklistItemId) {
+								await prisma.reviewItem.upsert({
+									where: {
+										reviewId_checklistItemId: {
+											reviewId: reviewId,
+											checklistItemId: item.checklistItemId,
+										},
+									},
+									update: {
+										acceptance: item.acceptance,
+										note: item.note,
+									},
+									create: {
 										reviewId: reviewId,
 										checklistItemId: item.checklistItemId,
+										acceptance: item.acceptance || 'NotAvailable',
+										note: item.note,
 									},
-								},
-								update: {
-									acceptance: item.acceptance,
-									note: item.note,
-								},
-								create: {
-									reviewId: reviewId,
-									checklistItemId: item.checklistItemId,
-									acceptance: item.acceptance || 'NotAvailable',
-									note: item.note,
-								},
-							});
+								});
+							}
 						}
 					}
-				}
 
-				return await prisma.review.findUnique({
-					where: { id: reviewId },
-					include: {
-						lecturer: {
-							include: {
-								user: {
-									select: { id: true, fullName: true, email: true },
+					return await prisma.review.findUnique({
+						where: { id: reviewId },
+						include: {
+							lecturer: {
+								include: {
+									user: {
+										select: { id: true, fullName: true, email: true },
+									},
+								},
+							},
+							reviewItems: {
+								include: {
+									checklistItem: {
+										select: { id: true, name: true, description: true },
+									},
 								},
 							},
 						},
-						reviewItems: {
-							include: {
-								checklistItem: {
-									select: { id: true, name: true, description: true },
-								},
-							},
-						},
-					},
-				});
-			});
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Review ID ${reviewId} updated successfully by lecturer ID ${lecturerId}`,

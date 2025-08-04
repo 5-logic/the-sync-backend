@@ -5,29 +5,38 @@
 extends layouts/email-layout
 
 block content
-	div.container
-		h1 Reviewer Assignment Notification
-		
-		p Dear #{lecturerName},
-		
-		p You have been assigned as a reviewer for the following submission(s):
-		
-		div.submission-details
-			each submission in submissions
-				div.submission-item
-					h3 Submission: #{submission.groupName} (#{submission.groupCode})
-					p
-						strong Milestone: 
-						| #{submission.milestoneName}
-					p
-						strong Submitted At: 
-						| #{submission.submittedAt}
-					if submission.documents && submission.documents.length > 0
-						p
-							strong Documents:
-						ul
-							each doc in submission.documents
-								li #{doc}
-					hr
-		
-		p Please log in to TheSync system to review the submissions and provide your feedback.
+  .greeting
+    | Dear #{lecturerName},
+
+  p You have been assigned as a reviewer for the following submission(s):
+
+  if submissions && submissions.length > 0
+    each submission in submissions
+      .info-box
+        h3 📝 Submission Details
+        .info-item
+          span.info-label Group:
+          span.info-value #{submission.groupName} (#{submission.groupCode})
+        .info-item
+          span.info-label Milestone:
+          span.info-value #{submission.milestoneName}
+        .info-item
+          span.info-label Submitted At:
+          span.info-value #{submission.submittedAt}
+        if submission.documents && submission.documents.length > 0
+          .info-item
+            span.info-label Documents:
+            ul.document-list
+              each doc in submission.documents
+                li #{doc}
+
+  .success-box
+    h3 📋 Next Steps
+    p As the assigned reviewer, please:
+    ul
+      li Log in to the TheSync system
+      li Review the submitted materials thoroughly
+      li Provide constructive feedback to help students improve
+      li Complete your review within the designated timeframe
+
+  p If you have any questions about the review process, please contact the academic administration.

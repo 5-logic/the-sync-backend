@@ -53,6 +53,13 @@ export class AIStudentService {
 											email: true,
 										},
 									},
+									major: {
+										select: {
+											id: true,
+											name: true,
+											code: true,
+										},
+									},
 									studentSkills: {
 										include: {
 											skill: true,
@@ -123,6 +130,13 @@ export class AIStudentService {
 							email: true,
 						},
 					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
 					studentSkills: {
 						include: {
 							skill: true,
@@ -157,6 +171,13 @@ export class AIStudentService {
 					studentCode: student.studentCode,
 					fullName: student.user.fullName,
 					email: student.user.email,
+					major: student.major
+						? {
+								id: student.major.id,
+								name: student.major.name,
+								code: student.major.code,
+							}
+						: null,
 					skills: student.studentSkills.map((ss: any) => ({
 						id: ss.skill.id,
 						name: ss.skill.name,
@@ -332,6 +353,13 @@ export class AIStudentService {
 							email: true,
 						},
 					},
+					major: {
+						select: {
+							id: true,
+							name: true,
+							code: true,
+						},
+					},
 					studentSkills: {
 						include: {
 							skill: true,
@@ -413,6 +441,13 @@ export class AIStudentService {
 											fullName: true,
 										},
 									},
+									major: {
+										select: {
+											id: true,
+											name: true,
+											code: true,
+										},
+									},
 								},
 							},
 						},
@@ -465,6 +500,13 @@ export class AIStudentService {
 						members: group.studentGroupParticipations.map((sgp) => ({
 							id: sgp.student.userId,
 							name: sgp.student.user.fullName,
+							major: sgp.student.major
+								? {
+										id: sgp.student.major.id,
+										name: sgp.student.major.name,
+										code: sgp.student.major.code,
+									}
+								: null,
 							isLeader: sgp.isLeader,
 						})),
 					},
@@ -480,6 +522,13 @@ export class AIStudentService {
 					studentCode: student.studentCode,
 					name: student.user.fullName,
 					email: student.user.email,
+					major: student.major
+						? {
+								id: student.major.id,
+								name: student.major.name,
+								code: student.major.code,
+							}
+						: null,
 				},
 				suggestions: groupSuggestions,
 				totalGroups: availableGroups.length,
@@ -581,6 +630,12 @@ export class AIStudentService {
 				currentMembers:
 					group.studentGroupParticipations?.map((sgp: any) => ({
 						name: sgp.student.user.fullName,
+						major: sgp.student.major
+							? {
+									name: sgp.student.major.name,
+									code: sgp.student.major.code,
+								}
+							: null,
 						skills:
 							sgp.student.studentSkills?.map((ss: any) => ({
 								name: ss.skill.name,
@@ -603,6 +658,12 @@ export class AIStudentService {
 			// Prepare student information for AI prompt
 			const studentsInfo = students.map((student) => ({
 				userId: student.userId,
+				major: student.major
+					? {
+							name: student.major.name,
+							code: student.major.code,
+						}
+					: null,
 				skills:
 					student.studentSkills?.map((ss: any) => ({
 						name: ss.skill.name,
@@ -615,7 +676,7 @@ export class AIStudentService {
 			}));
 
 			const prompt = `
-You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well each student matches with a specific group based on skills, responsibilities, and project requirements.
+You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well each student matches with a specific group based on skills, responsibilities, academic background (major), and project requirements.
 
 ## Group Information:
 - **Group Name**: ${groupInfo.name}
@@ -627,7 +688,7 @@ You are an AI assistant that evaluates student-group compatibility for academic 
 					? groupInfo.currentMembers
 							.map(
 								(m) =>
-									`${m.name} (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
+									`${m.name} [Major: ${m.major?.name || 'Unknown'}] (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
 							)
 							.join('; ')
 					: 'No current members'
@@ -638,10 +699,11 @@ ${groupInfo.thesis ? `- **Thesis**: ${groupInfo.thesis.englishName || groupInfo.
 ${JSON.stringify(studentsInfo, null, 2)}
 
 ## Evaluation Criteria:
-1. **Skill Matching (40% weight)**: How well do the student's skills align with the group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
-2. **Responsibility Alignment (30% weight)**: How well do the student's expected responsibilities match the group's expected responsibilities?
-3. **Group Dynamics (20% weight)**: How well would this student complement the existing team members' skills and responsibilities?
-4. **Project Fit (10% weight)**: How suitable is the student for the thesis/project direction (if available)?
+1. **Skill Matching (30% weight)**: How well do the student's skills align with the group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
+2. **Major Compatibility (25% weight)**: How well does the student's academic major align with the project requirements and existing team members' majors? Consider diversity benefits and relevance to thesis topic.
+3. **Responsibility Alignment (25% weight)**: How well do the student's expected responsibilities match the group's expected responsibilities?
+4. **Group Dynamics (15% weight)**: How well would this student complement the existing team members' skills, responsibilities, and academic backgrounds?
+5. **Project Fit (5% weight)**: How suitable is the student for the thesis/project direction (if available)?
 
 ## Scoring Instructions:
 - **similarityScore**: A decimal between 0.0 and 1.0 representing overall compatibility
@@ -660,6 +722,8 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 ## Important Notes:
 - Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
 - Higher skill levels should result in better scores for matching required skills
+- Students with majors relevant to the project/thesis should score higher
+- Consider academic diversity - having different but complementary majors can be beneficial
 - Students with responsibilities that complement existing members should score higher
 - Ensure scores are realistic and well-distributed across the range
 - Return results in descending order by matchPercentage
@@ -766,6 +830,12 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 			// Prepare student information for AI prompt
 			const studentInfo = {
 				userId: student.userId,
+				major: student.major
+					? {
+							name: student.major.name,
+							code: student.major.code,
+						}
+					: null,
 				skills:
 					student.studentSkills?.map((ss: any) => ({
 						name: ss.skill.name,
@@ -794,6 +864,12 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 				currentMembers:
 					group.studentGroupParticipations?.map((sgp: any) => ({
 						name: sgp.student.user.fullName,
+						major: sgp.student.major
+							? {
+									name: sgp.student.major.name,
+									code: sgp.student.major.code,
+								}
+							: null,
 						skills:
 							sgp.student.studentSkills?.map((ss: any) => ({
 								name: ss.skill.name,
@@ -815,7 +891,7 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 			}));
 
 			const prompt = `
-You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well a student fits with various groups based on skills, responsibilities, and project requirements.
+You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well a student fits with various groups based on skills, responsibilities, academic background (major), and project requirements.
 
 ## Student Information:
 ${JSON.stringify(studentInfo, null, 2)}
@@ -824,10 +900,11 @@ ${JSON.stringify(studentInfo, null, 2)}
 ${JSON.stringify(groupsInfo, null, 2)}
 
 ## Evaluation Criteria:
-1. **Skill Matching (40% weight)**: How well do the student's skills align with each group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
-2. **Responsibility Alignment (30% weight)**: How well do the student's expected responsibilities match each group's expected responsibilities?
-3. **Group Dynamics (20% weight)**: How well would this student complement the existing team members' skills and responsibilities?
-4. **Project Fit (10% weight)**: How suitable is the student for the group's thesis/project direction (if available)?
+1. **Skill Matching (30% weight)**: How well do the student's skills align with each group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
+2. **Major Compatibility (25% weight)**: How well does the student's academic major align with each group's project requirements and existing team members' majors? Consider diversity benefits and relevance to thesis topic.
+3. **Responsibility Alignment (25% weight)**: How well do the student's expected responsibilities match each group's expected responsibilities?
+4. **Group Dynamics (15% weight)**: How well would this student complement the existing team members' skills, responsibilities, and academic backgrounds?
+5. **Project Fit (5% weight)**: How suitable is the student for the group's thesis/project direction (if available)?
 
 ## Scoring Instructions:
 - **compatibilityScore**: An integer between 0 and 100 representing overall compatibility
@@ -848,6 +925,8 @@ Return ONLY a valid JSON array with objects containing exactly these four fields
 ## Important Notes:
 - Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
 - Higher skill levels should result in better compatibility scores for matching required skills
+- Students with majors relevant to the project/thesis should receive higher compatibility scores
+- Consider academic diversity - different but complementary majors can be beneficial for project success
 - Students should fit well with groups that complement their skills and interests
 - Groups with fewer members might be more welcoming but consider if the student adds value
 - Ensure scores are realistic and well-distributed across the range

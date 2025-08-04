@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.13] - 2025-08-02
+
+### Changed
+
+- **AI Thesis Service Enhancement**:
+  - **Improved Thesis Filtering**: Enhanced `getThesis()` method in `AIThesisService` to filter only published theses (`isPublish: true`) when suggesting available theses for groups
+  - **Better Data Quality**: Ensures AI thesis recommendations only include theses that are both approved and published, improving recommendation accuracy
+
+- **Database Schema Optimization**:
+  - **Enum Mapping Enhancement**: Renamed `AIAPIType` enum to use proper database mapping (`@@map("ai_api_types")`) for better database schema consistency
+  - **Migration Cleanup**: Updated enum type mapping in database with proper migration script to maintain data integrity
+
+### Fixed
+
+- **AI Thesis Recommendations**: Fixed thesis suggestion algorithm to exclude unpublished theses from AI-powered recommendations, ensuring only available and published theses are suggested to groups
+
+### Database Migration
+
+- **Migration 20250802091936**: Rename enum in database
+  - Renamed `AIAPIType` enum to `ai_api_types` with proper database mapping
+  - Updated `statistics_ai` table to use the new enum type
+  - Maintained data consistency during enum type transition
+
+### Technical Improvements
+
+- **Code Quality**: Enhanced AI service filtering logic for more accurate thesis recommendations
+- **Database Schema**: Improved enum naming consistency between Prisma schema and database implementation
+- **Data Integrity**: Better validation of thesis availability in AI recommendation systems
+
+---
+
+## [0.7.12] - 2025-08-01
+
+### Added
+
+- **AI-Powered Compatibility Analysis System**:
+  - Enhanced AI student suggestions with Gemini AI integration for more accurate compatibility scoring
+  - New `calculateCompatibilityWithAI()` method in `AIStudentService` for intelligent student-group matching
+  - Enhanced `calculateGroupCompatibilityWithAI()` method for sophisticated group recommendations to students
+  - New `calculateRelevanceWithAI()` method in `AIThesisService` for AI-powered thesis-group relevance analysis
+
+- **Advanced Skill Level Management**:
+  - New `getSkillLevelScore()` method for converting skill level enums to numerical scores
+  - Enhanced skill matching algorithm with proper skill level hierarchy (Expert > Advanced > Proficient > Intermediate > Beginner)
+
+### Changed
+
+- **AI Service Architecture Refactoring**:
+  - **Migration from Pinecone to Gemini**: Replaced `PineconeProviderService` with `GeminiProviderService` in `AIStudentService` for improved AI capabilities
+  - **Enhanced AI Integration**: Added `GeminiProviderService` to `AIThesisService` constructor for comprehensive AI-powered analysis
+  - **Improved API Responses**: Enhanced AI suggestion endpoints with more detailed and accurate compatibility scores
+
+- **Algorithm Optimization**:
+  - **Student-Group Compatibility**: Replaced manual compatibility calculations with AI-powered analysis for more nuanced matching
+  - **Thesis-Group Relevance**: Enhanced thesis suggestion algorithm with AI-based content analysis and relevance scoring
+  - **Fallback Mechanisms**: Improved error handling with automatic fallback to manual calculations when AI services fail
+
+- **Thesis Management Improvements**:
+  - **Enhanced Skill Update Logic**: Improved `updateThesis()` method in `ThesisLecturerService` to handle empty `skillIds` arrays gracefully
+  - **Better Data Validation**: Enhanced thesis skill management to properly clear and recreate skill associations when `skillIds` is provided (including empty arrays)
+
+- **Code Quality Enhancements**:
+  - **Removed Deprecated Methods**: Cleaned up unused query text building methods (`buildGroupQueryText`, `buildStudentQueryText`, `buildGroupQueryTextForThesis`) for better maintainability
+  - **Improved Documentation**: Enhanced inline documentation for AI compatibility methods and scoring algorithms
+
+### Enhanced
+
+- **AI-Powered Scoring Algorithms**:
+  - **Multi-Factor Analysis**: AI now considers skill matching (40% weight), responsibility alignment (30% weight), group dynamics (20% weight), and project fit (10% weight)
+  - **Sophisticated Prompts**: Comprehensive AI prompts with detailed evaluation criteria and structured JSON responses
+  - **Enhanced Accuracy**: Better compatibility scores with realistic distribution and well-calibrated matching percentages
+
+- **Thesis Selection Intelligence**:
+  - **Content-Aware Matching**: AI analysis now includes thesis content from Pinecone vector database for more accurate relevance scoring
+  - **Semester Filtering**: Enhanced thesis suggestions with proper semester-based filtering for `suggestThesesForGroup()` method
+  - **Comprehensive Evaluation**: AI considers content relevance (40%), skill requirements (25%), responsibility alignment (20%), group dynamics (10%), and technical fit (5%)
+
+- **Error Handling and Reliability**:
+  - **Robust Fallback Systems**: Automatic fallback to manual calculations when AI services encounter errors
+  - **Enhanced Logging**: Improved error logging and debugging information for AI service failures
+  - **Input Validation**: Better validation of AI responses with proper JSON parsing and structure verification
+
+### Fixed
+
+- **AI Response Processing**: Enhanced JSON parsing for AI responses with proper markdown code block removal
+- **Score Validation**: Implemented proper bounds checking for similarity scores (0.0-1.0) and match percentages (0-100)
+- **Service Integration**: Improved integration between AI services and existing compatibility calculation methods
+
+### Technical Improvements
+
+- **Performance Optimization**: Enhanced AI request processing with optimized prompts and response handling
+- **Service Architecture**: Better separation of concerns between AI-powered and manual compatibility calculations
+- **Code Organization**: Removed redundant methods and improved code structure in AI services
+- **Dependency Management**: Streamlined service dependencies with proper AI provider integration
+
+### Pull Requests
+
+- [#254](https://github.com/5-logic/the-sync-backend/pull/254) - Merge dev branch for v0.7.12 release
+- [#253](https://github.com/5-logic/the-sync-backend/pull/253) - AI-powered compatibility analysis system and algorithm enhancements (task-252)
+
+---
+
 ## [0.7.11] - 2025-07-30
 
 ### Added

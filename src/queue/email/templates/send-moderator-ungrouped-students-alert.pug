@@ -1,0 +1,65 @@
+//- Data to be rendered in the email template
+//- + moderatorName: Name of the moderator
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+//- + ungroupedStudents: Array of students without groups
+//- + totalStudents: Total number of students in semester
+//- + groupedStudents: Number of students already in groups
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{moderatorName},
+
+  p We need your attention regarding ungrouped students in semester #{semesterName} (#{semesterCode}) as the system is transitioning to the "Picking" phase.
+
+  .info-box
+    h3 📊 Student Grouping Statistics
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName} (#{semesterCode})
+    .info-item
+      span.info-label Total Students:
+      span.info-value #{totalStudents}
+    .info-item
+      span.info-label Students in Groups:
+      span.info-value #{groupedStudents}
+    .info-item
+      span.info-label Ungrouped Students:
+      span.info-value #{ungroupedStudents ? ungroupedStudents.length : 0}
+
+  if ungroupedStudents && ungroupedStudents.length > 0
+    .warning-box
+      h3 ⚠️ Students Without Groups
+      p The following students are not yet assigned to any group:
+      .student-list(style="margin-top: 15px;")
+        each student in ungroupedStudents
+          .info-item(style="margin-bottom: 10px; padding: 8px; background-color: #fff3cd; border-left: 3px solid #ffc107;")
+            span.info-label #{student.studentCode}:
+            span.info-value #{student.fullName}
+            if student.email
+              br
+              span.info-label Email:
+              span.info-value #{student.email}
+
+  .warning-box
+    h3 🚨 Action Required
+    p As a moderator, you need to resolve this situation before the picking phase proceeds:
+    ul
+      li Review the list of ungrouped students above
+      li Manually assign students to existing groups with available slots
+      li Create new groups for remaining students if necessary
+      li Ensure all students have group assignments before thesis selection begins
+      li Consider extending the group formation deadline if needed
+
+  .info-box
+    h3 💡 Recommended Actions
+    ul
+      li Log into TheSync system to view detailed student information
+      li Contact ungrouped students to encourage group formation
+      li Facilitate group matching based on student preferences and skills
+      li Monitor group capacity and balance group sizes
+      li Send reminders to students about the importance of group formation
+
+  p Please address this issue promptly to ensure a smooth transition to the thesis picking phase. Contact technical support if you need assistance with group management tools.

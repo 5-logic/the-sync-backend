@@ -1,0 +1,50 @@
+//- Data to be rendered in the email template
+//- + lecturerName: Name of the lecturer
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+//- + preparingDeadline: Deadline for thesis preparation
+//- + maxThesisCount: Maximum number of thesis allowed per lecturer
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{lecturerName},
+
+  p The semester #{semesterName} (#{semesterCode}) has moved to the #[strong "Preparing"] phase. It's time to prepare your thesis proposals for this semester.
+
+  .info-box
+    h3 📋 Semester Information
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName} (#{semesterCode})
+    .info-item
+      span.info-label Current Phase:
+      span.info-value Preparing
+    .info-item
+      span.info-label Preparation Deadline:
+      span.info-value #{preparingDeadline}
+    if maxThesisCount
+      .info-item
+        span.info-label Max Thesis Allowed:
+        span.info-value #{maxThesisCount} thesis proposals
+
+  .success-box
+    h3 📝 What You Need to Do
+    p As a lecturer, please prepare your thesis proposals by:
+    ul
+      li Creating detailed thesis descriptions with clear objectives
+      li Setting appropriate requirements and prerequisites
+      li Defining the scope and methodology for each thesis
+      li Ensuring thesis topics are relevant and achievable
+      li Submitting all thesis proposals before the deadline
+
+  .warning-box
+    h3 ⚠️ Important Reminders
+    ul
+      li All thesis proposals must be submitted before #{preparingDeadline}
+      li Thesis proposals will be reviewed before being published to students
+      li Students will be able to select thesis during the "Picking" phase
+      li Late submissions may not be accepted for this semester
+
+  p Please log into TheSync system to create and manage your thesis proposals. If you have any questions, contact the academic administration.

@@ -11,7 +11,12 @@ import {
 	// CacheHelperService,
 	PrismaService,
 } from '@/providers';
-import { PineconeJobType, PineconeThesisService } from '@/queue';
+import {
+	EmailJobType,
+	EmailQueueService,
+	PineconeJobType,
+	PineconeThesisService,
+} from '@/queue';
 // import { CACHE_KEY } from '@/theses/constants';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
@@ -29,6 +34,7 @@ export class ThesisLecturerService {
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeThesisService,
+		private readonly emailQueueService: EmailQueueService,
 	) {}
 
 	async create(
@@ -238,84 +244,87 @@ export class ThesisLecturerService {
 				await this.validateSkillIds(dto.skillIds);
 			}
 
-			const result = await this.prisma.$transaction(async (txn) => {
-				// If supportingDocument is provided, create a new version
-				if (dto.supportingDocument) {
-					const latestVersion =
-						existingThesis.thesisVersions[0]?.version ??
-						ThesisLecturerService.INITIAL_VERSION;
-					const newVersion = latestVersion + 1;
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					// If supportingDocument is provided, create a new version
+					if (dto.supportingDocument) {
+						const latestVersion =
+							existingThesis.thesisVersions[0]?.version ??
+							ThesisLecturerService.INITIAL_VERSION;
+						const newVersion = latestVersion + 1;
 
-					await txn.thesisVersion.create({
-						data: {
-							version: newVersion,
-							supportingDocument: dto.supportingDocument,
-							thesisId: id,
-						},
-					});
-
-					this.logger.log(
-						`Created new thesis version ${newVersion} for thesis ID: ${id}`,
-					);
-				}
-
-				// Update thesis required skills: nếu truyền skillIds (kể cả rỗng) thì xóa hết và tạo lại
-				if (dto.skillIds) {
-					await txn.thesisRequiredSkill.deleteMany({
-						where: { thesisId: id },
-					});
-					if (dto.skillIds.length > 0) {
-						await txn.thesisRequiredSkill.createMany({
-							data: dto.skillIds.map((skillId) => ({
+						await txn.thesisVersion.create({
+							data: {
+								version: newVersion,
+								supportingDocument: dto.supportingDocument,
 								thesisId: id,
-								skillId,
-							})),
+							},
 						});
+
+						this.logger.log(
+							`Created new thesis version ${newVersion} for thesis ID: ${id}`,
+						);
 					}
-					this.logger.log(
-						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
-					);
-				}
 
-				// Chuẩn bị dữ liệu update
-				const updateData: any = {
-					englishName: dto.englishName,
-					vietnameseName: dto.vietnameseName,
-					abbreviation: dto.abbreviation,
-					description: dto.description,
-					domain: dto.domain,
-				};
-				if (shouldUpdateStatus) {
-					updateData.status = newStatus ?? existingThesis.status;
-				}
-				if (shouldUpdatePublish) {
-					updateData.isPublish =
-						typeof newIsPublish === 'boolean'
-							? newIsPublish
-							: existingThesis.isPublish;
-				}
+					// Update thesis required skills: nếu truyền skillIds (kể cả rỗng) thì xóa hết và tạo lại
+					if (dto.skillIds) {
+						await txn.thesisRequiredSkill.deleteMany({
+							where: { thesisId: id },
+						});
+						if (dto.skillIds.length > 0) {
+							await txn.thesisRequiredSkill.createMany({
+								data: dto.skillIds.map((skillId) => ({
+									thesisId: id,
+									skillId,
+								})),
+							});
+						}
+						this.logger.log(
+							`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
+						);
+					}
 
-				const updateThesis = await txn.thesis.update({
-					where: { id: id },
-					data: updateData,
-					include: {
-						thesisVersions: {
-							orderBy: { version: 'desc' },
-						},
-						thesisRequiredSkills: {
-							include: {
-								skill: true,
+					// Chuẩn bị dữ liệu update
+					const updateData: any = {
+						englishName: dto.englishName,
+						vietnameseName: dto.vietnameseName,
+						abbreviation: dto.abbreviation,
+						description: dto.description,
+						domain: dto.domain,
+					};
+					if (shouldUpdateStatus) {
+						updateData.status = newStatus ?? existingThesis.status;
+					}
+					if (shouldUpdatePublish) {
+						updateData.isPublish =
+							typeof newIsPublish === 'boolean'
+								? newIsPublish
+								: existingThesis.isPublish;
+					}
+
+					const updateThesis = await txn.thesis.update({
+						where: { id: id },
+						data: updateData,
+						include: {
+							thesisVersions: {
+								orderBy: { version: 'desc' },
+							},
+							thesisRequiredSkills: {
+								include: {
+									skill: true,
+								},
+							},
+							lecturer: {
+								include: { user: true },
 							},
 						},
-						lecturer: {
-							include: { user: true },
-						},
-					},
-				});
+					});
 
-				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
-				return result;
-			});
+					const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Thesis updated with ID: ${result.id}`);
 			this.logger.debug('Updated thesis detail', JSON.stringify(result));
@@ -459,6 +468,12 @@ export class ThesisLecturerService {
 			this.logger.debug('Updated thesis detail', JSON.stringify(updatedThesis));
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			// Send email notification for status change to Pending
+			await this.sendThesisStatusChangeNotification(
+				updatedThesis,
+				ThesisStatus.Pending,
+			);
 
 			// await this.saveAndDeleteCache(result);
 
@@ -646,6 +661,58 @@ export class ThesisLecturerService {
 			if (leader) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Send email notification for thesis status change (single thesis)
+	 */
+	private async sendThesisStatusChangeNotification(
+		thesis: any,
+		status: ThesisStatus,
+	): Promise<void> {
+		try {
+			if (!thesis.lecturer.user.email) {
+				this.logger.warn(`No email found for lecturer ${thesis.lecturerId}`);
+				return;
+			}
+
+			// Prepare email context for single thesis
+			const emailContext = {
+				lecturerName: thesis.lecturer.user.fullName,
+				englishName: thesis.englishName,
+				vietnameseName: thesis.vietnameseName,
+				abbreviation: thesis.abbreviation,
+				domain: thesis.domain,
+				status: status,
+				isPublicationChange: false,
+			};
+
+			// Determine subject based on status
+			const statusText =
+				status === 'Pending' ? 'submitted for review' : status.toLowerCase();
+			const subject = `Thesis Status Update - ${thesis.englishName} ${statusText}`;
+
+			// Send email
+			await this.emailQueueService.sendEmail(
+				EmailJobType.SEND_THESIS_STATUS_CHANGE,
+				{
+					to: thesis.lecturer.user.email,
+					subject: subject,
+					context: emailContext,
+				},
+				500, // delay 500ms
+			);
+
+			this.logger.log(
+				`Thesis status change notification sent to ${thesis.lecturer.user.email} for thesis ${thesis.id}`,
+			);
+		} catch (error) {
+			this.logger.error(
+				'Failed to send thesis status change notification',
+				error,
+			);
+			// Don't throw error as this is a non-critical operation
+		}
 	}
 
 	// private async saveAndDeleteCache(

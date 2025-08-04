@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 // import { CACHE_KEY } from '@/milestones/constants';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '@/milestones/dtos';
 import { mapMilestone } from '@/milestones/mappers';
@@ -37,33 +38,36 @@ export class MilestoneAdminService {
 				dto.name,
 			);
 
-			const resultTx = await this.prisma.$transaction(async (tx) => {
-				const milestone = await tx.milestone.create({
-					data: dto,
-				});
-
-				const listGroups = await tx.group.findMany({
-					where: { semesterId: dto.semesterId },
-					select: { id: true },
-				});
-
-				if (listGroups.length === 0) {
-					this.logger.warn(
-						`No groups found for semester ${dto.semesterId}, skipping submission creation.`,
-					);
-				} else {
-					await tx.submission.createMany({
-						data: listGroups.map((group) => ({
-							groupId: group.id,
-							milestoneId: milestone.id,
-							status: 'NotSubmitted',
-						})),
-						skipDuplicates: true,
+			const resultTx = await this.prisma.$transaction(
+				async (tx) => {
+					const milestone = await tx.milestone.create({
+						data: dto,
 					});
-				}
 
-				return milestone;
-			});
+					const listGroups = await tx.group.findMany({
+						where: { semesterId: dto.semesterId },
+						select: { id: true },
+					});
+
+					if (listGroups.length === 0) {
+						this.logger.warn(
+							`No groups found for semester ${dto.semesterId}, skipping submission creation.`,
+						);
+					} else {
+						await tx.submission.createMany({
+							data: listGroups.map((group) => ({
+								groupId: group.id,
+								milestoneId: milestone.id,
+								status: 'NotSubmitted',
+							})),
+							skipDuplicates: true,
+						});
+					}
+
+					return milestone;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 			const milestone = resultTx;
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);

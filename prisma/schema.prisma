@@ -106,6 +106,8 @@ enum AIAPIType {
   CheckDuplicateThesis @map("check_duplicate_thesis")
   SuggestThesis        @map("suggest_thesis")
   SuggestParticipants  @map("suggest_participants")
+
+	@@map("ai_api_types")
 }
 
 // --------------------------------------------------------------------------------

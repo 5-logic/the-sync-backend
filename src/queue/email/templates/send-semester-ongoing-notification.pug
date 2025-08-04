@@ -1,44 +1,98 @@
 //- Data to be rendered in the email template
-//- + fullName: Name of the student
+//- + recipientName: Name of the recipient
+//- + recipientType: Type of recipient (student, lecturer)
 //- + semesterName: Name of the semester
 //- + semesterCode: Code of the semester
+//- + groupName: Name of the group (for students)
+//- + groupCode: Code of the group (for students)
+//- + thesisTitle: Title of selected thesis (for students)
+//- + supervisorName: Name of supervisor (for students)
 
-extends layouts/email-layout.pug
+extends layouts/email-layout
 
 block content
-  p.greeting 
-    | Hello #[strong #{fullName}],
+  .greeting
+    | Dear #{recipientName},
+
+  p We are pleased to inform you that the semester #{semesterName} (#{semesterCode}) has officially moved to the #[strong "Ongoing"] phase. The capstone thesis work begins now!
 
   .info-box
-    h3
-      span 🎯 Semester Start Notification
-    p We are pleased to inform you that the semester #[strong #{semesterName}] (code: #[strong #{semesterCode}]) has officially started.
+    h3 🎯 Semester Status Update
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName} (#{semesterCode})
+    .info-item
+      span.info-label Current Phase:
+      span.info-value Ongoing (Scope Adjustable)
+    .info-item
+      span.info-label Your Role:
+      span.info-value #{recipientType === 'lecturer' ? 'Supervisor/Lecturer' : 'Student'}
 
-  .success-box
-    strong ✅ Your Registration Status
-    p Your registration status has been updated to #[strong "Ongoing"].
+  if recipientType === 'student'
+    if groupName && groupCode
+      .info-box
+        h3 👥 Your Group Information
+        .info-item
+          span.info-label Group Name:
+          span.info-value #{groupName}
+        .info-item
+          span.info-label Group Code:
+          span.info-value #{groupCode}
+        if thesisTitle
+          .info-item
+            span.info-label Thesis Topic:
+            span.info-value #{thesisTitle}
+        if supervisorName
+          .info-item
+            span.info-label Supervisor:
+            span.info-value #{supervisorName}
+
+    .success-box
+      h3 📚 What You Need to Do as a Student
+      p The capstone thesis work has officially started. Your key responsibilities:
+      ul
+        li Contact your thesis supervisor to establish regular communication
+        li Schedule initial meetings to discuss project scope and objectives
+        li Begin preliminary research and literature review
+        li Coordinate with your group members on task distribution
+        li Follow the project timeline and milestone deadlines
+        li Prepare for regular progress reviews and submissions
+
+  else if recipientType === 'lecturer'
+    .success-box
+      h3 🎓 Your Role as Supervisor/Lecturer
+      p The semester has moved to the ongoing phase. Your responsibilities include:
+      ul
+        li Guide and mentor your assigned student groups
+        li Conduct regular supervision meetings
+        li Review and provide feedback on student progress
+        li Help students adjust project scope if needed (scope adjustable phase)
+        li Evaluate milestone submissions and deliverables
+        li Support students in overcoming technical and academic challenges
 
   .info-box
-    h3
-      span 📋 Things you need to do now:
+    h3 📋 Important Information
     ul
       li
-        strong Check group information: 
-        | Confirm your group and member information
+        strong Scope Adjustable:
+        |  During this phase, thesis scope can still be refined and adjusted
       li
-        strong Contact your supervisor: 
-        | If you already have a group and topic
+        strong Regular Meetings:
+        |  Supervisors and students should maintain consistent communication
       li
-        strong Follow the timeline: 
-        | Check important milestones and deadlines
+        strong Milestone Tracking:
+        |  Follow the semester timeline for submissions and reviews
       li
-        strong Prepare documents: 
-        | Start preparing the necessary documents for your project
+        strong Quality Focus:
+        |  Emphasize on delivering high-quality academic work
 
   .warning-box
-    strong ⚠️ Important Note
-    br
-    p The capstone project has officially started. Please make sure to participate actively and comply with the semester regulations.
+    h3 ⚠️ Important Reminders
+    ul
+      li Active participation is essential for successful thesis completion
+      li Maintain regular communication between supervisors and students
+      li Follow academic integrity and university guidelines
+      li Submit all required documents and reports on time
+      li Seek help from academic administration when needed
 
-  p
-    | Wish you a successful semester and a great capstone project!
+  p Please log into TheSync system to access detailed information, timelines, and resources for the ongoing semester. Wishing everyone a successful and productive capstone thesis journey!

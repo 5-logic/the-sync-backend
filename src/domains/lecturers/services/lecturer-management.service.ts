@@ -48,36 +48,39 @@ export class LecturerManagementService {
 			const plainPassword = generateStrongPassword();
 			const hashedPassword = await hash(plainPassword);
 
-			const result = await this.prisma.$transaction(async (txn) => {
-				const newUser = await txn.user.create({
-					data: {
-						email: dto.email,
-						fullName: dto.fullName,
-						gender: dto.gender,
-						phoneNumber: dto.phoneNumber,
-						password: hashedPassword,
-					},
-				});
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					const newUser = await txn.user.create({
+						data: {
+							email: dto.email,
+							fullName: dto.fullName,
+							gender: dto.gender,
+							phoneNumber: dto.phoneNumber,
+							password: hashedPassword,
+						},
+					});
 
-				const newLecturer = await txn.lecturer.create({
-					data: { userId: newUser.id },
-				});
+					const newLecturer = await txn.lecturer.create({
+						data: { userId: newUser.id },
+					});
 
-				// Prepare email data
-				emailDto = {
-					to: newUser.email,
-					subject: 'Welcome to TheSync',
-					context: {
-						fullName: newUser.fullName,
-						email: newUser.email,
-						password: plainPassword,
-					},
-				};
+					// Prepare email data
+					emailDto = {
+						to: newUser.email,
+						subject: 'Welcome to TheSync',
+						context: {
+							fullName: newUser.fullName,
+							email: newUser.email,
+							password: plainPassword,
+						},
+					};
 
-				const result: LecturerResponse = mapLecturerV1(newUser, newLecturer);
+					const result: LecturerResponse = mapLecturerV1(newUser, newLecturer);
 
-				return result;
-			});
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			// Send email after user and lecturer are created
 			if (!emailDto) {
@@ -222,38 +225,41 @@ export class LecturerManagementService {
 		this.logger.log(`Admin updating lecturer with ID: ${id}`);
 
 		try {
-			const result = await this.prisma.$transaction(async (txn) => {
-				const existingLecturer = await txn.user.findUnique({
-					where: { id: id },
-				});
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					const existingLecturer = await txn.user.findUnique({
+						where: { id: id },
+					});
 
-				if (!existingLecturer) {
-					this.logger.warn(`Lecturer with ID ${id} not found for update`);
+					if (!existingLecturer) {
+						this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer not found`);
-				}
+						throw new NotFoundException(`Lecturer not found`);
+					}
 
-				const updatedLecturer = await this.prisma.user.update({
-					where: { id: id },
-					data: {
-						email: dto.email,
-						fullName: dto.fullName,
-						gender: dto.gender,
-						phoneNumber: dto.phoneNumber,
-					},
-					include: {
-						lecturer: true,
-					},
-				});
+					const updatedLecturer = await this.prisma.user.update({
+						where: { id: id },
+						data: {
+							email: dto.email,
+							fullName: dto.fullName,
+							gender: dto.gender,
+							phoneNumber: dto.phoneNumber,
+						},
+						include: {
+							lecturer: true,
+						},
+					});
 
-				const result: LecturerResponse = mapLecturerV3(updatedLecturer);
+					const result: LecturerResponse = mapLecturerV3(updatedLecturer);
 
-				// const cacheKey = `${CACHE_KEY}/${result.id}`;
-				// await this.cache.saveToCache(cacheKey, result);
-				// await this.cache.delete(`${CACHE_KEY}/`);
+					// const cacheKey = `${CACHE_KEY}/${result.id}`;
+					// await this.cache.saveToCache(cacheKey, result);
+					// await this.cache.delete(`${CACHE_KEY}/`);
 
-				return result;
-			});
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', JSON.stringify(result));
@@ -335,44 +341,47 @@ export class LecturerManagementService {
 		this.logger.log(`Deleting lecturer with ID: ${id}`);
 
 		try {
-			const result = await this.prisma.$transaction(async (txn) => {
-				const existingLecturer = await txn.lecturer.findUnique({
-					where: { userId: id },
-				});
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					const existingLecturer = await txn.lecturer.findUnique({
+						where: { userId: id },
+					});
 
-				if (!existingLecturer) {
-					this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
+					if (!existingLecturer) {
+						this.logger.warn(`Lecturer with ID ${id} not found for deletion`);
 
-					throw new NotFoundException(`Lecturer not found`);
-				}
+						throw new NotFoundException(`Lecturer not found`);
+					}
 
-				if (existingLecturer.isModerator) {
-					this.logger.warn(
-						`Lecturer with ID ${id} is a moderator, cannot delete`,
+					if (existingLecturer.isModerator) {
+						this.logger.warn(
+							`Lecturer with ID ${id} is a moderator, cannot delete`,
+						);
+
+						throw new ConflictException(
+							'Lecturer is a moderator. Deletion not allowed. Please deactivate this account instead.',
+						);
+					}
+
+					await this.ensureNoDependencies(existingLecturer.userId);
+
+					const deletedLecturer = await txn.lecturer.delete({
+						where: { userId: id },
+					});
+
+					const deletedUser = await txn.user.delete({
+						where: { id },
+					});
+
+					const result: LecturerResponse = mapLecturerV1(
+						deletedUser,
+						deletedLecturer,
 					);
 
-					throw new ConflictException(
-						'Lecturer is a moderator. Deletion not allowed. Please deactivate this account instead.',
-					);
-				}
-
-				await this.ensureNoDependencies(existingLecturer.userId);
-
-				const deletedLecturer = await txn.lecturer.delete({
-					where: { userId: id },
-				});
-
-				const deletedUser = await txn.user.delete({
-					where: { id },
-				});
-
-				const result: LecturerResponse = mapLecturerV1(
-					deletedUser,
-					deletedLecturer,
-				);
-
-				return result;
-			});
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Lecturer successfully deleted with ID: ${id}`);
 			this.logger.debug('Deleted lecturer details:', JSON.stringify(result));
