@@ -11,46 +11,50 @@
 extends layouts/email-layout
 
 block content
-	div.container
-		h1 Review Completed Notification
-		
-		p Dear #{studentName},
-		
-		p Your group's submission has been reviewed by #{reviewerName}.
-		
-		div.submission-details
-			h3 Submission Details:
-			p
-				strong Group: 
-				| #{groupName} (#{groupCode})
-			p
-				strong Milestone: 
-				| #{milestoneName}
-			p
-				strong Reviewer: 
-				| #{reviewerName}
-			p
-				strong Review Submitted At: 
-				| #{reviewSubmittedAt}
-		
-		div.review-summary
-			h3 Review Summary:
-			if feedback
-				p
-					strong Feedback:
-				div.feedback-content
-					| #{feedback}
-			
-			if reviewItems && reviewItems.length > 0
-				h4 Review Items:
-				div.review-items
-					each item in reviewItems
-						div.review-item
-							p
-								strong #{item.checklistItemName}: 
-								span.acceptance-status(class=item.acceptance.toLowerCase()) #{item.acceptance}
-							if item.note
-								p.item-note
-									em Note: #{item.note}
-		
-		p Please log in to TheSync system to view the complete review details.
+  .greeting
+    | Dear #{studentName},
+
+  p Your group's submission has been reviewed by #{reviewerName}.
+
+  .info-box
+    h3 📝 Submission Details
+    .info-item
+      span.info-label Group:
+      span.info-value #{groupName} (#{groupCode})
+    .info-item
+      span.info-label Milestone:
+      span.info-value #{milestoneName}
+    .info-item
+      span.info-label Reviewer:
+      span.info-value #{reviewerName}
+    .info-item
+      span.info-label Submitted At:
+      span.info-value #{reviewSubmittedAt}
+
+  if feedback
+    .info-box
+      h3 💬 Reviewer Feedback
+      p #{feedback}
+
+  if reviewItems && reviewItems.length > 0
+    .info-box
+      h3 📋 Review Items
+      each item in reviewItems
+        .review-item(style="margin-bottom: 15px; padding: 10px; border-left: 3px solid #667eea; background-color: #f8f9fa;")
+          .info-item
+            span.info-label #{item.checklistItemName}:
+            span.info-value(class=`acceptance-${item.acceptance.toLowerCase()}` style=`color: ${item.acceptance === 'ACCEPTED' ? '#28a745' : item.acceptance === 'REJECTED' ? '#dc3545' : '#ffc107'}; font-weight: bold;`) #{item.acceptance}
+          if item.note
+            p.item-note(style="margin: 5px 0 0 0; font-style: italic; color: #6c757d;")
+              | Note: #{item.note}
+
+  .success-box
+    h3 📚 Next Steps
+    p Please review the feedback and take the following actions:
+    ul
+      li Log in to TheSync system to view the complete review
+      li Address any feedback or concerns raised by the reviewer
+      li Prepare for the next milestone if applicable
+      li Contact your supervisor if you need clarification
+
+  p If you have any questions about the review, please contact your supervisor or the academic administration.

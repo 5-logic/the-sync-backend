@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
+import { EmailJobType, EmailQueueService } from '@/queue';
 import { UpdateEnrollmentsDto } from '@/semesters/dto';
 
 import { OngoingPhase, Semester, SemesterStatus } from '~/generated/prisma';
@@ -14,7 +15,10 @@ import { OngoingPhase, Semester, SemesterStatus } from '~/generated/prisma';
 export class SemesterEnrollmentService {
 	private readonly logger = new Logger(SemesterEnrollmentService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly emailQueueService: EmailQueueService,
+	) {}
 
 	async findGroups(semesterId: string) {
 		this.logger.log(`Finding groups for semester ID: ${semesterId}`);
@@ -85,6 +89,13 @@ export class SemesterEnrollmentService {
 
 			this.logger.log(
 				`Updated ${result.count} enrollments for semester ID: ${id}`,
+			);
+
+			// Gửi email thông báo kết quả enrollment cho từng student
+			await this.sendEnrollmentResultNotifications(
+				dto.studentIds,
+				id,
+				dto.status,
 			);
 
 			return result;
@@ -166,5 +177,104 @@ export class SemesterEnrollmentService {
 		this.logger.log(
 			`Other semesters status validation passed for semester: ${currentSemesterId}`,
 		);
+	}
+
+	private async sendEnrollmentResultNotifications(
+		studentIds: string[],
+		semesterId: string,
+		enrollmentStatus: string,
+	): Promise<void> {
+		try {
+			this.logger.log(
+				`Sending enrollment result notifications for ${studentIds.length} students`,
+			);
+
+			// Lấy thông tin chi tiết của students và semester
+			const enrollments = await this.prisma.enrollment.findMany({
+				where: {
+					studentId: { in: studentIds },
+					semesterId: semesterId,
+				},
+				include: {
+					student: {
+						include: {
+							user: {
+								select: { fullName: true, email: true },
+							},
+							studentGroupParticipations: {
+								where: { semesterId: semesterId },
+								include: {
+									group: {
+										include: {
+											thesis: {
+												select: {
+													englishName: true,
+													abbreviation: true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					semester: {
+						select: {
+							name: true,
+							code: true,
+						},
+					},
+				},
+			});
+
+			// Gửi email cho từng student
+			for (const enrollment of enrollments) {
+				const student = enrollment.student;
+				const semester = enrollment.semester;
+				const groupParticipation = student.studentGroupParticipations[0];
+				const thesis = groupParticipation?.group?.thesis;
+
+				// Xác định text hiển thị cho enrollment status
+				let enrollmentStatusText = '';
+				if (enrollmentStatus === 'Passed') {
+					enrollmentStatusText = 'PASSED';
+				} else if (enrollmentStatus === 'Failed') {
+					enrollmentStatusText = 'NOT PASSED';
+				} else {
+					enrollmentStatusText = enrollmentStatus;
+				}
+
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_ENROLLMENT_RESULT_NOTIFICATION,
+					{
+						to: student.user.email,
+						subject: `Capstone Project Result - ${semester.name}`,
+						context: {
+							fullName: student.user.fullName,
+							enrollmentStatus: enrollmentStatus,
+							semesterName: semester.name,
+							semesterCode: semester.code,
+							studentEmail: student.user.email,
+							thesisEnglishName: thesis?.englishName || 'N/A',
+							thesisAbbreviation: thesis?.abbreviation || 'N/A',
+							enrollmentStatusText: enrollmentStatusText,
+						},
+					},
+					500, // delay 500ms
+				);
+
+				this.logger.log(
+					`Enrollment result notification sent to ${student.user.email}`,
+				);
+			}
+
+			this.logger.log(`All enrollment result notifications sent successfully`);
+		} catch (error) {
+			this.logger.error(
+				'Failed to send enrollment result notifications:',
+				error,
+			);
+			// Không throw error để không làm fail update enrollment process
+		}
 	}
 }

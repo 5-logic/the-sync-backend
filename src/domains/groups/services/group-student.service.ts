@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import {
 	ChangeLeaderDto,
 	CreateGroupDto,
@@ -90,58 +91,61 @@ export class GroupStudentService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const lastGroup = await prisma.group.findFirst({
-					where: {
-						semesterId: currentSemester.id,
-						code: {
-							startsWith: `${currentSemester.code}QN`,
-						},
-					},
-					orderBy: {
-						code: 'desc',
-					},
-				});
-
-				let sequenceNumber = 1;
-				if (lastGroup) {
-					const lastCode = lastGroup.code;
-					const lastSequence = parseInt(lastCode.slice(-3), 10);
-					sequenceNumber = lastSequence + 1;
-				}
-
-				const groupCode = `${currentSemester.code}QN${sequenceNumber
-					.toString()
-					.padStart(3, '0')}`;
-
-				const group = await prisma.group.create({
-					data: {
-						code: groupCode,
-						name: dto.name,
-						projectDirection: dto.projectDirection,
-						semesterId: currentSemester.id,
-					},
-				});
-
-				await Promise.all([
-					prisma.studentGroupParticipation.create({
-						data: {
-							studentId: userId,
-							groupId: group.id,
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const lastGroup = await prisma.group.findFirst({
+						where: {
 							semesterId: currentSemester.id,
-							isLeader: true,
+							code: {
+								startsWith: `${currentSemester.code}QN`,
+							},
 						},
-					}),
+						orderBy: {
+							code: 'desc',
+						},
+					});
 
-					this.groupService.createGroupSkills(group.id, dto.skillIds),
-					this.groupService.createGroupResponsibilities(
-						group.id,
-						dto.responsibilityIds,
-					),
-				]);
+					let sequenceNumber = 1;
+					if (lastGroup) {
+						const lastCode = lastGroup.code;
+						const lastSequence = parseInt(lastCode.slice(-3), 10);
+						sequenceNumber = lastSequence + 1;
+					}
 
-				return group;
-			});
+					const groupCode = `${currentSemester.code}QN${sequenceNumber
+						.toString()
+						.padStart(3, '0')}`;
+
+					const group = await prisma.group.create({
+						data: {
+							code: groupCode,
+							name: dto.name,
+							projectDirection: dto.projectDirection,
+							semesterId: currentSemester.id,
+						},
+					});
+
+					await Promise.all([
+						prisma.studentGroupParticipation.create({
+							data: {
+								studentId: userId,
+								groupId: group.id,
+								semesterId: currentSemester.id,
+								isLeader: true,
+							},
+						}),
+
+						this.groupService.createGroupSkills(group.id, dto.skillIds),
+						this.groupService.createGroupResponsibilities(
+							group.id,
+							dto.responsibilityIds,
+						),
+					]);
+
+					return group;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
@@ -216,25 +220,28 @@ export class GroupStudentService {
 				dto.responsibilityIds,
 			);
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const group = await prisma.group.update({
-					where: { id },
-					data: {
-						name: dto.name,
-						projectDirection: dto.projectDirection,
-					},
-				});
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const group = await prisma.group.update({
+						where: { id },
+						data: {
+							name: dto.name,
+							projectDirection: dto.projectDirection,
+						},
+					});
 
-				await Promise.all([
-					this.groupService.updateGroupSkills(id, dto.skillIds),
-					this.groupService.updateGroupResponsibilities(
-						id,
-						dto.responsibilityIds,
-					),
-				]);
+					await Promise.all([
+						this.groupService.updateGroupSkills(id, dto.skillIds),
+						this.groupService.updateGroupResponsibilities(
+							id,
+							dto.responsibilityIds,
+						),
+					]);
 
-				return group;
-			});
+					return group;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
@@ -342,35 +349,38 @@ export class GroupStudentService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				await prisma.studentGroupParticipation.update({
-					where: {
-						studentId_groupId_semesterId: {
-							studentId: currentLeaderId,
-							groupId: groupId,
-							semesterId: existingGroup.semesterId,
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					await prisma.studentGroupParticipation.update({
+						where: {
+							studentId_groupId_semesterId: {
+								studentId: currentLeaderId,
+								groupId: groupId,
+								semesterId: existingGroup.semesterId,
+							},
 						},
-					},
-					data: {
-						isLeader: false,
-					},
-				});
-
-				await prisma.studentGroupParticipation.update({
-					where: {
-						studentId_groupId_semesterId: {
-							studentId: dto.newLeaderId,
-							groupId: groupId,
-							semesterId: existingGroup.semesterId,
+						data: {
+							isLeader: false,
 						},
-					},
-					data: {
-						isLeader: true,
-					},
-				});
+					});
 
-				return existingGroup;
-			});
+					await prisma.studentGroupParticipation.update({
+						where: {
+							studentId_groupId_semesterId: {
+								studentId: dto.newLeaderId,
+								groupId: groupId,
+								semesterId: existingGroup.semesterId,
+							},
+						},
+						data: {
+							isLeader: true,
+						},
+					});
+
+					return existingGroup;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Group leadership changed successfully. Group: "${result.name}" (${result.code}), ` +
@@ -712,28 +722,31 @@ export class GroupStudentService {
 
 			// If this is the last member (leader), delete the entire group
 			if (group._count.studentGroupParticipations === 1) {
-				await this.prisma.$transaction(async (prisma) => {
-					// Delete all related records first
-					await Promise.all([
-						prisma.groupRequiredSkill.deleteMany({
-							where: { groupId: groupId },
-						}),
-						prisma.groupExpectedResponsibility.deleteMany({
-							where: { groupId: groupId },
-						}),
-						prisma.request.deleteMany({
-							where: { groupId: groupId },
-						}),
-						prisma.studentGroupParticipation.deleteMany({
-							where: { groupId: groupId },
-						}),
-					]);
+				await this.prisma.$transaction(
+					async (prisma) => {
+						// Delete all related records first
+						await Promise.all([
+							prisma.groupRequiredSkill.deleteMany({
+								where: { groupId: groupId },
+							}),
+							prisma.groupExpectedResponsibility.deleteMany({
+								where: { groupId: groupId },
+							}),
+							prisma.request.deleteMany({
+								where: { groupId: groupId },
+							}),
+							prisma.studentGroupParticipation.deleteMany({
+								where: { groupId: groupId },
+							}),
+						]);
 
-					// Delete the group itself
-					await prisma.group.delete({
-						where: { id: groupId },
-					});
-				});
+						// Delete the group itself
+						await prisma.group.delete({
+							where: { id: groupId },
+						});
+					},
+					{ timeout: CONSTANTS.TIMEOUT },
+				);
 
 				this.logger.log(
 					`Group "${group.name}" (${group.code}) was automatically deleted as the last member (leader) left`,
@@ -926,23 +939,26 @@ export class GroupStudentService {
 			}
 
 			// Perform thesis assignment in a transaction
-			await this.prisma.$transaction(async (prisma) => {
-				// Update group with thesis assignment
-				await prisma.group.update({
-					where: { id: groupId },
-					data: {
-						thesisId: dto.thesisId,
-					},
-				});
+			await this.prisma.$transaction(
+				async (prisma) => {
+					// Update group with thesis assignment
+					await prisma.group.update({
+						where: { id: groupId },
+						data: {
+							thesisId: dto.thesisId,
+						},
+					});
 
-				// Update thesis with group assignment
-				await prisma.thesis.update({
-					where: { id: dto.thesisId },
-					data: {
-						groupId: groupId,
-					},
-				});
-			});
+					// Update thesis with group assignment
+					await prisma.thesis.update({
+						where: { id: dto.thesisId },
+						data: {
+							groupId: groupId,
+						},
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 			this.logger.log(
 				`Thesis "${thesis.vietnameseName}" successfully assigned to group "${group.name}" (${group.code}) by leader`,
 			);
@@ -1054,23 +1070,26 @@ export class GroupStudentService {
 			};
 
 			// Perform thesis removal in a transaction
-			await this.prisma.$transaction(async (prisma) => {
-				// Remove thesis assignment from group
-				await prisma.group.update({
-					where: { id: groupId },
-					data: {
-						thesisId: null,
-					},
-				});
+			await this.prisma.$transaction(
+				async (prisma) => {
+					// Remove thesis assignment from group
+					await prisma.group.update({
+						where: { id: groupId },
+						data: {
+							thesisId: null,
+						},
+					});
 
-				// Remove group assignment from thesis
-				await prisma.thesis.update({
-					where: { id: group.thesis!.id },
-					data: {
-						groupId: null,
-					},
-				});
-			});
+					// Remove group assignment from thesis
+					await prisma.thesis.update({
+						where: { id: group.thesis!.id },
+						data: {
+							groupId: null,
+						},
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Thesis "${thesisInfo.vietnameseName}" successfully removed from group "${group.name}" (${group.code}) by ${isModerator ? 'moderator' : 'leader'}`,
@@ -1184,34 +1203,37 @@ export class GroupStudentService {
 			);
 
 			// Perform deletion in a transaction
-			const result = await this.prisma.$transaction(async (prisma) => {
-				// Delete all related records first (cascade deletions)
-				await Promise.all([
-					// Delete group required skills
-					prisma.groupRequiredSkill.deleteMany({
-						where: { groupId: groupId },
-					}),
-					// Delete group expected responsibilities
-					prisma.groupExpectedResponsibility.deleteMany({
-						where: { groupId: groupId },
-					}),
-					// Delete all pending requests for this group
-					prisma.request.deleteMany({
-						where: { groupId: groupId },
-					}),
-					// Delete student group participations
-					prisma.studentGroupParticipation.deleteMany({
-						where: { groupId: groupId },
-					}),
-				]);
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					// Delete all related records first (cascade deletions)
+					await Promise.all([
+						// Delete group required skills
+						prisma.groupRequiredSkill.deleteMany({
+							where: { groupId: groupId },
+						}),
+						// Delete group expected responsibilities
+						prisma.groupExpectedResponsibility.deleteMany({
+							where: { groupId: groupId },
+						}),
+						// Delete all pending requests for this group
+						prisma.request.deleteMany({
+							where: { groupId: groupId },
+						}),
+						// Delete student group participations
+						prisma.studentGroupParticipation.deleteMany({
+							where: { groupId: groupId },
+						}),
+					]);
 
-				// Finally, delete the group itself
-				const deletedGroup = await prisma.group.delete({
-					where: { id: groupId },
-				});
+					// Finally, delete the group itself
+					const deletedGroup = await prisma.group.delete({
+						where: { id: groupId },
+					});
 
-				return deletedGroup;
-			});
+					return deletedGroup;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 			this.logger.log(
 				`Group "${result.name}" (${result.code}) successfully deleted by leader. ${groupMembers.length} members affected.`,
 			);

@@ -4,6 +4,7 @@ import {
 	CreateManyChecklistItemsDto,
 	UpdateManyChecklistItemsDto,
 } from '@/checklists/checklist-items/dtos';
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
 
 @Injectable()
@@ -33,12 +34,15 @@ export class ChecklistItemModeratorService {
 				checklistId,
 			}));
 
-			const result = await this.prisma.$transaction(async (tx) => {
-				return await tx.checklistItem.createMany({
-					data: dataToInsert,
-					skipDuplicates: false,
-				});
-			});
+			const result = await this.prisma.$transaction(
+				async (tx) => {
+					return await tx.checklistItem.createMany({
+						data: dataToInsert,
+						skipDuplicates: false,
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Successfully created ${result.count} checklist items for checklist ID ${checklistId}`,

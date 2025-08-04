@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 // import { CACHE_KEY } from '@/lecturers/constants';
 import { mapLecturerV1, mapLecturerV2 } from '@/lecturers/mappers';
 import { LecturerResponse } from '@/lecturers/responses';
@@ -98,33 +99,36 @@ export class LecturerService {
 		this.logger.log(`Updating lecturer with ID: ${id}`);
 
 		try {
-			const result = await this.prisma.$transaction(async (txn) => {
-				const existingLecturer = await txn.lecturer.findUnique({
-					where: { userId: id },
-				});
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					const existingLecturer = await txn.lecturer.findUnique({
+						where: { userId: id },
+					});
 
-				if (!existingLecturer) {
-					this.logger.warn(`Lecturer with ID ${id} not found for update`);
+					if (!existingLecturer) {
+						this.logger.warn(`Lecturer with ID ${id} not found for update`);
 
-					throw new NotFoundException(`Lecturer not found`);
-				}
+						throw new NotFoundException(`Lecturer not found`);
+					}
 
-				const updatedUser = await txn.user.update({
-					where: { id: id },
-					data: {
-						fullName: dto.fullName,
-						gender: dto.gender,
-						phoneNumber: dto.phoneNumber,
-					},
-				});
+					const updatedUser = await txn.user.update({
+						where: { id: id },
+						data: {
+							fullName: dto.fullName,
+							gender: dto.gender,
+							phoneNumber: dto.phoneNumber,
+						},
+					});
 
-				const result: LecturerResponse = mapLecturerV1(
-					updatedUser,
-					existingLecturer,
-				);
+					const result: LecturerResponse = mapLecturerV1(
+						updatedUser,
+						existingLecturer,
+					);
 
-				return result;
-			});
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Lecturer updated with ID: ${result.id}`);
 			this.logger.debug('Updated Lecturer', JSON.stringify(result));

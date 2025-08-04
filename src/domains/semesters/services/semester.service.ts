@@ -13,7 +13,14 @@ import {
 import { CreateSemesterDto, UpdateSemesterDto } from '@/semesters/dto';
 import { mapSemester } from '@/semesters/mappers';
 import { SemesterResponse } from '@/semesters/responses';
+import { SemesterNotificationService } from '@/semesters/services/semester-notification.service';
 import { SemesterStatusService } from '@/semesters/services/semester-status.service';
+
+import {
+	EnrollmentStatus,
+	SemesterStatus,
+	ThesisStatus,
+} from '~/generated/prisma';
 
 @Injectable()
 export class SemesterService {
@@ -23,6 +30,7 @@ export class SemesterService {
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly statusService: SemesterStatusService,
+		private readonly notificationService: SemesterNotificationService,
 	) {}
 
 	async create(dto: CreateSemesterDto): Promise<SemesterResponse> {
@@ -232,7 +240,7 @@ export class SemesterService {
 			const thesisApproved = await this.prisma.thesis.count({
 				where: {
 					semesterId,
-					status: 'Approved', // enum value must match Prisma enum (capitalized)
+					status: ThesisStatus.Approved,
 				},
 			});
 
@@ -397,13 +405,58 @@ export class SemesterService {
 				data: updatedDto,
 			});
 
+			// Chỉ gửi email khi status thực sự thay đổi
+			const statusChanged = existingSemester.status !== updated.status;
+
 			// Nếu status mới là Ongoing, cập nhật toàn bộ enrollment sang Ongoing
-			if (updated.status === 'Ongoing') {
+			if (updated.status === SemesterStatus.Ongoing) {
 				await this.prisma.enrollment.updateMany({
 					where: { semesterId: id },
-					data: { status: 'Ongoing' },
+					data: { status: EnrollmentStatus.Ongoing },
 				});
 				this.logger.log(`All enrollments in semester ${id} set to Ongoing`);
+
+				// Gửi email notification cho ongoing semester (chỉ khi status thay đổi)
+				if (statusChanged) {
+					await this.notificationService.sendSemesterOngoingNotifications(
+						updated,
+					);
+				}
+			}
+
+			// Nếu status mới là Preparing, gửi email cho lecturers (chỉ khi status thay đổi)
+			if (updated.status === SemesterStatus.Preparing && statusChanged) {
+				await this.notificationService.sendSemesterPreparingNotifications(
+					updated,
+				);
+			}
+
+			// Nếu status mới là Picking, gửi email cho students (chỉ khi status thay đổi)
+			if (updated.status === SemesterStatus.Picking && statusChanged) {
+				await this.notificationService.sendSemesterPickingNotifications(
+					updated,
+				);
+
+				// Kiểm tra và gửi cảnh báo thiếu thesis cho moderators
+				await this.checkAndSendInsufficientThesisAlert(updated);
+			}
+
+			// Nếu chuyển sang Ongoing, kiểm tra và gửi cảnh báo groups chưa pick thesis
+			if (
+				updated.status === SemesterStatus.Ongoing &&
+				existingSemester.status === SemesterStatus.Picking &&
+				statusChanged
+			) {
+				await this.checkAndSendUnpickedGroupsAlert(updated);
+			}
+
+			// Kiểm tra students chưa có group trước khi chuyển từ Preparing sang Picking
+			if (
+				updated.status === SemesterStatus.Picking &&
+				existingSemester.status === SemesterStatus.Preparing &&
+				statusChanged
+			) {
+				await this.checkAndSendUngroupedStudentsAlert(updated);
 			}
 
 			this.logger.log(`Semester with ID ${id} updated successfully`);
@@ -517,6 +570,168 @@ export class SemesterService {
 			throw new ConflictException(
 				`Cannot delete semester: it has related data.`,
 			);
+		}
+	}
+
+	/**
+	 * Kiểm tra và gửi cảnh báo thiếu thesis cho moderators
+	 */
+	private async checkAndSendInsufficientThesisAlert(
+		semester: any,
+	): Promise<void> {
+		try {
+			const totalGroups = await this.prisma.group.count({
+				where: { semesterId: semester.id },
+			});
+
+			const availableThesis = await this.prisma.thesis.count({
+				where: {
+					semesterId: semester.id,
+					isPublish: true,
+					status: 'Approved',
+				},
+			});
+
+			// Chỉ gửi cảnh báo nếu thiếu thesis
+			if (availableThesis < totalGroups) {
+				await this.notificationService.sendModeratorInsufficientThesisAlert(
+					semester,
+					totalGroups,
+					availableThesis,
+				);
+			}
+		} catch (error) {
+			this.logger.error('Error checking insufficient thesis', error);
+		}
+	}
+
+	/**
+	 * Kiểm tra và gửi cảnh báo students chưa có group cho moderators
+	 */
+	private async checkAndSendUngroupedStudentsAlert(
+		semester: any,
+	): Promise<void> {
+		try {
+			const ungroupedStudents = await this.prisma.student.findMany({
+				where: {
+					enrollments: {
+						some: {
+							semesterId: semester.id,
+							status: 'NotYet',
+						},
+					},
+					studentGroupParticipations: {
+						none: {
+							semesterId: semester.id,
+						},
+					},
+				},
+				include: {
+					user: {
+						select: {
+							fullName: true,
+							email: true,
+						},
+					},
+				},
+				take: 50, // Giới hạn số lượng để tránh email quá dài
+			});
+
+			if (ungroupedStudents.length > 0) {
+				const totalStudents = await this.prisma.enrollment.count({
+					where: {
+						semesterId: semester.id,
+						status: 'NotYet',
+					},
+				});
+
+				const groupedStudents = totalStudents - ungroupedStudents.length;
+
+				// Format data cho email template
+				const formattedStudents = ungroupedStudents.map((student) => ({
+					studentCode: student.studentCode,
+					fullName: student.user.fullName,
+					email: student.user.email,
+				}));
+
+				await this.notificationService.sendModeratorUngroupedStudentsAlert(
+					semester,
+					formattedStudents,
+					totalStudents,
+					groupedStudents,
+				);
+			}
+		} catch (error) {
+			this.logger.error('Error checking ungrouped students', error);
+		}
+	}
+
+	/**
+	 * Kiểm tra và gửi cảnh báo groups chưa pick thesis cho moderators
+	 */
+	private async checkAndSendUnpickedGroupsAlert(semester: any): Promise<void> {
+		try {
+			const unpickedGroups = await this.prisma.group.findMany({
+				where: {
+					semesterId: semester.id,
+					thesisId: null,
+				},
+				include: {
+					studentGroupParticipations: {
+						where: { isLeader: true },
+						include: {
+							student: {
+								include: {
+									user: {
+										select: {
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
+						},
+					},
+					_count: {
+						select: {
+							studentGroupParticipations: true,
+						},
+					},
+				},
+				take: 50, // Giới hạn số lượng để tránh email quá dài
+			});
+
+			if (unpickedGroups.length > 0) {
+				const totalGroups = await this.prisma.group.count({
+					where: { semesterId: semester.id },
+				});
+
+				const groupsWithThesis = totalGroups - unpickedGroups.length;
+
+				// Format data cho email template
+				const formattedGroups = unpickedGroups.map((group) => {
+					const leader = group.studentGroupParticipations[0];
+					return {
+						groupName: group.name,
+						groupCode: group.code,
+						leaderName: leader?.student.user.fullName || 'No leader',
+						leaderEmail: leader?.student.user.email || '',
+						memberCount: group._count.studentGroupParticipations,
+					};
+				});
+
+				const ongoingDeadline = 'Please check system for deadline';
+
+				await this.notificationService.sendModeratorUnpickedGroupsAlert(
+					semester,
+					formattedGroups,
+					totalGroups,
+					groupsWithThesis,
+					ongoingDeadline,
+				);
+			}
+		} catch (error) {
+			this.logger.error('Error checking unpicked groups', error);
 		}
 	}
 }
