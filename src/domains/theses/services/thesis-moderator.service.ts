@@ -9,6 +9,7 @@ import {
 	// CacheHelperService,
 	PrismaService,
 } from '@/providers';
+import { EmailJobType, EmailQueueService } from '@/queue';
 // import { CACHE_KEY } from '@/theses/constants';
 import {
 	AssignThesisDto,
@@ -27,6 +28,7 @@ export class ThesisModeratorService {
 	constructor(
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
+		private readonly emailQueueService: EmailQueueService,
 	) {}
 
 	async publishTheses(dto: PublishThesisDto): Promise<void> {
@@ -42,7 +44,14 @@ export class ThesisModeratorService {
 			// Fetch theses with required data (kèm semester)
 			const theses = await this.prisma.thesis.findMany({
 				where: { id: { in: dto.thesisIds } },
-				include: { semester: true },
+				include: {
+					semester: true,
+					lecturer: {
+						include: {
+							user: true,
+						},
+					},
+				},
 			});
 
 			// Validate theses exist
@@ -113,6 +122,9 @@ export class ThesisModeratorService {
 			this.logger.debug(
 				`Updated ${updatedTheses.count} theses to isPublish: ${dto.isPublish}`,
 			);
+
+			// Send email notifications for publication status change
+			await this.sendThesisStatusChangeNotifications(theses, dto.isPublish);
 
 			// Update cache for each thesis
 			// for (const thesis of theses) {
@@ -191,6 +203,13 @@ export class ThesisModeratorService {
 			this.logger.debug('Updated thesis detail', JSON.stringify(updatedThesis));
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			// Send email notification for status change
+			await this.sendThesisStatusChangeNotifications(
+				[updatedThesis],
+				undefined,
+				dto.status,
+			);
 
 			// await this.saveAndDeleteCache(result);
 
@@ -342,6 +361,107 @@ export class ThesisModeratorService {
 	// ------------------------------------------------------------------------------------------
 	// Additional methods for thesis management can be added here
 	// ------------------------------------------------------------------------------------------
+
+	/**
+	 * Send email notifications for thesis status changes (publication/review)
+	 */
+	private async sendThesisStatusChangeNotifications(
+		theses: any[],
+		isPublish?: boolean,
+		status?: ThesisStatus,
+	): Promise<void> {
+		try {
+			// Group theses by lecturer
+			const thesesByLecturer = new Map<string, any[]>();
+
+			for (const thesis of theses) {
+				const lecturerId = String(thesis.lecturerId);
+				if (!thesesByLecturer.has(lecturerId)) {
+					thesesByLecturer.set(lecturerId, []);
+				}
+				thesesByLecturer.get(lecturerId)!.push(thesis);
+			}
+
+			// Send email to each lecturer
+			for (const [lecturerId, lecturerTheses] of thesesByLecturer) {
+				const lecturer = lecturerTheses[0].lecturer;
+
+				if (!lecturer.user.email) {
+					this.logger.warn(`No email found for lecturer ${lecturerId}`);
+					continue;
+				}
+
+				// Determine if this is a bulk or single thesis update
+				const isBulk = lecturerTheses.length > 1;
+
+				// Determine the action type and subject
+				let actionType = '';
+				let subject = '';
+				let isPublicationChange = false;
+
+				if (isPublish !== undefined) {
+					// Publication status change
+					isPublicationChange = true;
+					actionType = isPublish ? 'Published' : 'Unpublished';
+					subject = isBulk
+						? `Thesis Publication Update - ${lecturerTheses.length} theses ${actionType.toLowerCase()}`
+						: `Thesis Publication Update - ${lecturerTheses[0].englishName} ${actionType.toLowerCase()}`;
+				} else if (status) {
+					// Review status change
+					actionType = status;
+					subject = isBulk
+						? `Thesis Review Update - ${lecturerTheses.length} theses ${status.toLowerCase()}`
+						: `Thesis Review Update - ${lecturerTheses[0].englishName} ${status.toLowerCase()}`;
+				}
+
+				// Prepare email context
+				const emailContext: any = {
+					lecturerName: lecturer.user.fullName,
+					isPublicationChange,
+					actionType,
+				};
+
+				if (isBulk) {
+					// Bulk update - send list of theses
+					emailContext.theses = lecturerTheses.map((thesis) => ({
+						englishName: thesis.englishName,
+						vietnameseName: thesis.vietnameseName,
+						abbreviation: thesis.abbreviation,
+						domain: thesis.domain,
+					}));
+				} else {
+					// Single thesis update
+					const thesis = lecturerTheses[0];
+					emailContext.englishName = thesis.englishName;
+					emailContext.vietnameseName = thesis.vietnameseName;
+					emailContext.abbreviation = thesis.abbreviation;
+					emailContext.domain = thesis.domain;
+					emailContext.status = actionType;
+				}
+
+				// Send email
+				await this.emailQueueService.sendEmail(
+					EmailJobType.SEND_THESIS_STATUS_CHANGE,
+					{
+						to: lecturer.user.email,
+						subject: subject,
+						context: emailContext,
+					},
+					500, // delay 500ms
+				);
+
+				this.logger.log(
+					`Thesis status change notification sent to ${lecturer.user.email} for ${lecturerTheses.length} thesis(es)`,
+				);
+			}
+		} catch (error) {
+			this.logger.error(
+				'Failed to send thesis status change notifications',
+				error,
+			);
+			// Don't throw error as this is a non-critical operation
+		}
+	}
 
 	// private async saveAndDeleteCache(result: ThesisDetailResponse) {
 	// 	const cacheKey = `${CACHE_KEY}/${result.id}`;

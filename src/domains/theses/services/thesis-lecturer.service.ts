@@ -11,7 +11,12 @@ import {
 	// CacheHelperService,
 	PrismaService,
 } from '@/providers';
-import { PineconeJobType, PineconeThesisService } from '@/queue';
+import {
+	EmailJobType,
+	EmailQueueService,
+	PineconeJobType,
+	PineconeThesisService,
+} from '@/queue';
 // import { CACHE_KEY } from '@/theses/constants';
 import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
@@ -29,6 +34,7 @@ export class ThesisLecturerService {
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeThesisService,
+		private readonly emailQueueService: EmailQueueService,
 	) {}
 
 	async create(
@@ -463,6 +469,12 @@ export class ThesisLecturerService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
+			// Send email notification for status change to Pending
+			await this.sendThesisStatusChangeNotification(
+				updatedThesis,
+				ThesisStatus.Pending,
+			);
+
 			// await this.saveAndDeleteCache(result);
 
 			return result;
@@ -649,6 +661,58 @@ export class ThesisLecturerService {
 			if (leader) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Send email notification for thesis status change (single thesis)
+	 */
+	private async sendThesisStatusChangeNotification(
+		thesis: any,
+		status: ThesisStatus,
+	): Promise<void> {
+		try {
+			if (!thesis.lecturer.user.email) {
+				this.logger.warn(`No email found for lecturer ${thesis.lecturerId}`);
+				return;
+			}
+
+			// Prepare email context for single thesis
+			const emailContext = {
+				lecturerName: thesis.lecturer.user.fullName,
+				englishName: thesis.englishName,
+				vietnameseName: thesis.vietnameseName,
+				abbreviation: thesis.abbreviation,
+				domain: thesis.domain,
+				status: status,
+				isPublicationChange: false,
+			};
+
+			// Determine subject based on status
+			const statusText =
+				status === 'Pending' ? 'submitted for review' : status.toLowerCase();
+			const subject = `Thesis Status Update - ${thesis.englishName} ${statusText}`;
+
+			// Send email
+			await this.emailQueueService.sendEmail(
+				EmailJobType.SEND_THESIS_STATUS_CHANGE,
+				{
+					to: thesis.lecturer.user.email,
+					subject: subject,
+					context: emailContext,
+				},
+				500, // delay 500ms
+			);
+
+			this.logger.log(
+				`Thesis status change notification sent to ${thesis.lecturer.user.email} for thesis ${thesis.id}`,
+			);
+		} catch (error) {
+			this.logger.error(
+				'Failed to send thesis status change notification',
+				error,
+			);
+			// Don't throw error as this is a non-critical operation
+		}
 	}
 
 	// private async saveAndDeleteCache(
