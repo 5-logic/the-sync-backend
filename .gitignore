@@ -136,3 +136,5 @@ dist
 .pnp.*
 
 /generated/prisma
+/rendered-templates
+render-pug-templates.js

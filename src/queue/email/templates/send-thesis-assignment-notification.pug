@@ -1,15 +1,6 @@
 extends layouts/email-layout
 
 block content
-  .header
-    h1 
-      if actionType === 'assigned'
-        | Thesis Assignment Notification
-      else if actionType === 'picked'
-        | Thesis Selection Notification
-      else if actionType === 'unpicked'
-        | Thesis Removal Notification
-
   .greeting
     | Dear #{recipientName},
 

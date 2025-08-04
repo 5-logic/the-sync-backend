@@ -17,7 +17,6 @@ block content
     //- Show action type
     if isPublicationChange
       .info-box
-      br
         h3 📢 Publication Status Update
         p
           | The following theses have been #[strong #{(actionType === 'Published') ? 'published and are now visible to students' : 'unpublished and are no longer visible to students'}]:
@@ -25,7 +24,9 @@ block content
       .info-box
         h3 📝 Review Status Update
         p
-          | The following theses have been updated to #[strong= #{actionType}] status:
+          | The following theses have been updated to 
+          strong #{actionType}
+          |  status:
 
     //- List all affected theses
     each thesis in theses
