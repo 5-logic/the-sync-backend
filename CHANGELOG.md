@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.14] - 2025-08-04
+
+### Added
+
+- **Comprehensive Email Notification System**:
+  - **Semester Status Notifications**: New automated email notifications for semester phase transitions
+    - `SEND_SEMESTER_PREPARING_NOTIFICATION` - Notifies all lecturers when semester enters Preparing phase
+    - `SEND_SEMESTER_PICKING_NOTIFICATION` - Notifies all enrolled students when semester enters Picking phase
+    - `SEND_SEMESTER_ONGOING_NOTIFICATION` - Notifies students and lecturers when semester enters Ongoing phase
+  - **Moderator Alert System**: New alert notifications for critical semester management issues
+    - `SEND_MODERATOR_INSUFFICIENT_THESIS_ALERT` - Alerts when available theses are fewer than total groups
+    - `SEND_MODERATOR_UNGROUPED_STUDENTS_ALERT` - Alerts when students remain ungrouped during transitions
+    - `SEND_MODERATOR_UNPICKED_GROUPS_ALERT` - Alerts when groups haven't selected thesis before Ongoing phase
+
+- **Thesis Status Change Notifications**:
+  - `SEND_THESIS_STATUS_CHANGE` - New email notification for thesis status updates (Pending, Approved, Rejected)
+  - **Publication Status Alerts**: Automated notifications when theses are published/unpublished by moderators
+  - **Bulk Notification Support**: Handles both single thesis and bulk thesis status changes with grouped notifications
+
+- **Enrollment Result Notifications**:
+  - `SEND_ENROLLMENT_RESULT_NOTIFICATION` - New email notification system for semester enrollment results
+  - **Student Results**: Automated notifications for Pass/Fail enrollment status updates
+  - **Enhanced Context**: Includes semester details, thesis information, and enrollment status in notifications
+
+- **Enhanced AI Compatibility Analysis**:
+  - **Major Information Integration**: Added academic major data to AI student and group suggestion APIs
+  - **Improved Matching Algorithm**: Enhanced compatibility scoring with 25% weight for major compatibility
+  - **Academic Diversity Consideration**: AI now evaluates complementary major combinations for better team composition
+
+### Changed
+
+- **SemesterNotificationService Enhancement**:
+  - **Comprehensive Notification Logic**: New `SemesterNotificationService` with methods for all semester phase notifications
+  - **Smart Alert Detection**: Automated detection and alerting for semester management issues
+  - **Role-Based Notifications**: Different notification content based on recipient role (student, lecturer, moderator)
+
+- **SemesterService Integration**:
+  - **Automatic Trigger System**: Semester status changes now automatically trigger appropriate notifications
+  - **Validation Enhancement**: Enhanced semester transition validation with alert generation
+  - **Transaction Timeout**: Added transaction timeout configuration for better reliability
+
+- **AI Service Improvements**:
+  - **Enhanced Prompts**: Updated AI prompts to include major compatibility evaluation (30% skill matching, 25% major compatibility, 25% responsibility alignment, 15% group dynamics, 5% project fit)
+  - **Comprehensive Data**: All AI suggestion endpoints now include student major information for better analysis
+  - **Improved Scoring**: More accurate compatibility scoring with academic background consideration
+
+- **Email Template System**:
+  - **Professional Templates**: New Pug email templates for all notification types with improved formatting
+  - **Contextual Content**: Templates dynamically adapt content based on recipient type and notification context
+  - **Enhanced Styling**: Improved email styling and structure for better readability
+
+- **Service Architecture Enhancement**:
+  - **Transaction Optimization**: Added timeout configuration to database transactions across multiple services
+  - **Error Handling**: Enhanced error handling in notification services to prevent critical operation failures
+  - **Logging Improvements**: Comprehensive logging for notification delivery tracking and debugging
+
+### Fixed
+
+- **Email Property Casting**: Fixed email property casting for group member notifications to prevent template rendering errors
+- **Notification Reliability**: Enhanced notification service error handling to ensure core functionality continues if notifications fail
+- **Transaction Management**: Improved transaction handling with proper timeout configuration to prevent deadlocks
+
+### Enhanced
+
+- **API Data Enrichment**: All student and group suggestion APIs now include comprehensive major information for enhanced compatibility evaluation
+- **Notification Reliability**: Robust notification system with fallback mechanisms and comprehensive error handling
+- **Academic Analysis**: AI-powered analysis now considers academic diversity and major relevance for more accurate team formation
+- **User Experience**: Automated notifications keep all stakeholders informed of important semester and thesis status changes
+
+### Technical Improvements
+
+- **Queue System**: Enhanced email queue system with new job types and improved processing
+- **Service Integration**: Better integration between semester management and notification systems
+- **Code Organization**: Improved code organization with dedicated notification service architecture
+- **Performance**: Optimized notification delivery with batching and delay mechanisms
+- **Maintainability**: Enhanced code maintainability with proper separation of concerns
+
+### Pull Requests
+
+- [#256](https://github.com/5-logic/the-sync-backend/pull/256) - Merge dev branch for v0.7.14 release
+- [#255](https://github.com/5-logic/the-sync-backend/pull/255) - Comprehensive notification system and AI enhancements (task-180)
+
+---
+
 ## [0.7.13] - 2025-08-02
 
 ### Changed
