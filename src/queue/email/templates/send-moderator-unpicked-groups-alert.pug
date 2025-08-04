@@ -1,0 +1,99 @@
+//- Data to be rendered in the email template
+//- + moderatorName: Name of the moderator
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+//- + unpickedGroups: Array of groups that haven't selected thesis
+//- + totalGroups: Total number of groups
+//- + groupsWithThesis: Number of groups that have selected thesis
+//- + ongoingDeadline: Deadline before moving to ongoing phase
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{moderatorName},
+
+  p The semester #{semesterName} (#{semesterCode}) is ready to transition from "Picking" to "Ongoing" phase, but there are groups that haven't selected their thesis yet.
+
+  .info-box
+    h3 📊 Thesis Selection Statistics
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName} (#{semesterCode})
+    .info-item
+      span.info-label Total Groups:
+      span.info-value #{totalGroups}
+    .info-item
+      span.info-label Groups with Thesis:
+      span.info-value #{groupsWithThesis}
+    .info-item
+      span.info-label Groups without Thesis:
+      span.info-value #{unpickedGroups ? unpickedGroups.length : 0}
+    .info-item
+      span.info-label Transition Deadline:
+      span.info-value #{ongoingDeadline}
+
+  if unpickedGroups && unpickedGroups.length > 0
+    .warning-box
+      h3 ⚠️ Groups Without Thesis Selection
+      p The following groups have not yet selected their thesis:
+      .group-list(style="margin-top: 15px;")
+        each group in unpickedGroups
+          .info-item(style="margin-bottom: 15px; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;")
+            .group-header(style="font-weight: bold; margin-bottom: 5px;")
+              span.info-label Group:
+              span.info-value #{group.groupName} (#{group.groupCode})
+            if group.leaderName
+              div(style="margin-bottom: 3px;")
+                span.info-label Leader:
+                span.info-value #{group.leaderName}
+            if group.memberCount
+              div(style="margin-bottom: 3px;")
+                span.info-label Members:
+                span.info-value #{group.memberCount} students
+            if group.leaderEmail
+              div
+                span.info-label Contact:
+                span.info-value #{group.leaderEmail}
+
+  .warning-box
+    h3 🚨 Action Required Before Phase Transition
+    p To ensure a smooth transition to the "Ongoing" phase, you need to:
+    ul
+      li Contact group leaders who haven't made thesis selections
+      li Investigate reasons for delayed thesis selection
+      li Provide assistance or guidance for thesis selection
+      li Consider automatic thesis assignment for remaining groups
+      li Extend the picking deadline if necessary
+
+  .info-box
+    h3 💡 Resolution Options
+    ol
+      li
+        strong Manual Assignment:
+        |  Assign available thesis to groups that haven't made selections
+      li
+        strong Contact Groups:
+        |  Reach out to group leaders to understand selection barriers
+      li
+        strong Extend Deadline:
+        |  Provide additional time for groups to make selections
+      li
+        strong System Assignment:
+        |  Use automatic assignment for remaining groups based on preferences
+      li
+        strong Thesis Reallocation:
+        |  Make additional thesis available if needed
+
+  .success-box
+    h3 📋 Recommended Actions
+    p Take these steps to resolve the situation:
+    ul
+      li Log into TheSync system to review group thesis selection status
+      li Send individual reminders to group leaders who haven't selected
+      li Check if there are sufficient thesis options available
+      li Coordinate with lecturers if additional thesis options are needed
+      li Set a final deadline for thesis selection before automatic assignment
+      li Prepare for phase transition once all groups have thesis assignments
+
+  p Please address this issue promptly to maintain the semester timeline. All groups must have thesis assignments before the "Ongoing" phase can begin.

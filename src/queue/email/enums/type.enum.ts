@@ -8,7 +8,14 @@ export enum EmailJobType {
 	SEND_STUDENT_ACCOUNT = 'send-student-account',
 
 	// Semesters
+	SEND_SEMESTER_PREPARING_NOTIFICATION = 'send-semester-preparing-notification',
+	SEND_SEMESTER_PICKING_NOTIFICATION = 'send-semester-picking-notification',
 	SEND_SEMESTER_ONGOING_NOTIFICATION = 'send-semester-ongoing-notification',
+
+	// Moderator Alerts
+	SEND_MODERATOR_UNGROUPED_STUDENTS_ALERT = 'send-moderator-ungrouped-students-alert',
+	SEND_MODERATOR_INSUFFICIENT_THESIS_ALERT = 'send-moderator-insufficient-thesis-alert',
+	SEND_MODERATOR_UNPICKED_GROUPS_ALERT = 'send-moderator-unpicked-groups-alert',
 
 	// Groups
 	SEND_GROUP_DELETION_NOTIFICATION = 'send-group-deletion-notification',

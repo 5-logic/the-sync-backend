@@ -1,0 +1,75 @@
+//- Data to be rendered in the email template
+//- + moderatorName: Name of the moderator
+//- + semesterName: Name of the semester
+//- + semesterCode: Code of the semester
+//- + totalGroups: Total number of groups
+//- + availableThesis: Number of available thesis
+//- + shortfall: Number of missing thesis (totalGroups - availableThesis)
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{moderatorName},
+
+  p We have detected an insufficient number of thesis topics for the upcoming "Picking" phase in semester #{semesterName} (#{semesterCode}).
+
+  .info-box
+    h3 📊 Thesis Availability Analysis
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName} (#{semesterCode})
+    .info-item
+      span.info-label Total Groups:
+      span.info-value #{totalGroups}
+    .info-item
+      span.info-label Available Thesis:
+      span.info-value #{availableThesis}
+    .info-item
+      span.info-label Shortfall:
+      span.info-value #{shortfall} thesis topics needed
+
+  .warning-box
+    h3 ⚠️ Critical Issue Detected
+    p There are currently #{shortfall} fewer thesis topics than the number of groups that need to select them. This will result in some groups being unable to select a thesis during the picking phase.
+
+  .warning-box
+    h3 🚨 Immediate Action Required
+    p To resolve this issue before the picking phase begins, you need to:
+    ul
+      li Contact lecturers to submit additional thesis proposals
+      li Review and approve pending thesis submissions
+      li Consider allowing some lecturers to submit extra thesis topics
+      li Extend the thesis preparation deadline if necessary
+      li Evaluate if some thesis can accommodate multiple groups
+
+  .info-box
+    h3 💡 Recommended Solutions
+    ol
+      li
+        strong Contact Lecturers:
+        |  Reach out to lecturers who haven't submitted thesis or can provide additional topics
+      li
+        strong Review Pending Submissions:
+        |  Fast-track the review process for submitted thesis awaiting approval
+      li
+        strong Quality Check:
+        |  Ensure all approved thesis meet the academic standards
+      li
+        strong System Update:
+        |  Update thesis availability in the system before starting the picking phase
+      li
+        strong Communication:
+        |  Inform all stakeholders about any changes to the timeline
+
+  .success-box
+    h3 📝 Next Steps
+    p Recommended actions to take immediately:
+    ul
+      li Log into TheSync system to review current thesis submissions
+      li Generate a report of lecturers and their thesis contribution
+      li Send reminders to lecturers about thesis submission requirements
+      li Monitor the thesis count daily until the shortfall is resolved
+      li Coordinate with academic staff to ensure adequate thesis availability
+
+  p This issue must be resolved before transitioning to the picking phase to ensure all groups can select appropriate thesis topics. Contact technical support if you need assistance with thesis management tools.
