@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import {
 	// CacheHelperService,
 	PrismaService,
@@ -27,73 +28,76 @@ export class StudentSelfService {
 		this.logger.log(`Updating student with ID: ${id}`);
 
 		try {
-			const result = await this.prisma.$transaction(async (txn) => {
-				const existingStudent = await txn.student.findUnique({
-					where: { userId: id },
-				});
-
-				if (!existingStudent) {
-					this.logger.warn(`Student with ID ${id} not found for update`);
-
-					throw new NotFoundException(`Student not found`);
-				}
-
-				// Update user information
-				const updatedUser = await txn.user.update({
-					where: { id },
-					data: {
-						fullName: dto.fullName,
-						gender: dto.gender,
-						phoneNumber: dto.phoneNumber,
-					},
-				});
-
-				// Update student skills if provided
-				if (dto.studentSkills) {
-					// Remove existing skills
-					await txn.studentSkill.deleteMany({
-						where: { studentId: id },
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					const existingStudent = await txn.student.findUnique({
+						where: { userId: id },
 					});
 
-					// Add new skills if any
-					if (dto.studentSkills.length > 0) {
-						await txn.studentSkill.createMany({
-							data: dto.studentSkills.map((skill) => ({
-								studentId: id,
-								skillId: skill.skillId,
-								level: skill.level,
-							})),
-						});
+					if (!existingStudent) {
+						this.logger.warn(`Student with ID ${id} not found for update`);
+
+						throw new NotFoundException(`Student not found`);
 					}
-				}
 
-				// Update student expected responsibilities if provided
-				if (dto.studentExpectedResponsibilities) {
-					// Remove existing responsibilities
-					await txn.studentExpectedResponsibility.deleteMany({
-						where: { studentId: id },
+					// Update user information
+					const updatedUser = await txn.user.update({
+						where: { id },
+						data: {
+							fullName: dto.fullName,
+							gender: dto.gender,
+							phoneNumber: dto.phoneNumber,
+						},
 					});
 
-					// Add new responsibilities if any
-					if (dto.studentExpectedResponsibilities.length > 0) {
-						await txn.studentExpectedResponsibility.createMany({
-							data: dto.studentExpectedResponsibilities.map(
-								(responsibility) => ({
+					// Update student skills if provided
+					if (dto.studentSkills) {
+						// Remove existing skills
+						await txn.studentSkill.deleteMany({
+							where: { studentId: id },
+						});
+
+						// Add new skills if any
+						if (dto.studentSkills.length > 0) {
+							await txn.studentSkill.createMany({
+								data: dto.studentSkills.map((skill) => ({
 									studentId: id,
-									responsibilityId: responsibility.responsibilityId,
-								}),
-							),
-						});
+									skillId: skill.skillId,
+									level: skill.level,
+								})),
+							});
+						}
 					}
-				}
 
-				const result: StudentResponse = mapStudentV1(
-					updatedUser,
-					existingStudent,
-				);
+					// Update student expected responsibilities if provided
+					if (dto.studentExpectedResponsibilities) {
+						// Remove existing responsibilities
+						await txn.studentExpectedResponsibility.deleteMany({
+							where: { studentId: id },
+						});
 
-				return result;
-			});
+						// Add new responsibilities if any
+						if (dto.studentExpectedResponsibilities.length > 0) {
+							await txn.studentExpectedResponsibility.createMany({
+								data: dto.studentExpectedResponsibilities.map(
+									(responsibility) => ({
+										studentId: id,
+										responsibilityId: responsibility.responsibilityId,
+									}),
+								),
+							});
+						}
+					}
+
+					const result: StudentResponse = mapStudentV1(
+						updatedUser,
+						existingStudent,
+					);
+
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', JSON.stringify(result));

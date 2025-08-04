@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import {
 	ChangeLeaderDto,
 	CreateGroupDto,
@@ -90,58 +91,61 @@ export class GroupStudentService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const lastGroup = await prisma.group.findFirst({
-					where: {
-						semesterId: currentSemester.id,
-						code: {
-							startsWith: `${currentSemester.code}QN`,
-						},
-					},
-					orderBy: {
-						code: 'desc',
-					},
-				});
-
-				let sequenceNumber = 1;
-				if (lastGroup) {
-					const lastCode = lastGroup.code;
-					const lastSequence = parseInt(lastCode.slice(-3), 10);
-					sequenceNumber = lastSequence + 1;
-				}
-
-				const groupCode = `${currentSemester.code}QN${sequenceNumber
-					.toString()
-					.padStart(3, '0')}`;
-
-				const group = await prisma.group.create({
-					data: {
-						code: groupCode,
-						name: dto.name,
-						projectDirection: dto.projectDirection,
-						semesterId: currentSemester.id,
-					},
-				});
-
-				await Promise.all([
-					prisma.studentGroupParticipation.create({
-						data: {
-							studentId: userId,
-							groupId: group.id,
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const lastGroup = await prisma.group.findFirst({
+						where: {
 							semesterId: currentSemester.id,
-							isLeader: true,
+							code: {
+								startsWith: `${currentSemester.code}QN`,
+							},
 						},
-					}),
+						orderBy: {
+							code: 'desc',
+						},
+					});
 
-					this.groupService.createGroupSkills(group.id, dto.skillIds),
-					this.groupService.createGroupResponsibilities(
-						group.id,
-						dto.responsibilityIds,
-					),
-				]);
+					let sequenceNumber = 1;
+					if (lastGroup) {
+						const lastCode = lastGroup.code;
+						const lastSequence = parseInt(lastCode.slice(-3), 10);
+						sequenceNumber = lastSequence + 1;
+					}
 
-				return group;
-			});
+					const groupCode = `${currentSemester.code}QN${sequenceNumber
+						.toString()
+						.padStart(3, '0')}`;
+
+					const group = await prisma.group.create({
+						data: {
+							code: groupCode,
+							name: dto.name,
+							projectDirection: dto.projectDirection,
+							semesterId: currentSemester.id,
+						},
+					});
+
+					await Promise.all([
+						prisma.studentGroupParticipation.create({
+							data: {
+								studentId: userId,
+								groupId: group.id,
+								semesterId: currentSemester.id,
+								isLeader: true,
+							},
+						}),
+
+						this.groupService.createGroupSkills(group.id, dto.skillIds),
+						this.groupService.createGroupResponsibilities(
+							group.id,
+							dto.responsibilityIds,
+						),
+					]);
+
+					return group;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Group "${result.name}" created with ID: ${result.id} by student ${userId} in semester ${currentSemester.name}`,
@@ -216,25 +220,28 @@ export class GroupStudentService {
 				dto.responsibilityIds,
 			);
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const group = await prisma.group.update({
-					where: { id },
-					data: {
-						name: dto.name,
-						projectDirection: dto.projectDirection,
-					},
-				});
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const group = await prisma.group.update({
+						where: { id },
+						data: {
+							name: dto.name,
+							projectDirection: dto.projectDirection,
+						},
+					});
 
-				await Promise.all([
-					this.groupService.updateGroupSkills(id, dto.skillIds),
-					this.groupService.updateGroupResponsibilities(
-						id,
-						dto.responsibilityIds,
-					),
-				]);
+					await Promise.all([
+						this.groupService.updateGroupSkills(id, dto.skillIds),
+						this.groupService.updateGroupResponsibilities(
+							id,
+							dto.responsibilityIds,
+						),
+					]);
 
-				return group;
-			});
+					return group;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Group updated with ID: ${result.id}`);
 

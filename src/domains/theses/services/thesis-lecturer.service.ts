@@ -238,84 +238,87 @@ export class ThesisLecturerService {
 				await this.validateSkillIds(dto.skillIds);
 			}
 
-			const result = await this.prisma.$transaction(async (txn) => {
-				// If supportingDocument is provided, create a new version
-				if (dto.supportingDocument) {
-					const latestVersion =
-						existingThesis.thesisVersions[0]?.version ??
-						ThesisLecturerService.INITIAL_VERSION;
-					const newVersion = latestVersion + 1;
+			const result = await this.prisma.$transaction(
+				async (txn) => {
+					// If supportingDocument is provided, create a new version
+					if (dto.supportingDocument) {
+						const latestVersion =
+							existingThesis.thesisVersions[0]?.version ??
+							ThesisLecturerService.INITIAL_VERSION;
+						const newVersion = latestVersion + 1;
 
-					await txn.thesisVersion.create({
-						data: {
-							version: newVersion,
-							supportingDocument: dto.supportingDocument,
-							thesisId: id,
-						},
-					});
-
-					this.logger.log(
-						`Created new thesis version ${newVersion} for thesis ID: ${id}`,
-					);
-				}
-
-				// Update thesis required skills: nếu truyền skillIds (kể cả rỗng) thì xóa hết và tạo lại
-				if (dto.skillIds) {
-					await txn.thesisRequiredSkill.deleteMany({
-						where: { thesisId: id },
-					});
-					if (dto.skillIds.length > 0) {
-						await txn.thesisRequiredSkill.createMany({
-							data: dto.skillIds.map((skillId) => ({
+						await txn.thesisVersion.create({
+							data: {
+								version: newVersion,
+								supportingDocument: dto.supportingDocument,
 								thesisId: id,
-								skillId,
-							})),
+							},
 						});
+
+						this.logger.log(
+							`Created new thesis version ${newVersion} for thesis ID: ${id}`,
+						);
 					}
-					this.logger.log(
-						`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
-					);
-				}
 
-				// Chuẩn bị dữ liệu update
-				const updateData: any = {
-					englishName: dto.englishName,
-					vietnameseName: dto.vietnameseName,
-					abbreviation: dto.abbreviation,
-					description: dto.description,
-					domain: dto.domain,
-				};
-				if (shouldUpdateStatus) {
-					updateData.status = newStatus ?? existingThesis.status;
-				}
-				if (shouldUpdatePublish) {
-					updateData.isPublish =
-						typeof newIsPublish === 'boolean'
-							? newIsPublish
-							: existingThesis.isPublish;
-				}
+					// Update thesis required skills: nếu truyền skillIds (kể cả rỗng) thì xóa hết và tạo lại
+					if (dto.skillIds) {
+						await txn.thesisRequiredSkill.deleteMany({
+							where: { thesisId: id },
+						});
+						if (dto.skillIds.length > 0) {
+							await txn.thesisRequiredSkill.createMany({
+								data: dto.skillIds.map((skillId) => ({
+									thesisId: id,
+									skillId,
+								})),
+							});
+						}
+						this.logger.log(
+							`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
+						);
+					}
 
-				const updateThesis = await txn.thesis.update({
-					where: { id: id },
-					data: updateData,
-					include: {
-						thesisVersions: {
-							orderBy: { version: 'desc' },
-						},
-						thesisRequiredSkills: {
-							include: {
-								skill: true,
+					// Chuẩn bị dữ liệu update
+					const updateData: any = {
+						englishName: dto.englishName,
+						vietnameseName: dto.vietnameseName,
+						abbreviation: dto.abbreviation,
+						description: dto.description,
+						domain: dto.domain,
+					};
+					if (shouldUpdateStatus) {
+						updateData.status = newStatus ?? existingThesis.status;
+					}
+					if (shouldUpdatePublish) {
+						updateData.isPublish =
+							typeof newIsPublish === 'boolean'
+								? newIsPublish
+								: existingThesis.isPublish;
+					}
+
+					const updateThesis = await txn.thesis.update({
+						where: { id: id },
+						data: updateData,
+						include: {
+							thesisVersions: {
+								orderBy: { version: 'desc' },
+							},
+							thesisRequiredSkills: {
+								include: {
+									skill: true,
+								},
+							},
+							lecturer: {
+								include: { user: true },
 							},
 						},
-						lecturer: {
-							include: { user: true },
-						},
-					},
-				});
+					});
 
-				const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
-				return result;
-			});
+					const result: ThesisDetailResponse = mapThesisDetail(updateThesis);
+					return result;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(`Thesis updated with ID: ${result.id}`);
 			this.logger.debug('Updated thesis detail', JSON.stringify(result));

@@ -5,6 +5,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
 import { CreateReviewDto, UpdateReviewDto } from '@/reviews/dtos';
 import { ReviewService } from '@/reviews/services/review.service';
@@ -280,59 +281,62 @@ export class ReviewLecturerService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				await prisma.review.update({
-					where: { id: reviewId },
-					data: {
-						feedback: updateDto.feedback,
-					},
-				});
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					await prisma.review.update({
+						where: { id: reviewId },
+						data: {
+							feedback: updateDto.feedback,
+						},
+					});
 
-				if (updateDto.reviewItems && updateDto.reviewItems.length > 0) {
-					for (const item of updateDto.reviewItems) {
-						if (item.checklistItemId) {
-							await prisma.reviewItem.upsert({
-								where: {
-									reviewId_checklistItemId: {
+					if (updateDto.reviewItems && updateDto.reviewItems.length > 0) {
+						for (const item of updateDto.reviewItems) {
+							if (item.checklistItemId) {
+								await prisma.reviewItem.upsert({
+									where: {
+										reviewId_checklistItemId: {
+											reviewId: reviewId,
+											checklistItemId: item.checklistItemId,
+										},
+									},
+									update: {
+										acceptance: item.acceptance,
+										note: item.note,
+									},
+									create: {
 										reviewId: reviewId,
 										checklistItemId: item.checklistItemId,
+										acceptance: item.acceptance || 'NotAvailable',
+										note: item.note,
 									},
-								},
-								update: {
-									acceptance: item.acceptance,
-									note: item.note,
-								},
-								create: {
-									reviewId: reviewId,
-									checklistItemId: item.checklistItemId,
-									acceptance: item.acceptance || 'NotAvailable',
-									note: item.note,
-								},
-							});
+								});
+							}
 						}
 					}
-				}
 
-				return await prisma.review.findUnique({
-					where: { id: reviewId },
-					include: {
-						lecturer: {
-							include: {
-								user: {
-									select: { id: true, fullName: true, email: true },
+					return await prisma.review.findUnique({
+						where: { id: reviewId },
+						include: {
+							lecturer: {
+								include: {
+									user: {
+										select: { id: true, fullName: true, email: true },
+									},
+								},
+							},
+							reviewItems: {
+								include: {
+									checklistItem: {
+										select: { id: true, name: true, description: true },
+									},
 								},
 							},
 						},
-						reviewItems: {
-							include: {
-								checklistItem: {
-									select: { id: true, name: true, description: true },
-								},
-							},
-						},
-					},
-				});
-			});
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Review ID ${reviewId} updated successfully by lecturer ID ${lecturerId}`,
