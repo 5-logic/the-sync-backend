@@ -184,44 +184,47 @@ export class ReviewLecturerService {
 				);
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const review = await prisma.review.create({
-					data: {
-						lecturerId: lecturerId,
-						submissionId: submissionId,
-						checklistId: reviewDto.checklistId,
-						feedback: reviewDto.feedback,
-					},
-				});
-
-				if (hasReviewItems && !isMainReviewer) {
-					const reviewItemsData = reviewDto.reviewItems.map((item) => ({
-						reviewId: review.id,
-						checklistItemId: item.checklistItemId,
-						acceptance: item.acceptance,
-						note: item.note,
-					}));
-					await prisma.reviewItem.createMany({
-						data: reviewItemsData,
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const review = await prisma.review.create({
+						data: {
+							lecturerId: lecturerId,
+							submissionId: submissionId,
+							checklistId: reviewDto.checklistId,
+							feedback: reviewDto.feedback,
+						},
 					});
-				}
 
-				return await prisma.review.findUnique({
-					where: { id: review.id },
-					include: {
-						lecturer: {
-							include: {
-								user: true,
+					if (hasReviewItems && !isMainReviewer) {
+						const reviewItemsData = reviewDto.reviewItems.map((item) => ({
+							reviewId: review.id,
+							checklistItemId: item.checklistItemId,
+							acceptance: item.acceptance,
+							note: item.note,
+						}));
+						await prisma.reviewItem.createMany({
+							data: reviewItemsData,
+						});
+					}
+
+					return await prisma.review.findUnique({
+						where: { id: review.id },
+						include: {
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
+							reviewItems: {
+								include: {
+									checklistItem: true,
+								},
 							},
 						},
-						reviewItems: {
-							include: {
-								checklistItem: true,
-							},
-						},
-					},
-				});
-			});
+					});
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Review submitted successfully for submission ID ${submissionId} by lecturer ID ${lecturerId}`,

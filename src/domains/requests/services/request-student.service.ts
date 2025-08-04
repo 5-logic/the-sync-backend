@@ -453,54 +453,57 @@ export class RequestStudentService {
 				}
 			}
 
-			const result = await this.prisma.$transaction(async (prisma) => {
-				const updatedRequest = await prisma.request.update({
-					where: { id: requestId },
-					data: { status: dto.status },
-					include: {
-						student: {
-							include: {
-								user: {
-									select: {
-										id: true,
-										fullName: true,
-										email: true,
+			const result = await this.prisma.$transaction(
+				async (prisma) => {
+					const updatedRequest = await prisma.request.update({
+						where: { id: requestId },
+						data: { status: dto.status },
+						include: {
+							student: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
 									},
 								},
 							},
-						},
-						group: {
-							select: {
-								id: true,
-								code: true,
-								name: true,
+							group: {
+								select: {
+									id: true,
+									code: true,
+									name: true,
+								},
 							},
 						},
-					},
-				});
-
-				if (dto.status === RequestStatus.Approved) {
-					await prisma.studentGroupParticipation.create({
-						data: {
-							studentId: request.studentId,
-							groupId: request.groupId,
-							semesterId: request.group.semesterId,
-							isLeader: false,
-						},
 					});
 
-					await prisma.request.updateMany({
-						where: {
-							studentId: request.studentId,
-							status: RequestStatus.Pending,
-							id: { not: requestId },
-						},
-						data: { status: RequestStatus.Rejected },
-					});
-				}
+					if (dto.status === RequestStatus.Approved) {
+						await prisma.studentGroupParticipation.create({
+							data: {
+								studentId: request.studentId,
+								groupId: request.groupId,
+								semesterId: request.group.semesterId,
+								isLeader: false,
+							},
+						});
 
-				return updatedRequest;
-			});
+						await prisma.request.updateMany({
+							where: {
+								studentId: request.studentId,
+								status: RequestStatus.Pending,
+								id: { not: requestId },
+							},
+							data: { status: RequestStatus.Rejected },
+						});
+					}
+
+					return updatedRequest;
+				},
+				{ timeout: CONSTANTS.TIMEOUT },
+			);
 
 			this.logger.log(
 				`Request ${requestId} ${dto.status.toLowerCase()} by user ${userId}`,
