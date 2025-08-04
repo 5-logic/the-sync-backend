@@ -263,4 +263,172 @@ export class SemesterNotificationService {
 			);
 		}
 	}
+
+	/**
+	 * Gửi email cảnh báo thiếu thesis cho moderators
+	 */
+	async sendModeratorInsufficientThesisAlert(
+		semester: any,
+		totalGroups: number,
+		availableThesis: number,
+	): Promise<void> {
+		try {
+			this.logger.log(
+				`Sending insufficient thesis alert for semester ${semester.name} (${semester.code})`,
+			);
+
+			const shortfall = totalGroups - availableThesis;
+
+			// Lấy tất cả moderators
+			const moderators = await this.prisma.lecturer.findMany({
+				where: { isModerator: true },
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			});
+
+			// Gửi email cho từng moderator
+			for (const moderator of moderators) {
+				if (moderator.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_MODERATOR_INSUFFICIENT_THESIS_ALERT,
+						{
+							to: moderator.user.email,
+							subject: `Urgent: Insufficient Thesis for Semester ${semester.name}`,
+							context: {
+								moderatorName: moderator.user.fullName,
+								semesterName: semester.name,
+								semesterCode: semester.code,
+								totalGroups,
+								availableThesis,
+								shortfall,
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Insufficient thesis alerts sent to ${moderators.length} moderators`,
+			);
+		} catch (error) {
+			this.logger.error(
+				'Failed to send insufficient thesis alert emails',
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Gửi email cảnh báo students chưa có group cho moderators
+	 */
+	async sendModeratorUngroupedStudentsAlert(
+		semester: any,
+		ungroupedStudents: any[],
+		totalStudents: number,
+		groupedStudents: number,
+	): Promise<void> {
+		try {
+			this.logger.log(
+				`Sending ungrouped students alert for semester ${semester.name} (${semester.code})`,
+			);
+
+			// Lấy tất cả moderators
+			const moderators = await this.prisma.lecturer.findMany({
+				where: { isModerator: true },
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			});
+
+			// Gửi email cho từng moderator
+			for (const moderator of moderators) {
+				if (moderator.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_MODERATOR_UNGROUPED_STUDENTS_ALERT,
+						{
+							to: moderator.user.email,
+							subject: `Action Required: Ungrouped Students in Semester ${semester.name}`,
+							context: {
+								moderatorName: moderator.user.fullName,
+								semesterName: semester.name,
+								semesterCode: semester.code,
+								ungroupedStudents,
+								totalStudents,
+								groupedStudents,
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Ungrouped students alerts sent to ${moderators.length} moderators`,
+			);
+		} catch (error) {
+			this.logger.error(
+				'Failed to send ungrouped students alert emails',
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Gửi email cảnh báo groups chưa pick thesis cho moderators
+	 */
+	async sendModeratorUnpickedGroupsAlert(
+		semester: any,
+		unpickedGroups: any[],
+		totalGroups: number,
+		groupsWithThesis: number,
+		ongoingDeadline: string,
+	): Promise<void> {
+		try {
+			this.logger.log(
+				`Sending unpicked groups alert for semester ${semester.name} (${semester.code})`,
+			);
+
+			// Lấy tất cả moderators
+			const moderators = await this.prisma.lecturer.findMany({
+				where: { isModerator: true },
+				include: {
+					user: {
+						select: { id: true, fullName: true, email: true },
+					},
+				},
+			});
+
+			// Gửi email cho từng moderator
+			for (const moderator of moderators) {
+				if (moderator.user.email) {
+					await this.emailQueueService.sendEmail(
+						EmailJobType.SEND_MODERATOR_UNPICKED_GROUPS_ALERT,
+						{
+							to: moderator.user.email,
+							subject: `Urgent: Groups Without Thesis Selection in Semester ${semester.name}`,
+							context: {
+								moderatorName: moderator.user.fullName,
+								semesterName: semester.name,
+								semesterCode: semester.code,
+								unpickedGroups,
+								totalGroups,
+								groupsWithThesis,
+								ongoingDeadline,
+							},
+						},
+					);
+				}
+			}
+
+			this.logger.log(
+				`Unpicked groups alerts sent to ${moderators.length} moderators`,
+			);
+		} catch (error) {
+			this.logger.error('Failed to send unpicked groups alert emails', error);
+		}
+	}
 }
