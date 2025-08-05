@@ -8,7 +8,6 @@ import {
 
 import { CONSTANTS } from '@/configs';
 import { PrismaService } from '@/providers';
-import { PineconeGroupService, PineconeJobType } from '@/queue';
 import {
 	CreateInviteRequestDto,
 	CreateJoinRequestDto,
@@ -25,7 +24,6 @@ export class RequestStudentService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly requestService: RequestService,
-		private readonly pineconeGroupService: PineconeGroupService,
 	) {}
 
 	async createJoinRequest(userId: string, dto: CreateJoinRequestDto) {
@@ -508,13 +506,6 @@ export class RequestStudentService {
 			this.logger.log(
 				`Request ${requestId} ${dto.status.toLowerCase()} by user ${userId}`,
 			);
-
-			if (dto.status === RequestStatus.Approved) {
-				await this.pineconeGroupService.processGroup(
-					PineconeJobType.CREATE_OR_UPDATE,
-					request.groupId,
-				);
-			}
 
 			await this.requestService.sendRequestStatusUpdateNotification(
 				requestId,

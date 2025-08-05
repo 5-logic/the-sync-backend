@@ -11,7 +11,6 @@ import {
 	PrismaService,
 } from '@/providers';
 import { EmailJobDto, EmailJobType, EmailQueueService } from '@/queue';
-import { PineconeJobType, PineconeStudentService } from '@/queue/pinecone';
 // import { CACHE_KEY } from '@/students/constants';
 import {
 	CreateStudentDto,
@@ -33,7 +32,6 @@ export class StudentAdminService {
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly email: EmailQueueService,
-		private readonly pineconeStudentService: PineconeStudentService,
 	) {}
 
 	async create(dto: CreateStudentDto): Promise<StudentResponse> {
@@ -208,13 +206,6 @@ export class StudentAdminService {
 
 			this.logger.log(`Student operation completed with userId: ${result.id}`);
 			this.logger.debug('Student detail', JSON.stringify(result));
-
-			// Sync student data to Pinecone
-			await this.pineconeStudentService.processStudent(
-				PineconeJobType.CREATE_OR_UPDATE,
-				result.id,
-			);
-			this.logger.log(`Student ${result.id} queued for Pinecone sync`);
 
 			// await this.cache.delete(`${CACHE_KEY}/`);
 
@@ -402,17 +393,6 @@ export class StudentAdminService {
 
 			this.logger.log(`Successfully processed ${results.length} students`);
 
-			// Sync all created students to Pinecone in batch
-			for (const student of results) {
-				await this.pineconeStudentService.processStudent(
-					PineconeJobType.CREATE_OR_UPDATE,
-					student.id,
-				);
-			}
-			this.logger.log(
-				`All ${results.length} students queued for Pinecone sync`,
-			);
-
 			// await this.cache.delete(`${CACHE_KEY}/`);
 
 			return results;
@@ -497,15 +477,6 @@ export class StudentAdminService {
 			this.logger.log(`Student updated with ID: ${result.id}`);
 			this.logger.debug('Updated Student', JSON.stringify(result));
 
-			// Sync updated student data to Pinecone
-			await this.pineconeStudentService.processStudent(
-				PineconeJobType.CREATE_OR_UPDATE,
-				result.id,
-			);
-			this.logger.log(
-				`Student ${result.id} queued for Pinecone sync after update`,
-			);
-
 			// await this.cache.delete(`${CACHE_KEY}/${id}`);
 
 			return result;
@@ -577,8 +548,6 @@ export class StudentAdminService {
 		);
 
 		try {
-			let wasCompletelyDeleted = false;
-
 			const result = await this.prisma.$transaction(
 				async (prisma) => {
 					// Single query to get all required data
@@ -651,7 +620,6 @@ export class StudentAdminService {
 
 					// If the student is enrolled in multiple semesters, only delete the enrollment for the specified semester.
 					// Otherwise, delete the student and associated user completely.
-					wasCompletelyDeleted = existingStudent.enrollments.length <= 1;
 					if (existingStudent.enrollments.length > 1) {
 						await prisma.enrollment.delete({
 							where: {
@@ -681,15 +649,6 @@ export class StudentAdminService {
 
 			this.logger.log(`Student deleted with ID: ${result.id}`);
 			this.logger.debug('Deleted Student', JSON.stringify(result));
-
-			// Delete from Pinecone if student was completely deleted
-			if (wasCompletelyDeleted) {
-				await this.pineconeStudentService.processStudent(
-					PineconeJobType.DELETE,
-					result.id,
-				);
-				this.logger.log(`Student ${result.id} queued for Pinecone deletion`);
-			}
 
 			// await this.cache.delete(`${CACHE_KEY}/`);
 			// await this.cache.delete(`${CACHE_KEY}/${id}`);
