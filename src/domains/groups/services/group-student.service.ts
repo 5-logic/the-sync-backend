@@ -125,22 +125,41 @@ export class GroupStudentService {
 						},
 					});
 
-					await Promise.all([
-						prisma.studentGroupParticipation.create({
-							data: {
-								studentId: userId,
-								groupId: group.id,
-								semesterId: currentSemester.id,
-								isLeader: true,
-							},
-						}),
+					// Create student group participation
+					await prisma.studentGroupParticipation.create({
+						data: {
+							studentId: userId,
+							groupId: group.id,
+							semesterId: currentSemester.id,
+							isLeader: true,
+						},
+					});
 
-						this.groupService.createGroupSkills(group.id, dto.skillIds),
-						this.groupService.createGroupResponsibilities(
-							group.id,
-							dto.responsibilityIds,
-						),
-					]);
+					// Create group skills if provided
+					if (dto.skillIds && dto.skillIds.length > 0) {
+						const groupRequiredSkills = dto.skillIds.map((skillId) => ({
+							groupId: group.id,
+							skillId: skillId,
+						}));
+
+						await prisma.groupRequiredSkill.createMany({
+							data: groupRequiredSkills,
+						});
+					}
+
+					// Create group responsibilities if provided
+					if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
+						const groupExpectedResponsibilities = dto.responsibilityIds.map(
+							(responsibilityId) => ({
+								groupId: group.id,
+								responsibilityId: responsibilityId,
+							}),
+						);
+
+						await prisma.groupExpectedResponsibility.createMany({
+							data: groupExpectedResponsibilities,
+						});
+					}
 
 					return group;
 				},
