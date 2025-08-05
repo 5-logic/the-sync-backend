@@ -12,7 +12,7 @@
 		"prisma:dev": "prisma migrate dev",
 		"prisma:generate": "prisma generate",
 		"prisma:studio": "prisma studio",
-		"prisma:reset": "prisma migrate reset",
+		"prisma:reset": "prisma migrate reset && ts-node --transpile-only scripts/clear-pinecone.ts",
 		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
 		"prepare": "husky",
 		"release": "node scripts/release.js",
