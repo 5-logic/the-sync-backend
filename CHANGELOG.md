@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2025-08-07
+
+### Added
+
+- **Database Reset Enhancement**:
+  - **Pinecone Clear Script**: New `scripts/clear-pinecone.ts` utility script to clear all data from Pinecone index
+  - **Enhanced Reset Command**: Updated `prisma:reset` script to automatically clear Pinecone data after database reset
+
+### Changed
+
+- **Supervision API Enhancement**:
+  - **API Response Enhancement**: Enhanced `GET /supervisions/thesis/:thesisId` endpoint to return detailed supervision information
+  - **Response Structure**: Modified `SupervisionPublicService.getSupervisionsByThesis()` method to include comprehensive lecturer and thesis details with group member information
+  - **Data Enrichment**: Changed from simple `groupBy` aggregation to full `findMany` with nested includes for lecturer, thesis, group, and student participation data
+
+- **Group Creation Process Optimization**:
+  - **Enhanced Group Creation**: Improved group creation logic in `GroupStudentService.create()` with direct database operations
+  - **Skills and Responsibilities Handling**: Streamlined group skills and responsibilities creation using `createMany` operations instead of external service calls
+  - **Transaction Optimization**: Enhanced transaction handling for group creation with better error management
+
+- **Architecture Simplification**:
+  - **Pinecone Integration Removal**: Removed Pinecone service integrations from group and student services for simplified architecture
+  - **Service Dependencies**: Eliminated `PineconeGroupService` and `PineconeStudentService` dependencies from core domain services
+  - **Background Job Cleanup**: Removed Pinecone-related background job processing from group and student operations
+
+### Fixed
+
+- **Email Template Syntax**: Fixed syntax error in `send-request-status-update.pug` template for invitation acceptance message
+  - **Variable Reference**: Corrected `#studentName}` to `#{studentName}` in invitation acceptance notification
+
+### Removed
+
+- **Pinecone Service Integrations**:
+  - **Group Services**: Removed Pinecone synchronization from `GroupStudentService` operations (create, update, delete)
+  - **Student Services**: Removed Pinecone synchronization from `StudentAdminService` and `StudentSelfService` operations
+  - **Background Processing**: Eliminated Pinecone job processing for student and group data synchronization
+  - **Service Dependencies**: Removed `PineconeGroupService` and `PineconeStudentService` from module dependencies
+
+### Enhanced
+
+- **Development Workflow**: Improved database reset process with automatic Pinecone cleanup
+- **Code Maintainability**: Simplified service architecture by removing vector database dependencies
+- **Performance**: Reduced service complexity by eliminating background Pinecone synchronization jobs
+- **Data Consistency**: Enhanced supervision API responses with comprehensive related data
+
+### Technical Improvements
+
+- **Service Architecture**: Streamlined domain services by removing external vector database dependencies
+- **Database Operations**: Optimized group creation process with direct database operations
+- **Script Utilities**: Added comprehensive Pinecone management script with error handling and namespace clearing
+- **Code Organization**: Cleaned up service dependencies and removed unused processors and services
+
+---
+
 ## [0.8.0] - 2025-08-04
 
 ### Changed
