@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2025-08-08
+
+### Fixed
+
+- **HTTP Exception Logging Optimization**:
+  - **Selective Error Logging**: Moved error logging in `HttpExceptionFilter` to only log actual internal server errors (non-HTTP exceptions) instead of all exceptions
+  - **Reduced Log Noise**: Prevents logging of expected HTTP exceptions (4xx client errors, etc.) that are part of normal API operation
+
+- **CORS Error Message Enhancement**:
+  - **Improved Error Messages**: Enhanced CORS error message to include the specific origin that was rejected for better debugging
+  - **Better Developer Experience**: Changed generic "Not allowed by CORS" message to "Origin {requestOrigin} not allowed by CORS" for clearer error identification
+
+### Enhanced
+
+- **Error Handling**: More precise error logging that focuses on unexpected errors while reducing noise from expected HTTP exceptions
+- **Debugging Experience**: Better error messages for CORS-related issues to help developers identify origin configuration problems
+- **System Monitoring**: Improved signal-to-noise ratio in application logs by filtering out expected client errors
+
+### Technical Improvements
+
+- **Logging Strategy**: Enhanced `HttpExceptionFilter` with selective logging approach that distinguishes between HTTP exceptions and actual system errors
+- **CORS Configuration**: Improved `corsConfig` error messaging in `src/configs/cors.config.ts` for better debugging capabilities
+- **Code Quality**: Better separation of expected vs unexpected error handling in exception filter logic
+
+---
+
 ## [0.8.2] - 2025-08-08
 
 ### Added
