@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2025-08-08
+
+### Added
+
+- **Enhanced Thesis Management Validation**:
+  - **Semester Change Validation**: New validation system for thesis semester transfers with comprehensive business rule checks
+  - **Lecturer Thesis Limit Enforcement**: Added validation for maximum theses per lecturer when moving theses between semesters
+
+- **Improved Phase Transition Logic**:
+  - **Automatic Thesis Status Reset**: Enhanced ongoing phase transition from `ScopeAdjustable` to `ScopeLocked` with automatic unpicked thesis status reset
+  - **Thesis State Management**: Unpicked theses now automatically revert to `New` status with `isPublish: false` during phase transitions
+
+- **Enhanced Error Logging**:
+  - **HTTP Exception Logging**: Added comprehensive logging for HTTP exceptions in `HttpExceptionFilter` for better debugging and monitoring
+
+### Changed
+
+- **Thesis Update API Enhancement**:
+  - **Semester Transfer Validation**: `PUT /theses/{id}` endpoint now includes validation for semester changes, preventing transfers of already-picked theses
+  - **Business Rule Enforcement**: Enhanced thesis update logic with lecturer thesis limit validation for target semester
+
+- **Semester Status Management**:
+  - **Phase Transition Logic**: Improved `ScopeAdjustable` to `ScopeLocked` transition with automatic cleanup of unpicked theses
+  - **Data Consistency**: Enhanced semester phase transitions to maintain thesis state consistency
+
+- **Logging Improvements**:
+  - **Exception Tracking**: All HTTP exceptions are now logged with detailed error information for better monitoring
+  - **Thesis Operations**: Enhanced logging for thesis semester changes and validation processes
+
+### Fixed
+
+- **Thesis State Consistency**: Fixed issue where unpicked theses retained published status after phase transitions
+- **Semester Validation**: Improved validation logic for thesis semester changes to prevent invalid state transitions
+- **Error Handling**: Enhanced error handling and logging across thesis and semester management operations
+
+### Enhanced
+
+- **Business Logic Validation**: Stronger validation rules for thesis management with comprehensive error handling
+- **System Reliability**: Improved system reliability with better exception logging and state management
+- **Data Integrity**: Enhanced data integrity during semester phase transitions and thesis operations
+
+### Technical Improvements
+
+- **Service Layer**: Enhanced `ThesisLecturerService` with new `validateSemesterChange()` method for comprehensive semester transfer validation
+- **Status Management**: Improved `SemesterStatusService` with automatic thesis status reset during phase transitions
+- **Error Tracking**: Enhanced `HttpExceptionFilter` with comprehensive error logging for better system monitoring
+- **Code Quality**: Improved code organization with better separation of validation concerns and error handling
+
+---
+
 ## [0.8.1] - 2025-08-07
 
 ### Added
