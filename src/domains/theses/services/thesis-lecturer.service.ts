@@ -244,6 +244,11 @@ export class ThesisLecturerService {
 				await this.validateSkillIds(dto.skillIds);
 			}
 
+			// Validate semesterId if provided
+			if (dto.semesterId) {
+				await this.validateSemesterChange(id, existingThesis, dto.semesterId);
+			}
+
 			const result = await this.prisma.$transaction(
 				async (txn) => {
 					// If supportingDocument is provided, create a new version
@@ -292,6 +297,16 @@ export class ThesisLecturerService {
 						description: dto.description,
 						domain: dto.domain,
 					};
+
+					// Thêm semesterId nếu có thay đổi
+					if (dto.semesterId && dto.semesterId !== existingThesis.semesterId) {
+						updateData.semesterId = dto.semesterId;
+						this.logger.log(
+							`Thesis ${id} semester changed from ${existingThesis.semesterId} to ${dto.semesterId}`,
+						);
+					}
+
+					// Logic cho status và isPublish
 					if (shouldUpdateStatus) {
 						updateData.status = newStatus ?? existingThesis.status;
 					}
@@ -661,6 +676,63 @@ export class ThesisLecturerService {
 			if (leader) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Validate semester change for thesis update
+	 */
+	private async validateSemesterChange(
+		thesisId: string,
+		existingThesis: any,
+		newSemesterId: string,
+	): Promise<void> {
+		// Nếu không thay đổi semester thì không cần validate
+		if (existingThesis.semesterId === newSemesterId) {
+			return;
+		}
+
+		// Kiểm tra thesis đã được group chọn chưa
+		if (existingThesis.groupId) {
+			this.logger.warn(
+				`Cannot change semester for thesis ${thesisId}: thesis is already picked by group ${existingThesis.groupId}`,
+			);
+			throw new ConflictException(
+				'Cannot change semester for thesis that has been picked by a group',
+			);
+		}
+
+		// Validate semester mới tồn tại
+		const newSemester = await this.prisma.semester.findUnique({
+			where: { id: newSemesterId },
+		});
+
+		if (!newSemester) {
+			this.logger.warn(`Semester ${newSemesterId} not found`);
+			throw new NotFoundException('Target semester not found');
+		}
+
+		// Kiểm tra maxThesesPerLecturer của semester mới
+		if (newSemester.maxThesesPerLecturer) {
+			const lecturerThesesCount = await this.prisma.thesis.count({
+				where: {
+					lecturerId: existingThesis.lecturerId,
+					semesterId: newSemesterId,
+				},
+			});
+
+			if (lecturerThesesCount >= newSemester.maxThesesPerLecturer) {
+				this.logger.warn(
+					`Cannot move thesis to semester ${newSemesterId}: lecturer ${existingThesis.lecturerId} has reached maximum theses limit (${newSemester.maxThesesPerLecturer})`,
+				);
+				throw new ConflictException(
+					`Cannot move thesis to target semester: lecturer has reached maximum theses limit (${newSemester.maxThesesPerLecturer})`,
+				);
+			}
+		}
+
+		this.logger.log(
+			`Semester change validation passed for thesis ${thesisId}: ${existingThesis.semesterId} -> ${newSemesterId}`,
+		);
 	}
 
 	/**
