@@ -5,6 +5,245 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2025-08-08
+
+### Fixed
+
+- **HTTP Exception Logging Optimization**:
+  - **Selective Error Logging**: Moved error logging in `HttpExceptionFilter` to only log actual internal server errors (non-HTTP exceptions) instead of all exceptions
+  - **Reduced Log Noise**: Prevents logging of expected HTTP exceptions (4xx client errors, etc.) that are part of normal API operation
+
+- **CORS Error Message Enhancement**:
+  - **Improved Error Messages**: Enhanced CORS error message to include the specific origin that was rejected for better debugging
+  - **Better Developer Experience**: Changed generic "Not allowed by CORS" message to "Origin {requestOrigin} not allowed by CORS" for clearer error identification
+
+### Enhanced
+
+- **Error Handling**: More precise error logging that focuses on unexpected errors while reducing noise from expected HTTP exceptions
+- **Debugging Experience**: Better error messages for CORS-related issues to help developers identify origin configuration problems
+- **System Monitoring**: Improved signal-to-noise ratio in application logs by filtering out expected client errors
+
+### Technical Improvements
+
+- **Logging Strategy**: Enhanced `HttpExceptionFilter` with selective logging approach that distinguishes between HTTP exceptions and actual system errors
+- **CORS Configuration**: Improved `corsConfig` error messaging in `src/configs/cors.config.ts` for better debugging capabilities
+- **Code Quality**: Better separation of expected vs unexpected error handling in exception filter logic
+
+---
+
+## [0.8.2] - 2025-08-08
+
+### Added
+
+- **Enhanced Thesis Management Validation**:
+  - **Semester Change Validation**: New validation system for thesis semester transfers with comprehensive business rule checks
+  - **Lecturer Thesis Limit Enforcement**: Added validation for maximum theses per lecturer when moving theses between semesters
+
+- **Improved Phase Transition Logic**:
+  - **Automatic Thesis Status Reset**: Enhanced ongoing phase transition from `ScopeAdjustable` to `ScopeLocked` with automatic unpicked thesis status reset
+  - **Thesis State Management**: Unpicked theses now automatically revert to `New` status with `isPublish: false` during phase transitions
+
+- **Enhanced Error Logging**:
+  - **HTTP Exception Logging**: Added comprehensive logging for HTTP exceptions in `HttpExceptionFilter` for better debugging and monitoring
+
+### Changed
+
+- **Thesis Update API Enhancement**:
+  - **Semester Transfer Validation**: `PUT /theses/{id}` endpoint now includes validation for semester changes, preventing transfers of already-picked theses
+  - **Business Rule Enforcement**: Enhanced thesis update logic with lecturer thesis limit validation for target semester
+
+- **Semester Status Management**:
+  - **Phase Transition Logic**: Improved `ScopeAdjustable` to `ScopeLocked` transition with automatic cleanup of unpicked theses
+  - **Data Consistency**: Enhanced semester phase transitions to maintain thesis state consistency
+
+- **Logging Improvements**:
+  - **Exception Tracking**: All HTTP exceptions are now logged with detailed error information for better monitoring
+  - **Thesis Operations**: Enhanced logging for thesis semester changes and validation processes
+
+### Fixed
+
+- **Thesis State Consistency**: Fixed issue where unpicked theses retained published status after phase transitions
+- **Semester Validation**: Improved validation logic for thesis semester changes to prevent invalid state transitions
+- **Error Handling**: Enhanced error handling and logging across thesis and semester management operations
+
+### Enhanced
+
+- **Business Logic Validation**: Stronger validation rules for thesis management with comprehensive error handling
+- **System Reliability**: Improved system reliability with better exception logging and state management
+- **Data Integrity**: Enhanced data integrity during semester phase transitions and thesis operations
+
+### Technical Improvements
+
+- **Service Layer**: Enhanced `ThesisLecturerService` with new `validateSemesterChange()` method for comprehensive semester transfer validation
+- **Status Management**: Improved `SemesterStatusService` with automatic thesis status reset during phase transitions
+- **Error Tracking**: Enhanced `HttpExceptionFilter` with comprehensive error logging for better system monitoring
+- **Code Quality**: Improved code organization with better separation of validation concerns and error handling
+
+---
+
+## [0.8.1] - 2025-08-07
+
+### Added
+
+- **Database Reset Enhancement**:
+  - **Pinecone Clear Script**: New `scripts/clear-pinecone.ts` utility script to clear all data from Pinecone index
+  - **Enhanced Reset Command**: Updated `prisma:reset` script to automatically clear Pinecone data after database reset
+
+### Changed
+
+- **Supervision API Enhancement**:
+  - **API Response Enhancement**: Enhanced `GET /supervisions/thesis/:thesisId` endpoint to return detailed supervision information
+  - **Response Structure**: Modified `SupervisionPublicService.getSupervisionsByThesis()` method to include comprehensive lecturer and thesis details with group member information
+  - **Data Enrichment**: Changed from simple `groupBy` aggregation to full `findMany` with nested includes for lecturer, thesis, group, and student participation data
+
+- **Group Creation Process Optimization**:
+  - **Enhanced Group Creation**: Improved group creation logic in `GroupStudentService.create()` with direct database operations
+  - **Skills and Responsibilities Handling**: Streamlined group skills and responsibilities creation using `createMany` operations instead of external service calls
+  - **Transaction Optimization**: Enhanced transaction handling for group creation with better error management
+
+- **Architecture Simplification**:
+  - **Pinecone Integration Removal**: Removed Pinecone service integrations from group and student services for simplified architecture
+  - **Service Dependencies**: Eliminated `PineconeGroupService` and `PineconeStudentService` dependencies from core domain services
+  - **Background Job Cleanup**: Removed Pinecone-related background job processing from group and student operations
+
+### Fixed
+
+- **Email Template Syntax**: Fixed syntax error in `send-request-status-update.pug` template for invitation acceptance message
+  - **Variable Reference**: Corrected `#studentName}` to `#{studentName}` in invitation acceptance notification
+
+### Removed
+
+- **Pinecone Service Integrations**:
+  - **Group Services**: Removed Pinecone synchronization from `GroupStudentService` operations (create, update, delete)
+  - **Student Services**: Removed Pinecone synchronization from `StudentAdminService` and `StudentSelfService` operations
+  - **Background Processing**: Eliminated Pinecone job processing for student and group data synchronization
+  - **Service Dependencies**: Removed `PineconeGroupService` and `PineconeStudentService` from module dependencies
+
+### Enhanced
+
+- **Development Workflow**: Improved database reset process with automatic Pinecone cleanup
+- **Code Maintainability**: Simplified service architecture by removing vector database dependencies
+- **Performance**: Reduced service complexity by eliminating background Pinecone synchronization jobs
+- **Data Consistency**: Enhanced supervision API responses with comprehensive related data
+
+### Technical Improvements
+
+- **Service Architecture**: Streamlined domain services by removing external vector database dependencies
+- **Database Operations**: Optimized group creation process with direct database operations
+- **Script Utilities**: Added comprehensive Pinecone management script with error handling and namespace clearing
+- **Code Organization**: Cleaned up service dependencies and removed unused processors and services
+
+---
+
+## [0.8.0] - 2025-08-04
+
+### Changed
+
+- **Review System Enhancement**:
+  - **API Response Structure**: Modified `GET /reviews/submissions/:submissionId/reviews` endpoint to return structured response with separate `assignmentReviews` and `reviews` objects
+  - **Assignment Review Integration**: Enhanced review fetching logic to properly retrieve assignment reviews with reviewer information
+  - **Response Format**: Changed from returning a single array of reviews to an object containing both assignment reviews and submission reviews
+
+### Fixed
+
+- **Review Fetching Logic**: Corrected assignment review retrieval in `ReviewPublicService.getSubmissionReviews()` method
+  - **Database Query Optimization**: Separated assignment review queries from submission review queries for better data organization
+  - **Reviewer Information**: Fixed reviewer data inclusion with proper user relationship mapping
+  - **Main Reviewer Prioritization**: Added proper ordering by `isMainReviewer` for assignment reviews
+  - **Enhanced Logging**: Improved logging for assignment review fetching with detailed debug information
+
+### Enhanced
+
+- **Service Architecture**: Better separation of assignment reviews and submission reviews in the review public service
+- **Data Structure**: More organized response structure for better frontend integration and data consumption
+- **Logging**: Enhanced logging capabilities for better debugging and monitoring of review operations
+
+---
+
+## [0.7.14] - 2025-08-04
+
+### Added
+
+- **Comprehensive Email Notification System**:
+  - **Semester Status Notifications**: New automated email notifications for semester phase transitions
+    - `SEND_SEMESTER_PREPARING_NOTIFICATION` - Notifies all lecturers when semester enters Preparing phase
+    - `SEND_SEMESTER_PICKING_NOTIFICATION` - Notifies all enrolled students when semester enters Picking phase
+    - `SEND_SEMESTER_ONGOING_NOTIFICATION` - Notifies students and lecturers when semester enters Ongoing phase
+  - **Moderator Alert System**: New alert notifications for critical semester management issues
+    - `SEND_MODERATOR_INSUFFICIENT_THESIS_ALERT` - Alerts when available theses are fewer than total groups
+    - `SEND_MODERATOR_UNGROUPED_STUDENTS_ALERT` - Alerts when students remain ungrouped during transitions
+    - `SEND_MODERATOR_UNPICKED_GROUPS_ALERT` - Alerts when groups haven't selected thesis before Ongoing phase
+
+- **Thesis Status Change Notifications**:
+  - `SEND_THESIS_STATUS_CHANGE` - New email notification for thesis status updates (Pending, Approved, Rejected)
+  - **Publication Status Alerts**: Automated notifications when theses are published/unpublished by moderators
+  - **Bulk Notification Support**: Handles both single thesis and bulk thesis status changes with grouped notifications
+
+- **Enrollment Result Notifications**:
+  - `SEND_ENROLLMENT_RESULT_NOTIFICATION` - New email notification system for semester enrollment results
+  - **Student Results**: Automated notifications for Pass/Fail enrollment status updates
+  - **Enhanced Context**: Includes semester details, thesis information, and enrollment status in notifications
+
+- **Enhanced AI Compatibility Analysis**:
+  - **Major Information Integration**: Added academic major data to AI student and group suggestion APIs
+  - **Improved Matching Algorithm**: Enhanced compatibility scoring with 25% weight for major compatibility
+  - **Academic Diversity Consideration**: AI now evaluates complementary major combinations for better team composition
+
+### Changed
+
+- **SemesterNotificationService Enhancement**:
+  - **Comprehensive Notification Logic**: New `SemesterNotificationService` with methods for all semester phase notifications
+  - **Smart Alert Detection**: Automated detection and alerting for semester management issues
+  - **Role-Based Notifications**: Different notification content based on recipient role (student, lecturer, moderator)
+
+- **SemesterService Integration**:
+  - **Automatic Trigger System**: Semester status changes now automatically trigger appropriate notifications
+  - **Validation Enhancement**: Enhanced semester transition validation with alert generation
+  - **Transaction Timeout**: Added transaction timeout configuration for better reliability
+
+- **AI Service Improvements**:
+  - **Enhanced Prompts**: Updated AI prompts to include major compatibility evaluation (30% skill matching, 25% major compatibility, 25% responsibility alignment, 15% group dynamics, 5% project fit)
+  - **Comprehensive Data**: All AI suggestion endpoints now include student major information for better analysis
+  - **Improved Scoring**: More accurate compatibility scoring with academic background consideration
+
+- **Email Template System**:
+  - **Professional Templates**: New Pug email templates for all notification types with improved formatting
+  - **Contextual Content**: Templates dynamically adapt content based on recipient type and notification context
+  - **Enhanced Styling**: Improved email styling and structure for better readability
+
+- **Service Architecture Enhancement**:
+  - **Transaction Optimization**: Added timeout configuration to database transactions across multiple services
+  - **Error Handling**: Enhanced error handling in notification services to prevent critical operation failures
+  - **Logging Improvements**: Comprehensive logging for notification delivery tracking and debugging
+
+### Fixed
+
+- **Email Property Casting**: Fixed email property casting for group member notifications to prevent template rendering errors
+- **Notification Reliability**: Enhanced notification service error handling to ensure core functionality continues if notifications fail
+- **Transaction Management**: Improved transaction handling with proper timeout configuration to prevent deadlocks
+
+### Enhanced
+
+- **API Data Enrichment**: All student and group suggestion APIs now include comprehensive major information for enhanced compatibility evaluation
+- **Notification Reliability**: Robust notification system with fallback mechanisms and comprehensive error handling
+- **Academic Analysis**: AI-powered analysis now considers academic diversity and major relevance for more accurate team formation
+- **User Experience**: Automated notifications keep all stakeholders informed of important semester and thesis status changes
+
+### Technical Improvements
+
+- **Queue System**: Enhanced email queue system with new job types and improved processing
+- **Service Integration**: Better integration between semester management and notification systems
+- **Code Organization**: Improved code organization with dedicated notification service architecture
+- **Performance**: Optimized notification delivery with batching and delay mechanisms
+- **Maintainability**: Enhanced code maintainability with proper separation of concerns
+
+### Pull Requests
+
+- [#256](https://github.com/5-logic/the-sync-backend/pull/256) - Merge dev branch for v0.7.14 release
+- [#255](https://github.com/5-logic/the-sync-backend/pull/255) - Comprehensive notification system and AI enhancements (task-180)
+
+---
+
 ## [0.7.13] - 2025-08-02
 
 ### Changed

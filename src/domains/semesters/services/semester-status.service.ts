@@ -20,6 +20,7 @@ export class SemesterStatusService {
 	/**
 	 * Validate khi chuyển ongoingPhase từ ScopeAdjustable sang ScopeLocked:
 	 * tất cả group phải pick thesis
+	 * và cập nhật các thesis chưa được chọn về status = New, isPublish = false
 	 */
 	async validateOngoingPhaseTransition__ScopeAdjustable_To_ScopeLocked(
 		semester: Semester,
@@ -35,6 +36,26 @@ export class SemesterStatusService {
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
+
+		// Cập nhật các thesis chưa được group nào chọn
+		// Chuyển status về New và isPublish về false
+		const unpickedThesesResult = await this.prisma.thesis.updateMany({
+			where: {
+				semesterId: semester.id,
+				groupId: null, // Thesis chưa được group nào chọn
+			},
+			data: {
+				status: ThesisStatus.New,
+				isPublish: false,
+			},
+		});
+
+		if (unpickedThesesResult.count > 0) {
+			this.logger.log(
+				`Updated ${unpickedThesesResult.count} unpicked theses in semester ${semester.id}: status set to New, isPublish set to false`,
+			);
+		}
+
 		this.logger.log(
 			'OngoingPhase transition ScopeAdjustable -> ScopeLocked validation passed. All groups have picked theses.',
 		);

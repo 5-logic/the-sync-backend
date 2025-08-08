@@ -12,9 +12,32 @@ export class SupervisionPublicService {
 		try {
 			this.logger.log(`Getting supervisions for thesis ${thesisId}`);
 
-			const supervisions = await this.prisma.supervision.groupBy({
+			const supervisions = await this.prisma.supervision.findMany({
 				where: { thesisId },
-				by: ['lecturerId'],
+				include: {
+					lecturer: {
+						include: {
+							user: true,
+						},
+					},
+					thesis: {
+						include: {
+							group: {
+								include: {
+									studentGroupParticipations: {
+										include: {
+											student: {
+												include: {
+													user: true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			});
 
 			this.logger.log(

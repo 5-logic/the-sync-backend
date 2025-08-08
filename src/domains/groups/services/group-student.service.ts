@@ -15,7 +15,6 @@ import {
 import { GroupPublicService } from '@/groups/services';
 import { GroupService } from '@/groups/services/group.service';
 import { PrismaService } from '@/providers';
-import { PineconeGroupService, PineconeJobType } from '@/queue';
 
 import { SemesterStatus } from '~/generated/prisma';
 
@@ -27,7 +26,6 @@ export class GroupStudentService {
 		private readonly prisma: PrismaService,
 		private readonly groupService: GroupService,
 		private readonly groupPublicService: GroupPublicService,
-		private readonly pineconeGroupService: PineconeGroupService,
 	) {}
 
 	async create(userId: string, dto: CreateGroupDto) {
@@ -125,22 +123,41 @@ export class GroupStudentService {
 						},
 					});
 
-					await Promise.all([
-						prisma.studentGroupParticipation.create({
-							data: {
-								studentId: userId,
-								groupId: group.id,
-								semesterId: currentSemester.id,
-								isLeader: true,
-							},
-						}),
+					// Create student group participation
+					await prisma.studentGroupParticipation.create({
+						data: {
+							studentId: userId,
+							groupId: group.id,
+							semesterId: currentSemester.id,
+							isLeader: true,
+						},
+					});
 
-						this.groupService.createGroupSkills(group.id, dto.skillIds),
-						this.groupService.createGroupResponsibilities(
-							group.id,
-							dto.responsibilityIds,
-						),
-					]);
+					// Create group skills if provided
+					if (dto.skillIds && dto.skillIds.length > 0) {
+						const groupRequiredSkills = dto.skillIds.map((skillId) => ({
+							groupId: group.id,
+							skillId: skillId,
+						}));
+
+						await prisma.groupRequiredSkill.createMany({
+							data: groupRequiredSkills,
+						});
+					}
+
+					// Create group responsibilities if provided
+					if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
+						const groupExpectedResponsibilities = dto.responsibilityIds.map(
+							(responsibilityId) => ({
+								groupId: group.id,
+								responsibilityId: responsibilityId,
+							}),
+						);
+
+						await prisma.groupExpectedResponsibility.createMany({
+							data: groupExpectedResponsibilities,
+						});
+					}
 
 					return group;
 				},
@@ -152,11 +169,6 @@ export class GroupStudentService {
 			);
 
 			const completeGroup = await this.groupPublicService.findOne(result.id);
-
-			await this.pineconeGroupService.processGroup(
-				PineconeJobType.CREATE_OR_UPDATE,
-				result.id,
-			);
 
 			return completeGroup;
 		} catch (error) {
@@ -246,11 +258,6 @@ export class GroupStudentService {
 			this.logger.log(`Group updated with ID: ${result.id}`);
 
 			const completeGroup = await this.groupPublicService.findOne(result.id);
-
-			await this.pineconeGroupService.processGroup(
-				PineconeJobType.CREATE_OR_UPDATE,
-				result.id,
-			);
 
 			return completeGroup;
 		} catch (error) {
@@ -567,12 +574,6 @@ export class GroupStudentService {
 
 			// Return the updated group
 			const updatedGroup = await this.groupPublicService.findOne(groupId);
-
-			// Sync updated group data to Pinecone (member list changed)
-			await this.pineconeGroupService.processGroup(
-				PineconeJobType.CREATE_OR_UPDATE,
-				groupId,
-			);
 
 			return {
 				success: true,
@@ -1236,12 +1237,6 @@ export class GroupStudentService {
 			);
 			this.logger.log(
 				`Group "${result.name}" (${result.code}) successfully deleted by leader. ${groupMembers.length} members affected.`,
-			);
-
-			// Delete group data from Pinecone
-			await this.pineconeGroupService.processGroup(
-				PineconeJobType.DELETE,
-				groupId,
 			);
 
 			// Send email notifications to all group members

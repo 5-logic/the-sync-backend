@@ -21,14 +21,21 @@ export class ReviewPublicService {
 				throw new NotFoundException('Submission does not exist');
 			}
 
-			const reviews = await this.prisma.review.findMany({
+			const assignmentReviews = await this.prisma.assignmentReview.findMany({
 				where: { submissionId },
 				include: {
-					lecturer: {
+					reviewer: {
 						include: {
 							user: true,
 						},
 					},
+				},
+				orderBy: { isMainReviewer: 'desc' },
+			});
+
+			const reviews = await this.prisma.review.findMany({
+				where: { submissionId },
+				include: {
 					reviewItems: {
 						include: {
 							checklistItem: true,
@@ -40,11 +47,16 @@ export class ReviewPublicService {
 			});
 
 			this.logger.log(
-				`Fetched ${reviews.length} reviews for submission ID ${submissionId}`,
+				`Fetched ${assignmentReviews.length} assignment reviews for submission ID ${submissionId}`,
 			);
-			this.logger.debug(`Reviews: ${JSON.stringify(reviews, null, 2)}`);
+			this.logger.debug(
+				`Assignment Reviews: ${JSON.stringify(assignmentReviews, null, 2)}`,
+			);
 
-			return reviews;
+			return {
+				assignmentReviews,
+				reviews,
+			};
 		} catch (error) {
 			this.logger.error(
 				`Error fetching reviews for submission ID ${submissionId}`,
