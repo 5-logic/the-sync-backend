@@ -22,7 +22,10 @@ export const corsConfig = registerAs(CONFIG_TOKENS.CORS, () => {
 				return;
 			}
 
-			return callback(new Error('Not allowed by CORS'), false);
+			return callback(
+				new Error(`Origin ${requestOrigin} not allowed by CORS`),
+				false,
+			);
 		},
 		optionsSuccessStatus: 200,
 	};
