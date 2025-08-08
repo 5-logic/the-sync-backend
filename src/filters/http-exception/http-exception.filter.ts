@@ -19,8 +19,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		let status: number;
 		let errorMessage: string | object;
 
-		this.logger.error('An error occurred', exception);
-
 		if (exception instanceof HttpException) {
 			status = exception.getStatus();
 			const exceptionResponse = exception.getResponse();
@@ -37,6 +35,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 				errorMessage = 'An error occurred';
 			}
 		} else {
+			this.logger.error('An error occurred', exception);
+
 			status = HttpStatus.INTERNAL_SERVER_ERROR;
 			errorMessage = 'Internal server error';
 		}
