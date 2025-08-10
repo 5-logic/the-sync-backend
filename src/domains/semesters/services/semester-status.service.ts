@@ -37,22 +37,49 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
-		// Cập nhật các thesis chưa được group nào chọn
-		// Chuyển status về New và isPublish về false
-		const unpickedThesesResult = await this.prisma.thesis.updateMany({
+		// Lấy danh sách các thesis chưa được group nào chọn để xử lý supervisors
+		const unpickedTheses = await this.prisma.thesis.findMany({
 			where: {
 				semesterId: semester.id,
 				groupId: null, // Thesis chưa được group nào chọn
 			},
-			data: {
-				status: ThesisStatus.New,
-				isPublish: false,
+			select: {
+				id: true,
+				englishName: true,
+				vietnameseName: true,
 			},
 		});
 
-		if (unpickedThesesResult.count > 0) {
+		if (unpickedTheses.length > 0) {
+			// Xóa tất cả supervisors của các thesis chưa được chọn
+			const deletedSupervisionsResult =
+				await this.prisma.supervision.deleteMany({
+					where: {
+						thesisId: {
+							in: unpickedTheses.map((thesis) => thesis.id),
+						},
+					},
+				});
+
+			// Cập nhật các thesis chưa được group nào chọn
+			// Chuyển status về New và isPublish về false
+			const unpickedThesesResult = await this.prisma.thesis.updateMany({
+				where: {
+					semesterId: semester.id,
+					groupId: null, // Thesis chưa được group nào chọn
+				},
+				data: {
+					status: ThesisStatus.New,
+					isPublish: false,
+				},
+			});
+
 			this.logger.log(
 				`Updated ${unpickedThesesResult.count} unpicked theses in semester ${semester.id}: status set to New, isPublish set to false`,
+			);
+
+			this.logger.log(
+				`Removed ${deletedSupervisionsResult.count} supervisions from ${unpickedTheses.length} unpicked theses in semester ${semester.id}`,
 			);
 		}
 
