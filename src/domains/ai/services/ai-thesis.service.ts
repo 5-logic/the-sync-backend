@@ -756,28 +756,31 @@ You are an AI assistant specialized in detecting thesis duplication and plagiari
 
 ## Original Thesis:
 - **ID**: ${originalThesisInfo.id}
-- **English Name**: ${originalThesisInfo.englishName}
-- **Vietnamese Name**: ${originalThesisInfo.vietnameseName}
-- **Description**: ${originalThesisInfo.description}
 - **Content**: ${originalThesisInfo.content}
 
 ## Candidate Theses to Compare:
-${JSON.stringify(candidatesWithContent, null, 2)}
+${JSON.stringify(
+	candidatesWithContent.map((candidate) => ({
+		id: candidate.id,
+		content: candidate.content,
+	})),
+	null,
+	2,
+)}
 
 ## Duplication Detection Criteria:
-1. **Content Similarity (60% weight)**: Compare the actual text content, methodology, and approach
-2. **Title Similarity (20% weight)**: Analyze similarity in thesis titles (both English and Vietnamese)
-3. **Description Similarity (20% weight)**: Compare thesis descriptions and objectives
+1. **Content Similarity (100% weight)**: Compare ONLY the actual text content, methodology, and approach
+   - Do NOT consider titles, names, or descriptions - focus purely on content similarity
 
 ## Scoring Instructions:
-- **duplicatePercentage**: An integer between 0 and 100 representing the duplication level
-- **reasons**: Array of strings (max 3 items, each max 100 characters) explaining why this thesis is considered duplicate
+- **duplicatePercentage**: An integer between 0 and 100 representing the duplication level based ONLY on content similarity
+- **reasons**: Array of strings (max 3 items, each max 100 characters) explaining why this thesis content is considered duplicate
 - Consider the following guidelines:
-  - 0-30%: Minor similarity (common research areas)
-  - 31-50%: Moderate similarity (some overlapping concepts)
-  - 51-70%: High similarity (significant overlap, potential concern)
-  - 71-85%: Very high similarity (likely duplication)
-  - 86-100%: Extreme similarity (almost certainly duplicate/plagiarized)
+  - 0-30%: Minor content similarity (common research methodologies)
+  - 31-50%: Moderate content similarity (some overlapping approaches)
+  - 51-70%: High content similarity (significant content overlap, potential concern)
+  - 71-85%: Very high content similarity (likely content duplication)
+  - 86-100%: Extreme content similarity (almost certainly duplicate/plagiarized content)
 
 ## Output Format:
 Return ONLY a valid JSON array with objects containing exactly these fields:
@@ -785,19 +788,23 @@ Return ONLY a valid JSON array with objects containing exactly these fields:
   {
     "id": "thesis_id",
     "englishName": "Thesis English Title",
-    "vietnameseName": "Tên luận văn tiếng Việt",
+    "vietnameseName": "Tên luận văn tiếng Việt", 
     "description": "Thesis description",
-    "reasons": ["Similar methodology approach", "Overlapping research objectives", "Comparable result analysis"],
+    "reasons": ["Similar methodology in content", "Overlapping analysis approach", "Comparable implementation details"],
     "duplicatePercentage": 85
   }
 ]
 
 ## Important Notes:
-- Focus primarily on text content similarity rather than just topic similarity
-- Provide specific, concise reasons for duplication in the reasons array
+- Focus EXCLUSIVELY on text content similarity - ignore metadata like titles and descriptions
+- Base your analysis purely on the content field provided
+- Provide specific, concise reasons for duplication based on content analysis
 - Each reason should be descriptive but concise (max 100 characters)
 - Include all candidates in results (no filtering by percentage)
 - Return results in descending order by duplicatePercentage
+- You still need to return englishName, vietnameseName, and description in the response, but get these from the candidate metadata I'll provide separately
+- For the response, use the following candidate metadata:
+${candidatesWithContent.map((candidate) => `ID: ${candidate.id} -> English: "${candidate.englishName}", Vietnamese: "${candidate.vietnameseName}", Description: "${candidate.description}"`).join('\n')}
 - Do not include any explanation or additional text, only the JSON array
 			`;
 
