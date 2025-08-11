@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2025-08-11
+
+### Enhanced
+
+- **AI-Powered Thesis Duplicate Detection System**:
+  - **Increased Candidate Analysis**: Enhanced duplicate detection by increasing candidate limit from 50 to 100 theses for more comprehensive analysis
+  - **AI-Driven Accuracy Improvement**: Integrated advanced AI analysis using Google Gemini to calculate more accurate duplicate percentages beyond simple vector similarity
+  - **Multi-Factor Evaluation**: AI now considers content similarity (40%), title similarity (25%), description similarity (25%), and conceptual overlap (10%) for more precise duplication assessment
+  - **Improved Threshold Logic**: Changed initial filtering from 70% to 50% vector similarity to capture more potential candidates, then applies AI analysis for accurate final scoring
+  - **Enhanced Content Analysis**: Added content retrieval from Pinecone vector database for more comprehensive thesis comparison including full thesis content
+
+- **Semester Phase Transition Improvements**:
+  - **Enhanced Supervision Management**: Improved `validateOngoingPhaseTransition` method to automatically remove supervisors from unpicked theses during phase transitions
+  - **Complete State Reset**: Unpicked theses now have both their status reset to `New`, publication status set to `false`, and all supervision relationships removed
+  - **Better Data Integrity**: Enhanced transaction handling to ensure complete cleanup of unpicked theses during semester phase transitions
+
+### Changed
+
+- **AI Thesis Service Architecture**:
+  - **Enhanced Detection Algorithm**: Refactored `checkDuplicates()` method in `AIThesisService` to use a two-stage approach: vector similarity filtering followed by AI-powered analysis
+  - **Improved Response Structure**: Enhanced duplicate detection to provide more detailed analysis results with better accuracy scoring
+  - **Fallback Mechanism**: Added robust fallback to vector similarity calculation if AI analysis fails
+
+- **Semester Management Logic**:
+  - **Supervision Cleanup**: Updated semester status service to include supervision relationship cleanup during phase transitions
+  - **Enhanced Logging**: Improved logging for supervision removal and thesis state management during semester transitions
+
+### Fixed
+
+- **Duplicate Detection Accuracy**: Fixed potential false positives in thesis duplicate detection by implementing AI-powered analysis instead of relying solely on vector similarity scores
+- **Phase Transition Data Integrity**: Resolved issue where supervision relationships were not properly cleaned up when theses were reset during semester phase transitions
+
+### Technical Improvements
+
+- **AI Integration**: Enhanced AI service with sophisticated prompt engineering for accurate duplicate percentage calculation
+- **Database Transaction Management**: Improved transaction handling for complex operations involving multiple entity updates during phase transitions
+- **Error Handling**: Enhanced error handling and fallback mechanisms in AI-powered duplicate detection
+- **Performance Optimization**: Optimized candidate selection process to balance comprehensiveness with performance in duplicate detection
+
+---
+
 ## [0.8.3] - 2025-08-08
 
 ### Fixed
