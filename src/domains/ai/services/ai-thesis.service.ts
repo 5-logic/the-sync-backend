@@ -754,6 +754,8 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 			const prompt = `
 You are an AI assistant specialized in detecting thesis duplication and plagiarism. Your task is to analyze the similarity between an original thesis and candidate theses to determine accurate duplication percentages and provide specific reasons.
 
+IMPORTANT: Focus ONLY on CORE CONTENT SIMILARITY. Ignore common academic elements that appear in most theses.
+
 ## Original Thesis:
 - **ID**: ${originalThesisInfo.id}
 - **Content**: ${originalThesisInfo.content}
@@ -768,19 +770,35 @@ ${JSON.stringify(
 	2,
 )}
 
-## Duplication Detection Criteria:
-1. **Content Similarity (100% weight)**: Compare ONLY the actual text content, methodology, and approach
-   - Do NOT consider titles, names, or descriptions - focus purely on content similarity
+## What to IGNORE (Common Elements - DO NOT count as duplication):
+- Document structure and formatting
+- Standard academic writing patterns
+- Common technical terms and definitions
+- Bibliography and reference lists
+- Standard research methodologies (surveys, interviews, etc.)
+- Common task structures and academic frameworks
+- Standard thesis sections (Introduction, Literature Review, Conclusion, etc.)
+- General programming languages or technology mentions
+- Common academic phrases and transitions
+
+## What to FOCUS ON (Core Content - COUNT as duplication):
+1. **Specific Problem Definition**: The exact problem being solved
+2. **Unique Solution Approach**: The specific way the problem is addressed
+3. **Implementation Details**: Specific algorithms, models, or approaches used
+4. **Experimental Results**: Specific data, findings, and analysis
+5. **Novel Contributions**: Unique ideas, innovations, or discoveries
+6. **Specific Use Cases**: Particular applications or examples discussed
+7. **Detailed Analysis**: Specific conclusions and insights drawn
 
 ## Scoring Instructions:
-- **duplicatePercentage**: An integer between 0 and 100 representing the duplication level based ONLY on content similarity
-- **reasons**: Array of strings (max 3 items, each max 100 characters) explaining why this thesis content is considered duplicate
-- Consider the following guidelines:
-  - 0-30%: Minor content similarity (common research methodologies)
-  - 31-50%: Moderate content similarity (some overlapping approaches)
-  - 51-70%: High content similarity (significant content overlap, potential concern)
-  - 71-85%: Very high content similarity (likely content duplication)
-  - 86-100%: Extreme content similarity (almost certainly duplicate/plagiarized content)
+- **duplicatePercentage**: An integer between 0 and 100 representing CORE CONTENT duplication only
+- **reasons**: Array of strings (max 3 items, each max 100 characters) explaining specific core content similarities
+- Guidelines for core content similarity:
+  - 0-20%: Different problems/solutions (common academic structure only)
+  - 21-40%: Some similar concepts but different approaches
+  - 41-60%: Similar problem domain with different solutions
+  - 61-80%: Similar problem and approach with different implementation
+  - 81-100%: Nearly identical core content and solutions
 
 ## Output Format:
 Return ONLY a valid JSON array with objects containing exactly these fields:
@@ -790,22 +808,32 @@ Return ONLY a valid JSON array with objects containing exactly these fields:
     "englishName": "Thesis English Title",
     "vietnameseName": "Tên luận văn tiếng Việt", 
     "description": "Thesis description",
-    "reasons": ["Similar methodology in content", "Overlapping analysis approach", "Comparable implementation details"],
-    "duplicatePercentage": 85
+    "reasons": ["Similar recommendation algorithm approach", "Identical data analysis methods", "Same evaluation metrics used"],
+    "duplicatePercentage": 75
   }
 ]
 
 ## Important Notes:
-- Focus EXCLUSIVELY on text content similarity - ignore metadata like titles and descriptions
-- Base your analysis purely on the content field provided
-- Provide specific, concise reasons for duplication based on content analysis
-- Each reason should be descriptive but concise (max 100 characters)
+- Base analysis ONLY on core content similarity - ignore standard academic elements
+- Reasons should describe specific core content overlaps, not general similarities
+- Each reason should be specific and actionable (max 100 characters)
 - Include all candidates in results (no filtering by percentage)
 - Return results in descending order by duplicatePercentage
-- You still need to return englishName, vietnameseName, and description in the response, but get these from the candidate metadata I'll provide separately
 - For the response, use the following candidate metadata:
 ${candidatesWithContent.map((candidate) => `ID: ${candidate.id} -> English: "${candidate.englishName}", Vietnamese: "${candidate.vietnameseName}", Description: "${candidate.description}"`).join('\n')}
 - Do not include any explanation or additional text, only the JSON array
+
+## Example of VALID reasons (focus on specific content):
+- "Identical machine learning model architecture"
+- "Same dataset preprocessing steps"
+- "Duplicate experimental methodology"
+- "Similar business logic implementation"
+
+## Example of INVALID reasons (too general/common):
+- "Similar document structure"
+- "Common technical terms used"
+- "Standard research methodology"
+- "Similar bibliography format"
 			`;
 
 			const ai = this.gemini.getClient();
