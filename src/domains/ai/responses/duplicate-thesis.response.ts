@@ -14,5 +14,8 @@ export class DuplicateThesisResponse {
 	description: string;
 
 	@ApiProperty()
+	reasons: string[];
+
+	@ApiProperty()
 	duplicatePercentage: number;
 }

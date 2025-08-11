@@ -58,14 +58,14 @@ export class AIThesisService {
 			// Now query using the vector to find similar content
 			const queryRequest = {
 				vector: thesisVector,
-				topK: 100, // Increase to get more candidates
+				topK: 5, // Only get top 5 similar theses
 				includeMetadata: true,
 				includeValues: false,
 			};
 
 			const queryResults = await index.query(queryRequest);
 
-			// Process results and get candidates with similarity > 50%
+			// Process results and get candidates, excluding the original thesis
 			const candidates: Array<{
 				id: string;
 				englishName: string;
@@ -81,8 +81,8 @@ export class AIThesisService {
 						continue;
 					}
 
-					// Consider as candidate if similarity score > 0.5 (50%)
-					if (match.score && match.score > 0.5) {
+					// Take all matches from top 5 (no similarity threshold filter)
+					if (match.score) {
 						candidates.push({
 							id: match.id,
 							englishName: (match.metadata?.englishName as string) ?? 'Unknown',
@@ -96,11 +96,8 @@ export class AIThesisService {
 				}
 			}
 
-			// Limit to first 50 candidates if we have more
-			const limitedCandidates = candidates.slice(0, 50);
-
 			// If no candidates found, return empty array
-			if (limitedCandidates.length === 0) {
+			if (candidates.length === 0) {
 				this.logger.log(`No potential duplicates found for thesis ${thesisId}`);
 				return [];
 			}
@@ -108,7 +105,7 @@ export class AIThesisService {
 			// Use AI to calculate accurate duplicate percentages
 			const aiDuplicates = await this.calculateDuplicateWithAI(
 				thesis,
-				limitedCandidates,
+				candidates,
 			);
 
 			// Sort by duplicate percentage (highest first)
@@ -682,9 +679,68 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 		}>,
 	): Promise<DuplicateThesisResponse[]> {
 		try {
-			// Get content from Pinecone for better analysis
-			const candidatesWithContent =
-				await this.getCandidatesContentFromPinecone(candidates);
+			// Get text content from Pinecone for both original and candidate theses
+			const index = this.pinecone
+				.getClient()
+				.index(this.pinecone.getIndexName())
+				.namespace(AIThesisService.NAMESPACE);
+
+			// Get original thesis text content
+			let originalContent = 'Content not available';
+			try {
+				const fetchResult = await index.fetch([originalThesis.id as string]);
+				if (fetchResult.records?.[originalThesis.id]?.metadata?.text) {
+					originalContent = fetchResult.records[originalThesis.id]?.metadata
+						?.text as string;
+				}
+			} catch {
+				this.logger.warn(
+					'Could not fetch original thesis text content from Pinecone',
+				);
+			}
+
+			// Get candidate thesis text contents
+			const candidateIds = candidates.map((c) => c.id);
+			const candidatesWithContent: Array<{
+				id: string;
+				englishName: string;
+				vietnameseName: string;
+				description: string;
+				content: string;
+			}> = [];
+
+			try {
+				const fetchResult = await index.fetch(candidateIds);
+				candidates.forEach((candidate) => {
+					const pineconeRecord = fetchResult.records?.[candidate.id];
+					const content =
+						(pineconeRecord?.metadata?.text as string) ||
+						'Content not available';
+
+					candidatesWithContent.push({
+						id: candidate.id,
+						englishName: candidate.englishName,
+						vietnameseName: candidate.vietnameseName,
+						description: candidate.description,
+						content:
+							typeof content === 'string' ? content : 'Content not available',
+					});
+				});
+			} catch {
+				this.logger.warn(
+					'Could not fetch candidate thesis text contents from Pinecone',
+				);
+				// Fallback to basic information without content
+				candidates.forEach((candidate) => {
+					candidatesWithContent.push({
+						id: candidate.id,
+						englishName: candidate.englishName,
+						vietnameseName: candidate.vietnameseName,
+						description: candidate.description,
+						content: 'Content not available',
+					});
+				});
+			}
 
 			// Prepare original thesis information for AI prompt
 			const originalThesisInfo = {
@@ -692,48 +748,30 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 				englishName: originalThesis.englishName || 'Unknown',
 				vietnameseName: originalThesis.vietnameseName || 'Unknown',
 				description: originalThesis.description || 'No description',
+				content: originalContent,
 			};
 
-			// Get original thesis content from Pinecone if available
-			let originalContent = 'Content not available';
-			try {
-				const index = this.pinecone
-					.getClient()
-					.index(this.pinecone.getIndexName())
-					.namespace(AIThesisService.NAMESPACE);
-
-				const fetchResult = await index.fetch([originalThesis.id as string]);
-				if (fetchResult.records?.[originalThesis.id]?.metadata?.content) {
-					originalContent = fetchResult.records[originalThesis.id]?.metadata
-						?.content as string;
-				}
-			} catch {
-				this.logger.warn(
-					'Could not fetch original thesis content from Pinecone',
-				);
-			}
-
 			const prompt = `
-You are an AI assistant specialized in detecting thesis duplication and plagiarism. Your task is to analyze the similarity between an original thesis and candidate theses to determine accurate duplication percentages.
+You are an AI assistant specialized in detecting thesis duplication and plagiarism. Your task is to analyze the similarity between an original thesis and candidate theses to determine accurate duplication percentages and provide specific reasons.
 
 ## Original Thesis:
 - **ID**: ${originalThesisInfo.id}
 - **English Name**: ${originalThesisInfo.englishName}
 - **Vietnamese Name**: ${originalThesisInfo.vietnameseName}
 - **Description**: ${originalThesisInfo.description}
-- **Content**: ${originalContent}
+- **Content**: ${originalThesisInfo.content}
 
 ## Candidate Theses to Compare:
 ${JSON.stringify(candidatesWithContent, null, 2)}
 
 ## Duplication Detection Criteria:
-1. **Content Similarity (40% weight)**: Compare the actual content, methodology, and approach
-2. **Title Similarity (25% weight)**: Analyze similarity in thesis titles (both English and Vietnamese)
-3. **Description Similarity (25% weight)**: Compare thesis descriptions and objectives
-4. **Conceptual Overlap (10% weight)**: Evaluate overlap in research concepts and ideas
+1. **Content Similarity (60% weight)**: Compare the actual text content, methodology, and approach
+2. **Title Similarity (20% weight)**: Analyze similarity in thesis titles (both English and Vietnamese)
+3. **Description Similarity (20% weight)**: Compare thesis descriptions and objectives
 
 ## Scoring Instructions:
 - **duplicatePercentage**: An integer between 0 and 100 representing the duplication level
+- **reasons**: Array of strings (max 3 items, each max 100 characters) explaining why this thesis is considered duplicate
 - Consider the following guidelines:
   - 0-30%: Minor similarity (common research areas)
   - 31-50%: Moderate similarity (some overlapping concepts)
@@ -749,16 +787,16 @@ Return ONLY a valid JSON array with objects containing exactly these fields:
     "englishName": "Thesis English Title",
     "vietnameseName": "Tên luận văn tiếng Việt",
     "description": "Thesis description",
+    "reasons": ["Similar methodology approach", "Overlapping research objectives", "Comparable result analysis"],
     "duplicatePercentage": 85
   }
 ]
 
 ## Important Notes:
-- Only include theses with duplicatePercentage > 30 in the final results
-- Be strict in evaluation - similar research topics don't necessarily mean duplication
-- Focus on actual content overlap rather than just topic similarity
-- Consider that some similarity is normal in academic research within the same field
-- Ensure duplicate percentages are realistic and well-justified
+- Focus primarily on text content similarity rather than just topic similarity
+- Provide specific, concise reasons for duplication in the reasons array
+- Each reason should be descriptive but concise (max 100 characters)
+- Include all candidates in results (no filtering by percentage)
 - Return results in descending order by duplicatePercentage
 - Do not include any explanation or additional text, only the JSON array
 			`;
@@ -802,24 +840,35 @@ Return ONLY a valid JSON array with objects containing exactly these fields:
 					!duplicate.englishName ||
 					!duplicate.vietnameseName ||
 					!duplicate.description ||
+					!Array.isArray(duplicate.reasons) ||
 					typeof duplicate.duplicatePercentage !== 'number' ||
 					duplicate.duplicatePercentage < 0 ||
 					duplicate.duplicatePercentage > 100
 				) {
 					throw new Error('Invalid duplicate object format from AI');
 				}
+
+				// Validate reasons array
+				if (duplicate.reasons.length > 3) {
+					duplicate.reasons = duplicate.reasons.slice(0, 3);
+				}
+				duplicate.reasons = duplicate.reasons.map((reason) =>
+					typeof reason === 'string' && reason.length > 100
+						? reason.substring(0, 100)
+						: reason,
+				);
 			}
 
-			// Filter duplicates > 30% and sort by percentage
-			const filteredDuplicates = aiDuplicates
-				.filter((duplicate) => duplicate.duplicatePercentage > 30)
-				.sort((a, b) => b.duplicatePercentage - a.duplicatePercentage);
-
-			this.logger.log(
-				`AI duplicate analysis completed for ${filteredDuplicates.length} candidates`,
+			// Sort by duplicate percentage (highest first)
+			aiDuplicates.sort(
+				(a, b) => b.duplicatePercentage - a.duplicatePercentage,
 			);
 
-			return filteredDuplicates;
+			this.logger.log(
+				`AI duplicate analysis completed for ${aiDuplicates.length} candidates`,
+			);
+
+			return aiDuplicates;
 		} catch (error) {
 			this.logger.error('Error calculating duplicates with AI:', error);
 
@@ -831,67 +880,10 @@ Return ONLY a valid JSON array with objects containing exactly these fields:
 					englishName: candidate.englishName,
 					vietnameseName: candidate.vietnameseName,
 					description: candidate.description,
+					reasons: ['Vector similarity based analysis'],
 					duplicatePercentage: Math.round(candidate.vectorSimilarity * 100),
 				}))
-				.filter((duplicate) => duplicate.duplicatePercentage > 30)
 				.sort((a, b) => b.duplicatePercentage - a.duplicatePercentage);
-		}
-	}
-
-	/**
-	 * Get candidate thesis content from Pinecone vector database
-	 */
-	private async getCandidatesContentFromPinecone(
-		candidates: Array<{
-			id: string;
-			englishName: string;
-			vietnameseName: string;
-			description: string;
-			vectorSimilarity: number;
-		}>,
-	): Promise<
-		Array<{
-			id: string;
-			englishName: string;
-			vietnameseName: string;
-			description: string;
-			content: string;
-			vectorSimilarity: number;
-		}>
-	> {
-		try {
-			const index = this.pinecone
-				.getClient()
-				.index(this.pinecone.getIndexName())
-				.namespace(AIThesisService.NAMESPACE);
-
-			const candidateIds = candidates.map((c) => c.id);
-			const fetchResult = await index.fetch(candidateIds);
-
-			return candidates.map((candidate) => {
-				const pineconeRecord = fetchResult.records?.[candidate.id];
-				const content =
-					(pineconeRecord?.metadata?.content as string) ||
-					candidate.description ||
-					'No content available';
-
-				return {
-					...candidate,
-					content:
-						typeof content === 'string' ? content : 'No content available',
-				};
-			});
-		} catch (error) {
-			this.logger.error(
-				'Error fetching candidate content from Pinecone:',
-				error,
-			);
-
-			// Fallback to basic candidate information without content
-			return candidates.map((candidate) => ({
-				...candidate,
-				content: 'Content not available',
-			}));
 		}
 	}
 }
