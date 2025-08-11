@@ -754,7 +754,7 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 			const prompt = `
 You are an AI assistant specialized in detecting thesis duplication and plagiarism. Your task is to analyze the similarity between an original thesis and candidate theses to determine accurate duplication percentages and provide specific reasons.
 
-IMPORTANT: Focus ONLY on CORE CONTENT SIMILARITY. Ignore common academic elements that appear in most theses.
+CRITICAL: Focus ONLY on UNIQUE, SPECIFIC CONTENT. Do NOT count common technology choices or standard architectures as duplication.
 
 ## Original Thesis:
 - **ID**: ${originalThesisInfo.id}
@@ -770,70 +770,78 @@ ${JSON.stringify(
 	2,
 )}
 
-## What to IGNORE (Common Elements - DO NOT count as duplication):
-- Document structure and formatting
-- Standard academic writing patterns
-- Common technical terms and definitions
-- Bibliography and reference lists
-- Standard research methodologies (surveys, interviews, etc.)
-- Common task structures and academic frameworks
-- Standard thesis sections (Introduction, Literature Review, Conclusion, etc.)
-- General programming languages or technology mentions
-- Common academic phrases and transitions
+## STRICTLY IGNORE - These are NOT duplication (common in most theses):
+❌ Technology stacks (React, Node.js, MySQL, etc.)
+❌ Architecture patterns (RESTful API, MVC, microservices)
+❌ General system designs (web app, mobile app, client-server)
+❌ Common frameworks and libraries
+❌ Standard database designs or API structures
+❌ General development methodologies (Agile, Scrum)
+❌ Common security measures (authentication, authorization)
+❌ Standard testing approaches
+❌ General UI/UX patterns
+❌ Common deployment strategies
+❌ Standard research methods and data collection
+❌ General academic writing structure
 
-## What to FOCUS ON (Core Content - COUNT as duplication):
-1. **Specific Problem Definition**: The exact problem being solved
-2. **Unique Solution Approach**: The specific way the problem is addressed
-3. **Implementation Details**: Specific algorithms, models, or approaches used
-4. **Experimental Results**: Specific data, findings, and analysis
-5. **Novel Contributions**: Unique ideas, innovations, or discoveries
-6. **Specific Use Cases**: Particular applications or examples discussed
-7. **Detailed Analysis**: Specific conclusions and insights drawn
+## ONLY COUNT as duplication - Unique specific content:
+✅ Identical business rules or domain logic
+✅ Same specific algorithms or mathematical formulas
+✅ Identical data processing workflows
+✅ Same specific problem-solving approaches for unique challenges
+✅ Identical experimental designs for novel scenarios
+✅ Same specific feature implementations beyond standard CRUD
+✅ Identical unique optimization techniques
+✅ Same specific analysis methods for particular domains
+✅ Identical novel integration patterns
+✅ Same specific custom solutions to unique problems
 
 ## Scoring Instructions:
-- **duplicatePercentage**: An integer between 0 and 100 representing CORE CONTENT duplication only
-- **reasons**: Array of strings (max 3 items, each max 100 characters) explaining specific core content similarities
-- Guidelines for core content similarity:
-  - 0-20%: Different problems/solutions (common academic structure only)
-  - 21-40%: Some similar concepts but different approaches
-  - 41-60%: Similar problem domain with different solutions
-  - 61-80%: Similar problem and approach with different implementation
-  - 81-100%: Nearly identical core content and solutions
+- **duplicatePercentage**: Based ONLY on unique specific content overlap
+- **reasons**: Must describe SPECIFIC, UNIQUE similarities (max 3 items, each max 100 characters)
+- Be EXTREMELY strict - most theses should score 0-30% unless they have genuine unique content overlap
+
+Guidelines:
+- 0-15%: Different unique solutions (only common tech/architecture)
+- 16-30%: Some similar domain-specific approaches
+- 31-50%: Similar unique business logic or algorithms
+- 51-70%: Significant overlap in specific custom solutions
+- 71-85%: Major duplication of unique implementations
+- 86-100%: Nearly identical unique content and custom solutions
 
 ## Output Format:
-Return ONLY a valid JSON array with objects containing exactly these fields:
 [
   {
     "id": "thesis_id",
     "englishName": "Thesis English Title",
     "vietnameseName": "Tên luận văn tiếng Việt", 
     "description": "Thesis description",
-    "reasons": ["Similar recommendation algorithm approach", "Identical data analysis methods", "Same evaluation metrics used"],
-    "duplicatePercentage": 75
+    "reasons": ["Identical recommendation algorithm logic", "Same fraud detection rules", "Duplicate custom validation workflow"],
+    "duplicatePercentage": 65
   }
 ]
 
-## Important Notes:
-- Base analysis ONLY on core content similarity - ignore standard academic elements
-- Reasons should describe specific core content overlaps, not general similarities
-- Each reason should be specific and actionable (max 100 characters)
-- Include all candidates in results (no filtering by percentage)
-- Return results in descending order by duplicatePercentage
-- For the response, use the following candidate metadata:
+## VALID Reason Examples (specific unique content):
+✅ "Identical recommendation algorithm using collaborative filtering weights"
+✅ "Same custom fraud detection rules for e-commerce transactions"
+✅ "Duplicate inventory optimization formula for retail"
+✅ "Identical sentiment analysis preprocessing for Vietnamese text"
+✅ "Same custom authentication flow for multi-tenant system"
+
+## INVALID Reason Examples (too general - DO NOT USE):
+❌ "Similar technology stack (React, Node.js)"
+❌ "RESTful API architecture"
+❌ "MySQL database design"
+❌ "Web application structure"
+❌ "Authentication and authorization"
+❌ "CRUD operations implementation"
+❌ "MVC design pattern"
+❌ "Standard login/logout functionality"
+
+## Candidate Metadata:
 ${candidatesWithContent.map((candidate) => `ID: ${candidate.id} -> English: "${candidate.englishName}", Vietnamese: "${candidate.vietnameseName}", Description: "${candidate.description}"`).join('\n')}
-- Do not include any explanation or additional text, only the JSON array
 
-## Example of VALID reasons (focus on specific content):
-- "Identical machine learning model architecture"
-- "Same dataset preprocessing steps"
-- "Duplicate experimental methodology"
-- "Similar business logic implementation"
-
-## Example of INVALID reasons (too general/common):
-- "Similar document structure"
-- "Common technical terms used"
-- "Standard research methodology"
-- "Similar bibliography format"
+Remember: If two theses only share common technology choices and standard architectures, they should score 0-15% with reasons like ["Different business domains", "Distinct problem approaches", "Unique implementation details"] or simply no reasons if truly different.
 			`;
 
 			const ai = this.gemini.getClient();
