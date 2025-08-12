@@ -23,7 +23,7 @@ import { ReviewModeratorService } from '@/reviews/services';
 export class ReviewModeratorController {
 	constructor(private readonly service: ReviewModeratorService) {}
 
-	@Roles(Role.MODERATOR)
+	@Roles(Role.MODERATOR, Role.STUDENT)
 	@HttpCode(HttpStatus.OK)
 	@Get(':submissionId/eligible-reviewers')
 	@ApiOperation(ReviewModeratorDocs.getEligibleReviewers)
