@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.5] - 2025-08-12
+
+### Enhanced
+
+- **AI-Powered Duplicate Detection System Improvements**:
+  - **Enhanced Response Format**: Added `reasons` field to `DuplicateThesisResponse` to provide specific explanations for why theses are considered duplicates
+  - **Refined Scoring Criteria**: Significantly improved duplicate detection accuracy by focusing exclusively on unique, specific content rather than common technology choices
+  - **Advanced AI Analysis**: Enhanced AI prompt engineering to distinguish between standard architectures (React, Node.js, RESTful APIs) and truly unique implementations
+  - **Stricter Evaluation Standards**: Updated scoring guidelines to be more conservative, with most theses now properly scoring 0-30% unless genuine unique content overlap exists
+
+- **Review System Access Control**:
+  - **Expanded Role Access**: Enhanced `GET /reviews/:submissionId/eligible-reviewers` endpoint to include `STUDENT` role access alongside existing `MODERATOR` permissions
+  - **Improved Accessibility**: Students can now access eligible reviewer information for better transparency in the review process
+
+### Changed
+
+- **Duplicate Detection Algorithm Optimization**:
+  - **Candidate Selection Refinement**: Reduced top candidates from 100 to 5 for more focused analysis, removing similarity threshold filtering for comprehensive evaluation
+  - **Content Analysis Enhancement**: Improved text content retrieval from Pinecone vector database using `text` metadata field instead of `content`
+  - **Response Structure Improvement**: Enhanced `mapDuplicateThesis()` function to accept optional `reasons` parameter for detailed duplicate explanations
+
+- **AI Analysis Criteria Restructuring**:
+  - **Unique Content Focus**: Redefined duplicate detection to strictly ignore common technology stacks, standard architectures, and general development practices
+  - **Specific Content Validation**: AI now only flags duplication for identical business rules, custom algorithms, unique workflows, and novel problem-solving approaches
+  - **Enhanced Reason Validation**: Implemented strict validation for duplicate reasons with maximum 3 items, each limited to 100 characters
+
+### Fixed
+
+- **False Positive Reduction**: Significantly reduced false positives in duplicate detection by excluding common technological choices and standard development patterns
+- **Response Accuracy**: Improved accuracy of duplicate percentage calculations by focusing on genuinely unique intellectual content overlap
+- **Content Retrieval**: Enhanced error handling for Pinecone content retrieval with better fallback mechanisms
+
+### Technical Improvements
+
+- **API Response Enhancement**: Structured duplicate detection responses now include detailed reasoning for better transparency and debugging
+- **Validation Logic**: Enhanced input validation for AI analysis results with proper bounds checking and format verification
+- **Performance Optimization**: Streamlined candidate analysis process by reducing unnecessary similarity filtering steps
+- **Code Quality**: Improved service architecture with better separation of content analysis and response formatting logic
+
+---
+
 ## [0.8.4] - 2025-08-11
 
 ### Enhanced
