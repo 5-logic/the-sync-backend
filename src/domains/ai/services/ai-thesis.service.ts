@@ -810,12 +810,10 @@ Guidelines:
 - 86-100%: Nearly identical unique content and custom solutions
 
 ## Output Format:
+Return ONLY a valid JSON array with objects containing exactly these two fields:
 [
   {
     "id": "thesis_id",
-    "englishName": "Thesis English Title",
-    "vietnameseName": "Tên luận văn tiếng Việt", 
-    "description": "Thesis description",
     "reasons": ["Identical recommendation algorithm logic", "Same fraud detection rules", "Duplicate custom validation workflow"],
     "duplicatePercentage": 65
   }
@@ -858,13 +856,17 @@ Remember: If two theses only share common technology choices and standard archit
 			}
 
 			// Parse AI response
-			let aiDuplicates: DuplicateThesisResponse[];
+			let aiResults: Array<{
+				id: string;
+				reasons: string[];
+				duplicatePercentage: number;
+			}>;
 			try {
 				// Remove potential markdown code blocks
 				const cleanedResponse = responseText
 					.replace(/```json\n?|\n?```/g, '')
 					.trim();
-				aiDuplicates = JSON.parse(cleanedResponse);
+				aiResults = JSON.parse(cleanedResponse);
 			} catch (parseError) {
 				this.logger.error('Failed to parse AI duplicate response:', parseError);
 				this.logger.error('AI Response:', responseText);
@@ -872,35 +874,53 @@ Remember: If two theses only share common technology choices and standard archit
 			}
 
 			// Validate response format
-			if (!Array.isArray(aiDuplicates)) {
+			if (!Array.isArray(aiResults)) {
 				throw new Error('AI response is not an array');
 			}
 
-			// Validate each duplicate object
-			for (const duplicate of aiDuplicates) {
-				if (
-					!duplicate.id ||
-					!duplicate.englishName ||
-					!duplicate.vietnameseName ||
-					!duplicate.description ||
-					!Array.isArray(duplicate.reasons) ||
-					typeof duplicate.duplicatePercentage !== 'number' ||
-					duplicate.duplicatePercentage < 0 ||
-					duplicate.duplicatePercentage > 100
-				) {
-					throw new Error('Invalid duplicate object format from AI');
-				}
+			// Map AI results to DuplicateThesisResponse format
+			const aiDuplicates: DuplicateThesisResponse[] = aiResults.map(
+				(result) => {
+					// Find corresponding candidate to get the metadata
+					const candidate = candidatesWithContent.find(
+						(c) => c.id === result.id,
+					);
+					if (!candidate) {
+						throw new Error(`Candidate with ID ${result.id} not found`);
+					}
 
-				// Validate reasons array
-				if (duplicate.reasons.length > 3) {
-					duplicate.reasons = duplicate.reasons.slice(0, 3);
-				}
-				duplicate.reasons = duplicate.reasons.map((reason) =>
-					typeof reason === 'string' && reason.length > 100
-						? reason.substring(0, 100)
-						: reason,
-				);
-			}
+					// Validate result object
+					if (
+						!result.id ||
+						!Array.isArray(result.reasons) ||
+						typeof result.duplicatePercentage !== 'number' ||
+						result.duplicatePercentage < 0 ||
+						result.duplicatePercentage > 100
+					) {
+						throw new Error('Invalid duplicate object format from AI');
+					}
+
+					// Validate and trim reasons array
+					let reasons = result.reasons;
+					if (reasons.length > 3) {
+						reasons = reasons.slice(0, 3);
+					}
+					reasons = reasons.map((reason) =>
+						typeof reason === 'string' && reason.length > 100
+							? reason.substring(0, 100)
+							: reason,
+					);
+
+					return {
+						id: candidate.id,
+						englishName: candidate.englishName,
+						vietnameseName: candidate.vietnameseName,
+						description: candidate.description,
+						reasons,
+						duplicatePercentage: Math.round(result.duplicatePercentage),
+					};
+				},
+			);
 
 			// Sort by duplicate percentage (highest first)
 			aiDuplicates.sort(
