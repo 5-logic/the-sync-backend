@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6] - 2025-08-12
+
+### Changed
+
+- **Thesis Management Logic Enhancement**:
+  - **Improved Phase-Based Update Logic**: Enhanced thesis update permissions for different semester phases with clearer separation between `Picking` and `Ongoing` phases
+  - **Refined Group Leader Permissions**: Improved logic for group leaders to update thesis during `ScopeAdjustable` phase in ongoing semesters
+  - **Enhanced Lecturer Update Rights**: Clarified when lecturers can update their own theses based on semester status and group assignment state
+
+### Fixed
+
+- **Code Quality Improvements**:
+  - **Removed Dead Code**: Cleaned up all commented-out caching logic throughout `ThesisLecturerService` for better code maintainability
+  - **Removed Debug Comments**: Eliminated unnecessary debug comments and improved code readability
+  - **Streamlined Service Architecture**: Removed unused cache service dependencies and simplified service constructor
+
+### Refactored
+
+- **Service Layer Cleanup**:
+  - **Caching Dependencies**: Removed commented-out `CacheHelperService` imports and references for cleaner architecture
+  - **Method Documentation**: Cleaned up inline comments while preserving essential business logic documentation
+  - **Code Organization**: Improved code structure by removing redundant comments and focusing on clear, self-documenting code
+
+### Technical Improvements
+
+- **Performance Optimization**: Simplified service dependencies by removing unused caching infrastructure
+- **Code Maintainability**: Enhanced code readability by removing clutter from commented-out code blocks
+- **Architecture Simplification**: Streamlined service layer with focused, production-ready code without development artifacts
+- **Business Logic Clarity**: Improved understanding of thesis update permissions across different semester phases
+
+---
+
 ## [0.8.5] - 2025-08-12
 
 ### Enhanced
