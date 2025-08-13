@@ -6,9 +6,13 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 
+import { PrismaService } from '@/providers';
+
 @Injectable()
 export class ThesisApplicationService {
 	private readonly logger = new Logger(ThesisApplicationService.name);
+
+	constructor(private readonly prisma: PrismaService) {}
 
 	public getApplicationInclude() {
 		return {
@@ -108,5 +112,141 @@ export class ThesisApplicationService {
 				'This thesis is already assigned to another group',
 			);
 		}
+	}
+
+	public getComprehensiveApplicationInclude() {
+		return {
+			thesis: {
+				include: {
+					lecturer: {
+						include: {
+							user: {
+								omit: { password: true },
+							},
+						},
+					},
+					supervisions: {
+						include: {
+							lecturer: {
+								include: {
+									user: {
+										omit: { password: true },
+									},
+								},
+							},
+						},
+					},
+					thesisRequiredSkills: {
+						include: {
+							skill: {
+								include: {
+									skillSet: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			group: {
+				include: {
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: {
+										omit: { password: true },
+									},
+								},
+							},
+						},
+					},
+					semester: true,
+				},
+			},
+		};
+	}
+
+	public async validateLecturer(lecturerId: string) {
+		const lecturer = await this.prisma.lecturer.findUnique({
+			where: { userId: lecturerId },
+		});
+
+		if (!lecturer) {
+			this.logger.warn(`Lecturer with ID ${lecturerId} not found`);
+			throw new NotFoundException('Lecturer not found');
+		}
+
+		return lecturer;
+	}
+
+	async validateThesisV2(thesisId: string) {
+		const thesis = await this.prisma.thesis.findUnique({
+			where: { id: thesisId },
+		});
+
+		if (!thesis) {
+			this.logger.warn(`Thesis with ID ${thesisId} not found`);
+			throw new NotFoundException('Thesis not found');
+		}
+
+		return thesis;
+	}
+
+	public buildSupervisedThesesQuery(lecturerId: string, semesterId?: string) {
+		const thesesWhere: any = {
+			supervisions: {
+				some: {
+					lecturerId: lecturerId,
+				},
+			},
+		};
+
+		if (semesterId) {
+			thesesWhere.semesterId = semesterId;
+		}
+
+		return thesesWhere;
+	}
+
+	async validateSupervision(lecturerId: string, thesisId: string) {
+		const supervision = await this.prisma.supervision.findUnique({
+			where: {
+				thesisId_lecturerId: {
+					thesisId: thesisId,
+					lecturerId: lecturerId,
+				},
+			},
+		});
+
+		if (!supervision) {
+			this.logger.warn(
+				`Lecturer ${lecturerId} does not supervise thesis ${thesisId}`,
+			);
+			throw new ForbiddenException(
+				'You are not authorized to update this thesis application',
+			);
+		}
+
+		return supervision;
+	}
+
+	async validateApplication(groupId: string, thesisId: string) {
+		const application = await this.prisma.thesisApplication.findUnique({
+			where: {
+				groupId_thesisId: {
+					groupId: groupId,
+					thesisId: thesisId,
+				},
+			},
+		});
+
+		if (!application) {
+			this.logger.warn(
+				`Application not found for group ${groupId} and thesis ${thesisId}`,
+			);
+			throw new NotFoundException('Thesis application not found');
+		}
+
+		return application;
 	}
 }
