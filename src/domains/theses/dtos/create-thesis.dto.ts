@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString, IsUUID, IsUrl } from 'class-validator';
+import { IsOptional, IsString, IsUUID, IsUrl } from 'class-validator';
 
 export class CreateThesisDto {
 	@ApiProperty()
@@ -29,9 +29,4 @@ export class CreateThesisDto {
 	@ApiProperty()
 	@IsUUID()
 	semesterId: string;
-
-	@ApiPropertyOptional({ type: [String] })
-	@IsOptional()
-	@IsArray()
-	skillIds?: string[];
 }

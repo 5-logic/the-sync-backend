@@ -1,18 +1,10 @@
 import { mapThesis } from '@/theses/mappers/thesis.mapper';
 import { ThesisDetailResponse } from '@/theses/responses';
 
-import {
-	Lecturer,
-	Skill,
-	Thesis,
-	ThesisRequiredSkill,
-	ThesisVersion,
-	User,
-} from '~/generated/prisma';
+import { Lecturer, Thesis, ThesisVersion, User } from '~/generated/prisma';
 
 type ThesisDetailData = Thesis & {
 	thesisVersions: ThesisVersion[];
-	thesisRequiredSkills: (ThesisRequiredSkill & { skill: Skill })[];
 	lecturer: Lecturer & { user: User };
 };
 
@@ -24,10 +16,6 @@ export const mapThesisDetail = (
 		id: ts.id,
 		version: ts.version,
 		supportingDocument: ts.supportingDocument,
-	})),
-	thesisRequiredSkills: data.thesisRequiredSkills.map((trs) => ({
-		id: trs.skillId,
-		name: trs.skill.name,
 	})),
 	lecturer: {
 		id: data.lecturer.userId,

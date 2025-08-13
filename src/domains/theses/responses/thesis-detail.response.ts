@@ -13,14 +13,6 @@ class ThesisVersion {
 	supportingDocument: string;
 }
 
-class ThesisRequiredSkill {
-	@ApiProperty()
-	id: string;
-
-	@ApiProperty()
-	name: string;
-}
-
 class Lecturer {
 	@ApiProperty()
 	id: string;
@@ -35,9 +27,6 @@ class Lecturer {
 export class ThesisDetailResponse extends ThesisResponse {
 	@ApiProperty({ type: ThesisVersion, isArray: true })
 	thesisVersions: ThesisVersion[];
-
-	@ApiProperty({ type: ThesisRequiredSkill, isArray: true })
-	thesisRequiredSkills: ThesisRequiredSkill[];
 
 	@ApiProperty({ type: Lecturer })
 	lecturer: Lecturer;

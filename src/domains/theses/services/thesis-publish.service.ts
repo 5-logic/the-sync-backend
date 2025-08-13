@@ -35,11 +35,6 @@ export class ThesisPublishService {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
 					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
 					lecturer: {
 						include: { user: true },
 					},
@@ -80,11 +75,6 @@ export class ThesisPublishService {
 				include: {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
-					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
 					},
 					lecturer: {
 						include: { user: true },
@@ -133,11 +123,6 @@ export class ThesisPublishService {
 				include: {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
-					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
 					},
 					lecturer: {
 						include: { user: true },
