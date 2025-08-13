@@ -1438,35 +1438,35 @@ const seedLectuers = async () => {
 	const lecturers = [
 		{
 			id: '11e9f2f2-6054-45dc-a1cb-e798ca82a878',
-			fullName: 'Lê Minh Vương',
+			fullName: 'Lê Minh Vương - Lecturer',
 			email: 'hardingadonis@gmail.com',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
 		},
 		{
 			id: 'd9962353-8ce7-4317-ba1f-0bc736453a20',
-			fullName: 'Đinh Quốc Chương',
+			fullName: 'Đinh Quốc Chương - Lecturer',
 			email: 'quocchuong3k@gmail.com',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
 		},
 		{
 			id: '9e82e70a-7d96-4847-af9b-1717422d7237',
-			fullName: 'Nguyễn Thị Thuý',
+			fullName: 'Nguyễn Thị Thuý - Lecturer',
 			email: 'nguyenthithuy1022003@gmail.com',
 			gender: Gender.Female,
 			phoneNumber: '0456783457',
 		},
 		{
 			id: '8d0e3690-ebac-4970-8bf7-e306670e99d8',
-			fullName: 'Hứa Đức Bình',
+			fullName: 'Hứa Đức Bình - Lecturer',
 			email: 'binhbobinhbo22@gmail.com',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
 		},
 		{
 			id: 'be5a6ec4-c988-4e9e-adfb-9d252b5fd8d5',
-			fullName: 'Hồ Trọng Nghĩa',
+			fullName: 'Hồ Trọng Nghĩa - Lecturer',
 			email: 'htn10a2@gmail.com',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
@@ -1522,7 +1522,7 @@ const seedStudents = async () => {
 	const students = [
 		{
 			id: '94116d81-8602-4bca-90f9-9f2092194427',
-			fullName: 'Lê Minh Vương',
+			fullName: 'Lê Minh Vương - Student',
 			email: 'vuonglmqe170148@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
@@ -1531,7 +1531,7 @@ const seedStudents = async () => {
 		},
 		{
 			id: '7f0c713f-54e5-4823-a889-82d34335faf9',
-			fullName: 'Đinh Quốc Chương',
+			fullName: 'Đinh Quốc Chương - Student',
 			email: 'chuongdqqe170097@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
@@ -1540,7 +1540,7 @@ const seedStudents = async () => {
 		},
 		{
 			id: '00cf05b8-2d30-4707-a339-191e3cf4f054',
-			fullName: 'Nguyễn Thị Thuý',
+			fullName: 'Nguyễn Thị Thuý - Student',
 			email: 'thuyntqe170033@fpt.edu.vn',
 			gender: Gender.Female,
 			phoneNumber: '0456783457',
@@ -1549,7 +1549,7 @@ const seedStudents = async () => {
 		},
 		{
 			id: 'f0426864-60e3-449f-a280-bf6fba84df73',
-			fullName: 'Hứa Đức Bình',
+			fullName: 'Hứa Đức Bình - Student',
 			email: 'binhhdqe170217@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
@@ -1558,7 +1558,7 @@ const seedStudents = async () => {
 		},
 		{
 			id: '0c1ba461-751a-4369-a035-e94a1c07a1ce',
-			fullName: 'Hồ Trọng Nghĩa',
+			fullName: 'Hồ Trọng Nghĩa - Student',
 			email: 'nghiahtqe170173@fpt.edu.vn',
 			gender: Gender.Male,
 			phoneNumber: '0456783457',
