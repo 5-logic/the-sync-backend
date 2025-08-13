@@ -2,8 +2,6 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { GeminiProviderService, PrismaService } from '@/providers';
 
-import { SkillLevel } from '~/generated/prisma';
-
 @Injectable()
 export class AIStudentService {
 	private readonly logger = new Logger(AIStudentService.name);
@@ -32,16 +30,6 @@ export class AIStudentService {
 							description: true,
 						},
 					},
-					groupRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: true,
-						},
-					},
 					studentGroupParticipations: {
 						include: {
 							student: {
@@ -60,16 +48,6 @@ export class AIStudentService {
 											code: true,
 										},
 									},
-									studentSkills: {
-										include: {
-											skill: true,
-										},
-									},
-									studentExpectedResponsibilities: {
-										include: {
-											responsibility: true,
-										},
-									},
 								},
 							},
 						},
@@ -82,7 +60,6 @@ export class AIStudentService {
 					},
 				},
 			});
-
 			if (!group) {
 				throw new NotFoundException('Group not found');
 			}
@@ -137,16 +114,6 @@ export class AIStudentService {
 							code: true,
 						},
 					},
-					studentSkills: {
-						include: {
-							skill: true,
-						},
-					},
-					studentExpectedResponsibilities: {
-						include: {
-							responsibility: true,
-						},
-					},
 				},
 				take: topK * 2, // Get more than needed for filtering
 			});
@@ -178,17 +145,6 @@ export class AIStudentService {
 								code: student.major.code,
 							}
 						: null,
-					skills: student.studentSkills.map((ss: any) => ({
-						id: ss.skill.id,
-						name: ss.skill.name,
-						level: ss.level,
-					})),
-					responsibilities: student.studentExpectedResponsibilities.map(
-						(sr: any) => ({
-							id: sr.responsibility.id,
-							name: sr.responsibility.name,
-						}),
-					),
 					similarityScore: aiScore.similarityScore,
 					matchPercentage: aiScore.matchPercentage,
 				};
@@ -211,122 +167,17 @@ export class AIStudentService {
 	/**
 	 * Calculate compatibility score between a student and group
 	 */
-	private calculateStudentGroupCompatibility(student: any, group: any): number {
-		let totalScore = 0;
-		let factors = 0;
-
-		// Check skill matching
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillMatchScore = this.calculateSkillMatch(
-				(student.studentSkills as any[]) || [],
-				group.groupRequiredSkills as any[],
-			);
-			totalScore += skillMatchScore * 0.4; // 40% weight for skills
-			factors += 0.4;
-		}
-
-		// Check responsibility matching
-		if (group.groupExpectedResponsibilities?.length > 0) {
-			const responsibilityMatchScore = this.calculateResponsibilityMatch(
-				(student.studentExpectedResponsibilities as any[]) || [],
-				group.groupExpectedResponsibilities as any[],
-			);
-			totalScore += responsibilityMatchScore * 0.3; // 30% weight for responsibilities
-			factors += 0.3;
-		}
-
-		// Base compatibility (always included)
-		totalScore += 60 * 0.3; // 30% base score for basic enrollment criteria
-		factors += 0.3;
-
-		return factors > 0 ? Math.round(totalScore / factors) : 60;
-	}
-
-	/**
-	 * Calculate how well student skills match group requirements
-	 */
-	private calculateSkillMatch(
-		studentSkills: any[],
-		groupRequiredSkills: any[],
+	private calculateStudentGroupCompatibility(
+		_student: any,
+		_group: any,
 	): number {
-		if (!groupRequiredSkills || groupRequiredSkills.length === 0) {
-			return 100;
-		}
-
-		if (!studentSkills || studentSkills.length === 0) {
-			return 0;
-		}
-
-		let matchedSkills = 0;
-		let totalWeightedScore = 0;
-
-		for (const requiredSkill of groupRequiredSkills) {
-			const studentSkill = studentSkills.find(
-				(ss: any) => ss.skill?.id === requiredSkill.skill?.id,
-			);
-
-			if (studentSkill && studentSkill.level) {
-				matchedSkills++;
-				// Convert skill level enum to score
-				const levelScore = this.getSkillLevelScore(
-					studentSkill.level as string,
-				);
-				totalWeightedScore += levelScore;
-			}
-		}
-
-		if (matchedSkills === 0) {
-			return 0;
-		}
-
-		const matchPercentage = (matchedSkills / groupRequiredSkills.length) * 100;
-		const averageSkillScore = totalWeightedScore / matchedSkills;
-
-		// Combine match percentage and skill quality
-		const finalScore = Math.round(
-			matchPercentage * 0.6 + averageSkillScore * 0.4,
-		);
-
-		// Ensure we return a valid number
-		return isNaN(finalScore) ? 0 : finalScore;
-	}
-
-	/**
-	 * Calculate how well student responsibilities align with group expectations
-	 */
-	private calculateResponsibilityMatch(
-		studentResponsibilities: any[],
-		groupExpectedResponsibilities: any[],
-	): number {
-		if (
-			!groupExpectedResponsibilities ||
-			groupExpectedResponsibilities.length === 0
-		) {
-			return 100;
-		}
-
-		if (!studentResponsibilities || studentResponsibilities.length === 0) {
-			return 0;
-		}
-
-		let matchedResponsibilities = 0;
-
-		for (const expectedResp of groupExpectedResponsibilities) {
-			const studentHasResp = studentResponsibilities.some(
-				(sr: any) => sr.responsibility?.id === expectedResp.responsibility?.id,
-			);
-
-			if (studentHasResp) {
-				matchedResponsibilities++;
-			}
-		}
-
-		const matchPercentage =
-			(matchedResponsibilities / groupExpectedResponsibilities.length) * 100;
-		const finalScore = Math.round(matchPercentage);
-
-		// Ensure we return a valid number
-		return isNaN(finalScore) ? 0 : finalScore;
+		// Base compatibility score for basic enrollment criteria
+		// In the future, this could include other factors like:
+		// - Academic performance
+		// - Previous project experience
+		// - Schedule compatibility
+		// - Communication preferences
+		return 75; // Base compatibility score
 	}
 
 	/**
@@ -358,16 +209,6 @@ export class AIStudentService {
 							id: true,
 							name: true,
 							code: true,
-						},
-					},
-					studentSkills: {
-						include: {
-							skill: true,
-						},
-					},
-					studentExpectedResponsibilities: {
-						include: {
-							responsibility: true,
 						},
 					},
 					enrollments: {
@@ -419,16 +260,6 @@ export class AIStudentService {
 							englishName: true,
 							vietnameseName: true,
 							description: true,
-						},
-					},
-					groupRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: true,
 						},
 					},
 					studentGroupParticipations: {
@@ -511,8 +342,6 @@ export class AIStudentService {
 						})),
 					},
 					compatibilityScore: aiScore.compatibilityScore,
-					matchingSkills: aiScore.matchingSkills,
-					matchingResponsibilities: aiScore.matchingResponsibilities,
 				};
 			});
 
@@ -537,52 +366,6 @@ export class AIStudentService {
 			this.logger.error('Error suggesting groups for student', error);
 			throw error;
 		}
-	}
-
-	/**
-	 * Convert skill level enum to numerical score
-	 */
-	private getSkillLevelScore(level: string): number {
-		switch (level?.toLowerCase()) {
-			case SkillLevel.Expert.toLowerCase():
-				return 100;
-			case SkillLevel.Advanced.toLowerCase():
-				return 80;
-			case SkillLevel.Proficient.toLowerCase():
-				return 60;
-			case SkillLevel.Intermediate.toLowerCase():
-				return 40;
-			case SkillLevel.Beginner.toLowerCase():
-				return 20;
-			default:
-				return 0;
-		}
-	}
-
-	/**
-	 * Count matching skills between student and group
-	 */
-	private countMatchingSkills(
-		studentSkills: any[],
-		groupRequiredSkills: any[],
-	): number {
-		return groupRequiredSkills.filter((grs) =>
-			studentSkills.some((ss) => ss.skill.id === grs.skill.id),
-		).length;
-	}
-
-	/**
-	 * Count matching responsibilities between student and group
-	 */
-	private countMatchingResponsibilities(
-		studentResponsibilities: any[],
-		groupResponsibilities: any[],
-	): number {
-		return groupResponsibilities.filter((gr) =>
-			studentResponsibilities.some(
-				(sr) => sr.responsibility.id === gr.responsibility.id,
-			),
-		).length;
 	}
 
 	async getGroup(groupId: string): Promise<{ id: string; semesterId: string }> {
@@ -619,14 +402,8 @@ export class AIStudentService {
 			const groupInfo = {
 				name: group.name,
 				projectDirection: group.projectDirection || 'Not specified',
-				requiredSkills:
-					group.groupRequiredSkills?.map((gs: any) => ({
-						name: gs.skill.name,
-					})) || [],
-				expectedResponsibilities:
-					group.groupExpectedResponsibilities?.map((gr: any) => ({
-						name: gr.responsibility.name,
-					})) || [],
+				requiredSkills: [{ name: 'None specified' }], // Skills removed from database
+				expectedResponsibilities: [{ name: 'None specified' }], // Responsibilities removed from database
 				currentMembers:
 					group.studentGroupParticipations?.map((sgp: any) => ({
 						name: sgp.student.user.fullName,
@@ -636,15 +413,8 @@ export class AIStudentService {
 									code: sgp.student.major.code,
 								}
 							: null,
-						skills:
-							sgp.student.studentSkills?.map((ss: any) => ({
-								name: ss.skill.name,
-								level: ss.level,
-							})) || [],
-						responsibilities:
-							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
-								name: sr.responsibility.name,
-							})) || [],
+						skills: [{ name: 'None', level: 'N/A' }], // Skills removed from database
+						responsibilities: [{ name: 'None' }], // Responsibilities removed from database
 					})) || [],
 				thesis: group.thesis
 					? {
@@ -664,15 +434,8 @@ export class AIStudentService {
 							code: student.major.code,
 						}
 					: null,
-				skills:
-					student.studentSkills?.map((ss: any) => ({
-						name: ss.skill.name,
-						level: ss.level,
-					})) || [],
-				responsibilities:
-					student.studentExpectedResponsibilities?.map((sr: any) => ({
-						name: sr.responsibility.name,
-					})) || [],
+				skills: [{ name: 'None', level: 'N/A' }], // Skills removed from database
+				responsibilities: [{ name: 'None' }], // Responsibilities removed from database
 			}));
 
 			const prompt = `
@@ -822,8 +585,6 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 		Array<{
 			id: string;
 			compatibilityScore: number;
-			matchingSkills: number;
-			matchingResponsibilities: number;
 		}>
 	> {
 		try {
@@ -1023,14 +784,6 @@ Return ONLY a valid JSON array with objects containing exactly these four fields
 					return {
 						id: group.id,
 						compatibilityScore,
-						matchingSkills: this.countMatchingSkills(
-							(student.studentSkills as any[]) || [],
-							(group.groupRequiredSkills as any[]) || [],
-						),
-						matchingResponsibilities: this.countMatchingResponsibilities(
-							(student.studentExpectedResponsibilities as any[]) || [],
-							(group.groupExpectedResponsibilities as any[]) || [],
-						),
 					};
 				})
 				.filter((score) => score.compatibilityScore > 30)

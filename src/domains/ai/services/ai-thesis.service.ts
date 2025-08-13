@@ -143,16 +143,6 @@ export class AIThesisService {
 			const group = await this.prisma.group.findUnique({
 				where: { id: groupId },
 				include: {
-					groupRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: true,
-						},
-					},
 					studentGroupParticipations: {
 						include: {
 							student: {
@@ -168,16 +158,6 @@ export class AIThesisService {
 											id: true,
 											name: true,
 											code: true,
-										},
-									},
-									studentSkills: {
-										include: {
-											skill: true,
-										},
-									},
-									studentExpectedResponsibilities: {
-										include: {
-											responsibility: true,
 										},
 									},
 								},
@@ -297,46 +277,11 @@ export class AIThesisService {
 			factors += 0.4;
 		}
 
-		// Skills relevance
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillsRelevance = this.calculateSkillsRelevanceForThesis(
-				thesis,
-				group.groupRequiredSkills as any[],
-			);
-			totalScore += skillsRelevance * 0.3; // 30% weight for skills
-			factors += 0.3;
-		}
-
 		// Base relevance (always included)
-		totalScore += 60 * 0.3; // 30% base score
-		factors += 0.3;
+		totalScore += 60 * 0.7; // 70% base score (increased from 30% since skills are removed)
+		factors += 0.7;
 
 		return factors > 0 ? Math.round(totalScore / factors) : 60;
-	}
-
-	/**
-	 * Calculate skills relevance for thesis
-	 */
-	private calculateSkillsRelevanceForThesis(
-		thesis: any,
-		groupSkills: any[],
-	): number {
-		// This is a simplified approach - in real implementation,
-		// we would use more sophisticated NLP/semantic matching
-		const thesisText =
-			`${thesis.englishName} ${thesis.description}`.toLowerCase();
-
-		let matchingSkills = 0;
-		for (const groupSkill of groupSkills) {
-			const skillName = String(groupSkill.skill.name).toLowerCase();
-			if (thesisText.includes(skillName)) {
-				matchingSkills++;
-			}
-		}
-
-		return groupSkills.length > 0
-			? Math.round((matchingSkills / groupSkills.length) * 100)
-			: 50;
 	}
 
 	/**
@@ -351,22 +296,6 @@ export class AIThesisService {
 			const description = thesis.description.toLowerCase();
 			if (description.includes(direction)) {
 				factors.push(`Project direction alignment: ${group.projectDirection}`);
-			}
-		}
-
-		// Check skill relevance
-		if (group.groupRequiredSkills?.length > 0) {
-			const relevantSkills = group.groupRequiredSkills.filter((gs: any) => {
-				const skillName = String(gs.skill.name).toLowerCase();
-				const thesisText =
-					`${thesis.englishName} ${thesis.description}`.toLowerCase();
-				return thesisText.includes(skillName);
-			});
-
-			if (relevantSkills.length > 0) {
-				factors.push(
-					`Relevant skills: ${relevantSkills.map((rs: any) => rs.skill.name).join(', ')}`,
-				);
 			}
 		}
 
@@ -436,14 +365,8 @@ export class AIThesisService {
 				name: group.name,
 				code: group.code,
 				projectDirection: group.projectDirection || 'Not specified',
-				requiredSkills:
-					group.groupRequiredSkills?.map((gs: any) => ({
-						name: gs.skill.name,
-					})) || [],
-				expectedResponsibilities:
-					group.groupExpectedResponsibilities?.map((gr: any) => ({
-						name: gr.responsibility.name,
-					})) || [],
+				requiredSkills: [{ name: 'None specified' }], // Skills removed from database
+				expectedResponsibilities: [{ name: 'None specified' }], // Responsibilities removed from database
 				currentMembers:
 					group.studentGroupParticipations?.map((sgp: any) => ({
 						name: sgp.student.user.fullName,
@@ -453,15 +376,8 @@ export class AIThesisService {
 									code: sgp.student.major.code,
 								}
 							: null,
-						skills:
-							sgp.student.studentSkills?.map((ss: any) => ({
-								name: ss.skill.name,
-								level: ss.level,
-							})) || [],
-						responsibilities:
-							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
-								name: sr.responsibility.name,
-							})) || [],
+						skills: [{ name: 'None', level: 'N/A' }], // Skills removed from database
+						responsibilities: [{ name: 'None' }], // Responsibilities removed from database
 					})) || [],
 			};
 
