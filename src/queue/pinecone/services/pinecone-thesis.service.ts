@@ -13,7 +13,11 @@ export class PineconeThesisService {
 
 	constructor(
 		@InjectQueue(PINECONE_TOKENS.THESIS)
-		private readonly queue: Queue<ThesisDetailResponse | string>,
+		private readonly queue: Queue<
+			| ThesisDetailResponse
+			| string
+			| { id: string; metadata: Record<string, any> }
+		>,
 	) {}
 
 	async processThesis(
@@ -29,5 +33,24 @@ export class PineconeThesisService {
 				delay: PineconeThesisService.BACKOFF_DELAY,
 			},
 		});
+	}
+
+	async processThesisMetadata(
+		thesisId: string,
+		metadata: Record<string, any>,
+		delay?: number,
+	) {
+		return await this.queue.add(
+			PineconeJobType.UPDATE_METADATA,
+			{ id: thesisId, metadata },
+			{
+				delay: delay ?? 0,
+				attempts: 3,
+				backoff: {
+					type: PineconeThesisService.BACKOFF_TYPE,
+					delay: PineconeThesisService.BACKOFF_DELAY,
+				},
+			},
+		);
 	}
 }

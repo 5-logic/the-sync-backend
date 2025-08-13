@@ -10,6 +10,7 @@ import {
 	PrismaService,
 } from '@/providers';
 import { EmailJobType, EmailQueueService } from '@/queue';
+import { PineconeThesisService } from '@/queue/pinecone';
 // import { CACHE_KEY } from '@/theses/constants';
 import {
 	AssignThesisDto,
@@ -29,6 +30,7 @@ export class ThesisModeratorService {
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly emailQueueService: EmailQueueService,
+		private readonly pinecone: PineconeThesisService,
 	) {}
 
 	async publishTheses(dto: PublishThesisDto): Promise<void> {
@@ -126,6 +128,15 @@ export class ThesisModeratorService {
 			// Send email notifications for publication status change
 			await this.sendThesisStatusChangeNotifications(theses, dto.isPublish);
 
+			// Update Pinecone metadata for each thesis with new publication status
+			for (const thesis of theses) {
+				await this.pinecone.processThesisMetadata(
+					thesis.id,
+					{ isPublish: dto.isPublish },
+					500,
+				);
+			}
+
 			// Update cache for each thesis
 			// for (const thesis of theses) {
 			//  const cacheKey = `${CACHE_KEY}/${thesis.id}`;
@@ -203,6 +214,13 @@ export class ThesisModeratorService {
 			this.logger.debug('Updated thesis detail', JSON.stringify(updatedThesis));
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			// Update Pinecone metadata with new status
+			await this.pinecone.processThesisMetadata(
+				id,
+				{ status: dto.status.toString() },
+				500,
+			);
 
 			// Send email notification for status change
 			await this.sendThesisStatusChangeNotifications(
@@ -344,6 +362,13 @@ export class ThesisModeratorService {
 			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			// Update Pinecone metadata with new group assignment
+			await this.pinecone.processThesisMetadata(
+				id,
+				{ groupId: dto.groupId },
+				500,
+			);
 
 			// await this.saveAndDeleteCache(result);
 

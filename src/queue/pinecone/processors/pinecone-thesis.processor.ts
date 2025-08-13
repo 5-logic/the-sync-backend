@@ -22,7 +22,13 @@ export class PineconeThesisProcessor extends WorkerHost {
 		super();
 	}
 
-	async process(job: Job<ThesisDetailResponse | string>): Promise<void> {
+	async process(
+		job: Job<
+			| ThesisDetailResponse
+			| string
+			| { id: string; metadata: Record<string, any> }
+		>,
+	): Promise<void> {
 		try {
 			switch (job.name as PineconeJobType) {
 				case PineconeJobType.CREATE_OR_UPDATE: {
@@ -31,6 +37,14 @@ export class PineconeThesisProcessor extends WorkerHost {
 				}
 				case PineconeJobType.DELETE: {
 					await this.delete(job.data as string);
+					break;
+				}
+				case PineconeJobType.UPDATE_METADATA: {
+					const metadataData = job.data as {
+						id: string;
+						metadata: Record<string, any>;
+					};
+					await this.updateMetadata(metadataData.id, metadataData.metadata);
 					break;
 				}
 
@@ -93,6 +107,33 @@ export class PineconeThesisProcessor extends WorkerHost {
 		await index.deleteOne(id);
 
 		this.logger.log(`Deleting thesis with ID: ${id} from Pinecone.`);
+	}
+
+	async updateMetadata(
+		id: string,
+		metadata: Record<string, any>,
+	): Promise<void> {
+		const index = this.pinecone
+			.getClient()
+			.index(this.pinecone.getIndexName())
+			.namespace(PineconeThesisProcessor.NAMESPACE);
+
+		try {
+			// Update only the metadata using Pinecone's update method
+			await index.update({
+				id: id,
+				metadata: metadata,
+			});
+
+			this.logger.log(
+				`Updated metadata for thesis with ID: ${id} in Pinecone.`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to update metadata for thesis with ID: ${id}`,
+				error,
+			);
+		}
 	}
 
 	// ------------------------------------------------------------------------------------------

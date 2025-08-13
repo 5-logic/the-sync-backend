@@ -56,11 +56,15 @@ export class AIThesisService {
 			}
 
 			// Now query using the vector to find similar content
+			// Only compare with approved theses to ensure quality comparison
 			const queryRequest = {
 				vector: thesisVector,
 				topK: 5, // Only get top 5 similar theses
 				includeMetadata: true,
 				includeValues: false,
+				filter: {
+					status: { $eq: ThesisStatus.Approved.toString() }, // Only compare with approved theses
+				},
 			};
 
 			const queryResults = await index.query(queryRequest);
