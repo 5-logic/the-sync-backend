@@ -13,11 +13,7 @@ import { JwtAccessAuthGuard, Role, RoleGuard, Roles } from '@/auth';
 import { ApiBaseResponse, ApiEmptyResponse } from '@/common';
 import { THESIS_API_TAGS, THESIS_CONSTANTS } from '@/theses/constants';
 import { ThesisModeratorDocs } from '@/theses/docs';
-import {
-	AssignThesisDto,
-	PublishThesisDto,
-	ReviewThesisDto,
-} from '@/theses/dtos';
+import { PublishThesisDto, ReviewThesisDto } from '@/theses/dtos';
 import { ThesisDetailResponse } from '@/theses/responses';
 import { ThesisModeratorService } from '@/theses/services';
 
@@ -47,17 +43,5 @@ export class ThesisModeratorController {
 		@Body() dto: ReviewThesisDto,
 	): Promise<ThesisDetailResponse> {
 		return await this.service.reviewThesis(id, dto);
-	}
-
-	@Roles(Role.MODERATOR)
-	@HttpCode(HttpStatus.OK)
-	@Post(':id/assign')
-	@ApiOperation(ThesisModeratorDocs.assignThesis)
-	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
-	async assignThesis(
-		@Param('id') id: string,
-		@Body() dto: AssignThesisDto,
-	): Promise<ThesisDetailResponse> {
-		return await this.service.assignThesis(id, dto);
 	}
 }

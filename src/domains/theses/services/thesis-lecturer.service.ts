@@ -14,7 +14,11 @@ import {
 	PineconeJobType,
 	PineconeThesisService,
 } from '@/queue';
-import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
+import {
+	AssignThesisDto,
+	CreateThesisDto,
+	UpdateThesisDto,
+} from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
 
@@ -742,6 +746,201 @@ export class ThesisLecturerService {
 				'Failed to send thesis status change notification',
 				error,
 			);
+		}
+	}
+
+	async assignThesis(
+		userId: string,
+		id: string,
+		dto: AssignThesisDto,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(
+			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId}`,
+		);
+
+		try {
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with ID ${id} not found for assignment`);
+
+				throw new NotFoundException(`Thesis not found`);
+			}
+
+			// Validate lecturer permission to assign thesis
+			const lecturer = await this.prisma.lecturer.findUnique({
+				where: { userId },
+			});
+
+			if (!lecturer) {
+				this.logger.warn(`Lecturer with ID ${userId} not found`);
+				throw new NotFoundException(`Lecturer not found`);
+			}
+
+			// Validate thesis supervision requirements
+			// Check if the thesis has at least 2 supervisors before allowing assignment
+			const supervisors = await this.prisma.supervision.findMany({
+				where: {
+					thesisId: id,
+				},
+				include: {
+					lecturer: {
+						include: {
+							user: true,
+						},
+					},
+				},
+			});
+
+			if (supervisors.length < 2) {
+				this.logger.warn(
+					`Thesis with ID ${id} does not have enough supervisors (${supervisors.length}/2) for assignment`,
+				);
+				throw new ConflictException(
+					`This thesis must have at least 2 supervisors before it can be assigned to a group`,
+				);
+			}
+
+			// If lecturer is not a moderator, they must be one of the supervisors
+			if (!lecturer.isModerator) {
+				const isSupervising = supervisors.some(
+					(supervision) => supervision.lecturerId === userId,
+				);
+
+				if (!isSupervising) {
+					this.logger.warn(
+						`Lecturer with ID ${userId} is not authorized to assign thesis with ID ${id} - not a supervisor`,
+					);
+					throw new ForbiddenException(
+						`You can only assign theses that you supervise`,
+					);
+				}
+			}
+
+			// Check if thesis is approved
+			if (existingThesis.status !== ThesisStatus.Approved) {
+				this.logger.warn(
+					`Cannot assign thesis with status ${existingThesis.status}`,
+				);
+
+				throw new ConflictException(
+					`Can only assign approved theses. Current status: ${existingThesis.status}`,
+				);
+			}
+
+			// Check if thesis is already assigned
+			if (existingThesis.groupId) {
+				this.logger.warn(
+					`Thesis with ID ${id} is already assigned to group ${existingThesis.groupId}`,
+				);
+
+				throw new ConflictException(
+					`This thesis is already assigned to another group`,
+				);
+			}
+
+			// Validate group exists và kiểm tra điều kiện assignment
+			const targetGroup = await this.prisma.group.findUnique({
+				where: { id: dto.groupId },
+			});
+
+			if (!targetGroup) {
+				this.logger.warn(`Group with ID ${dto.groupId} not found`);
+				throw new NotFoundException(`Group not found`);
+			}
+
+			// Check semester status - chỉ cho phép assign khi là Preparing hoặc Picking
+			if (targetGroup.semesterId) {
+				const semester = await this.prisma.semester.findUnique({
+					where: { id: targetGroup.semesterId },
+					select: { status: true },
+				});
+				if (
+					!semester ||
+					(semester.status !== 'Preparing' && semester.status !== 'Picking')
+				) {
+					this.logger.warn(
+						`Cannot assign thesis. Semester status must be Preparing or Picking. Current status: ${semester?.status}`,
+					);
+					throw new ConflictException(
+						`Can only assign thesis to group in Preparing or Picking semester. Current status: ${semester?.status}`,
+					);
+				}
+			}
+
+			// Check if group already has a thesis
+			if (targetGroup.thesisId) {
+				this.logger.warn(
+					`Group with ID ${dto.groupId} already has thesis ${targetGroup.thesisId}`,
+				);
+
+				throw new ConflictException('This group already has a thesis assigned');
+			}
+
+			// Check if thesis and group are in the same semester
+			if (existingThesis.semesterId !== targetGroup.semesterId) {
+				this.logger.warn(
+					`Thesis semester ${existingThesis.semesterId} does not match group semester ${targetGroup.semesterId}`,
+				);
+
+				throw new ConflictException(
+					'Thesis and group must be in the same semester',
+				);
+			}
+
+			// Assign thesis to group
+			await this.prisma.group.update({
+				where: { id: dto.groupId },
+				data: {
+					thesisId: id,
+				},
+			});
+
+			// Assign group to thesis
+			const updatedThesis = await this.prisma.thesis.update({
+				where: { id },
+				data: { groupId: dto.groupId },
+				include: {
+					thesisVersions: {
+						orderBy: { version: 'desc' },
+					},
+					thesisRequiredSkills: {
+						include: {
+							skill: true,
+						},
+					},
+					lecturer: {
+						include: { user: true },
+					},
+				},
+			});
+
+			this.logger.log(
+				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
+			);
+			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
+
+			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			// Update Pinecone metadata with new group assignment
+			await this.pinecone.processThesisMetadata(
+				id,
+				{ groupId: dto.groupId },
+				500,
+			);
+
+			// await this.saveAndDeleteCache(result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(
+				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId}`,
+				error,
+			);
+
+			throw error;
 		}
 	}
 }
