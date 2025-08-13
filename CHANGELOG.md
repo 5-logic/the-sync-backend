@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.7] - 2025-08-13
+
+### Added
+
+- **Thesis Application Management System**:
+  - **New Thesis Application API**:
+    - `POST /thesis-application/{semesterId}` - Create thesis application (requires `CreateThesisApplicationDto` with `groupId` and `thesisId`)
+    - `GET /thesis-application/{semesterId}/{groupId}` - Get all thesis applications for a group
+    - `PUT /thesis-application/{groupId}/{thesisId}/cancel` - Cancel thesis application
+    - `GET /thesis-application/{semesterId}` - Get all thesis applications for lecturer/moderator
+    - `GET /thesis-application/thesis/{thesisId}` - Get specific thesis application details
+    - `PUT /thesis-application/{groupId}/{thesisId}` - Update thesis application status (requires `UpdateThesisApplicationDto` with `status`)
+  - **New Database Model**: `ThesisApplication` with status enum (`pending`, `approved`, `rejected`, `cancelled`)
+  - **Enhanced Workflow**: Groups can now apply for thesis before final assignment, allowing lecturers to review applications
+
+- **Batch Group Creation System**:
+  - **New Group Admin API**:
+    - `POST /groups/admin` - Batch create groups (requires `CreateManyGroupDto` with `semesterId` and `numberOfGroup`)
+  - **Administrative Efficiency**: Allows admins to create multiple groups at once for a semester
+
+- **Enhanced Thesis Assignment**:
+  - **New Thesis Assignment Endpoint**:
+    - `POST /theses/{id}/assign` - Assign thesis to group (requires `AssignThesisDto` with `groupId`)
+  - **Enhanced Validation**:
+    - Thesis must have at least 2 supervisors before assignment
+    - Only approved and published theses can be assigned
+    - Groups must be in the same semester as the thesis
+    - Enhanced permission checks for lecturers and moderators
+  - **Improved Assignment Logic**: Better conflict detection and validation for thesis-group assignments
+
+- **AI Service Enhancements**:
+  - **Improved Thesis Processing**: Enhanced Pinecone integration with better metadata handling
+  - **Enhanced Content Filtering**: Updated AI thesis service to filter approved theses more effectively
+
+### Changed
+
+- **Thesis Application Workflow**:
+  - **Enhanced Group-Thesis Relationship**: Groups can now apply for multiple theses before final assignment
+  - **Status Management**: Added comprehensive status tracking for thesis applications
+  - **Role-Based Access**: Students can create/cancel applications, lecturers can view and update status
+
+- **Database Schema Updates**:
+  - **New Relationship**: Added `ThesisApplication` model linking groups and theses with application status
+  - **Enhanced Group Model**: Added `thesisApplications` relationship to support application workflow
+  - **Enhanced Thesis Model**: Added `thesisApplications` relationship for better thesis management
+
+- **Seeding System Improvements**:
+  - **Enhanced Lecturer Names**: Updated seeding to include role identifiers in lecturer names for better identification
+  - **Enhanced Student Names**: Updated seeding to include role identifiers in student names
+
+### Enhanced
+
+- **API Architecture**:
+  - **New Thesis Application Module**: Comprehensive module with dedicated controllers and services
+  - **Role-Based Controllers**: Separate controllers for student and lecturer thesis application operations
+  - **Enhanced Documentation**: Complete Swagger documentation for all new endpoints
+
+- **Service Layer Improvements**:
+  - **Thesis Application Services**: Dedicated services for student and lecturer thesis application operations
+  - **Enhanced Group Admin Service**: New service for batch group creation operations
+  - **Improved Validation**: Enhanced validation logic for thesis assignments and applications
+
+- **Type Safety and Validation**:
+  - **New DTOs**: `CreateThesisApplicationDto`, `UpdateThesisApplicationDto`, `CreateManyGroupDto`, `AssignThesisDto`
+  - **Enhanced Enums**: New `ThesisApplicationStatus` enum for application status management
+  - **Improved Validation**: Enhanced UUID validation and business rule checks
+
+### Technical Improvements
+
+- **Module Organization**: Enhanced domain module structure with thesis application module integration
+- **Path Mapping**: Added TypeScript path mapping for thesis-application domain
+- **Cache Management**: Improved cache handling for thesis assignment operations
+- **Error Handling**: Enhanced error handling and logging for thesis applications and assignments
+- **Database Constraints**: Added proper foreign key relationships and composite primary keys for thesis applications
+
+### Pull Requests
+
+- Direct commits implementing thesis application system, batch group creation, and enhanced thesis assignment functionality
+
+---
+
 ## [0.8.6] - 2025-08-12
 
 ### Changed
