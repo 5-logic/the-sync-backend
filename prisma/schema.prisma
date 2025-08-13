@@ -35,7 +35,7 @@ enum ThesisStatus {
   @@map("thesis_statuses")
 }
 
-enum SkillLevel {
+enum ResponsibilityLevel {
   Beginner     @map("beginner")
   Intermediate @map("intermediate")
   Proficient   @map("proficient")
@@ -111,10 +111,10 @@ enum AIAPIType {
 }
 
 enum ThesisApplicationStatus {
-  Pending   @map("pending") // Nhóm apply, chờ duyệt
-  Approved  @map("approved") // Được chọn (sau đó set thesisId trong Group)
-  Rejected  @map("rejected") // Bị từ chối
-  Cancelled @map("cancelled") // Nhóm hủy trước khi duyệt
+  Pending   @map("pending")
+  Approved  @map("approved")
+  Rejected  @map("rejected")
+  Cancelled @map("cancelled")
 }
 
 // --------------------------------------------------------------------------------
@@ -191,13 +191,12 @@ model Student {
   studentCode String @unique @map("student_code")
   majorId     String @map("major_id")
 
-  user                            User                            @relation(fields: [userId], references: [id])
-  major                           Major                           @relation(fields: [majorId], references: [id])
-  studentSkills                   StudentSkill[]
-  enrollments                     Enrollment[]
-  studentExpectedResponsibilities StudentExpectedResponsibility[]
-  requests                        Request[]
-  studentGroupParticipations      StudentGroupParticipation[]
+  user                       User                        @relation(fields: [userId], references: [id])
+  major                      Major                       @relation(fields: [majorId], references: [id])
+  enrollments                Enrollment[]
+  studentResponsibilities    StudentResponsibility[]
+  requests                   Request[]
+  studentGroupParticipations StudentGroupParticipation[]
 
   @@map("students")
 }
@@ -226,14 +225,12 @@ model Group {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  semester                      Semester                      @relation(fields: [semesterId], references: [id])
-  thesis                        Thesis?                       @relation(fields: [thesisId], references: [id])
-  submissions                   Submission[]
-  groupRequiredSkills           GroupRequiredSkill[]
-  groupExpectedResponsibilities GroupExpectedResponsibility[]
-  requests                      Request[]
-  studentGroupParticipations    StudentGroupParticipation[]
-  ThesisApplication             ThesisApplication[]
+  semester                   Semester                    @relation(fields: [semesterId], references: [id])
+  thesis                     Thesis?                     @relation(fields: [thesisId], references: [id])
+  submissions                Submission[]
+  requests                   Request[]
+  studentGroupParticipations StudentGroupParticipation[]
+  ThesisApplication          ThesisApplication[]
 
   @@map("groups")
 }
@@ -254,13 +251,12 @@ model Thesis {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  lecturer             Lecturer              @relation(fields: [lecturerId], references: [userId])
-  semester             Semester              @relation(fields: [semesterId], references: [id])
-  group                Group?
-  supervisions         Supervision[]
-  thesisVersions       ThesisVersion[]
-  thesisRequiredSkills ThesisRequiredSkill[]
-  ThesisApplication    ThesisApplication[]
+  lecturer          Lecturer            @relation(fields: [lecturerId], references: [userId])
+  semester          Semester            @relation(fields: [semesterId], references: [id])
+  group             Group?
+  supervisions      Supervision[]
+  thesisVersions    ThesisVersion[]
+  ThesisApplication ThesisApplication[]
 
   @@map("theses")
 }
@@ -368,34 +364,6 @@ model ChecklistItem {
   @@map("checklist_items")
 }
 
-model Skill {
-  id         String @id @default(uuid())
-  name       String @map("name")
-  skillSetId String @map("skill_set_id")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  skillSet             SkillSet              @relation(fields: [skillSetId], references: [id])
-  studentSkills        StudentSkill[]
-  groupRequiredSkills  GroupRequiredSkill[]
-  thesisRequiredSkills ThesisRequiredSkill[]
-
-  @@map("skills")
-}
-
-model SkillSet {
-  id   String @id @default(uuid())
-  name String @map("name")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  skills Skill[]
-
-  @@map("skill_sets")
-}
-
 model Responsibility {
   id   String @id @default(uuid())
   name String @map("name")
@@ -403,8 +371,7 @@ model Responsibility {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  studentExpectedResponsibilities StudentExpectedResponsibility[]
-  groupExpectedResponsibilities   GroupExpectedResponsibility[]
+  studentExpectedResponsibilities StudentResponsibility[]
 
   @@map("responsibilities")
 }
@@ -437,60 +404,16 @@ model StatisticAI {
 
 // Models with composite primary key
 
-model StudentSkill {
-  studentId String     @map("student_id")
-  skillId   String     @map("skill_id")
-  level     SkillLevel @map("level")
-
-  student Student @relation(fields: [studentId], references: [userId], onDelete: Cascade)
-  skill   Skill   @relation(fields: [skillId], references: [id])
-
-  @@id([studentId, skillId])
-  @@map("_student_skills")
-}
-
-model GroupRequiredSkill {
-  groupId String @map("group_id")
-  skillId String @map("skill_id")
-
-  group Group @relation(fields: [groupId], references: [id])
-  skill Skill @relation(fields: [skillId], references: [id])
-
-  @@id([groupId, skillId])
-  @@map("_group_required_skills")
-}
-
-model ThesisRequiredSkill {
-  thesisId String @map("thesis_id")
-  skillId  String @map("skill_id")
-
-  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
-  skill  Skill  @relation(fields: [skillId], references: [id])
-
-  @@id([thesisId, skillId])
-  @@map("_thesis_required_skills")
-}
-
-model StudentExpectedResponsibility {
-  studentId        String @map("student_id")
-  responsibilityId String @map("responsibility_id")
+model StudentResponsibility {
+  studentId        String              @map("student_id")
+  responsibilityId String              @map("responsibility_id")
+  level            ResponsibilityLevel @default(Beginner) @map("level")
 
   student        Student        @relation(fields: [studentId], references: [userId], onDelete: Cascade)
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
 
   @@id([studentId, responsibilityId])
-  @@map("_student_expected_responsibilities")
-}
-
-model GroupExpectedResponsibility {
-  groupId          String @map("group_id")
-  responsibilityId String @map("responsibility_id")
-
-  group          Group          @relation(fields: [groupId], references: [id])
-  responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
-
-  @@id([groupId, responsibilityId])
-  @@map("_group_expected_responsibilities")
+  @@map("_student_responsibilities")
 }
 
 model Enrollment {
