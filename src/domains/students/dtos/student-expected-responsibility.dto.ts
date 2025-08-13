@@ -1,8 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsEnum, IsUUID } from 'class-validator';
 
-export class StudentExpectedResponsibilityDto {
+import { ResponsibilityLevel } from '~/generated/prisma';
+
+export class StudentResponsibilityDto {
 	@ApiProperty()
 	@IsUUID()
 	responsibilityId: string;
+
+	@ApiProperty({ enum: ResponsibilityLevel })
+	@IsEnum(ResponsibilityLevel)
+	level: ResponsibilityLevel;
 }

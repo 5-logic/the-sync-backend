@@ -80,14 +80,7 @@ export class StudentPublicService {
 							status: 'asc',
 						},
 					},
-					studentSkills: {
-						include: {
-							skill: {
-								include: { skillSet: true },
-							},
-						},
-					},
-					studentExpectedResponsibilities: {
+					studentResponsibilities: {
 						include: {
 							responsibility: true,
 						},

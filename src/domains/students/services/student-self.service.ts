@@ -48,41 +48,21 @@ export class StudentSelfService {
 						},
 					});
 
-					// Update student skills if provided
-					if (dto.studentSkills) {
-						// Remove existing skills
-						await txn.studentSkill.deleteMany({
-							where: { studentId: id },
-						});
-
-						// Add new skills if any
-						if (dto.studentSkills.length > 0) {
-							await txn.studentSkill.createMany({
-								data: dto.studentSkills.map((skill) => ({
-									studentId: id,
-									skillId: skill.skillId,
-									level: skill.level,
-								})),
-							});
-						}
-					}
-
-					// Update student expected responsibilities if provided
-					if (dto.studentExpectedResponsibilities) {
+					// Update student responsibilities if provided
+					if (dto.studentResponsibilities) {
 						// Remove existing responsibilities
-						await txn.studentExpectedResponsibility.deleteMany({
+						await txn.studentResponsibility.deleteMany({
 							where: { studentId: id },
 						});
 
 						// Add new responsibilities if any
-						if (dto.studentExpectedResponsibilities.length > 0) {
-							await txn.studentExpectedResponsibility.createMany({
-								data: dto.studentExpectedResponsibilities.map(
-									(responsibility) => ({
-										studentId: id,
-										responsibilityId: responsibility.responsibilityId,
-									}),
-								),
+						if (dto.studentResponsibilities.length > 0) {
+							await txn.studentResponsibility.createMany({
+								data: dto.studentResponsibilities.map((responsibility) => ({
+									studentId: id,
+									responsibilityId: responsibility.responsibilityId,
+									level: responsibility.level,
+								})),
 							});
 						}
 					}
