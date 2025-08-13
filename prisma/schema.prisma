@@ -233,7 +233,7 @@ model Group {
   groupExpectedResponsibilities GroupExpectedResponsibility[]
   requests                      Request[]
   studentGroupParticipations    StudentGroupParticipation[]
-  ThesisApplication             ThesisApplication[]
+  thesisApplications            ThesisApplication[]
 
   @@map("groups")
 }
@@ -260,7 +260,7 @@ model Thesis {
   supervisions         Supervision[]
   thesisVersions       ThesisVersion[]
   thesisRequiredSkills ThesisRequiredSkill[]
-  ThesisApplication    ThesisApplication[]
+  thesisApplications    ThesisApplication[]
 
   @@map("theses")
 }
