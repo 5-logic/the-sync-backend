@@ -225,12 +225,12 @@ model Group {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  semester                   Semester                    @relation(fields: [semesterId], references: [id])
-  thesis                     Thesis?                     @relation(fields: [thesisId], references: [id])
-  submissions                Submission[]
-  requests                   Request[]
-  studentGroupParticipations StudentGroupParticipation[]
-  ThesisApplication          ThesisApplication[]
+  semester                      Semester                      @relation(fields: [semesterId], references: [id])
+  thesis                        Thesis?                       @relation(fields: [thesisId], references: [id])
+  submissions                   Submission[]
+  requests                      Request[]
+  studentGroupParticipations    StudentGroupParticipation[]
+  thesisApplications            ThesisApplication[]
 
   @@map("groups")
 }
@@ -251,12 +251,12 @@ model Thesis {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  lecturer          Lecturer            @relation(fields: [lecturerId], references: [userId])
-  semester          Semester            @relation(fields: [semesterId], references: [id])
-  group             Group?
-  supervisions      Supervision[]
-  thesisVersions    ThesisVersion[]
-  ThesisApplication ThesisApplication[]
+  lecturer             Lecturer              @relation(fields: [lecturerId], references: [userId])
+  semester             Semester              @relation(fields: [semesterId], references: [id])
+  group                Group?
+  supervisions         Supervision[]
+  thesisVersions       ThesisVersion[]
+  thesisApplications    ThesisApplication[]
 
   @@map("theses")
 }

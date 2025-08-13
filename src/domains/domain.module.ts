@@ -16,6 +16,7 @@ import { StudentModule } from '@/students/index';
 import { SubmissionModule } from '@/submissions/submission.module';
 import { SupervisionModule } from '@/supervisions/supervision.module';
 import { ThesisModule } from '@/theses/index';
+import { ThesisApplicationModule } from '@/thesis-application/index';
 
 @Module({
 	imports: [
@@ -35,6 +36,7 @@ import { ThesisModule } from '@/theses/index';
 		SubmissionModule,
 		SupervisionModule,
 		ThesisModule,
+		ThesisApplicationModule,
 	],
 })
 export class DomainModule {}

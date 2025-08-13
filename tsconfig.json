@@ -31,6 +31,7 @@
 			"@/submissions/*": ["src/domains/submissions/*"],
 			"@/supervisions/*": ["src/domains/supervisions/*"],
 			"@/theses/*": ["src/domains/theses/*"],
+			"@/thesis-application/*": ["src/domains/thesis-application/*"],
 			"@/users/*": ["src/domains/users/*"]
 		},
 		"incremental": true,
