@@ -107,7 +107,14 @@ enum AIAPIType {
   SuggestThesis        @map("suggest_thesis")
   SuggestParticipants  @map("suggest_participants")
 
-	@@map("ai_api_types")
+  @@map("ai_api_types")
+}
+
+enum ThesisApplicationStatus {
+  Pending   @map("pending") // Nhóm apply, chờ duyệt
+  Approved  @map("approved") // Được chọn (sau đó set thesisId trong Group)
+  Rejected  @map("rejected") // Bị từ chối
+  Cancelled @map("cancelled") // Nhóm hủy trước khi duyệt
 }
 
 // --------------------------------------------------------------------------------
@@ -226,6 +233,7 @@ model Group {
   groupExpectedResponsibilities GroupExpectedResponsibility[]
   requests                      Request[]
   studentGroupParticipations    StudentGroupParticipation[]
+  ThesisApplication             ThesisApplication[]
 
   @@map("groups")
 }
@@ -252,6 +260,7 @@ model Thesis {
   supervisions         Supervision[]
   thesisVersions       ThesisVersion[]
   thesisRequiredSkills ThesisRequiredSkill[]
+  ThesisApplication    ThesisApplication[]
 
   @@map("theses")
 }
@@ -544,4 +553,19 @@ model StudentGroupParticipation {
 
   @@id([studentId, groupId, semesterId])
   @@map("_student_group_participations")
+}
+
+model ThesisApplication {
+  groupId  String                  @map("group_id")
+  thesisId String                  @map("thesis_id")
+  status   ThesisApplicationStatus @default(Pending) @map("status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  group  Group  @relation(fields: [groupId], references: [id])
+  thesis Thesis @relation(fields: [thesisId], references: [id])
+
+  @@id([groupId, thesisId]) // composite primary key
+  @@map("_thesis_applications")
 }
