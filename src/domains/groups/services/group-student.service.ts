@@ -30,13 +30,8 @@ export class GroupStudentService {
 
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
-			const [currentSemester] = await Promise.all([
-				this.groupService.getStudentCurrentSemester(userId),
-				this.groupService.validateSkillsAndResponsibilities(
-					dto.skillIds,
-					dto.responsibilityIds,
-				),
-			]);
+			const currentSemester =
+				await this.groupService.getStudentCurrentSemester(userId);
 
 			if (currentSemester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
@@ -133,32 +128,6 @@ export class GroupStudentService {
 						},
 					});
 
-					// Create group skills if provided
-					if (dto.skillIds && dto.skillIds.length > 0) {
-						const groupRequiredSkills = dto.skillIds.map((skillId) => ({
-							groupId: group.id,
-							skillId: skillId,
-						}));
-
-						await prisma.groupRequiredSkill.createMany({
-							data: groupRequiredSkills,
-						});
-					}
-
-					// Create group responsibilities if provided
-					if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
-						const groupExpectedResponsibilities = dto.responsibilityIds.map(
-							(responsibilityId) => ({
-								groupId: group.id,
-								responsibilityId: responsibilityId,
-							}),
-						);
-
-						await prisma.groupExpectedResponsibility.createMany({
-							data: groupExpectedResponsibilities,
-						});
-					}
-
 					return group;
 				},
 				{ timeout: CONSTANTS.TIMEOUT },
@@ -227,11 +196,6 @@ export class GroupStudentService {
 				);
 			}
 
-			await this.groupService.validateSkillsAndResponsibilities(
-				dto.skillIds,
-				dto.responsibilityIds,
-			);
-
 			const result = await this.prisma.$transaction(
 				async (prisma) => {
 					const group = await prisma.group.update({
@@ -241,14 +205,6 @@ export class GroupStudentService {
 							projectDirection: dto.projectDirection,
 						},
 					});
-
-					await Promise.all([
-						this.groupService.updateGroupSkills(id, dto.skillIds),
-						this.groupService.updateGroupResponsibilities(
-							id,
-							dto.responsibilityIds,
-						),
-					]);
 
 					return group;
 				},
@@ -727,12 +683,6 @@ export class GroupStudentService {
 					async (prisma) => {
 						// Delete all related records first
 						await Promise.all([
-							prisma.groupRequiredSkill.deleteMany({
-								where: { groupId: groupId },
-							}),
-							prisma.groupExpectedResponsibility.deleteMany({
-								where: { groupId: groupId },
-							}),
 							prisma.request.deleteMany({
 								where: { groupId: groupId },
 							}),
@@ -1208,14 +1158,6 @@ export class GroupStudentService {
 				async (prisma) => {
 					// Delete all related records first (cascade deletions)
 					await Promise.all([
-						// Delete group required skills
-						prisma.groupRequiredSkill.deleteMany({
-							where: { groupId: groupId },
-						}),
-						// Delete group expected responsibilities
-						prisma.groupExpectedResponsibility.deleteMany({
-							where: { groupId: groupId },
-						}),
 						// Delete all pending requests for this group
 						prisma.request.deleteMany({
 							where: { groupId: groupId },

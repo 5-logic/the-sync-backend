@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreateGroupDto {
 	@ApiProperty()
@@ -10,14 +10,4 @@ export class CreateGroupDto {
 	@IsOptional()
 	@IsString()
 	projectDirection?: string;
-
-	@ApiPropertyOptional({ type: [String] })
-	@IsOptional()
-	@IsArray()
-	skillIds?: string[];
-
-	@ApiPropertyOptional({ type: [String] })
-	@IsOptional()
-	@IsArray()
-	responsibilityIds?: string[];
 }
