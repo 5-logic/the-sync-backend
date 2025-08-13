@@ -1,0 +1,18 @@
+import { ApiOperationOptions } from '@nestjs/swagger';
+
+export const ThesisApplicationStudentDocs = {
+	create: {
+		summary: 'Create thesis application',
+		description: `Submit a thesis application for a group during the picking phase.\n\n- **Authorization:** Student only.\n- **Validations:**\n  - Student must be enrolled in the semester with NotYet status.\n  - Student must be the group leader.\n  - Semester must be in Picking phase.\n  - Group must exist and be in the same semester.\n  - Group must not already have a thesis assigned.\n  - Thesis must be approved, published, and available (not assigned to another group).\n  - Thesis must belong to the same semester.\n  - Group must not have any other pending applications.\n- **Business logic:**\n  - If group previously applied for the same thesis but was rejected/cancelled, creates a new application with Pending status.\n  - If group has any pending application for any thesis, prevents new applications.\n  - Uses parallel database queries for optimal performance.\n  - Creates application with comprehensive validation chain.\n- **Error handling:**\n  - 403 if not group leader or not enrolled with proper status.\n  - 404 if student, group, thesis, or semester not found.\n  - 409 if semester not in Picking phase, group already has thesis, thesis already assigned, or conflicting application states.\n- **Logging:** Logs all application attempts, validations, and errors with detailed context.`,
+	} as ApiOperationOptions,
+
+	findAll: {
+		summary: 'Get all thesis applications for group',
+		description: `Retrieve all thesis applications submitted by a specific group in a semester.\n\n- **Authorization:** Student only.\n- **Validations:**\n  - Semester must exist.\n  - Group must exist and belong to the specified semester.\n- **Business logic:**\n  - Returns comprehensive application history including thesis details, lecturer information, required skills, and group membership.\n  - Applications are ordered by creation date (most recent first).\n  - Includes detailed thesis information with supervisor details and skill requirements.\n  - Uses parallel database queries for optimal performance.\n- **Data returned:**\n  - Complete thesis information with lecturer details\n  - Required skills with skill sets\n  - Group member information\n  - Application status and timestamps\n- **Error handling:**\n  - 404 if semester or group not found.\n  - 409 if group doesn't belong to specified semester.\n- **Logging:** Logs all fetch attempts with result counts and errors.`,
+	} as ApiOperationOptions,
+
+	cancel: {
+		summary: 'Cancel thesis application',
+		description: `Cancel a pending thesis application. Only group leaders can cancel their group's applications during the picking phase.\n\n- **Authorization:** Student only.\n- **Validations:**\n  - Application must exist for the specified group and thesis.\n  - Student must be the group leader.\n  - Application must have Pending status (cannot cancel approved, rejected, or already cancelled applications).\n  - Semester must still be in Picking phase.\n- **Business logic:**\n  - Updates application status from Pending to Cancelled.\n  - Maintains application history for audit purposes.\n  - Allows group to apply for other theses after cancellation.\n  - Uses composite key (groupId + thesisId) for precise application identification.\n- **Error handling:**\n  - 403 if not group leader or insufficient permissions.\n  - 404 if application not found.\n  - 409 if application cannot be cancelled (wrong status or phase).\n- **Logging:** Logs all cancellation attempts with detailed context and results.`,
+	} as ApiOperationOptions,
+};
