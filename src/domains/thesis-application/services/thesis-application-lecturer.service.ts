@@ -132,6 +132,23 @@ export class ThesisApplicationLecturerService {
 				});
 
 				if (updateDto.status === 'Approved') {
+					// Assign the group to the thesis (bidirectional relationship)
+					await Promise.all([
+						tx.group.update({
+							where: { id: groupId },
+							data: { thesisId: thesisId },
+						}),
+						tx.thesis.update({
+							where: { id: thesisId },
+							data: { groupId: groupId },
+						}),
+					]);
+
+					this.logger.log(
+						`Successfully assigned group ${groupId} to thesis ${thesisId} (bidirectional)`,
+					);
+
+					// Auto-reject all other pending applications for this thesis
 					const pendingApplications = await tx.thesisApplication.findMany({
 						where: {
 							thesisId: thesisId,
@@ -160,6 +177,36 @@ export class ThesisApplicationLecturerService {
 
 						this.logger.log(
 							`Auto-rejected ${pendingApplications.length} applications for thesis ${thesisId}`,
+						);
+					}
+				} else if (updateDto.status === 'Rejected') {
+					// If rejecting an application, check if this group was assigned to this thesis and remove the assignment
+					const [group, thesis] = await Promise.all([
+						tx.group.findUnique({
+							where: { id: groupId },
+							select: { thesisId: true },
+						}),
+						tx.thesis.findUnique({
+							where: { id: thesisId },
+							select: { groupId: true },
+						}),
+					]);
+
+					if (group?.thesisId === thesisId && thesis?.groupId === groupId) {
+						// Remove bidirectional relationship
+						await Promise.all([
+							tx.group.update({
+								where: { id: groupId },
+								data: { thesisId: null },
+							}),
+							tx.thesis.update({
+								where: { id: thesisId },
+								data: { groupId: null },
+							}),
+						]);
+
+						this.logger.log(
+							`Removed bidirectional thesis assignment between group ${groupId} and thesis ${thesisId} due to rejection`,
 						);
 					}
 				}
