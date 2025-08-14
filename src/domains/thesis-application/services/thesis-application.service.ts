@@ -249,4 +249,201 @@ export class ThesisApplicationService {
 
 		return application;
 	}
+
+	async validateThesisAssignment(
+		groupId: string,
+		thesisId: string,
+		group: any,
+		approvedApplications: any[],
+	): Promise<void> {
+		if (approvedApplications.length > 0) {
+			await this.handleExistingApprovedApplication(
+				groupId,
+				thesisId,
+				group,
+				approvedApplications[0],
+			);
+		}
+
+		if (approvedApplications.length === 0 && group.thesisId) {
+			this.handleThesisAssignmentConflict(
+				groupId,
+				thesisId,
+				group.thesisId as string,
+			);
+		}
+	}
+
+	async handleExistingApprovedApplication(
+		groupId: string,
+		thesisId: string,
+		group: any,
+		approvedApp: any,
+	): Promise<void> {
+		if (approvedApp.thesis.id === thesisId) {
+			this.logger.warn(
+				`Group ${groupId} already has approved application for thesis ${approvedApp.thesis.englishName}`,
+			);
+			throw new ConflictException(
+				`Group already has an approved application for this thesis: ${approvedApp.thesis.englishName}`,
+			);
+		}
+
+		if (group.thesisId && group.thesisId !== thesisId) {
+			this.logger.warn(
+				`Group ${groupId} already has thesis ${group.thesisId} assigned but trying to apply for different thesis ${thesisId}`,
+			);
+			throw new ConflictException(
+				'Group already has a thesis assigned. Cannot apply for a different thesis.',
+			);
+		}
+
+		await this.cancelApprovedApplication(groupId, approvedApp);
+	}
+
+	async cancelApprovedApplication(
+		groupId: string,
+		approvedApp: any,
+	): Promise<void> {
+		this.logger.log(
+			`Group ${groupId} has approved application for thesis ${approvedApp.thesis.englishName}. Cancelling it to apply for new thesis`,
+		);
+
+		await this.prisma.$transaction(async (tx) => {
+			await tx.thesisApplication.update({
+				where: {
+					groupId_thesisId: {
+						groupId: groupId,
+						thesisId: approvedApp.thesis.id,
+					},
+				},
+				data: {
+					status: 'Cancelled',
+					updatedAt: new Date(),
+				},
+			});
+
+			await this.removeBidirectionalThesisAssignment(
+				tx,
+				groupId,
+				approvedApp.thesis.id as string,
+			);
+		});
+
+		this.logger.log(
+			`Successfully cancelled approved application for thesis ${approvedApp.thesis.englishName} to allow new application`,
+		);
+	}
+
+	async removeBidirectionalThesisAssignment(
+		tx: any,
+		groupId: string,
+		thesisId: string,
+	): Promise<void> {
+		const [groupCheck, thesisCheck] = await Promise.all([
+			tx.group.findUnique({
+				where: { id: groupId },
+				select: { thesisId: true },
+			}),
+			tx.thesis.findUnique({
+				where: { id: thesisId },
+				select: { groupId: true },
+			}),
+		]);
+
+		if (groupCheck?.thesisId === thesisId && thesisCheck?.groupId === groupId) {
+			await Promise.all([
+				tx.group.update({
+					where: { id: groupId },
+					data: { thesisId: null },
+				}),
+				tx.thesis.update({
+					where: { id: thesisId },
+					data: { groupId: null },
+				}),
+			]);
+
+			this.logger.log(
+				`Removed bidirectional thesis assignment between group ${groupId} and thesis ${thesisId}`,
+			);
+		}
+	}
+
+	public handleThesisAssignmentConflict(
+		groupId: string,
+		requestedThesisId: string,
+		assignedThesisId: string,
+	): void {
+		const isSameThesis = assignedThesisId === requestedThesisId;
+
+		this.logger.warn(
+			`Group ${groupId} has thesis ${assignedThesisId} assigned but trying to apply for ${isSameThesis ? 'same' : 'different'} thesis ${requestedThesisId}`,
+		);
+
+		const errorMessage = isSameThesis
+			? 'Group already has this thesis assigned'
+			: 'Group already has a thesis assigned. Cannot apply for a different thesis.';
+
+		throw new ConflictException(errorMessage);
+	}
+
+	async handleExistingApplication(
+		groupId: string,
+		thesisId: string,
+		existingApplication: any,
+	): Promise<any> {
+		if (existingApplication) {
+			if (
+				existingApplication.status === 'Rejected' ||
+				existingApplication.status === 'Cancelled'
+			) {
+				return await this.recreateApplication(
+					groupId,
+					thesisId,
+					existingApplication.status as string,
+				);
+			} else {
+				this.logger.warn(
+					`Application already exists for group ${groupId} and thesis ${thesisId} with status ${existingApplication.status}`,
+				);
+				throw new ConflictException(
+					`Application for this thesis already exists with status: ${existingApplication.status}`,
+				);
+			}
+		}
+
+		return await this.createNewApplication(groupId, thesisId);
+	}
+
+	async recreateApplication(
+		groupId: string,
+		thesisId: string,
+		previousStatus: string,
+	): Promise<any> {
+		this.logger.log(
+			`Creating new application for group ${groupId} and thesis ${thesisId} (previous was ${previousStatus})`,
+		);
+
+		await this.prisma.thesisApplication.delete({
+			where: {
+				groupId_thesisId: {
+					groupId: groupId,
+					thesisId: thesisId,
+				},
+			},
+		});
+
+		return await this.createNewApplication(groupId, thesisId);
+	}
+
+	async createNewApplication(groupId: string, thesisId: string): Promise<any> {
+		return await this.prisma.thesisApplication.create({
+			data: {
+				groupId: groupId,
+				thesisId: thesisId,
+				status: 'Pending',
+			},
+			include: this.getApplicationInclude(),
+		});
+	}
 }

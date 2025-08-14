@@ -29,7 +29,6 @@ export class ThesisApplicationStudentService {
 		);
 
 		try {
-			// Step 1: Fetch all required data in parallel
 			const [semester, student, thesis] = await Promise.all([
 				this.prisma.semester.findUnique({
 					where: { id: semesterId },
@@ -50,27 +49,23 @@ export class ThesisApplicationStudentService {
 				}),
 			]);
 
-			// Step 2: Validate semester
 			this.thesisApplicationService.validateSemesterStatus(
 				semester,
 				semesterId,
 			);
 
-			// Step 3: Validate student
 			this.thesisApplicationService.validateStudent(
 				student,
 				userId,
 				semesterId,
 			);
 
-			// Step 4: Validate thesis
 			this.thesisApplicationService.validateThesis(
 				thesis,
 				dto.thesisId,
 				semesterId,
 			);
 
-			// Step 5: Fetch and validate group with applications in parallel
 			const [group, approvedApplications, existingApplication] =
 				await Promise.all([
 					this.prisma.group.findUnique({
@@ -110,7 +105,6 @@ export class ThesisApplicationStudentService {
 					}),
 				]);
 
-			// Step 6: Validate group
 			if (!group) {
 				this.logger.warn(`Group with ID ${dto.groupId} not found`);
 				throw new NotFoundException('Group not found');
@@ -132,77 +126,22 @@ export class ThesisApplicationStudentService {
 				);
 			}
 
-			if (group.thesisId) {
-				this.logger.warn(`Group ${dto.groupId} already has thesis assigned`);
-				throw new ConflictException('Group already has a thesis assigned');
-			}
+			await this.thesisApplicationService.validateThesisAssignment(
+				dto.groupId,
+				dto.thesisId,
+				group,
+				approvedApplications,
+			);
 
-			// Step 7: Validate approved applications
-			if (approvedApplications.length > 0) {
-				const approvedApp = approvedApplications[0];
-				this.logger.warn(
-					`Group ${dto.groupId} already has approved application for thesis ${approvedApp.thesis.englishName}`,
+			const thesisApplication =
+				await this.thesisApplicationService.handleExistingApplication(
+					dto.groupId,
+					dto.thesisId,
+					existingApplication,
 				);
-				throw new ConflictException(
-					`Group already has an approved application for thesis: ${approvedApp.thesis.englishName}. A group can only have one approved thesis application.`,
-				);
-			}
-
-			// Step 8: Handle existing application logic
-
-			let thesisApplication;
-
-			if (existingApplication) {
-				if (
-					existingApplication.status === 'Rejected' ||
-					existingApplication.status === 'Cancelled'
-				) {
-					this.logger.log(
-						`Creating new application for group ${dto.groupId} and thesis ${dto.thesisId} (previous was ${existingApplication.status})`,
-					);
-
-					await this.prisma.thesisApplication.delete({
-						where: {
-							groupId_thesisId: {
-								groupId: dto.groupId,
-								thesisId: dto.thesisId,
-							},
-						},
-					});
-
-					thesisApplication = await this.prisma.thesisApplication.create({
-						data: {
-							groupId: dto.groupId,
-							thesisId: dto.thesisId,
-							status: 'Pending',
-						},
-						include: this.thesisApplicationService.getApplicationInclude(),
-					});
-				} else {
-					this.logger.warn(
-						`Application already exists for group ${dto.groupId} and thesis ${dto.thesisId} with status ${existingApplication.status}`,
-					);
-					throw new ConflictException(
-						`Application for this thesis already exists with status: ${existingApplication.status}`,
-					);
-				}
-			} else {
-				thesisApplication = await this.prisma.thesisApplication.create({
-					data: {
-						groupId: dto.groupId,
-						thesisId: dto.thesisId,
-						status: 'Pending',
-					},
-					include: this.thesisApplicationService.getApplicationInclude(),
-				});
-			}
 
 			this.logger.log(
 				`Thesis application ${existingApplication ? 'recreated' : 'created'} successfully for group ${dto.groupId} and thesis ${dto.thesisId}`,
-			);
-			this.logger.debug(
-				`${existingApplication ? 'Recreated' : 'Created'} thesis application`,
-				JSON.stringify(thesisApplication),
 			);
 
 			return thesisApplication;
@@ -221,7 +160,6 @@ export class ThesisApplicationStudentService {
 		);
 
 		try {
-			// Fetch semester and group data in parallel
 			const [semester, group] = await Promise.all([
 				this.prisma.semester.findUnique({
 					where: { id: semesterId },
