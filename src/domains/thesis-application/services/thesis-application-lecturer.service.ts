@@ -115,7 +115,24 @@ export class ThesisApplicationLecturerService {
 				);
 			}
 
+			// Pre-approval validation
+			if (updateDto.status === 'Approved') {
+				await this.thesisApplicationService.validateGroupCanBeApproved(
+					groupId,
+					thesisId,
+				);
+			}
+
 			const result = await this.prisma.$transaction(async (tx) => {
+				// Double check inside transaction to prevent race condition
+				if (updateDto.status === 'Approved') {
+					await this.thesisApplicationService.validateGroupCanBeApprovedInTransaction(
+						tx,
+						groupId,
+						thesisId,
+					);
+				}
+
 				const updatedApplication = await tx.thesisApplication.update({
 					where: {
 						groupId_thesisId: {
@@ -132,83 +149,17 @@ export class ThesisApplicationLecturerService {
 				});
 
 				if (updateDto.status === 'Approved') {
-					// Assign the group to the thesis (bidirectional relationship)
-					await Promise.all([
-						tx.group.update({
-							where: { id: groupId },
-							data: { thesisId: thesisId },
-						}),
-						tx.thesis.update({
-							where: { id: thesisId },
-							data: { groupId: groupId },
-						}),
-					]);
-
-					this.logger.log(
-						`Successfully assigned group ${groupId} to thesis ${thesisId} (bidirectional)`,
+					await this.thesisApplicationService.handleApprovalProcess(
+						tx,
+						groupId,
+						thesisId,
 					);
-
-					// Auto-reject all other pending applications for this thesis
-					const pendingApplications = await tx.thesisApplication.findMany({
-						where: {
-							thesisId: thesisId,
-							groupId: { not: groupId },
-							status: 'Pending',
-						},
-					});
-
-					if (pendingApplications.length > 0) {
-						const rejectionPromises = pendingApplications.map((app) =>
-							tx.thesisApplication.update({
-								where: {
-									groupId_thesisId: {
-										groupId: app.groupId,
-										thesisId: app.thesisId,
-									},
-								},
-								data: {
-									status: 'Rejected',
-									updatedAt: new Date(),
-								},
-							}),
-						);
-
-						await Promise.all(rejectionPromises);
-
-						this.logger.log(
-							`Auto-rejected ${pendingApplications.length} applications for thesis ${thesisId}`,
-						);
-					}
 				} else if (updateDto.status === 'Rejected') {
-					// If rejecting an application, check if this group was assigned to this thesis and remove the assignment
-					const [group, thesis] = await Promise.all([
-						tx.group.findUnique({
-							where: { id: groupId },
-							select: { thesisId: true },
-						}),
-						tx.thesis.findUnique({
-							where: { id: thesisId },
-							select: { groupId: true },
-						}),
-					]);
-
-					if (group?.thesisId === thesisId && thesis?.groupId === groupId) {
-						// Remove bidirectional relationship
-						await Promise.all([
-							tx.group.update({
-								where: { id: groupId },
-								data: { thesisId: null },
-							}),
-							tx.thesis.update({
-								where: { id: thesisId },
-								data: { groupId: null },
-							}),
-						]);
-
-						this.logger.log(
-							`Removed bidirectional thesis assignment between group ${groupId} and thesis ${thesisId} due to rejection`,
-						);
-					}
+					await this.thesisApplicationService.handleRejectionProcess(
+						tx,
+						groupId,
+						thesisId,
+					);
 				}
 
 				return updatedApplication;

@@ -39,14 +39,14 @@ export class GroupStudentService {
 				);
 			}
 
-			if (currentSemester.maxGroup == null) {
-				this.logger.warn(
-					`maxGroup is not set for semester ${currentSemester.id}`,
-				);
-				throw new ConflictException(
-					`Cannot create group. Maximum number of groups for this semester is not configured.`,
-				);
-			}
+			// if (currentSemester.maxGroup == null) {
+			// 	this.logger.warn(
+			// 		`maxGroup is not set for semester ${currentSemester.id}`,
+			// 	);
+			// 	throw new ConflictException(
+			// 		`Cannot create group. Maximum number of groups for this semester is not configured.`,
+			// 	);
+			// }
 
 			const [currentTotalGroups, existingParticipation] = await Promise.all([
 				this.prisma.group.count({
@@ -69,20 +69,22 @@ export class GroupStudentService {
 				}),
 			]);
 
+			this.logger.log('Total current group', currentTotalGroups);
+
 			if (existingParticipation) {
 				throw new ConflictException(
 					`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
 				);
 			}
 
-			if (currentTotalGroups >= currentSemester.maxGroup) {
-				this.logger.warn(
-					`Maximum number of groups for semester ${currentSemester.id} reached: ${currentSemester.maxGroup}`,
-				);
-				throw new ConflictException(
-					`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
-				);
-			}
+			// if (currentTotalGroups >= currentSemester.maxGroup) {
+			// 	this.logger.warn(
+			// 		`Maximum number of groups for semester ${currentSemester.id} reached: ${currentSemester.maxGroup}`,
+			// 	);
+			// 	throw new ConflictException(
+			// 		`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
+			// 	);
+			// }
 
 			const result = await this.prisma.$transaction(
 				async (prisma) => {

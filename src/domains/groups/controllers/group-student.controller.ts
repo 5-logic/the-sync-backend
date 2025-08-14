@@ -5,7 +5,7 @@ import {
 	HttpCode,
 	HttpStatus,
 	Param,
-	Post,
+	// Post,
 	Put,
 	Req,
 	UseGuards,
@@ -19,7 +19,7 @@ import { GROUP_API_TAGS, GROUP_CONSTANTS } from '@/groups/constants';
 import { GroupStudentDocs } from '@/groups/docs';
 import {
 	ChangeLeaderDto,
-	CreateGroupDto,
+	// CreateGroupDto,
 	PickThesisDto,
 	RemoveStudentDto,
 	UpdateGroupDto,
@@ -33,15 +33,15 @@ import { GroupStudentService } from '@/groups/services';
 export class GroupStudentController {
 	constructor(private readonly service: GroupStudentService) {}
 
-	@Roles(Role.STUDENT)
-	@HttpCode(HttpStatus.CREATED)
-	@Post()
-	@ApiOperation(GroupStudentDocs.create)
-	async create(@Req() req: Request, @Body() dto: CreateGroupDto) {
-		const user = req.user as UserPayload;
+	// @Roles(Role.STUDENT)
+	// @HttpCode(HttpStatus.CREATED)
+	// @Post()
+	// @ApiOperation(GroupStudentDocs.create)
+	// async create(@Req() req: Request, @Body() dto: CreateGroupDto) {
+	// 	const user = req.user as UserPayload;
 
-		return await this.service.create(user.id, dto);
-	}
+	// 	return await this.service.create(user.id, dto);
+	// }
 
 	@Roles(Role.STUDENT)
 	@HttpCode(HttpStatus.OK)

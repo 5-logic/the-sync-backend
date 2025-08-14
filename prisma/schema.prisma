@@ -127,7 +127,6 @@ model Semester {
   id                       String         @id @default(uuid())
   name                     String         @unique @map("name")
   code                     String         @unique @map("code")
-  maxGroup                 Int?           @map("max_group")
   status                   SemesterStatus @default(NotYet) @map("status")
   ongoingPhase             OngoingPhase?  @map("ongoing_phase")
   defaultThesesPerLecturer Int            @default(4) @map("default_theses_per_lecturer")
