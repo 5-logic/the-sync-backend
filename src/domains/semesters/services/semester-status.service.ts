@@ -199,13 +199,6 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
-		const maxGroup = semester.maxGroup;
-		if (!maxGroup || maxGroup <= 0) {
-			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. maxGroup is not set or invalid.`;
-			this.logger.warn(message);
-			throw new ConflictException(message);
-		}
-
 		const approvedPublicThesisCount = await this.prisma.thesis.count({
 			where: {
 				semesterId: semester.id,
@@ -214,8 +207,17 @@ export class SemesterStatusService {
 			},
 		});
 
-		if (approvedPublicThesisCount < maxGroup) {
-			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. Approved & public thesis count (${approvedPublicThesisCount}) is less than maxGroup (${maxGroup}).`;
+		const currentGroup = await this.prisma.group.count({
+			where: {
+				semesterId: semester.id,
+				studentGroupParticipations: {
+					some: {},
+				},
+			},
+		});
+
+		if (approvedPublicThesisCount < currentGroup) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. Approved & public thesis count (${approvedPublicThesisCount}) is less than currentGroup (${currentGroup}).`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
@@ -253,27 +255,13 @@ export class SemesterStatusService {
 
 	async validateStatusTransition__Picking_To_Ongoing(
 		semester: Semester,
-		dto: UpdateSemesterDto,
 	): Promise<void> {
-		const currentMaxGroup = dto.maxGroup ?? semester.maxGroup;
-
-		if (!currentMaxGroup) {
-			this.logger.warn(
-				`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. maxGroup is not set.`,
-			);
-
-			throw new ConflictException(
-				`Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. Please set maxGroup first.`,
-			);
-		}
-
-		// Chỉ check những group có student, và những group đó phải đã pick thesis
 		const groupsWithoutThesisCount = await this.prisma.group.count({
 			where: {
 				semesterId: semester.id,
 				thesisId: null,
 				studentGroupParticipations: {
-					some: {}, // Chỉ check những group có student
+					some: {},
 				},
 			},
 		});
@@ -385,7 +373,7 @@ export class SemesterStatusService {
 			currentStatus === SemesterStatus.Picking &&
 			newStatus === SemesterStatus.Ongoing
 		) {
-			await this.validateStatusTransition__Picking_To_Ongoing(semester, dto);
+			await this.validateStatusTransition__Picking_To_Ongoing(semester);
 		}
 
 		// Check if move from Ongoing to End
