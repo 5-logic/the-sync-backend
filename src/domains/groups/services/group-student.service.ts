@@ -1053,6 +1053,40 @@ export class GroupStudentService {
 							groupId: null,
 						},
 					});
+
+					// Cancel approved thesis application if exists
+					const approvedApplication = await prisma.thesisApplication.findUnique(
+						{
+							where: {
+								groupId_thesisId: {
+									groupId: groupId,
+									thesisId: group.thesis!.id,
+								},
+							},
+						},
+					);
+
+					if (
+						approvedApplication &&
+						approvedApplication.status === 'Approved'
+					) {
+						await prisma.thesisApplication.update({
+							where: {
+								groupId_thesisId: {
+									groupId: groupId,
+									thesisId: group.thesis!.id,
+								},
+							},
+							data: {
+								status: 'Cancelled',
+								updatedAt: new Date(),
+							},
+						});
+
+						this.logger.log(
+							`Approved thesis application automatically cancelled when unpicking thesis ${group.thesis!.id} from group ${groupId}`,
+						);
+					}
 				},
 				{ timeout: CONSTANTS.TIMEOUT },
 			);

@@ -33,7 +33,7 @@ export const GroupStudentDocs = {
 
 	unpickThesis: {
 		summary: 'Unpick thesis from group',
-		description: `Allow group leader to unpick (remove) the currently assigned thesis from their group during the PICKING semester status.\n\n- **Student access only (group leader)**.\n- Only the group leader can unpick thesis.\n- The group must have a thesis currently assigned.\n- Sends email notifications to group members and thesis lecturer.\n- Returns error if unpick rules are violated.\n- Logs all unpick attempts and errors.\n\n**Fields:**\n- id (path)\n\n**Response includes:**\n- success, message, group (updated info), unpickedThesis: id, englishName, vietnameseName`,
+		description: `Allow group leader to unpick (remove) the currently assigned thesis from their group during the PICKING semester status.\n\n- **Student access only (group leader)**.\n- Only the group leader can unpick thesis.\n- The group must have a thesis currently assigned.\n- **Automatic Application Cancellation:** When unpicking a thesis, the system automatically cancels any approved thesis application for that thesis to maintain data consistency.\n- **Bidirectional Cleanup:** Removes both Group.thesisId and Thesis.groupId relationships.\n- Sends email notifications to group members and thesis lecturer.\n- Returns error if unpick rules are violated.\n- Logs all unpick attempts and errors.\n\n**Fields:**\n- id (path)\n\n**Response includes:**\n- success, message, group (updated info), unpickedThesis: id, englishName, vietnameseName`,
 	} as ApiOperationOptions,
 
 	delete: {
