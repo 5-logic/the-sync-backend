@@ -214,6 +214,11 @@ const seedStudents = async () => {
 
 	await prisma.$transaction(
 		async (tx) => {
+			// Get all responsibilities once for efficiency
+			const allResponsibilities = await tx.responsibility.findMany({
+				select: { id: true },
+			});
+
 			for (const student of students) {
 				await tx.user.upsert({
 					where: { id: student.id },
@@ -251,6 +256,26 @@ const seedStudents = async () => {
 						semesterId: '6969801d-77b6-48a3-b398-228971c80f40',
 					},
 				});
+
+				// Create associations with all responsibilities
+				if (allResponsibilities.length > 0) {
+					// Delete existing responsibility associations first
+					await tx.studentResponsibility.deleteMany({
+						where: { studentId: student.id },
+					});
+
+					// Create new associations with all responsibilities
+					await tx.studentResponsibility.createMany({
+						data: allResponsibilities.map((responsibility) => ({
+							studentId: student.id,
+							responsibilityId: responsibility.id,
+						})),
+					});
+
+					console.log(
+						`✅ Created ${allResponsibilities.length} responsibility associations for student ${student.studentCode}`,
+					);
+				}
 			}
 		},
 		{ timeout: CONSTANTS.TIMEOUT },
