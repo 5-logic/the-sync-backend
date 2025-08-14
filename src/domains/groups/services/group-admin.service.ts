@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+	BadRequestException,
+	Injectable,
+	Logger,
+	NotFoundException,
+} from '@nestjs/common';
 
 import { CreateManyGroupDto } from '@/groups/dtos';
 import { PrismaService } from '@/providers';
@@ -179,6 +184,54 @@ export class GroupAdminService {
 		} catch (error) {
 			this.logger.error(
 				`Failed to format groups: ${error.message}`,
+				error.stack,
+			);
+			throw error;
+		}
+	}
+
+	async delete(groupId: string) {
+		try {
+			this.logger.log(`Deleting group ${groupId}`);
+
+			const group = await this.prisma.group.findUnique({
+				where: { id: groupId },
+				include: {
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: true,
+								},
+							},
+						},
+					},
+					semester: true,
+				},
+			});
+
+			if (!group) {
+				throw new NotFoundException('Group not found');
+			}
+
+			if (group.studentGroupParticipations.length > 0) {
+				throw new BadRequestException(
+					`Cannot delete group ${group.code}. Group contains ${group.studentGroupParticipations.length} student(s)`,
+				);
+			}
+
+			const deletedGroup = await this.prisma.group.delete({
+				where: { id: groupId },
+			});
+
+			this.logger.log(
+				`Successfully deleted empty group ${deletedGroup.code} from semester ${group.semester.name} (${group.semester.code})`,
+			);
+
+			return true;
+		} catch (error) {
+			this.logger.error(
+				`Failed to delete group ${groupId}: ${error.message}`,
 				error.stack,
 			);
 			throw error;

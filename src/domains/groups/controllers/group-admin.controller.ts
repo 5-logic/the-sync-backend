@@ -1,6 +1,7 @@
 import {
 	Body,
 	Controller,
+	Delete,
 	HttpCode,
 	HttpStatus,
 	Param,
@@ -37,5 +38,13 @@ export class GroupAdminController {
 	@ApiOperation(GroupAdminDocs.formatGroup)
 	async formatGroup(@Param('semesterId') semesterId: string) {
 		return await this.service.formatGroup(semesterId);
+	}
+
+	@Roles(Role.ADMIN)
+	@HttpCode(HttpStatus.OK)
+	@Delete(':groupId')
+	@ApiOperation(GroupAdminDocs.delete)
+	async delete(@Param('groupId') groupId: string) {
+		return await this.service.delete(groupId);
 	}
 }

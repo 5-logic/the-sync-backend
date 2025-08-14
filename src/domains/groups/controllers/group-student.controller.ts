@@ -1,7 +1,7 @@
 import {
 	Body,
 	Controller,
-	Delete,
+	// Delete,
 	HttpCode,
 	HttpStatus,
 	Param,
@@ -119,13 +119,13 @@ export class GroupStudentController {
 		return await this.service.unpickThesis(id, user.id);
 	}
 
-	@Roles(Role.MODERATOR, Role.STUDENT)
-	@HttpCode(HttpStatus.OK)
-	@Delete(':id')
-	@ApiOperation(GroupStudentDocs.delete)
-	async delete(@Req() req: Request, @Param('id') id: string) {
-		const user = req.user as UserPayload;
+	// @Roles(Role.MODERATOR, Role.STUDENT)
+	// @HttpCode(HttpStatus.OK)
+	// @Delete(':id')
+	// @ApiOperation(GroupStudentDocs.delete)
+	// async delete(@Req() req: Request, @Param('id') id: string) {
+	// 	const user = req.user as UserPayload;
 
-		return await this.service.delete(id, user.id);
-	}
+	// 	return await this.service.delete(id, user.id);
+	// }
 }
