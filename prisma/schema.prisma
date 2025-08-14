@@ -35,16 +35,6 @@ enum ThesisStatus {
   @@map("thesis_statuses")
 }
 
-enum ResponsibilityLevel {
-  Beginner     @map("beginner")
-  Intermediate @map("intermediate")
-  Proficient   @map("proficient")
-  Advanced     @map("advanced")
-  Expert       @map("expert")
-
-  @@map("skill_levels")
-}
-
 enum RequestType {
   Invite @map("invite")
   Join   @map("join")
@@ -225,12 +215,12 @@ model Group {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  semester                      Semester                      @relation(fields: [semesterId], references: [id])
-  thesis                        Thesis?                       @relation(fields: [thesisId], references: [id])
-  submissions                   Submission[]
-  requests                      Request[]
-  studentGroupParticipations    StudentGroupParticipation[]
-  thesisApplications            ThesisApplication[]
+  semester                   Semester                    @relation(fields: [semesterId], references: [id])
+  thesis                     Thesis?                     @relation(fields: [thesisId], references: [id])
+  submissions                Submission[]
+  requests                   Request[]
+  studentGroupParticipations StudentGroupParticipation[]
+  thesisApplications         ThesisApplication[]
 
   @@map("groups")
 }
@@ -251,12 +241,12 @@ model Thesis {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  lecturer             Lecturer              @relation(fields: [lecturerId], references: [userId])
-  semester             Semester              @relation(fields: [semesterId], references: [id])
-  group                Group?
-  supervisions         Supervision[]
-  thesisVersions       ThesisVersion[]
-  thesisApplications    ThesisApplication[]
+  lecturer           Lecturer            @relation(fields: [lecturerId], references: [userId])
+  semester           Semester            @relation(fields: [semesterId], references: [id])
+  group              Group?
+  supervisions       Supervision[]
+  thesisVersions     ThesisVersion[]
+  thesisApplications ThesisApplication[]
 
   @@map("theses")
 }
@@ -405,9 +395,9 @@ model StatisticAI {
 // Models with composite primary key
 
 model StudentResponsibility {
-  studentId        String              @map("student_id")
-  responsibilityId String              @map("responsibility_id")
-  level            ResponsibilityLevel @default(Beginner) @map("level")
+  studentId        String @map("student_id")
+  responsibilityId String @map("responsibility_id")
+  level            Int    @default(0) @map("level")
 
   student        Student        @relation(fields: [studentId], references: [userId], onDelete: Cascade)
   responsibility Responsibility @relation(fields: [responsibilityId], references: [id])
