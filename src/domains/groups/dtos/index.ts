@@ -1,4 +1,3 @@
-export * from '@/groups/dtos/admin-update-group.dto';
 export * from '@/groups/dtos/assign-student.dto';
 export * from '@/groups/dtos/change-leader.dto';
 export * from '@/groups/dtos/create-group.dto';
