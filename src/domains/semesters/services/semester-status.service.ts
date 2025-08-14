@@ -25,14 +25,18 @@ export class SemesterStatusService {
 	async validateOngoingPhaseTransition__ScopeAdjustable_To_ScopeLocked(
 		semester: Semester,
 	): Promise<void> {
+		// Chỉ check những group có student, và những group đó phải đã pick thesis
 		const groupsWithoutThesisCount = await this.prisma.group.count({
 			where: {
 				semesterId: semester.id,
 				thesisId: null,
+				studentGroupParticipations: {
+					some: {}, // Chỉ check những group có student
+				},
 			},
 		});
 		if (groupsWithoutThesisCount > 0) {
-			const message = `Cannot transition ongoingPhase from ScopeAdjustable to ScopeLocked. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
+			const message = `Cannot transition ongoingPhase from ScopeAdjustable to ScopeLocked. There are ${groupsWithoutThesisCount} groups with students that have not picked a thesis.`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
@@ -84,7 +88,7 @@ export class SemesterStatusService {
 		}
 
 		this.logger.log(
-			'OngoingPhase transition ScopeAdjustable -> ScopeLocked validation passed. All groups have picked theses.',
+			'OngoingPhase transition ScopeAdjustable -> ScopeLocked validation passed. All groups with students have picked theses.',
 		);
 	}
 
@@ -216,9 +220,14 @@ export class SemesterStatusService {
 			throw new ConflictException(message);
 		}
 
-		// Validate: không có group nào có số lượng members < 4
+		// Validate: chỉ check những group có student, và những group đó phải có ít nhất 4 members
 		const groupsWithFewMembers = await this.prisma.group.findMany({
-			where: { semesterId: semester.id },
+			where: {
+				semesterId: semester.id,
+				studentGroupParticipations: {
+					some: {}, // Chỉ lấy những group có ít nhất 1 student
+				},
+			},
 			select: {
 				id: true,
 				code: true,
@@ -232,13 +241,13 @@ export class SemesterStatusService {
 		);
 		if (invalidGroups.length > 0) {
 			const groupCodes = invalidGroups.map((g) => g.code).join(', ');
-			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. The following groups have less than 4 members: ${groupCodes}`;
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. The following groups with students have less than 4 members: ${groupCodes}`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
 
 		this.logger.log(
-			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All students have groups, approved public thesis count is sufficient, and all groups have at least 4 members.`,
+			`${SemesterStatus.Preparing} to ${SemesterStatus.Picking} transition validation passed. All groups with students have at least 4 members, approved public thesis count is sufficient.`,
 		);
 	}
 
@@ -258,21 +267,25 @@ export class SemesterStatusService {
 			);
 		}
 
+		// Chỉ check những group có student, và những group đó phải đã pick thesis
 		const groupsWithoutThesisCount = await this.prisma.group.count({
 			where: {
 				semesterId: semester.id,
 				thesisId: null,
+				studentGroupParticipations: {
+					some: {}, // Chỉ check những group có student
+				},
 			},
 		});
 
 		if (groupsWithoutThesisCount > 0) {
-			const message = `Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
+			const message = `Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. There are ${groupsWithoutThesisCount} groups with students that have not picked a thesis.`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
 
 		this.logger.log(
-			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. All students have groups and picked theses.`,
+			`${SemesterStatus.Picking} to ${SemesterStatus.Ongoing} transition validation passed. All groups with students have picked theses.`,
 		);
 	}
 
