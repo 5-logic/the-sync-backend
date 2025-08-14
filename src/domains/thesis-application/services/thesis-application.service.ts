@@ -446,4 +446,162 @@ export class ThesisApplicationService {
 			include: this.getApplicationInclude(),
 		});
 	}
+
+	async validateGroupCanBeApproved(groupId: string, thesisId: string) {
+		const existingApprovedApplications =
+			await this.prisma.thesisApplication.findMany({
+				where: {
+					groupId: groupId,
+					status: 'Approved',
+					thesisId: { not: thesisId },
+				},
+				include: {
+					thesis: {
+						select: {
+							id: true,
+							englishName: true,
+						},
+					},
+				},
+			});
+
+		if (existingApprovedApplications.length > 0) {
+			const approvedThesis = existingApprovedApplications[0];
+			this.logger.warn(
+				`Group ${groupId} already has approved application for thesis ${approvedThesis.thesis.englishName}`,
+			);
+			throw new ConflictException(
+				`Group already has an approved application for thesis: ${approvedThesis.thesis.englishName}. Cannot approve multiple applications for the same group.`,
+			);
+		}
+	}
+
+	async validateGroupCanBeApprovedInTransaction(
+		tx: any,
+		groupId: string,
+		thesisId: string,
+	) {
+		const existingApprovedApplications = await tx.thesisApplication.findMany({
+			where: {
+				groupId: groupId,
+				status: 'Approved',
+				thesisId: { not: thesisId },
+			},
+		});
+
+		if (existingApprovedApplications.length > 0) {
+			throw new ConflictException(
+				'Another application for this group has been approved concurrently. Cannot approve multiple applications.',
+			);
+		}
+	}
+
+	async handleApprovalProcess(tx: any, groupId: string, thesisId: string) {
+		await Promise.all([
+			tx.group.update({
+				where: { id: groupId },
+				data: { thesisId: thesisId },
+			}),
+			tx.thesis.update({
+				where: { id: thesisId },
+				data: { groupId: groupId },
+			}),
+		]);
+
+		this.logger.log(
+			`Successfully assigned group ${groupId} to thesis ${thesisId} (bidirectional)`,
+		);
+
+		const otherApplications = await tx.thesisApplication.findMany({
+			where: {
+				groupId: groupId,
+				thesisId: { not: thesisId },
+				status: 'Pending',
+			},
+		});
+
+		if (otherApplications.length > 0) {
+			const cancellationPromises = otherApplications.map((app) =>
+				tx.thesisApplication.update({
+					where: {
+						groupId_thesisId: {
+							groupId: app.groupId,
+							thesisId: app.thesisId,
+						},
+					},
+					data: {
+						status: 'Cancelled',
+						updatedAt: new Date(),
+					},
+				}),
+			);
+
+			await Promise.all(cancellationPromises);
+
+			this.logger.log(
+				`Auto-cancelled ${otherApplications.length} other applications for group ${groupId}`,
+			);
+		}
+
+		const competingApplications = await tx.thesisApplication.findMany({
+			where: {
+				thesisId: thesisId,
+				groupId: { not: groupId },
+				status: 'Pending',
+			},
+		});
+
+		if (competingApplications.length > 0) {
+			const rejectionPromises = competingApplications.map((app) =>
+				tx.thesisApplication.update({
+					where: {
+						groupId_thesisId: {
+							groupId: app.groupId,
+							thesisId: app.thesisId,
+						},
+					},
+					data: {
+						status: 'Rejected',
+						updatedAt: new Date(),
+					},
+				}),
+			);
+
+			await Promise.all(rejectionPromises);
+
+			this.logger.log(
+				`Auto-rejected ${competingApplications.length} competing applications for thesis ${thesisId}`,
+			);
+		}
+	}
+
+	async handleRejectionProcess(tx: any, groupId: string, thesisId: string) {
+		const [group, thesis] = await Promise.all([
+			tx.group.findUnique({
+				where: { id: groupId },
+				select: { thesisId: true },
+			}),
+			tx.thesis.findUnique({
+				where: { id: thesisId },
+				select: { groupId: true },
+			}),
+		]);
+
+		if (group?.thesisId === thesisId && thesis?.groupId === groupId) {
+			await Promise.all([
+				tx.group.update({
+					where: { id: groupId },
+					data: { thesisId: null },
+				}),
+				tx.thesis.update({
+					where: { id: thesisId },
+					data: { groupId: null },
+				}),
+			]);
+
+			this.logger.log(
+				`Removed bidirectional thesis assignment between group ${groupId} and thesis ${thesisId} due to rejection`,
+			);
+		}
+	}
 }
