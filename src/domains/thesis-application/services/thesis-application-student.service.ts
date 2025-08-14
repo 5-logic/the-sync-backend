@@ -71,7 +71,7 @@ export class ThesisApplicationStudentService {
 			);
 
 			// Step 5: Fetch and validate group with applications in parallel
-			const [group, pendingApplications, existingApplication] =
+			const [group, approvedApplications, existingApplication] =
 				await Promise.all([
 					this.prisma.group.findUnique({
 						where: { id: dto.groupId },
@@ -88,7 +88,7 @@ export class ThesisApplicationStudentService {
 					this.prisma.thesisApplication.findMany({
 						where: {
 							groupId: dto.groupId,
-							status: 'Pending',
+							status: 'Approved',
 						},
 						include: {
 							thesis: {
@@ -137,14 +137,14 @@ export class ThesisApplicationStudentService {
 				throw new ConflictException('Group already has a thesis assigned');
 			}
 
-			// Step 7: Validate pending applications
-			if (pendingApplications.length > 0) {
-				const pendingApp = pendingApplications[0];
+			// Step 7: Validate approved applications
+			if (approvedApplications.length > 0) {
+				const approvedApp = approvedApplications[0];
 				this.logger.warn(
-					`Group ${dto.groupId} already has pending application for thesis ${pendingApp.thesis.englishName}`,
+					`Group ${dto.groupId} already has approved application for thesis ${approvedApp.thesis.englishName}`,
 				);
 				throw new ConflictException(
-					`Group already has a pending application for thesis: ${pendingApp.thesis.englishName}. Please wait for the current application to be processed or cancel it first.`,
+					`Group already has an approved application for thesis: ${approvedApp.thesis.englishName}. A group can only have one approved thesis application.`,
 				);
 			}
 
