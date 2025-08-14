@@ -5,6 +5,153 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2025-08-14
+
+### Added
+
+- **Enhanced Group Admin Management System**:
+  - **New Group Admin API**:
+    - `PUT /groups/format/{semesterId}` - Format and reorganize groups for a specific semester (admin only)
+    - `DELETE /groups/{groupId}` - Delete empty groups (admin only)
+  - **Automatic Group Management**: Enhanced group formatting functionality to optimize group structures
+
+- **Enhanced Join Request Logic**:
+  - **Automatic Leader Assignment**: Students joining empty groups are now automatically assigned as leaders without requiring approval
+  - **Smart Request Handling**: Join requests are only created for groups with existing members; empty groups allow immediate joining
+
+### Changed
+
+- **Thesis Application Validation Logic**:
+  - **Application Status Validation**: Updated validation to check for `Approved` applications instead of `Pending` applications when creating new thesis applications
+  - **Improved Application Handling**: Enhanced logic to better handle existing applications and prevent conflicts
+  - **Streamlined Validation**: Refactored validation methods to use centralized service functions for better maintainability
+
+- **Group Management Improvements**:
+  - **Group Deletion Logic**: Improved group deletion to handle empty groups more efficiently
+  - **Leave Group Enhancement**: Updated leave group functionality to preserve empty groups and improve notification handling
+  - **Enhanced Member Management**: Better handling of group membership changes with automatic cleanup
+
+- **Semester Status Validation Refinement**:
+  - **Enhanced Group Validation**: Semester phase transitions now only validate groups that have students (empty groups are excluded from validation)
+  - **Improved Transition Logic**: Refined validation messages and logic for semester status transitions
+  - **Better Error Messages**: Updated error messages to clarify that validation applies only to groups with students
+
+- **Request Service Architecture**:
+  - **Join Request Flow**: Enhanced join request service to handle both automatic joining (empty groups) and request-based joining (groups with members)
+  - **Response Structure**: Improved response structure for join requests to provide better feedback to clients
+  - **Notification Enhancement**: Better notification handling for join requests and automatic assignments
+
+### Fixed
+
+- **Thesis Application Conflict Resolution**:
+  - **Application Duplication**: Fixed issues with thesis application creation when existing applications were in rejected/cancelled states
+  - **Bidirectional Assignment**: Improved bidirectional assignment logic for thesis and group relationships during application approval/rejection
+
+- **Group Service Improvements**:
+  - **Empty Group Handling**: Enhanced handling of empty groups in various operations
+  - **Thesis Unpicking**: Improved unpick thesis logic to automatically cancel approved applications and maintain data consistency
+
+### Enhanced
+
+- **API Documentation**: Updated Swagger documentation for all modified endpoints with clearer parameter descriptions
+- **Service Architecture**: Better separation of concerns between different service layers with improved validation methods
+- **Error Handling**: Enhanced error handling and logging across all modified services
+- **Code Quality**: Removed unused imports and cleaned up service dependencies
+
+### Technical Improvements
+
+- **Validation Logic**: Centralized validation methods in thesis application service for better code reuse
+- **Database Operations**: Improved database queries and transaction handling for complex operations
+- **Service Integration**: Enhanced integration between group, request, and thesis application services
+- **Code Organization**: Better code organization with removed unused DTOs and improved index exports
+
+### Pull Requests
+
+- Direct commits implementing enhanced group management, refined thesis application logic, and improved join request handling
+
+---
+
+## [0.8.7] - 2025-08-13
+
+### Added
+
+- **Thesis Application Management System**:
+  - **New Thesis Application API**:
+    - `POST /thesis-application/{semesterId}` - Create thesis application (requires `CreateThesisApplicationDto` with `groupId` and `thesisId`)
+    - `GET /thesis-application/{semesterId}/{groupId}` - Get all thesis applications for a group
+    - `PUT /thesis-application/{groupId}/{thesisId}/cancel` - Cancel thesis application
+    - `GET /thesis-application/{semesterId}` - Get all thesis applications for lecturer/moderator
+    - `GET /thesis-application/thesis/{thesisId}` - Get specific thesis application details
+    - `PUT /thesis-application/{groupId}/{thesisId}` - Update thesis application status (requires `UpdateThesisApplicationDto` with `status`)
+  - **New Database Model**: `ThesisApplication` with status enum (`pending`, `approved`, `rejected`, `cancelled`)
+  - **Enhanced Workflow**: Groups can now apply for thesis before final assignment, allowing lecturers to review applications
+
+- **Batch Group Creation System**:
+  - **New Group Admin API**:
+    - `POST /groups/admin` - Batch create groups (requires `CreateManyGroupDto` with `semesterId` and `numberOfGroup`)
+  - **Administrative Efficiency**: Allows admins to create multiple groups at once for a semester
+
+- **Enhanced Thesis Assignment**:
+  - **New Thesis Assignment Endpoint**:
+    - `POST /theses/{id}/assign` - Assign thesis to group (requires `AssignThesisDto` with `groupId`)
+  - **Enhanced Validation**:
+    - Thesis must have at least 2 supervisors before assignment
+    - Only approved and published theses can be assigned
+    - Groups must be in the same semester as the thesis
+    - Enhanced permission checks for lecturers and moderators
+  - **Improved Assignment Logic**: Better conflict detection and validation for thesis-group assignments
+
+- **AI Service Enhancements**:
+  - **Improved Thesis Processing**: Enhanced Pinecone integration with better metadata handling
+  - **Enhanced Content Filtering**: Updated AI thesis service to filter approved theses more effectively
+
+### Changed
+
+- **Thesis Application Workflow**:
+  - **Enhanced Group-Thesis Relationship**: Groups can now apply for multiple theses before final assignment
+  - **Status Management**: Added comprehensive status tracking for thesis applications
+  - **Role-Based Access**: Students can create/cancel applications, lecturers can view and update status
+
+- **Database Schema Updates**:
+  - **New Relationship**: Added `ThesisApplication` model linking groups and theses with application status
+  - **Enhanced Group Model**: Added `thesisApplications` relationship to support application workflow
+  - **Enhanced Thesis Model**: Added `thesisApplications` relationship for better thesis management
+
+- **Seeding System Improvements**:
+  - **Enhanced Lecturer Names**: Updated seeding to include role identifiers in lecturer names for better identification
+  - **Enhanced Student Names**: Updated seeding to include role identifiers in student names
+
+### Enhanced
+
+- **API Architecture**:
+  - **New Thesis Application Module**: Comprehensive module with dedicated controllers and services
+  - **Role-Based Controllers**: Separate controllers for student and lecturer thesis application operations
+  - **Enhanced Documentation**: Complete Swagger documentation for all new endpoints
+
+- **Service Layer Improvements**:
+  - **Thesis Application Services**: Dedicated services for student and lecturer thesis application operations
+  - **Enhanced Group Admin Service**: New service for batch group creation operations
+  - **Improved Validation**: Enhanced validation logic for thesis assignments and applications
+
+- **Type Safety and Validation**:
+  - **New DTOs**: `CreateThesisApplicationDto`, `UpdateThesisApplicationDto`, `CreateManyGroupDto`, `AssignThesisDto`
+  - **Enhanced Enums**: New `ThesisApplicationStatus` enum for application status management
+  - **Improved Validation**: Enhanced UUID validation and business rule checks
+
+### Technical Improvements
+
+- **Module Organization**: Enhanced domain module structure with thesis application module integration
+- **Path Mapping**: Added TypeScript path mapping for thesis-application domain
+- **Cache Management**: Improved cache handling for thesis assignment operations
+- **Error Handling**: Enhanced error handling and logging for thesis applications and assignments
+- **Database Constraints**: Added proper foreign key relationships and composite primary keys for thesis applications
+
+### Pull Requests
+
+- Direct commits implementing thesis application system, batch group creation, and enhanced thesis assignment functionality
+
+---
+
 ## [0.8.6] - 2025-08-12
 
 ### Changed

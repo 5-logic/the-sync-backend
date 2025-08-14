@@ -621,13 +621,13 @@ export class GroupStudentService {
 			}
 
 			// Check if student is the leader and if there are other members
-			if (participation.isLeader) {
-				if (group._count.studentGroupParticipations > 1) {
-					throw new ConflictException(
-						`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
-					);
-				}
-				// If leader is the only member, they can leave (which effectively deletes the group)
+			if (
+				participation.isLeader &&
+				group._count.studentGroupParticipations > 1
+			) {
+				throw new ConflictException(
+					`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
+				);
 			}
 
 			// Get student info for notifications
@@ -716,7 +716,7 @@ export class GroupStudentService {
 				};
 			}
 
-			// Otherwise, just remove the student from the group
+			// Remove the student from the group
 			await this.prisma.studentGroupParticipation.delete({
 				where: {
 					studentId_groupId_semesterId: {
@@ -732,18 +732,28 @@ export class GroupStudentService {
 			);
 
 			// Send email notifications to remaining group members and the leaving student
-			await this.groupService.sendStudentLeaveNotification(
-				group,
-				student,
-				remainingMembers,
-			);
+			if (remainingMembers.length > 0) {
+				await this.groupService.sendStudentLeaveNotification(
+					group,
+					student,
+					remainingMembers,
+				);
+			}
 
-			// Return the updated group
-			const updatedGroup = await this.groupPublicService.findOne(groupId);
+			// Determine response based on whether group is now empty
+			const isGroupNowEmpty = group._count.studentGroupParticipations === 1;
+			let updatedGroup: any = null;
+
+			if (!isGroupNowEmpty) {
+				// Return the updated group if it still has members
+				updatedGroup = await this.groupPublicService.findOne(groupId);
+			}
 
 			return {
 				success: true,
-				message: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
+				message: isGroupNowEmpty
+					? `You have successfully left group "${group.name}" (${group.code}). The group is now empty and available for other students to join.`
+					: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
 				groupDeleted: false,
 				group: updatedGroup,
 				leftStudent: {
@@ -1038,6 +1048,40 @@ export class GroupStudentService {
 							groupId: null,
 						},
 					});
+
+					// Cancel approved thesis application if exists
+					const approvedApplication = await prisma.thesisApplication.findUnique(
+						{
+							where: {
+								groupId_thesisId: {
+									groupId: groupId,
+									thesisId: group.thesis!.id,
+								},
+							},
+						},
+					);
+
+					if (
+						approvedApplication &&
+						approvedApplication.status === 'Approved'
+					) {
+						await prisma.thesisApplication.update({
+							where: {
+								groupId_thesisId: {
+									groupId: groupId,
+									thesisId: group.thesis!.id,
+								},
+							},
+							data: {
+								status: 'Cancelled',
+								updatedAt: new Date(),
+							},
+						});
+
+						this.logger.log(
+							`Approved thesis application automatically cancelled when unpicking thesis ${group.thesis!.id} from group ${groupId}`,
+						);
+					}
 				},
 				{ timeout: CONSTANTS.TIMEOUT },
 			);
