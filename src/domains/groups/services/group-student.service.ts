@@ -665,13 +665,13 @@ export class GroupStudentService {
 			}
 
 			// Check if student is the leader and if there are other members
-			if (participation.isLeader) {
-				if (group._count.studentGroupParticipations > 1) {
-					throw new ConflictException(
-						`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
-					);
-				}
-				// If leader is the only member, they can leave (which effectively deletes the group)
+			if (
+				participation.isLeader &&
+				group._count.studentGroupParticipations > 1
+			) {
+				throw new ConflictException(
+					`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
+				);
 			}
 
 			// Get student info for notifications
@@ -721,52 +721,7 @@ export class GroupStudentService {
 					},
 				});
 
-			// If this is the last member (leader), delete the entire group
-			if (group._count.studentGroupParticipations === 1) {
-				await this.prisma.$transaction(
-					async (prisma) => {
-						// Delete all related records first
-						await Promise.all([
-							prisma.groupRequiredSkill.deleteMany({
-								where: { groupId: groupId },
-							}),
-							prisma.groupExpectedResponsibility.deleteMany({
-								where: { groupId: groupId },
-							}),
-							prisma.request.deleteMany({
-								where: { groupId: groupId },
-							}),
-							prisma.studentGroupParticipation.deleteMany({
-								where: { groupId: groupId },
-							}),
-						]);
-
-						// Delete the group itself
-						await prisma.group.delete({
-							where: { id: groupId },
-						});
-					},
-					{ timeout: CONSTANTS.TIMEOUT },
-				);
-
-				this.logger.log(
-					`Group "${group.name}" (${group.code}) was automatically deleted as the last member (leader) left`,
-				);
-
-				return {
-					success: true,
-					message: `You have successfully left the group. Since you were the last member, group "${group.name}" (${group.code}) has been automatically deleted.`,
-					groupDeleted: true,
-					deletedGroup: {
-						id: group.id,
-						code: group.code,
-						name: group.name,
-						semester: group.semester,
-					},
-				};
-			}
-
-			// Otherwise, just remove the student from the group
+			// Remove the student from the group
 			await this.prisma.studentGroupParticipation.delete({
 				where: {
 					studentId_groupId_semesterId: {
@@ -782,18 +737,28 @@ export class GroupStudentService {
 			);
 
 			// Send email notifications to remaining group members and the leaving student
-			await this.groupService.sendStudentLeaveNotification(
-				group,
-				student,
-				remainingMembers,
-			);
+			if (remainingMembers.length > 0) {
+				await this.groupService.sendStudentLeaveNotification(
+					group,
+					student,
+					remainingMembers,
+				);
+			}
 
-			// Return the updated group
-			const updatedGroup = await this.groupPublicService.findOne(groupId);
+			// Determine response based on whether group is now empty
+			const isGroupNowEmpty = group._count.studentGroupParticipations === 1;
+			let updatedGroup: any = null;
+
+			if (!isGroupNowEmpty) {
+				// Return the updated group if it still has members
+				updatedGroup = await this.groupPublicService.findOne(groupId);
+			}
 
 			return {
 				success: true,
-				message: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
+				message: isGroupNowEmpty
+					? `You have successfully left group "${group.name}" (${group.code}). The group is now empty and available for other students to join.`
+					: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
 				groupDeleted: false,
 				group: updatedGroup,
 				leftStudent: {
