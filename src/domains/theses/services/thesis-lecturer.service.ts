@@ -272,6 +272,11 @@ export class ThesisLecturerService {
 				500,
 			);
 
+			// Trigger duplicate check if status changed to Pending
+			if (newStatus === ThesisStatus.Pending) {
+				await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
+			}
+
 			return result;
 		} catch (error) {
 			this.logger.error(`Error updating thesis with ID ${id}`, error);
@@ -423,6 +428,9 @@ export class ThesisLecturerService {
 				updatedThesis,
 				ThesisStatus.Pending,
 			);
+
+			// Trigger duplicate check when thesis status changes to Pending
+			await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
 
 			return result;
 		} catch (error) {

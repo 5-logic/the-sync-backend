@@ -2,11 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { DuplicateThesisResponse } from '@/ai/responses';
 import {
+	CacheHelperService,
 	GeminiProviderService,
 	PineconeProviderService,
 	PrismaService,
 } from '@/providers';
 import { PineconeThesisProcessor } from '@/queue';
+import { DUPLICATE_CHECK_CACHE_KEY } from '@/queue/pinecone/constants';
 
 import { ThesisStatus } from '~/generated/prisma';
 
@@ -20,6 +22,7 @@ export class AIThesisService {
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeProviderService,
 		private readonly gemini: GeminiProviderService,
+		private readonly cache: CacheHelperService,
 	) {}
 
 	async checkDuplicate(thesisId: string): Promise<DuplicateThesisResponse[]> {
@@ -32,102 +35,40 @@ export class AIThesisService {
 			});
 			if (!thesis) {
 				this.logger.warn(`Thesis with ID ${thesisId} not found`);
-
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			// Get the Pinecone index
-			const index = this.pinecone
-				.getClient()
-				.index(this.pinecone.getIndexName())
-				.namespace(AIThesisService.NAMESPACE);
+			// Try to get results from cache first
+			const cacheKey = `${DUPLICATE_CHECK_CACHE_KEY}${thesisId}`;
+			const cachedResults =
+				await this.cache.getFromCache<DuplicateThesisResponse[]>(cacheKey);
 
-			// First, get the vector of the current thesis
-			const fetchResult = await index.fetch([thesisId]);
-
-			if (!fetchResult.records?.[thesisId]) {
-				throw new NotFoundException(`Thesis not found in vector database`);
+			if (cachedResults) {
+				this.logger.log(
+					`Returning cached duplicate results for thesis ${thesisId}`,
+				);
+				return cachedResults;
 			}
 
-			const thesisVector = fetchResult.records[thesisId].values;
-
-			if (!thesisVector) {
-				throw new NotFoundException(`Thesis not found in vector database`);
-			}
-
-			// Now query using the vector to find similar content
-			// Only compare with approved theses to ensure quality comparison
-			const queryRequest = {
-				vector: thesisVector,
-				topK: 5, // Only get top 5 similar theses
-				includeMetadata: true,
-				includeValues: false,
-				filter: {
-					status: { $eq: ThesisStatus.Approved.toString() }, // Only compare with approved theses
-				},
-			};
-
-			const queryResults = await index.query(queryRequest);
-
-			// Process results and get candidates, excluding the original thesis
-			const candidates: Array<{
-				id: string;
-				englishName: string;
-				vietnameseName: string;
-				description: string;
-				vectorSimilarity: number;
-			}> = [];
-
-			if (queryResults.matches) {
-				for (const match of queryResults.matches) {
-					// Skip the thesis itself
-					if (match.id === thesisId) {
-						continue;
-					}
-
-					// Take all matches from top 5 (no similarity threshold filter)
-					if (match.score) {
-						candidates.push({
-							id: match.id,
-							englishName: (match.metadata?.englishName as string) ?? 'Unknown',
-							vietnameseName:
-								(match.metadata?.vietnameseName as string) ?? 'Unknown',
-							description:
-								(match.metadata?.description as string) ?? 'No description',
-							vectorSimilarity: match.score,
-						});
-					}
-				}
-			}
-
-			// If no candidates found, return empty array
-			if (candidates.length === 0) {
-				this.logger.log(`No potential duplicates found for thesis ${thesisId}`);
+			// If not in cache, check if thesis status is Pending (should have results soon)
+			if (thesis.status === ThesisStatus.Pending) {
+				this.logger.warn(
+					`Duplicate check results not yet available for thesis ${thesisId} (status: Pending). Background job may still be processing.`,
+				);
 				return [];
 			}
 
-			// Use AI to calculate accurate duplicate percentages
-			const aiDuplicates = await this.calculateDuplicateWithAI(
-				thesis,
-				candidates,
+			// If thesis is not Pending and no cache, it means duplicate check was never triggered
+			// This can happen for old theses or if the background job failed
+			this.logger.warn(
+				`No duplicate check results available for thesis ${thesisId} (status: ${thesis.status}). Duplicate check is only performed for theses with Pending status.`,
 			);
-
-			// Sort by duplicate percentage (highest first)
-			aiDuplicates.sort(
-				(a, b) => b.duplicatePercentage - a.duplicatePercentage,
-			);
-
-			this.logger.log(
-				`Found ${aiDuplicates.length} potential duplicates for thesis ${thesisId}`,
-			);
-
-			return aiDuplicates;
+			return [];
 		} catch (error) {
 			this.logger.error(
 				`Failed to check duplicates for thesis ${thesisId}:`,
 				error,
 			);
-
 			throw error;
 		}
 	}
