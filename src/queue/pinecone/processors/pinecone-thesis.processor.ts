@@ -354,6 +354,7 @@ export class PineconeThesisProcessor extends WorkerHost {
 			// Get original thesis text content
 			let originalContent = 'Content not available';
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				const originalFetch = await index.fetch([originalThesis.id]);
 				const fetchedContent =
 					originalFetch.records?.[originalThesis.id]?.metadata?.text;

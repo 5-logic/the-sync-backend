@@ -1,14 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsUUID } from 'class-validator';
-
-import { ResponsibilityLevel } from '~/generated/prisma';
+import { IsNumber, IsUUID } from 'class-validator';
 
 export class StudentResponsibilityDto {
 	@ApiProperty()
 	@IsUUID()
 	responsibilityId: string;
 
-	@ApiProperty({ enum: ResponsibilityLevel })
-	@IsEnum(ResponsibilityLevel)
-	level: ResponsibilityLevel;
+	@ApiProperty()
+	@IsNumber()
+	level: number;
 }

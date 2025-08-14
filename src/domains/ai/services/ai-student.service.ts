@@ -168,7 +168,9 @@ export class AIStudentService {
 	 * Calculate compatibility score between a student and group
 	 */
 	private calculateStudentGroupCompatibility(
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		_student: any,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		_group: any,
 	): number {
 		// Base compatibility score for basic enrollment criteria
