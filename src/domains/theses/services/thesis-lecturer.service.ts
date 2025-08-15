@@ -54,6 +54,7 @@ export class ThesisLecturerService {
 							abbreviation: dto.abbreviation,
 							description: dto.description,
 							domain: dto.domain,
+							orientation: dto.orientation,
 							lecturerId,
 							semesterId: dto.semesterId,
 						},
@@ -225,6 +226,7 @@ export class ThesisLecturerService {
 						abbreviation: dto.abbreviation,
 						description: dto.description,
 						domain: dto.domain,
+						orientation: dto.orientation,
 					};
 
 					if (dto.semesterId && dto.semesterId !== existingThesis.semesterId) {

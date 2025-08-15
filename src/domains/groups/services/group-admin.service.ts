@@ -47,15 +47,27 @@ export class GroupAdminService {
 				}
 			}
 
+			const allExistingGroups = await this.prisma.group.findMany({
+				select: { code: true },
+			});
+			const existingCodes = new Set(allExistingGroups.map((g) => g.code));
+
 			const groupsToCreate: Array<{
 				code: string;
 				name: string;
 				semesterId: string;
 			}> = [];
+
+			let currentNumber = nextNumber;
 			for (let i = 0; i < dto.numberOfGroup; i++) {
-				const sequentialNumber = (nextNumber + i).toString().padStart(3, '0');
-				const code = sequentialNumber;
+				let code: string;
+				do {
+					code = currentNumber.toString().padStart(3, '0');
+					currentNumber++;
+				} while (existingCodes.has(code));
+
 				const name = `Group ${code}`;
+				existingCodes.add(code);
 
 				groupsToCreate.push({
 					code,

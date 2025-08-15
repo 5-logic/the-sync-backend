@@ -4,6 +4,7 @@ import { PrismaService } from '@/providers';
 import { UpdateThesisApplicationDto } from '@/thesis-application/dtos';
 
 import { ThesisApplicationService } from './thesis-application.service';
+import { ThesisApplicationStatus } from '~/generated/prisma';
 
 @Injectable()
 export class ThesisApplicationLecturerService {
@@ -109,14 +110,14 @@ export class ThesisApplicationLecturerService {
 				this.thesisApplicationService.validateApplication(groupId, thesisId),
 			]);
 
-			if (currentApplication.status !== 'Pending') {
+			if (currentApplication.status !== ThesisApplicationStatus.Pending) {
 				throw new ConflictException(
 					`Application has already been ${currentApplication.status.toLowerCase()}`,
 				);
 			}
 
 			// Pre-approval validation
-			if (updateDto.status === 'Approved') {
+			if (updateDto.status === ThesisApplicationStatus.Approved) {
 				await this.thesisApplicationService.validateGroupCanBeApproved(
 					groupId,
 					thesisId,
@@ -125,7 +126,7 @@ export class ThesisApplicationLecturerService {
 
 			const result = await this.prisma.$transaction(async (tx) => {
 				// Double check inside transaction to prevent race condition
-				if (updateDto.status === 'Approved') {
+				if (updateDto.status === ThesisApplicationStatus.Approved) {
 					await this.thesisApplicationService.validateGroupCanBeApprovedInTransaction(
 						tx,
 						groupId,
@@ -148,13 +149,13 @@ export class ThesisApplicationLecturerService {
 						this.thesisApplicationService.getComprehensiveApplicationInclude(),
 				});
 
-				if (updateDto.status === 'Approved') {
+				if (updateDto.status === ThesisApplicationStatus.Approved) {
 					await this.thesisApplicationService.handleApprovalProcess(
 						tx,
 						groupId,
 						thesisId,
 					);
-				} else if (updateDto.status === 'Rejected') {
+				} else if (updateDto.status === ThesisApplicationStatus.Rejected) {
 					await this.thesisApplicationService.handleRejectionProcess(
 						tx,
 						groupId,

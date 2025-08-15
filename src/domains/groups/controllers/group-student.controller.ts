@@ -109,7 +109,7 @@ export class GroupStudentController {
 		return await this.service.pickThesis(id, user.id, dto);
 	}
 
-	@Roles(Role.MODERATOR, Role.STUDENT)
+	@Roles(Role.ADMIN, Role.MODERATOR, Role.STUDENT)
 	@HttpCode(HttpStatus.OK)
 	@Put(':id/unpick-thesis')
 	@ApiOperation(GroupStudentDocs.unpickThesis)

@@ -16,7 +16,7 @@ import { GroupPublicService } from '@/groups/services';
 import { GroupService } from '@/groups/services/group.service';
 import { PrismaService } from '@/providers';
 
-import { SemesterStatus } from '~/generated/prisma';
+import { SemesterStatus, ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class GroupStudentService {
@@ -38,15 +38,6 @@ export class GroupStudentService {
 					`Cannot create group. Semester status must be ${SemesterStatus.Preparing}, current status is ${currentSemester.status}`,
 				);
 			}
-
-			// if (currentSemester.maxGroup == null) {
-			// 	this.logger.warn(
-			// 		`maxGroup is not set for semester ${currentSemester.id}`,
-			// 	);
-			// 	throw new ConflictException(
-			// 		`Cannot create group. Maximum number of groups for this semester is not configured.`,
-			// 	);
-			// }
 
 			const [currentTotalGroups, existingParticipation] = await Promise.all([
 				this.prisma.group.count({
@@ -76,15 +67,6 @@ export class GroupStudentService {
 					`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
 				);
 			}
-
-			// if (currentTotalGroups >= currentSemester.maxGroup) {
-			// 	this.logger.warn(
-			// 		`Maximum number of groups for semester ${currentSemester.id} reached: ${currentSemester.maxGroup}`,
-			// 	);
-			// 	throw new ConflictException(
-			// 		`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
-			// 	);
-			// }
 
 			const result = await this.prisma.$transaction(
 				async (prisma) => {
@@ -888,7 +870,7 @@ export class GroupStudentService {
 			}
 
 			// Check if thesis is approved
-			if (thesis.status !== 'Approved') {
+			if (thesis.status !== ThesisStatus.Approved) {
 				throw new ConflictException(
 					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" has status "${thesis.status}". Only approved theses can be picked by groups.`,
 				);
@@ -1065,7 +1047,7 @@ export class GroupStudentService {
 
 					if (
 						approvedApplication &&
-						approvedApplication.status === 'Approved'
+						approvedApplication.status === ThesisStatus.Approved
 					) {
 						await prisma.thesisApplication.update({
 							where: {

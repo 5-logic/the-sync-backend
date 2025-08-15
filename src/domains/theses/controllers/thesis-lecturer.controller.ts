@@ -107,7 +107,7 @@ export class ThesisLecturerController {
 		return await this.service.remove(user.id, id);
 	}
 
-	@Roles(Role.MODERATOR, Role.LECTURER)
+	@Roles(Role.ADMIN, Role.MODERATOR, Role.LECTURER)
 	@HttpCode(HttpStatus.OK)
 	@Post(':id/assign')
 	@ApiOperation(ThesisLecturerDocs.assignThesis)
