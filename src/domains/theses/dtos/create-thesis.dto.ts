@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, IsUrl } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, IsUrl } from 'class-validator';
 
 import { ThesisOrientation } from '~/generated/prisma';
 
