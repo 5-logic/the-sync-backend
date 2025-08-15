@@ -690,7 +690,7 @@ export class ThesisLecturerService {
 		dto: AssignThesisDto,
 	): Promise<ThesisDetailResponse> {
 		this.logger.log(
-			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId}`,
+			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId} by user with ID: ${userId}`,
 		);
 
 		try {
@@ -704,14 +704,27 @@ export class ThesisLecturerService {
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			// Validate lecturer permission to assign thesis
-			const lecturer = await this.prisma.lecturer.findUnique({
-				where: { userId },
+			// Validate user permission to assign thesis
+			// First check if user is an admin
+			const admin = await this.prisma.admin.findFirst({
+				where: { id: userId },
 			});
 
-			if (!lecturer) {
-				this.logger.warn(`Lecturer with ID ${userId} not found`);
-				throw new NotFoundException(`Lecturer not found`);
+			let lecturer: any = null;
+			if (!admin) {
+				// If not admin, check if user is a lecturer
+				lecturer = await this.prisma.lecturer.findUnique({
+					where: { userId },
+				});
+
+				if (!lecturer) {
+					this.logger.warn(
+						`User with ID ${userId} is neither admin nor lecturer`,
+					);
+					throw new NotFoundException(
+						`User not found or insufficient permissions`,
+					);
+				}
 			}
 
 			// Validate thesis supervision requirements
@@ -738,8 +751,9 @@ export class ThesisLecturerService {
 				);
 			}
 
+			// If user is admin, skip supervisor checks
 			// If lecturer is not a moderator, they must be one of the supervisors
-			if (!lecturer.isModerator) {
+			if (!admin && lecturer && !lecturer.isModerator) {
 				const isSupervising = supervisors.some(
 					(supervision) => supervision.lecturerId === userId,
 				);
@@ -848,7 +862,7 @@ export class ThesisLecturerService {
 			});
 
 			this.logger.log(
-				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
+				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId} by user with ID: ${userId}`,
 			);
 			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
 
@@ -866,7 +880,7 @@ export class ThesisLecturerService {
 			return result;
 		} catch (error) {
 			this.logger.error(
-				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId}`,
+				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId} by user with ID ${userId}`,
 				error,
 			);
 
