@@ -257,11 +257,11 @@ export class PineconeThesisProcessor extends WorkerHost {
 				return;
 			}
 
-			// Now query using the vector to find similar content
+			// First, query with a larger topK to get more potential candidates
 			// Only compare with approved theses to ensure quality comparison
-			const queryRequest = {
+			const initialQueryRequest = {
 				vector: thesisVector,
-				topK: 5,
+				topK: 100, // Get more candidates initially
 				includeMetadata: true,
 				includeValues: false,
 				filter: {
@@ -269,10 +269,10 @@ export class PineconeThesisProcessor extends WorkerHost {
 				},
 			};
 
-			const queryResults = await index.query(queryRequest);
+			const initialQueryResults = await index.query(initialQueryRequest);
 
-			// Process results and get candidates, excluding the original thesis
-			const candidates: Array<{
+			// Process results and filter by similarity threshold (>30%), excluding the original thesis
+			const allSimilarCandidates: Array<{
 				id: string;
 				englishName: string;
 				vietnameseName: string;
@@ -280,19 +280,32 @@ export class PineconeThesisProcessor extends WorkerHost {
 				vectorSimilarity: number;
 			}> = [];
 
-			if (queryResults.matches) {
-				for (const match of queryResults.matches) {
+			if (initialQueryResults.matches) {
+				for (const match of initialQueryResults.matches) {
 					if (match.id !== thesisId && match.metadata) {
-						candidates.push({
-							id: match.id,
-							englishName: match.metadata.englishName as string,
-							vietnameseName: match.metadata.vietnameseName as string,
-							description: match.metadata.description as string,
-							vectorSimilarity: match.score || 0,
-						});
+						const similarity = match.score || 0;
+						// Only include candidates with similarity > 30% (0.3)
+						if (similarity > 0.3) {
+							allSimilarCandidates.push({
+								id: match.id,
+								englishName: match.metadata.englishName as string,
+								vietnameseName: match.metadata.vietnameseName as string,
+								description: match.metadata.description as string,
+								vectorSimilarity: similarity,
+							});
+						}
 					}
 				}
 			}
+
+			// Sort by similarity score (highest first) and take top 5
+			const candidates = allSimilarCandidates
+				.sort((a, b) => b.vectorSimilarity - a.vectorSimilarity)
+				.slice(0, 5);
+
+			this.logger.log(
+				`Found ${allSimilarCandidates.length} candidates above 30% similarity, selected top ${candidates.length} for AI analysis`,
+			);
 
 			// If no candidates found, save empty array to cache
 			if (candidates.length === 0) {
