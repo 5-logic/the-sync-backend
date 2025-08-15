@@ -6,7 +6,6 @@ export const mapSemester = (semester: Semester): SemesterResponse => ({
 	id: semester.id,
 	name: semester.name,
 	code: semester.code,
-	maxGroup: semester.maxGroup ?? undefined,
 	status: semester.status.toString(),
 	ongoingPhase: semester.ongoingPhase?.toString() ?? undefined,
 	defaultThesesPerLecturer: semester.defaultThesesPerLecturer,

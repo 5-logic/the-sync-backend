@@ -1,6 +1,6 @@
 {
 	"name": "the-sync-backend",
-	"version": "0.8.3",
+	"version": "0.8.8",
 	"private": true,
 	"scripts": {
 		"build": "nest build",
@@ -34,7 +34,7 @@
 		"@nestjs/platform-express": "11.1.5",
 		"@nestjs/swagger": "11.2.0",
 		"@pinecone-database/pinecone": "6.1.1",
-		"@prisma/client": "6.12.0",
+		"@prisma/client": "6.14.0",
 		"argon2": "0.43.1",
 		"axios": "1.10.0",
 		"basic-auth-connect": "1.1.0",
@@ -72,7 +72,7 @@
 		"husky": "9.1.7",
 		"lint-staged": "16.1.2",
 		"prettier": "3.6.2",
-		"prisma": "6.12.0",
+		"prisma": "6.14.0",
 		"source-map-support": "0.5.21",
 		"ts-loader": "9.5.2",
 		"ts-node": "10.9.2",

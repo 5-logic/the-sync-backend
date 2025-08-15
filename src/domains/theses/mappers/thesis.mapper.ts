@@ -9,6 +9,7 @@ export const mapThesis = (thesis: Thesis): ThesisResponse => ({
 	abbreviation: thesis.abbreviation,
 	description: thesis.description,
 	domain: thesis.domain ?? undefined,
+	orientation: thesis.orientation.toString(),
 	status: thesis.status.toString(),
 	isPublish: thesis.isPublish,
 	groupId: thesis.groupId ?? undefined,

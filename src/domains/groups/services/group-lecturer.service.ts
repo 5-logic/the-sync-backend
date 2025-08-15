@@ -36,15 +36,6 @@ export class GroupLecturerService {
 									user: true,
 								},
 							},
-							thesisRequiredSkills: {
-								include: {
-									skill: {
-										include: {
-											skillSet: true,
-										},
-									},
-								},
-							},
 						},
 					},
 					semester: true,
@@ -56,20 +47,6 @@ export class GroupLecturerService {
 									major: true,
 								},
 							},
-						},
-					},
-					groupRequiredSkills: {
-						include: {
-							skill: {
-								include: {
-									skillSet: true,
-								},
-							},
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: true,
 						},
 					},
 				},

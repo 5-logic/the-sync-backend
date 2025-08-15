@@ -10,9 +10,6 @@ export class SemesterResponse {
 	@ApiProperty()
 	code: string;
 
-	@ApiPropertyOptional()
-	maxGroup?: number;
-
 	@ApiProperty()
 	status: string;
 

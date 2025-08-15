@@ -57,32 +57,6 @@ export class GroupPublicService {
 					status: true,
 				},
 			},
-			groupRequiredSkills: {
-				select: {
-					skill: {
-						select: {
-							id: true,
-							name: true,
-							skillSet: {
-								select: {
-									id: true,
-									name: true,
-								},
-							},
-						},
-					},
-				},
-			},
-			groupExpectedResponsibilities: {
-				select: {
-					responsibility: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
-				},
-			},
 			studentGroupParticipations: {
 				select: {
 					isLeader: true,
@@ -188,10 +162,6 @@ export class GroupPublicService {
 				updatedAt: group.updatedAt,
 				semester: group.semester,
 				thesis: group.thesis,
-				skills: group.groupRequiredSkills.map((grs) => grs.skill),
-				responsibilities: group.groupExpectedResponsibilities.map(
-					(ger) => ger.responsibility,
-				),
 				members: group.studentGroupParticipations
 					.sort((a, b) => {
 						if (a.isLeader && !b.isLeader) return -1;
@@ -277,13 +247,6 @@ export class GroupPublicService {
 					updatedAt: participation.group.updatedAt,
 					semester: participation.group.semester,
 					thesis: participation.group.thesis,
-					skills: participation.group.groupRequiredSkills.map(
-						(grs) => grs.skill,
-					),
-					responsibilities:
-						participation.group.groupExpectedResponsibilities.map(
-							(ger) => ger.responsibility,
-						),
 					members: participation.group.studentGroupParticipations
 						.sort((a, b) => {
 							if (a.isLeader && !b.isLeader) return -1;
@@ -353,33 +316,6 @@ export class GroupPublicService {
 									code: true,
 								},
 							},
-							studentSkills: {
-								select: {
-									level: true,
-									skill: {
-										select: {
-											id: true,
-											name: true,
-											skillSet: {
-												select: {
-													id: true,
-													name: true,
-												},
-											},
-										},
-									},
-								},
-							},
-							studentExpectedResponsibilities: {
-								select: {
-									responsibility: {
-										select: {
-											id: true,
-											name: true,
-										},
-									},
-								},
-							},
 						},
 					},
 				},
@@ -399,13 +335,6 @@ export class GroupPublicService {
 				gender: member.student.user.gender,
 				major: member.student.major,
 				isLeader: member.isLeader,
-				skills: member.student.studentSkills.map((ss) => ({
-					...ss.skill,
-					level: ss.level,
-				})),
-				responsibilities: member.student.studentExpectedResponsibilities.map(
-					(ser) => ser.responsibility,
-				),
 			}));
 
 			this.logger.log(
@@ -415,63 +344,6 @@ export class GroupPublicService {
 			return transformedMembers;
 		} catch (error) {
 			this.logger.error(`Error finding members for group ID ${groupId}`, error);
-			throw error;
-		}
-	}
-
-	async findGroupSkillsAndResponsibilities(groupId: string) {
-		try {
-			this.logger.log(
-				`Finding skills and responsibilities for group ID: ${groupId}`,
-			);
-
-			const [groupSkills, groupResponsibilities] = await Promise.all([
-				this.prisma.groupRequiredSkill.findMany({
-					where: { groupId },
-					select: {
-						skill: {
-							select: {
-								id: true,
-								name: true,
-								skillSet: {
-									select: {
-										id: true,
-										name: true,
-									},
-								},
-							},
-						},
-					},
-				}),
-				this.prisma.groupExpectedResponsibility.findMany({
-					where: { groupId },
-					select: {
-						responsibility: {
-							select: {
-								id: true,
-								name: true,
-							},
-						},
-					},
-				}),
-			]);
-
-			const result = {
-				skills: groupSkills.map((gs) => gs.skill),
-				responsibilities: groupResponsibilities.map((gr) => gr.responsibility),
-			};
-
-			this.logger.log(
-				`Found ${result.skills.length} skills and ${result.responsibilities.length} responsibilities for group ID: ${groupId}`,
-			);
-
-			return result;
-		} catch (error) {
-			this.logger.error(
-				`Error finding skills and responsibilities for group ID ${groupId}`,
-				error,
-			);
-
 			throw error;
 		}
 	}

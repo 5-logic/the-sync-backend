@@ -4,13 +4,6 @@ export interface StudentSuggestion {
 		fullName: string;
 		email: string;
 		studentCode: string;
-		skills?: Array<{
-			name: string;
-			level: number;
-		}>;
-		expectedResponsibilities?: Array<{
-			name: string;
-		}>;
 	};
 	similarityScore: number;
 	matchPercentage: number;

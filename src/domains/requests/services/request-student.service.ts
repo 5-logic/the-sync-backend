@@ -30,9 +30,25 @@ export class RequestStudentService {
 		try {
 			const group = await this.prisma.group.findUnique({
 				where: { id: dto.groupId },
-				include: { semester: true },
+				include: {
+					semester: true,
+					studentGroupParticipations: {
+						include: {
+							student: {
+								include: {
+									user: {
+										select: {
+											id: true,
+											fullName: true,
+											email: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			});
-
 			if (!group) {
 				throw new NotFoundException(`Group not found`);
 			}
@@ -49,66 +65,97 @@ export class RequestStudentService {
 				group.semesterId,
 			);
 
-			await this.requestService.validateNoPendingJoinRequest(userId);
-
 			await this.requestService.validateGroupCapacity(dto.groupId);
 
-			const request = await this.prisma.request.create({
-				data: {
-					type: RequestType.Join,
-					status: RequestStatus.Pending,
-					studentId: userId,
-					groupId: dto.groupId,
-				},
-				include: {
-					student: {
+			// Check if group is empty (no members)
+			const isEmptyGroup = group.studentGroupParticipations.length === 0;
+
+			if (isEmptyGroup) {
+				// First student joins automatically as leader
+				const participation =
+					await this.prisma.studentGroupParticipation.create({
+						data: {
+							studentId: userId,
+							groupId: dto.groupId,
+							semesterId: group.semesterId,
+							isLeader: true,
+						},
 						include: {
-							user: {
+							student: {
+								include: {
+									user: { omit: { password: true } },
+								},
+							},
+							group: {
 								select: {
 									id: true,
-									fullName: true,
-									email: true,
+									code: true,
+									name: true,
 								},
 							},
 						},
-					},
-					group: {
-						select: {
-							id: true,
-							code: true,
-							name: true,
-						},
-					},
-				},
-			});
+					});
 
-			this.logger.log(
-				`Student ${userId} sent join request to group ${group.code}`,
-			);
+				this.logger.log(
+					`Student ${userId} automatically joined empty group ${group.code} as leader`,
+				);
 
-			const groupLeader = await this.prisma.studentGroupParticipation.findFirst(
-				{
-					where: {
+				return participation;
+			} else {
+				// Group has members, create join request for leader approval
+				await this.requestService.validateNoPendingJoinRequest(userId);
+
+				const request = await this.prisma.request.create({
+					data: {
+						type: RequestType.Join,
+						status: RequestStatus.Pending,
+						studentId: userId,
 						groupId: dto.groupId,
-						isLeader: true,
 					},
 					include: {
 						student: {
 							include: {
-								user: true,
+								user: {
+									select: {
+										id: true,
+										fullName: true,
+										email: true,
+									},
+								},
+							},
+						},
+						group: {
+							select: {
+								id: true,
+								code: true,
+								name: true,
 							},
 						},
 					},
-				},
-			);
+				});
 
-			await this.requestService.sendJoinRequestNotification(
-				request,
-				group,
-				groupLeader,
-			);
+				this.logger.log(
+					`Student ${userId} sent join request to group ${group.code}`,
+				);
 
-			return request;
+				const groupLeader = group.studentGroupParticipations.find(
+					(participation) => participation.isLeader,
+				);
+
+				if (groupLeader) {
+					await this.requestService.sendJoinRequestNotification(
+						request,
+						group,
+						{ student: groupLeader.student },
+					);
+				}
+
+				return {
+					message: 'Join request sent successfully',
+					request,
+					type: 'request_sent',
+				};
+			}
 		} catch (error) {
 			this.logger.error('Error creating join request', error);
 			throw error;

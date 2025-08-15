@@ -11,11 +11,11 @@ import { RequestModule } from '@/requests/request.module';
 import { ResponsibilityModule } from '@/responsibilities/responsibility.module';
 import { ReviewModule } from '@/reviews/review.module';
 import { SemesterModule } from '@/semesters/index';
-import { SkillSetModule } from '@/skill-sets/index';
 import { StudentModule } from '@/students/index';
 import { SubmissionModule } from '@/submissions/submission.module';
 import { SupervisionModule } from '@/supervisions/supervision.module';
 import { ThesisModule } from '@/theses/index';
+import { ThesisApplicationModule } from '@/thesis-application/index';
 
 @Module({
 	imports: [
@@ -30,11 +30,11 @@ import { ThesisModule } from '@/theses/index';
 		ResponsibilityModule,
 		ReviewModule,
 		SemesterModule,
-		SkillSetModule,
 		StudentModule,
 		SubmissionModule,
 		SupervisionModule,
 		ThesisModule,
+		ThesisApplicationModule,
 	],
 })
 export class DomainModule {}

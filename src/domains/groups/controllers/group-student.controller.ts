@@ -1,11 +1,11 @@
 import {
 	Body,
 	Controller,
-	Delete,
+	// Delete,
 	HttpCode,
 	HttpStatus,
 	Param,
-	Post,
+	// Post,
 	Put,
 	Req,
 	UseGuards,
@@ -19,7 +19,7 @@ import { GROUP_API_TAGS, GROUP_CONSTANTS } from '@/groups/constants';
 import { GroupStudentDocs } from '@/groups/docs';
 import {
 	ChangeLeaderDto,
-	CreateGroupDto,
+	// CreateGroupDto,
 	PickThesisDto,
 	RemoveStudentDto,
 	UpdateGroupDto,
@@ -33,15 +33,15 @@ import { GroupStudentService } from '@/groups/services';
 export class GroupStudentController {
 	constructor(private readonly service: GroupStudentService) {}
 
-	@Roles(Role.STUDENT)
-	@HttpCode(HttpStatus.CREATED)
-	@Post()
-	@ApiOperation(GroupStudentDocs.create)
-	async create(@Req() req: Request, @Body() dto: CreateGroupDto) {
-		const user = req.user as UserPayload;
+	// @Roles(Role.STUDENT)
+	// @HttpCode(HttpStatus.CREATED)
+	// @Post()
+	// @ApiOperation(GroupStudentDocs.create)
+	// async create(@Req() req: Request, @Body() dto: CreateGroupDto) {
+	// 	const user = req.user as UserPayload;
 
-		return await this.service.create(user.id, dto);
-	}
+	// 	return await this.service.create(user.id, dto);
+	// }
 
 	@Roles(Role.STUDENT)
 	@HttpCode(HttpStatus.OK)
@@ -109,7 +109,7 @@ export class GroupStudentController {
 		return await this.service.pickThesis(id, user.id, dto);
 	}
 
-	@Roles(Role.MODERATOR, Role.STUDENT)
+	@Roles(Role.ADMIN, Role.MODERATOR, Role.STUDENT)
 	@HttpCode(HttpStatus.OK)
 	@Put(':id/unpick-thesis')
 	@ApiOperation(GroupStudentDocs.unpickThesis)
@@ -119,13 +119,13 @@ export class GroupStudentController {
 		return await this.service.unpickThesis(id, user.id);
 	}
 
-	@Roles(Role.MODERATOR, Role.STUDENT)
-	@HttpCode(HttpStatus.OK)
-	@Delete(':id')
-	@ApiOperation(GroupStudentDocs.delete)
-	async delete(@Req() req: Request, @Param('id') id: string) {
-		const user = req.user as UserPayload;
+	// @Roles(Role.MODERATOR, Role.STUDENT)
+	// @HttpCode(HttpStatus.OK)
+	// @Delete(':id')
+	// @ApiOperation(GroupStudentDocs.delete)
+	// async delete(@Req() req: Request, @Param('id') id: string) {
+	// 	const user = req.user as UserPayload;
 
-		return await this.service.delete(id, user.id);
-	}
+	// 	return await this.service.delete(id, user.id);
+	// }
 }

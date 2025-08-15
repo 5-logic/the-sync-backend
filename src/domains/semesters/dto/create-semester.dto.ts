@@ -13,11 +13,6 @@ export class CreateSemesterDto {
 	@ApiPropertyOptional()
 	@IsOptional()
 	@IsPositive()
-	maxGroup?: number;
-
-	@ApiPropertyOptional()
-	@IsOptional()
-	@IsPositive()
 	defaultThesesPerLecturer?: number;
 
 	@ApiPropertyOptional()

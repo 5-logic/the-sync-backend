@@ -58,7 +58,6 @@ export class SemesterService {
 				data: {
 					code: dto.code,
 					name: dto.name,
-					maxGroup: dto.maxGroup,
 					defaultThesesPerLecturer: dto.defaultThesesPerLecturer,
 					maxThesesPerLecturer: dto.maxThesesPerLecturer,
 				},
@@ -588,7 +587,7 @@ export class SemesterService {
 				where: {
 					semesterId: semester.id,
 					isPublish: true,
-					status: 'Approved',
+					status: ThesisStatus.Approved,
 				},
 			});
 

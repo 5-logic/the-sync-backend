@@ -5,6 +5,267 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2025-08-14
+
+### Added
+
+- **Enhanced Group Admin Management System**:
+  - **New Group Admin API**:
+    - `PUT /groups/format/{semesterId}` - Format and reorganize groups for a specific semester (admin only)
+    - `DELETE /groups/{groupId}` - Delete empty groups (admin only)
+  - **Automatic Group Management**: Enhanced group formatting functionality to optimize group structures
+
+- **Enhanced Join Request Logic**:
+  - **Automatic Leader Assignment**: Students joining empty groups are now automatically assigned as leaders without requiring approval
+  - **Smart Request Handling**: Join requests are only created for groups with existing members; empty groups allow immediate joining
+
+### Changed
+
+- **Thesis Application Validation Logic**:
+  - **Application Status Validation**: Updated validation to check for `Approved` applications instead of `Pending` applications when creating new thesis applications
+  - **Improved Application Handling**: Enhanced logic to better handle existing applications and prevent conflicts
+  - **Streamlined Validation**: Refactored validation methods to use centralized service functions for better maintainability
+
+- **Group Management Improvements**:
+  - **Group Deletion Logic**: Improved group deletion to handle empty groups more efficiently
+  - **Leave Group Enhancement**: Updated leave group functionality to preserve empty groups and improve notification handling
+  - **Enhanced Member Management**: Better handling of group membership changes with automatic cleanup
+
+- **Semester Status Validation Refinement**:
+  - **Enhanced Group Validation**: Semester phase transitions now only validate groups that have students (empty groups are excluded from validation)
+  - **Improved Transition Logic**: Refined validation messages and logic for semester status transitions
+  - **Better Error Messages**: Updated error messages to clarify that validation applies only to groups with students
+
+- **Request Service Architecture**:
+  - **Join Request Flow**: Enhanced join request service to handle both automatic joining (empty groups) and request-based joining (groups with members)
+  - **Response Structure**: Improved response structure for join requests to provide better feedback to clients
+  - **Notification Enhancement**: Better notification handling for join requests and automatic assignments
+
+### Fixed
+
+- **Thesis Application Conflict Resolution**:
+  - **Application Duplication**: Fixed issues with thesis application creation when existing applications were in rejected/cancelled states
+  - **Bidirectional Assignment**: Improved bidirectional assignment logic for thesis and group relationships during application approval/rejection
+
+- **Group Service Improvements**:
+  - **Empty Group Handling**: Enhanced handling of empty groups in various operations
+  - **Thesis Unpicking**: Improved unpick thesis logic to automatically cancel approved applications and maintain data consistency
+
+### Enhanced
+
+- **API Documentation**: Updated Swagger documentation for all modified endpoints with clearer parameter descriptions
+- **Service Architecture**: Better separation of concerns between different service layers with improved validation methods
+- **Error Handling**: Enhanced error handling and logging across all modified services
+- **Code Quality**: Removed unused imports and cleaned up service dependencies
+
+### Technical Improvements
+
+- **Validation Logic**: Centralized validation methods in thesis application service for better code reuse
+- **Database Operations**: Improved database queries and transaction handling for complex operations
+- **Service Integration**: Enhanced integration between group, request, and thesis application services
+- **Code Organization**: Better code organization with removed unused DTOs and improved index exports
+
+### Pull Requests
+
+- Direct commits implementing enhanced group management, refined thesis application logic, and improved join request handling
+
+---
+
+## [0.8.7] - 2025-08-13
+
+### Added
+
+- **Thesis Application Management System**:
+  - **New Thesis Application API**:
+    - `POST /thesis-application/{semesterId}` - Create thesis application (requires `CreateThesisApplicationDto` with `groupId` and `thesisId`)
+    - `GET /thesis-application/{semesterId}/{groupId}` - Get all thesis applications for a group
+    - `PUT /thesis-application/{groupId}/{thesisId}/cancel` - Cancel thesis application
+    - `GET /thesis-application/{semesterId}` - Get all thesis applications for lecturer/moderator
+    - `GET /thesis-application/thesis/{thesisId}` - Get specific thesis application details
+    - `PUT /thesis-application/{groupId}/{thesisId}` - Update thesis application status (requires `UpdateThesisApplicationDto` with `status`)
+  - **New Database Model**: `ThesisApplication` with status enum (`pending`, `approved`, `rejected`, `cancelled`)
+  - **Enhanced Workflow**: Groups can now apply for thesis before final assignment, allowing lecturers to review applications
+
+- **Batch Group Creation System**:
+  - **New Group Admin API**:
+    - `POST /groups/admin` - Batch create groups (requires `CreateManyGroupDto` with `semesterId` and `numberOfGroup`)
+  - **Administrative Efficiency**: Allows admins to create multiple groups at once for a semester
+
+- **Enhanced Thesis Assignment**:
+  - **New Thesis Assignment Endpoint**:
+    - `POST /theses/{id}/assign` - Assign thesis to group (requires `AssignThesisDto` with `groupId`)
+  - **Enhanced Validation**:
+    - Thesis must have at least 2 supervisors before assignment
+    - Only approved and published theses can be assigned
+    - Groups must be in the same semester as the thesis
+    - Enhanced permission checks for lecturers and moderators
+  - **Improved Assignment Logic**: Better conflict detection and validation for thesis-group assignments
+
+- **AI Service Enhancements**:
+  - **Improved Thesis Processing**: Enhanced Pinecone integration with better metadata handling
+  - **Enhanced Content Filtering**: Updated AI thesis service to filter approved theses more effectively
+
+### Changed
+
+- **Thesis Application Workflow**:
+  - **Enhanced Group-Thesis Relationship**: Groups can now apply for multiple theses before final assignment
+  - **Status Management**: Added comprehensive status tracking for thesis applications
+  - **Role-Based Access**: Students can create/cancel applications, lecturers can view and update status
+
+- **Database Schema Updates**:
+  - **New Relationship**: Added `ThesisApplication` model linking groups and theses with application status
+  - **Enhanced Group Model**: Added `thesisApplications` relationship to support application workflow
+  - **Enhanced Thesis Model**: Added `thesisApplications` relationship for better thesis management
+
+- **Seeding System Improvements**:
+  - **Enhanced Lecturer Names**: Updated seeding to include role identifiers in lecturer names for better identification
+  - **Enhanced Student Names**: Updated seeding to include role identifiers in student names
+
+### Enhanced
+
+- **API Architecture**:
+  - **New Thesis Application Module**: Comprehensive module with dedicated controllers and services
+  - **Role-Based Controllers**: Separate controllers for student and lecturer thesis application operations
+  - **Enhanced Documentation**: Complete Swagger documentation for all new endpoints
+
+- **Service Layer Improvements**:
+  - **Thesis Application Services**: Dedicated services for student and lecturer thesis application operations
+  - **Enhanced Group Admin Service**: New service for batch group creation operations
+  - **Improved Validation**: Enhanced validation logic for thesis assignments and applications
+
+- **Type Safety and Validation**:
+  - **New DTOs**: `CreateThesisApplicationDto`, `UpdateThesisApplicationDto`, `CreateManyGroupDto`, `AssignThesisDto`
+  - **Enhanced Enums**: New `ThesisApplicationStatus` enum for application status management
+  - **Improved Validation**: Enhanced UUID validation and business rule checks
+
+### Technical Improvements
+
+- **Module Organization**: Enhanced domain module structure with thesis application module integration
+- **Path Mapping**: Added TypeScript path mapping for thesis-application domain
+- **Cache Management**: Improved cache handling for thesis assignment operations
+- **Error Handling**: Enhanced error handling and logging for thesis applications and assignments
+- **Database Constraints**: Added proper foreign key relationships and composite primary keys for thesis applications
+
+### Pull Requests
+
+- Direct commits implementing thesis application system, batch group creation, and enhanced thesis assignment functionality
+
+---
+
+## [0.8.6] - 2025-08-12
+
+### Changed
+
+- **Thesis Management Logic Enhancement**:
+  - **Improved Phase-Based Update Logic**: Enhanced thesis update permissions for different semester phases with clearer separation between `Picking` and `Ongoing` phases
+  - **Refined Group Leader Permissions**: Improved logic for group leaders to update thesis during `ScopeAdjustable` phase in ongoing semesters
+  - **Enhanced Lecturer Update Rights**: Clarified when lecturers can update their own theses based on semester status and group assignment state
+
+### Fixed
+
+- **Code Quality Improvements**:
+  - **Removed Dead Code**: Cleaned up all commented-out caching logic throughout `ThesisLecturerService` for better code maintainability
+  - **Removed Debug Comments**: Eliminated unnecessary debug comments and improved code readability
+  - **Streamlined Service Architecture**: Removed unused cache service dependencies and simplified service constructor
+
+### Refactored
+
+- **Service Layer Cleanup**:
+  - **Caching Dependencies**: Removed commented-out `CacheHelperService` imports and references for cleaner architecture
+  - **Method Documentation**: Cleaned up inline comments while preserving essential business logic documentation
+  - **Code Organization**: Improved code structure by removing redundant comments and focusing on clear, self-documenting code
+
+### Technical Improvements
+
+- **Performance Optimization**: Simplified service dependencies by removing unused caching infrastructure
+- **Code Maintainability**: Enhanced code readability by removing clutter from commented-out code blocks
+- **Architecture Simplification**: Streamlined service layer with focused, production-ready code without development artifacts
+- **Business Logic Clarity**: Improved understanding of thesis update permissions across different semester phases
+
+---
+
+## [0.8.5] - 2025-08-12
+
+### Enhanced
+
+- **AI-Powered Duplicate Detection System Improvements**:
+  - **Enhanced Response Format**: Added `reasons` field to `DuplicateThesisResponse` to provide specific explanations for why theses are considered duplicates
+  - **Refined Scoring Criteria**: Significantly improved duplicate detection accuracy by focusing exclusively on unique, specific content rather than common technology choices
+  - **Advanced AI Analysis**: Enhanced AI prompt engineering to distinguish between standard architectures (React, Node.js, RESTful APIs) and truly unique implementations
+  - **Stricter Evaluation Standards**: Updated scoring guidelines to be more conservative, with most theses now properly scoring 0-30% unless genuine unique content overlap exists
+
+- **Review System Access Control**:
+  - **Expanded Role Access**: Enhanced `GET /reviews/:submissionId/eligible-reviewers` endpoint to include `STUDENT` role access alongside existing `MODERATOR` permissions
+  - **Improved Accessibility**: Students can now access eligible reviewer information for better transparency in the review process
+
+### Changed
+
+- **Duplicate Detection Algorithm Optimization**:
+  - **Candidate Selection Refinement**: Reduced top candidates from 100 to 5 for more focused analysis, removing similarity threshold filtering for comprehensive evaluation
+  - **Content Analysis Enhancement**: Improved text content retrieval from Pinecone vector database using `text` metadata field instead of `content`
+  - **Response Structure Improvement**: Enhanced `mapDuplicateThesis()` function to accept optional `reasons` parameter for detailed duplicate explanations
+
+- **AI Analysis Criteria Restructuring**:
+  - **Unique Content Focus**: Redefined duplicate detection to strictly ignore common technology stacks, standard architectures, and general development practices
+  - **Specific Content Validation**: AI now only flags duplication for identical business rules, custom algorithms, unique workflows, and novel problem-solving approaches
+  - **Enhanced Reason Validation**: Implemented strict validation for duplicate reasons with maximum 3 items, each limited to 100 characters
+
+### Fixed
+
+- **False Positive Reduction**: Significantly reduced false positives in duplicate detection by excluding common technological choices and standard development patterns
+- **Response Accuracy**: Improved accuracy of duplicate percentage calculations by focusing on genuinely unique intellectual content overlap
+- **Content Retrieval**: Enhanced error handling for Pinecone content retrieval with better fallback mechanisms
+
+### Technical Improvements
+
+- **API Response Enhancement**: Structured duplicate detection responses now include detailed reasoning for better transparency and debugging
+- **Validation Logic**: Enhanced input validation for AI analysis results with proper bounds checking and format verification
+- **Performance Optimization**: Streamlined candidate analysis process by reducing unnecessary similarity filtering steps
+- **Code Quality**: Improved service architecture with better separation of content analysis and response formatting logic
+
+---
+
+## [0.8.4] - 2025-08-11
+
+### Enhanced
+
+- **AI-Powered Thesis Duplicate Detection System**:
+  - **Increased Candidate Analysis**: Enhanced duplicate detection by increasing candidate limit from 50 to 100 theses for more comprehensive analysis
+  - **AI-Driven Accuracy Improvement**: Integrated advanced AI analysis using Google Gemini to calculate more accurate duplicate percentages beyond simple vector similarity
+  - **Multi-Factor Evaluation**: AI now considers content similarity (40%), title similarity (25%), description similarity (25%), and conceptual overlap (10%) for more precise duplication assessment
+  - **Improved Threshold Logic**: Changed initial filtering from 70% to 50% vector similarity to capture more potential candidates, then applies AI analysis for accurate final scoring
+  - **Enhanced Content Analysis**: Added content retrieval from Pinecone vector database for more comprehensive thesis comparison including full thesis content
+
+- **Semester Phase Transition Improvements**:
+  - **Enhanced Supervision Management**: Improved `validateOngoingPhaseTransition` method to automatically remove supervisors from unpicked theses during phase transitions
+  - **Complete State Reset**: Unpicked theses now have both their status reset to `New`, publication status set to `false`, and all supervision relationships removed
+  - **Better Data Integrity**: Enhanced transaction handling to ensure complete cleanup of unpicked theses during semester phase transitions
+
+### Changed
+
+- **AI Thesis Service Architecture**:
+  - **Enhanced Detection Algorithm**: Refactored `checkDuplicates()` method in `AIThesisService` to use a two-stage approach: vector similarity filtering followed by AI-powered analysis
+  - **Improved Response Structure**: Enhanced duplicate detection to provide more detailed analysis results with better accuracy scoring
+  - **Fallback Mechanism**: Added robust fallback to vector similarity calculation if AI analysis fails
+
+- **Semester Management Logic**:
+  - **Supervision Cleanup**: Updated semester status service to include supervision relationship cleanup during phase transitions
+  - **Enhanced Logging**: Improved logging for supervision removal and thesis state management during semester transitions
+
+### Fixed
+
+- **Duplicate Detection Accuracy**: Fixed potential false positives in thesis duplicate detection by implementing AI-powered analysis instead of relying solely on vector similarity scores
+- **Phase Transition Data Integrity**: Resolved issue where supervision relationships were not properly cleaned up when theses were reset during semester phase transitions
+
+### Technical Improvements
+
+- **AI Integration**: Enhanced AI service with sophisticated prompt engineering for accurate duplicate percentage calculation
+- **Database Transaction Management**: Improved transaction handling for complex operations involving multiple entity updates during phase transitions
+- **Error Handling**: Enhanced error handling and fallback mechanisms in AI-powered duplicate detection
+- **Performance Optimization**: Optimized candidate selection process to balance comprehensiveness with performance in duplicate detection
+
+---
+
 ## [0.8.3] - 2025-08-08
 
 ### Fixed

@@ -2,11 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { DuplicateThesisResponse } from '@/ai/responses';
 import {
+	CacheHelperService,
 	GeminiProviderService,
 	PineconeProviderService,
 	PrismaService,
 } from '@/providers';
 import { PineconeThesisProcessor } from '@/queue';
+import { DUPLICATE_CHECK_CACHE_KEY } from '@/queue/pinecone/constants';
 
 import { ThesisStatus } from '~/generated/prisma';
 
@@ -20,6 +22,7 @@ export class AIThesisService {
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeProviderService,
 		private readonly gemini: GeminiProviderService,
+		private readonly cache: CacheHelperService,
 	) {}
 
 	async checkDuplicate(thesisId: string): Promise<DuplicateThesisResponse[]> {
@@ -32,81 +35,40 @@ export class AIThesisService {
 			});
 			if (!thesis) {
 				this.logger.warn(`Thesis with ID ${thesisId} not found`);
-
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			// Get the Pinecone index
-			const index = this.pinecone
-				.getClient()
-				.index(this.pinecone.getIndexName())
-				.namespace(AIThesisService.NAMESPACE);
+			// Try to get results from cache first
+			const cacheKey = `${DUPLICATE_CHECK_CACHE_KEY}${thesisId}`;
+			const cachedResults =
+				await this.cache.getFromCache<DuplicateThesisResponse[]>(cacheKey);
 
-			// First, get the vector of the current thesis
-			const fetchResult = await index.fetch([thesisId]);
-
-			if (!fetchResult.records?.[thesisId]) {
-				throw new NotFoundException(`Thesis not found in vector database`);
+			if (cachedResults) {
+				this.logger.log(
+					`Returning cached duplicate results for thesis ${thesisId}`,
+				);
+				return cachedResults;
 			}
 
-			const thesisVector = fetchResult.records[thesisId].values;
-
-			if (!thesisVector) {
-				throw new NotFoundException(`Thesis not found in vector database`);
+			// If not in cache, check if thesis status is Pending (should have results soon)
+			if (thesis.status === ThesisStatus.Pending) {
+				this.logger.warn(
+					`Duplicate check results not yet available for thesis ${thesisId} (status: Pending). Background job may still be processing.`,
+				);
+				return [];
 			}
 
-			// Now query using the vector to find similar content
-			const queryRequest = {
-				vector: thesisVector,
-				topK: 50,
-				includeMetadata: true,
-				includeValues: false,
-			};
-
-			const queryResults = await index.query(queryRequest);
-
-			// Process results and calculate duplicate percentages
-			const duplicates: DuplicateThesisResponse[] = [];
-
-			if (queryResults.matches) {
-				for (const match of queryResults.matches) {
-					// Skip the thesis itself
-					if (match.id === thesisId) {
-						continue;
-					}
-
-					// Consider as duplicate if similarity score > 0.7 (70%)
-					if (match.score && match?.score > 0.7) {
-						const duplicatePercentage =
-							Math.round(match.score * 100 * 100) / 100;
-
-						duplicates.push({
-							id: match.id,
-							englishName: (match.metadata?.englishName as string) ?? 'Unknown',
-							vietnameseName:
-								(match.metadata?.vietnameseName as string) ?? 'Unknown',
-							description:
-								(match.metadata?.description as string) ?? 'No description',
-							duplicatePercentage,
-						});
-					}
-				}
-			}
-
-			// Sort by duplicate percentage (highest first)
-			duplicates.sort((a, b) => b.duplicatePercentage - a.duplicatePercentage);
-
-			this.logger.log(
-				`Found ${duplicates.length} potential duplicates for thesis ${thesisId}`,
+			// If thesis is not Pending and no cache, it means duplicate check was never triggered
+			// This can happen for old theses or if the background job failed
+			this.logger.warn(
+				`No duplicate check results available for thesis ${thesisId} (status: ${thesis.status}). Duplicate check is only performed for theses with Pending status.`,
 			);
-
-			return duplicates;
+			return [];
 		} catch (error) {
 			this.logger.error(
 				`Failed to check duplicates for thesis ${thesisId}:`,
 				error,
 			);
-
 			throw error;
 		}
 	}
@@ -122,16 +84,6 @@ export class AIThesisService {
 			const group = await this.prisma.group.findUnique({
 				where: { id: groupId },
 				include: {
-					groupRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
-					groupExpectedResponsibilities: {
-						include: {
-							responsibility: true,
-						},
-					},
 					studentGroupParticipations: {
 						include: {
 							student: {
@@ -147,16 +99,6 @@ export class AIThesisService {
 											id: true,
 											name: true,
 											code: true,
-										},
-									},
-									studentSkills: {
-										include: {
-											skill: true,
-										},
-									},
-									studentExpectedResponsibilities: {
-										include: {
-											responsibility: true,
 										},
 									},
 								},
@@ -276,46 +218,11 @@ export class AIThesisService {
 			factors += 0.4;
 		}
 
-		// Skills relevance
-		if (group.groupRequiredSkills?.length > 0) {
-			const skillsRelevance = this.calculateSkillsRelevanceForThesis(
-				thesis,
-				group.groupRequiredSkills as any[],
-			);
-			totalScore += skillsRelevance * 0.3; // 30% weight for skills
-			factors += 0.3;
-		}
-
 		// Base relevance (always included)
-		totalScore += 60 * 0.3; // 30% base score
-		factors += 0.3;
+		totalScore += 60 * 0.7; // 70% base score (increased from 30% since skills are removed)
+		factors += 0.7;
 
 		return factors > 0 ? Math.round(totalScore / factors) : 60;
-	}
-
-	/**
-	 * Calculate skills relevance for thesis
-	 */
-	private calculateSkillsRelevanceForThesis(
-		thesis: any,
-		groupSkills: any[],
-	): number {
-		// This is a simplified approach - in real implementation,
-		// we would use more sophisticated NLP/semantic matching
-		const thesisText =
-			`${thesis.englishName} ${thesis.description}`.toLowerCase();
-
-		let matchingSkills = 0;
-		for (const groupSkill of groupSkills) {
-			const skillName = String(groupSkill.skill.name).toLowerCase();
-			if (thesisText.includes(skillName)) {
-				matchingSkills++;
-			}
-		}
-
-		return groupSkills.length > 0
-			? Math.round((matchingSkills / groupSkills.length) * 100)
-			: 50;
 	}
 
 	/**
@@ -330,22 +237,6 @@ export class AIThesisService {
 			const description = thesis.description.toLowerCase();
 			if (description.includes(direction)) {
 				factors.push(`Project direction alignment: ${group.projectDirection}`);
-			}
-		}
-
-		// Check skill relevance
-		if (group.groupRequiredSkills?.length > 0) {
-			const relevantSkills = group.groupRequiredSkills.filter((gs: any) => {
-				const skillName = String(gs.skill.name).toLowerCase();
-				const thesisText =
-					`${thesis.englishName} ${thesis.description}`.toLowerCase();
-				return thesisText.includes(skillName);
-			});
-
-			if (relevantSkills.length > 0) {
-				factors.push(
-					`Relevant skills: ${relevantSkills.map((rs: any) => rs.skill.name).join(', ')}`,
-				);
 			}
 		}
 
@@ -415,14 +306,8 @@ export class AIThesisService {
 				name: group.name,
 				code: group.code,
 				projectDirection: group.projectDirection || 'Not specified',
-				requiredSkills:
-					group.groupRequiredSkills?.map((gs: any) => ({
-						name: gs.skill.name,
-					})) || [],
-				expectedResponsibilities:
-					group.groupExpectedResponsibilities?.map((gr: any) => ({
-						name: gr.responsibility.name,
-					})) || [],
+				requiredSkills: [{ name: 'None specified' }], // Skills removed from database
+				expectedResponsibilities: [{ name: 'None specified' }], // Responsibilities removed from database
 				currentMembers:
 					group.studentGroupParticipations?.map((sgp: any) => ({
 						name: sgp.student.user.fullName,
@@ -432,20 +317,19 @@ export class AIThesisService {
 									code: sgp.student.major.code,
 								}
 							: null,
-						skills:
-							sgp.student.studentSkills?.map((ss: any) => ({
-								name: ss.skill.name,
-								level: ss.level,
-							})) || [],
-						responsibilities:
-							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
-								name: sr.responsibility.name,
-							})) || [],
+						skills: [{ name: 'None', level: 'N/A' }], // Skills removed from database
+						responsibilities: [{ name: 'None' }], // Responsibilities removed from database
 					})) || [],
 			};
 
-			// Get thesis content from Pinecone and prepare thesis information
-			const thesesWithContent = await this.getThesesContentFromPinecone(theses);
+			// Prepare thesis information without content from Pinecone
+			const thesesWithContent = theses.map((thesis) => ({
+				id: thesis.id,
+				englishName: thesis.englishName || 'Unknown',
+				vietnameseName: thesis.vietnameseName || 'Unknown',
+				description: thesis.description || 'No description',
+				content: 'Content not available - using basic thesis information',
+			}));
 
 			const prompt = `
 You are an AI assistant that evaluates thesis-group compatibility for academic projects. Your task is to analyze how well each thesis matches with a specific group based on skills, responsibilities, academic backgrounds (majors), project requirements, and thesis content.
@@ -588,63 +472,6 @@ Return ONLY a valid JSON array with objects containing exactly these three field
 				})
 				.filter((score) => score.relevanceScore > 30)
 				.sort((a, b) => b.relevanceScore - a.relevanceScore);
-		}
-	}
-
-	/**
-	 * Get thesis content from Pinecone vector database
-	 */
-	private async getThesesContentFromPinecone(theses: any[]): Promise<
-		Array<{
-			id: string;
-			englishName: string;
-			vietnameseName: string;
-			description: string;
-			content: string;
-		}>
-	> {
-		try {
-			const index = this.pinecone
-				.getClient()
-				.index(this.pinecone.getIndexName())
-				.namespace(AIThesisService.NAMESPACE);
-
-			// Get thesis IDs
-			const thesisIds = theses.map((t) => t.id);
-
-			// Fetch thesis content from Pinecone
-			const fetchResult = await index.fetch(thesisIds as string[]);
-
-			// Map theses with their content
-			return theses.map((thesis) => {
-				const pineconeRecord = fetchResult.records?.[thesis.id];
-				// Try to get content from metadata or fallback to description
-				const content =
-					(pineconeRecord?.metadata?.text as string) ||
-					(pineconeRecord?.metadata?.description as string) ||
-					thesis.description ||
-					'No content available';
-
-				return {
-					id: thesis.id,
-					englishName: thesis.englishName || 'Unknown',
-					vietnameseName: thesis.vietnameseName || 'Unknown',
-					description: thesis.description || 'No description',
-					content:
-						typeof content === 'string' ? content : 'No content available',
-				};
-			});
-		} catch (error) {
-			this.logger.error('Error fetching thesis content from Pinecone:', error);
-
-			// Fallback to basic thesis information without content
-			return theses.map((thesis) => ({
-				id: thesis.id,
-				englishName: thesis.englishName || 'Unknown',
-				vietnameseName: thesis.vietnameseName || 'Unknown',
-				description: thesis.description || 'No description',
-				content: 'Content not available',
-			}));
 		}
 	}
 }

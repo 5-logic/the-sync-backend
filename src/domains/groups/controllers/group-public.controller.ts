@@ -59,11 +59,4 @@ export class GroupPublicController {
 	async findGroupMembers(@Param('id') id: string) {
 		return await this.service.findGroupMembers(id);
 	}
-
-	@HttpCode(HttpStatus.OK)
-	@Get(':id/skills-responsibilities')
-	@ApiOperation(GroupPublicDocs.findGroupSkillsAndResponsibilities)
-	async findGroupSkillsAndResponsibilities(@Param('id') id: string) {
-		return await this.service.findGroupSkillsAndResponsibilities(id);
-	}
 }

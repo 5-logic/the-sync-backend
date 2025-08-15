@@ -7,22 +7,22 @@ import {
 } from '@nestjs/common';
 
 import { CONSTANTS } from '@/configs';
-import {
-	// CacheHelperService,
-	PrismaService,
-} from '@/providers';
+import { PrismaService } from '@/providers';
 import {
 	EmailJobType,
 	EmailQueueService,
 	PineconeJobType,
 	PineconeThesisService,
 } from '@/queue';
-// import { CACHE_KEY } from '@/theses/constants';
-import { CreateThesisDto, UpdateThesisDto } from '@/theses/dtos';
+import {
+	AssignThesisDto,
+	CreateThesisDto,
+	UpdateThesisDto,
+} from '@/theses/dtos';
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
 
-import { Skill, ThesisRequiredSkill, ThesisStatus } from '~/generated/prisma';
+import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class ThesisLecturerService {
@@ -31,7 +31,6 @@ export class ThesisLecturerService {
 	private static readonly INITIAL_VERSION = 1;
 
 	constructor(
-		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly pinecone: PineconeThesisService,
 		private readonly emailQueueService: EmailQueueService,
@@ -44,17 +43,10 @@ export class ThesisLecturerService {
 		this.logger.log(`Creating thesis for lecturer with ID: ${lecturerId}`);
 
 		try {
-			// Validate skillIds if provided
-			if (dto.skillIds && dto.skillIds.length > 0) {
-				await this.validateSkillIds(dto.skillIds);
-			}
-
-			// Check maxThesesPerLecturer for this semester
 			await this.validateSemesterAndThesisCount(lecturerId, dto.semesterId);
 
 			const result = await this.prisma.$transaction(
 				async (txn) => {
-					// Create thesis
 					const thesis = await txn.thesis.create({
 						data: {
 							englishName: dto.englishName,
@@ -62,6 +54,7 @@ export class ThesisLecturerService {
 							abbreviation: dto.abbreviation,
 							description: dto.description,
 							domain: dto.domain,
+							orientation: dto.orientation,
 							lecturerId,
 							semesterId: dto.semesterId,
 						},
@@ -70,7 +63,6 @@ export class ThesisLecturerService {
 						},
 					});
 
-					// Create the first thesis version
 					const firstThesisVersion = await txn.thesisVersion.create({
 						data: {
 							version: ThesisLecturerService.INITIAL_VERSION,
@@ -79,7 +71,6 @@ export class ThesisLecturerService {
 						},
 					});
 
-					//  Create first supervisor who create thí thesis
 					await txn.supervision.create({
 						data: {
 							lecturerId,
@@ -87,27 +78,11 @@ export class ThesisLecturerService {
 						},
 					});
 
-					// Create thesis required skills if skillIds provided
-					let thesisRequiredSkills: (ThesisRequiredSkill & { skill: Skill })[] =
-						[];
-					if (dto.skillIds && dto.skillIds?.length > 0) {
-						thesisRequiredSkills =
-							await txn.thesisRequiredSkill.createManyAndReturn({
-								data: dto.skillIds.map((skillId) => ({
-									thesisId: thesis.id,
-									skillId: skillId,
-								})),
-								include: { skill: true },
-							});
-					}
-
 					const result: ThesisDetailResponse = mapThesisDetail({
 						...thesis,
 						thesisVersions: [firstThesisVersion],
-						thesisRequiredSkills: thesisRequiredSkills,
 					});
 
-					// Return thesis with version and skills information
 					return result;
 				},
 				{ timeout: CONSTANTS.TIMEOUT },
@@ -116,9 +91,6 @@ export class ThesisLecturerService {
 			this.logger.log(`Thesis created with ID: ${result?.id}`);
 			this.logger.debug('New thesis detail', JSON.stringify(result));
 
-			// await this.saveAndDeleteCache(result);
-
-			// Upsert thesis into Pinecone
 			await this.pinecone.processThesis(
 				PineconeJobType.CREATE_OR_UPDATE,
 				result,
@@ -139,25 +111,11 @@ export class ThesisLecturerService {
 		this.logger.log(`Fetching all theses for lecturer with ID: ${lecturerId}`);
 
 		try {
-			// const cacheKey = `${CACHE_KEY}/lecturer/${lecturerId}`;
-			// const cache =
-			// 	await this.cache.getFromCache<ThesisDetailResponse[]>(cacheKey);
-			// if (cache) {
-			// 	this.logger.log('Returning theses from cache');
-
-			// 	return cache;
-			// }
-
 			const theses = await this.prisma.thesis.findMany({
 				where: { lecturerId: lecturerId },
 				include: {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
-					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
 					},
 					lecturer: {
 						include: { user: true },
@@ -172,8 +130,6 @@ export class ThesisLecturerService {
 			this.logger.debug('Theses detail', JSON.stringify(theses));
 
 			const result: ThesisDetailResponse[] = theses.map(mapThesisDetail);
-
-			// await this.cache.saveToCache(cacheKey, result);
 
 			return result;
 		} catch (error) {
@@ -239,19 +195,12 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// Validate skillIds if provided
-			if (dto.skillIds && dto.skillIds.length > 0) {
-				await this.validateSkillIds(dto.skillIds);
-			}
-
-			// Validate semesterId if provided
 			if (dto.semesterId) {
 				await this.validateSemesterChange(id, existingThesis, dto.semesterId);
 			}
 
 			const result = await this.prisma.$transaction(
 				async (txn) => {
-					// If supportingDocument is provided, create a new version
 					if (dto.supportingDocument) {
 						const latestVersion =
 							existingThesis.thesisVersions[0]?.version ??
@@ -271,34 +220,15 @@ export class ThesisLecturerService {
 						);
 					}
 
-					// Update thesis required skills: nếu truyền skillIds (kể cả rỗng) thì xóa hết và tạo lại
-					if (dto.skillIds) {
-						await txn.thesisRequiredSkill.deleteMany({
-							where: { thesisId: id },
-						});
-						if (dto.skillIds.length > 0) {
-							await txn.thesisRequiredSkill.createMany({
-								data: dto.skillIds.map((skillId) => ({
-									thesisId: id,
-									skillId,
-								})),
-							});
-						}
-						this.logger.log(
-							`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
-						);
-					}
-
-					// Chuẩn bị dữ liệu update
 					const updateData: any = {
 						englishName: dto.englishName,
 						vietnameseName: dto.vietnameseName,
 						abbreviation: dto.abbreviation,
 						description: dto.description,
 						domain: dto.domain,
+						orientation: dto.orientation,
 					};
 
-					// Thêm semesterId nếu có thay đổi
 					if (dto.semesterId && dto.semesterId !== existingThesis.semesterId) {
 						updateData.semesterId = dto.semesterId;
 						this.logger.log(
@@ -306,7 +236,6 @@ export class ThesisLecturerService {
 						);
 					}
 
-					// Logic cho status và isPublish
 					if (shouldUpdateStatus) {
 						updateData.status = newStatus ?? existingThesis.status;
 					}
@@ -324,11 +253,6 @@ export class ThesisLecturerService {
 							thesisVersions: {
 								orderBy: { version: 'desc' },
 							},
-							thesisRequiredSkills: {
-								include: {
-									skill: true,
-								},
-							},
 							lecturer: {
 								include: { user: true },
 							},
@@ -344,14 +268,16 @@ export class ThesisLecturerService {
 			this.logger.log(`Thesis updated with ID: ${result.id}`);
 			this.logger.debug('Updated thesis detail', JSON.stringify(result));
 
-			// await this.saveAndDeleteCache(result);
-
-			// Update thesis into Pinecone
 			await this.pinecone.processThesis(
 				PineconeJobType.CREATE_OR_UPDATE,
 				result,
 				500,
 			);
+
+			// Trigger duplicate check if status changed to Pending
+			if (newStatus === ThesisStatus.Pending) {
+				await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
+			}
 
 			return result;
 		} catch (error) {
@@ -387,23 +313,45 @@ export class ThesisLecturerService {
 					newStatus = existingThesis.status;
 				}
 			}
-		} else if (
-			(semester.status === 'Picking' && groupPicked) ||
-			(semester.status === 'Ongoing' &&
-				semester.ongoingPhase === 'ScopeAdjustable' &&
-				groupPicked)
-		) {
-			const leader = await this.prisma.studentGroupParticipation.findFirst({
-				where: {
-					groupId: groupPicked.id,
-					studentId: userId,
-					isLeader: true,
-				},
-			});
-			if (leader) {
+		} else if (semester.status === 'Picking') {
+			if (groupPicked) {
+				const leader = await this.prisma.studentGroupParticipation.findFirst({
+					where: {
+						groupId: groupPicked.id,
+						studentId: userId,
+						isLeader: true,
+					},
+				});
+				if (leader) {
+					canUpdate = true;
+					shouldUpdateStatus = false;
+					shouldUpdatePublish = false;
+				}
+			} else if (existingThesis.lecturerId === userId) {
 				canUpdate = true;
-				shouldUpdateStatus = false;
-				shouldUpdatePublish = false;
+				newStatus = ThesisStatus.Pending;
+				newIsPublish = false;
+			}
+		} else if (semester.status === 'Ongoing') {
+			if (groupPicked) {
+				if (semester.ongoingPhase === 'ScopeAdjustable') {
+					const leader = await this.prisma.studentGroupParticipation.findFirst({
+						where: {
+							groupId: groupPicked.id,
+							studentId: userId,
+							isLeader: true,
+						},
+					});
+					if (leader) {
+						canUpdate = true;
+						shouldUpdateStatus = false;
+						shouldUpdatePublish = false;
+					}
+				}
+			} else if (existingThesis.lecturerId === userId) {
+				canUpdate = true;
+				newStatus = ThesisStatus.Pending;
+				newIsPublish = false;
 			}
 		}
 		return {
@@ -444,7 +392,6 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// Check if thesis status allows submission for review
 			if (existingThesis.status === ThesisStatus.Pending) {
 				throw new ConflictException(
 					'This thesis is already pending review and cannot be submitted again',
@@ -466,11 +413,6 @@ export class ThesisLecturerService {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
 					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
 					lecturer: {
 						include: { user: true },
 					},
@@ -484,13 +426,13 @@ export class ThesisLecturerService {
 
 			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
 
-			// Send email notification for status change to Pending
 			await this.sendThesisStatusChangeNotification(
 				updatedThesis,
 				ThesisStatus.Pending,
 			);
 
-			// await this.saveAndDeleteCache(result);
+			// Trigger duplicate check when thesis status changes to Pending
+			await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
 
 			return result;
 		} catch (error) {
@@ -519,7 +461,6 @@ export class ThesisLecturerService {
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			// Check ownership - only the lecturer who created the thesis can delete it
 			if (existingThesis.lecturerId !== lecturerId) {
 				this.logger.warn(
 					`Lecturer with ID ${lecturerId} is not authorized to delete thesis with ID ${id}`,
@@ -530,7 +471,6 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// Only allow deletion of New or Rejected theses
 			if (
 				existingThesis.status !== ThesisStatus.New &&
 				existingThesis.status !== ThesisStatus.Rejected
@@ -544,7 +484,6 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// Check if thesis is published
 			if (existingThesis.isPublish) {
 				this.logger.warn(`Cannot delete published thesis with ID ${id}`);
 
@@ -553,7 +492,6 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// Check if thesis is assigned to any group
 			if (existingThesis.groupId) {
 				this.logger.warn(
 					`Cannot delete thesis with ID ${id} as it is assigned to group ${existingThesis.groupId}`,
@@ -573,9 +511,6 @@ export class ThesisLecturerService {
 
 			const result: ThesisResponse = mapThesis(deletedThesis);
 
-			// await this.saveAndDeleteCache(result);
-
-			// Delete thesis from Pinecone
 			await this.pinecone.processThesis(
 				PineconeJobType.DELETE,
 				deletedThesis.id,
@@ -590,36 +525,10 @@ export class ThesisLecturerService {
 		}
 	}
 
-	// ------------------------------------------------------------------------------------------
-	// Additional methods for thesis management can be added here
-	// ------------------------------------------------------------------------------------------
-
-	private async validateSkillIds(skillIds: string[]) {
-		const existingSkills = await this.prisma.skill.findMany({
-			where: { id: { in: skillIds } },
-			select: { id: true },
-		});
-
-		if (existingSkills.length !== skillIds.length) {
-			const existingSkillIds = existingSkills.map((skill) => skill.id);
-			const missingSkillIds = skillIds.filter(
-				(skillId) => !existingSkillIds.includes(skillId),
-			);
-
-			this.logger.warn(
-				`Some skill IDs do not exist: ${missingSkillIds.join(', ')}`,
-			);
-			throw new NotFoundException(
-				`Some skills not found: ${missingSkillIds.join(', ')}`,
-			);
-		}
-	}
-
 	private async validateSemesterAndThesisCount(
 		lecturerId: string,
 		semesterId: string,
 	): Promise<void> {
-		// Validate that the semester exists
 		const semester = await this.prisma.semester.findUnique({
 			where: { id: semesterId },
 		});
@@ -630,7 +539,6 @@ export class ThesisLecturerService {
 			throw new NotFoundException(`Semester not found`);
 		}
 
-		// Validate that the lecturer has not exceeded the thesis limit for the semester
 		const thesisCount = await this.prisma.thesis.count({
 			where: {
 				lecturerId,
@@ -652,16 +560,13 @@ export class ThesisLecturerService {
 		thesisId: string,
 		lecturerId: string,
 	): Promise<boolean> {
-		// 1. Lecturer tạo thesis
 		if (lecturerId === userId) return true;
 
-		// 2. Supervisor của thesis
 		const supervisor = await this.prisma.supervision.findFirst({
 			where: { thesisId, lecturerId: userId },
 		});
 		if (supervisor) return true;
 
-		// 3. Leader của group pick thesis
 		const groupPicked = await this.prisma.group.findFirst({
 			where: { thesisId },
 		});
@@ -686,12 +591,10 @@ export class ThesisLecturerService {
 		existingThesis: any,
 		newSemesterId: string,
 	): Promise<void> {
-		// Nếu không thay đổi semester thì không cần validate
 		if (existingThesis.semesterId === newSemesterId) {
 			return;
 		}
 
-		// Kiểm tra thesis đã được group chọn chưa
 		if (existingThesis.groupId) {
 			this.logger.warn(
 				`Cannot change semester for thesis ${thesisId}: thesis is already picked by group ${existingThesis.groupId}`,
@@ -701,7 +604,6 @@ export class ThesisLecturerService {
 			);
 		}
 
-		// Validate semester mới tồn tại
 		const newSemester = await this.prisma.semester.findUnique({
 			where: { id: newSemesterId },
 		});
@@ -711,7 +613,6 @@ export class ThesisLecturerService {
 			throw new NotFoundException('Target semester not found');
 		}
 
-		// Kiểm tra maxThesesPerLecturer của semester mới
 		if (newSemester.maxThesesPerLecturer) {
 			const lecturerThesesCount = await this.prisma.thesis.count({
 				where: {
@@ -748,7 +649,6 @@ export class ThesisLecturerService {
 				return;
 			}
 
-			// Prepare email context for single thesis
 			const emailContext = {
 				lecturerName: thesis.lecturer.user.fullName,
 				englishName: thesis.englishName,
@@ -759,12 +659,10 @@ export class ThesisLecturerService {
 				isPublicationChange: false,
 			};
 
-			// Determine subject based on status
 			const statusText =
 				status === 'Pending' ? 'submitted for review' : status.toLowerCase();
 			const subject = `Thesis Status Update - ${thesis.englishName} ${statusText}`;
 
-			// Send email
 			await this.emailQueueService.sendEmail(
 				EmailJobType.SEND_THESIS_STATUS_CHANGE,
 				{
@@ -772,7 +670,7 @@ export class ThesisLecturerService {
 					subject: subject,
 					context: emailContext,
 				},
-				500, // delay 500ms
+				500,
 			);
 
 			this.logger.log(
@@ -783,19 +681,196 @@ export class ThesisLecturerService {
 				'Failed to send thesis status change notification',
 				error,
 			);
-			// Don't throw error as this is a non-critical operation
 		}
 	}
 
-	// private async saveAndDeleteCache(
-	// 	result: ThesisDetailResponse | ThesisResponse,
-	// ) {
-	// 	const cacheKey = `${CACHE_KEY}/${result.id}`;
-	// 	await Promise.all([
-	// 		this.cache.saveToCache(cacheKey, result),
-	// 		this.cache.delete(`${CACHE_KEY}/`),
-	// 		this.cache.delete(`${CACHE_KEY}/semester/${result.semesterId}`),
-	// 		this.cache.delete(`${CACHE_KEY}/lecturer/${result.lecturerId}`),
-	// 	]);
-	// }
+	async assignThesis(
+		userId: string,
+		id: string,
+		dto: AssignThesisDto,
+	): Promise<ThesisDetailResponse> {
+		this.logger.log(
+			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId}`,
+		);
+
+		try {
+			const existingThesis = await this.prisma.thesis.findUnique({
+				where: { id },
+			});
+
+			if (!existingThesis) {
+				this.logger.warn(`Thesis with ID ${id} not found for assignment`);
+
+				throw new NotFoundException(`Thesis not found`);
+			}
+
+			// Validate lecturer permission to assign thesis
+			const lecturer = await this.prisma.lecturer.findUnique({
+				where: { userId },
+			});
+
+			if (!lecturer) {
+				this.logger.warn(`Lecturer with ID ${userId} not found`);
+				throw new NotFoundException(`Lecturer not found`);
+			}
+
+			// Validate thesis supervision requirements
+			// Check if the thesis has at least 2 supervisors before allowing assignment
+			const supervisors = await this.prisma.supervision.findMany({
+				where: {
+					thesisId: id,
+				},
+				include: {
+					lecturer: {
+						include: {
+							user: true,
+						},
+					},
+				},
+			});
+
+			if (supervisors.length < 2) {
+				this.logger.warn(
+					`Thesis with ID ${id} does not have enough supervisors (${supervisors.length}/2) for assignment`,
+				);
+				throw new ConflictException(
+					`This thesis must have at least 2 supervisors before it can be assigned to a group`,
+				);
+			}
+
+			// If lecturer is not a moderator, they must be one of the supervisors
+			if (!lecturer.isModerator) {
+				const isSupervising = supervisors.some(
+					(supervision) => supervision.lecturerId === userId,
+				);
+
+				if (!isSupervising) {
+					this.logger.warn(
+						`Lecturer with ID ${userId} is not authorized to assign thesis with ID ${id} - not a supervisor`,
+					);
+					throw new ForbiddenException(
+						`You can only assign theses that you supervise`,
+					);
+				}
+			}
+
+			// Check if thesis is approved
+			if (existingThesis.status !== ThesisStatus.Approved) {
+				this.logger.warn(
+					`Cannot assign thesis with status ${existingThesis.status}`,
+				);
+
+				throw new ConflictException(
+					`Can only assign approved theses. Current status: ${existingThesis.status}`,
+				);
+			}
+
+			// Check if thesis is already assigned
+			if (existingThesis.groupId) {
+				this.logger.warn(
+					`Thesis with ID ${id} is already assigned to group ${existingThesis.groupId}`,
+				);
+
+				throw new ConflictException(
+					`This thesis is already assigned to another group`,
+				);
+			}
+
+			// Validate group exists và kiểm tra điều kiện assignment
+			const targetGroup = await this.prisma.group.findUnique({
+				where: { id: dto.groupId },
+			});
+
+			if (!targetGroup) {
+				this.logger.warn(`Group with ID ${dto.groupId} not found`);
+				throw new NotFoundException(`Group not found`);
+			}
+
+			// Check semester status - chỉ cho phép assign khi là Preparing hoặc Picking
+			if (targetGroup.semesterId) {
+				const semester = await this.prisma.semester.findUnique({
+					where: { id: targetGroup.semesterId },
+					select: { status: true },
+				});
+				if (
+					!semester ||
+					(semester.status !== 'Preparing' && semester.status !== 'Picking')
+				) {
+					this.logger.warn(
+						`Cannot assign thesis. Semester status must be Preparing or Picking. Current status: ${semester?.status}`,
+					);
+					throw new ConflictException(
+						`Can only assign thesis to group in Preparing or Picking semester. Current status: ${semester?.status}`,
+					);
+				}
+			}
+
+			// Check if group already has a thesis
+			if (targetGroup.thesisId) {
+				this.logger.warn(
+					`Group with ID ${dto.groupId} already has thesis ${targetGroup.thesisId}`,
+				);
+
+				throw new ConflictException('This group already has a thesis assigned');
+			}
+
+			// Check if thesis and group are in the same semester
+			if (existingThesis.semesterId !== targetGroup.semesterId) {
+				this.logger.warn(
+					`Thesis semester ${existingThesis.semesterId} does not match group semester ${targetGroup.semesterId}`,
+				);
+
+				throw new ConflictException(
+					'Thesis and group must be in the same semester',
+				);
+			}
+
+			// Assign thesis to group
+			await this.prisma.group.update({
+				where: { id: dto.groupId },
+				data: {
+					thesisId: id,
+				},
+			});
+
+			// Assign group to thesis
+			const updatedThesis = await this.prisma.thesis.update({
+				where: { id },
+				data: { groupId: dto.groupId },
+				include: {
+					thesisVersions: {
+						orderBy: { version: 'desc' },
+					},
+					lecturer: {
+						include: { user: true },
+					},
+				},
+			});
+
+			this.logger.log(
+				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
+			);
+			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
+
+			const result: ThesisDetailResponse = mapThesisDetail(updatedThesis);
+
+			// Update Pinecone metadata with new group assignment
+			await this.pinecone.processThesisMetadata(
+				id,
+				{ groupId: dto.groupId },
+				500,
+			);
+
+			// await this.saveAndDeleteCache(result);
+
+			return result;
+		} catch (error) {
+			this.logger.error(
+				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId}`,
+				error,
+			);
+
+			throw error;
+		}
+	}
 }

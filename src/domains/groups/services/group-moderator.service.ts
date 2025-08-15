@@ -38,7 +38,6 @@ export class GroupModeratorService {
 									name: true,
 									code: true,
 									status: true,
-									maxGroup: true,
 								},
 							},
 							_count: {

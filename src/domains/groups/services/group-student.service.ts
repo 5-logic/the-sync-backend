@@ -16,7 +16,7 @@ import { GroupPublicService } from '@/groups/services';
 import { GroupService } from '@/groups/services/group.service';
 import { PrismaService } from '@/providers';
 
-import { SemesterStatus } from '~/generated/prisma';
+import { SemesterStatus, ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class GroupStudentService {
@@ -30,26 +30,12 @@ export class GroupStudentService {
 
 	async create(userId: string, dto: CreateGroupDto) {
 		try {
-			const [currentSemester] = await Promise.all([
-				this.groupService.getStudentCurrentSemester(userId),
-				this.groupService.validateSkillsAndResponsibilities(
-					dto.skillIds,
-					dto.responsibilityIds,
-				),
-			]);
+			const currentSemester =
+				await this.groupService.getStudentCurrentSemester(userId);
 
 			if (currentSemester.status !== SemesterStatus.Preparing) {
 				throw new ConflictException(
 					`Cannot create group. Semester status must be ${SemesterStatus.Preparing}, current status is ${currentSemester.status}`,
-				);
-			}
-
-			if (currentSemester.maxGroup == null) {
-				this.logger.warn(
-					`maxGroup is not set for semester ${currentSemester.id}`,
-				);
-				throw new ConflictException(
-					`Cannot create group. Maximum number of groups for this semester is not configured.`,
 				);
 			}
 
@@ -74,18 +60,11 @@ export class GroupStudentService {
 				}),
 			]);
 
+			this.logger.log('Total current group', currentTotalGroups);
+
 			if (existingParticipation) {
 				throw new ConflictException(
 					`Student is already a member of group "${existingParticipation.group.name}" (${existingParticipation.group.code}) in this semester`,
-				);
-			}
-
-			if (currentTotalGroups >= currentSemester.maxGroup) {
-				this.logger.warn(
-					`Maximum number of groups for semester ${currentSemester.id} reached: ${currentSemester.maxGroup}`,
-				);
-				throw new ConflictException(
-					`Cannot create group. Maximum number of groups for this semester (${currentSemester.maxGroup}) has been reached.`,
 				);
 			}
 
@@ -132,32 +111,6 @@ export class GroupStudentService {
 							isLeader: true,
 						},
 					});
-
-					// Create group skills if provided
-					if (dto.skillIds && dto.skillIds.length > 0) {
-						const groupRequiredSkills = dto.skillIds.map((skillId) => ({
-							groupId: group.id,
-							skillId: skillId,
-						}));
-
-						await prisma.groupRequiredSkill.createMany({
-							data: groupRequiredSkills,
-						});
-					}
-
-					// Create group responsibilities if provided
-					if (dto.responsibilityIds && dto.responsibilityIds.length > 0) {
-						const groupExpectedResponsibilities = dto.responsibilityIds.map(
-							(responsibilityId) => ({
-								groupId: group.id,
-								responsibilityId: responsibilityId,
-							}),
-						);
-
-						await prisma.groupExpectedResponsibility.createMany({
-							data: groupExpectedResponsibilities,
-						});
-					}
 
 					return group;
 				},
@@ -227,11 +180,6 @@ export class GroupStudentService {
 				);
 			}
 
-			await this.groupService.validateSkillsAndResponsibilities(
-				dto.skillIds,
-				dto.responsibilityIds,
-			);
-
 			const result = await this.prisma.$transaction(
 				async (prisma) => {
 					const group = await prisma.group.update({
@@ -241,14 +189,6 @@ export class GroupStudentService {
 							projectDirection: dto.projectDirection,
 						},
 					});
-
-					await Promise.all([
-						this.groupService.updateGroupSkills(id, dto.skillIds),
-						this.groupService.updateGroupResponsibilities(
-							id,
-							dto.responsibilityIds,
-						),
-					]);
 
 					return group;
 				},
@@ -665,13 +605,13 @@ export class GroupStudentService {
 			}
 
 			// Check if student is the leader and if there are other members
-			if (participation.isLeader) {
-				if (group._count.studentGroupParticipations > 1) {
-					throw new ConflictException(
-						`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
-					);
-				}
-				// If leader is the only member, they can leave (which effectively deletes the group)
+			if (
+				participation.isLeader &&
+				group._count.studentGroupParticipations > 1
+			) {
+				throw new ConflictException(
+					`Cannot leave group. As the group leader, you must transfer leadership to another member before leaving the group "${participation.group.name}" (${participation.group.code}). Use the change leader feature first.`,
+				);
 			}
 
 			// Get student info for notifications
@@ -727,12 +667,6 @@ export class GroupStudentService {
 					async (prisma) => {
 						// Delete all related records first
 						await Promise.all([
-							prisma.groupRequiredSkill.deleteMany({
-								where: { groupId: groupId },
-							}),
-							prisma.groupExpectedResponsibility.deleteMany({
-								where: { groupId: groupId },
-							}),
 							prisma.request.deleteMany({
 								where: { groupId: groupId },
 							}),
@@ -766,7 +700,7 @@ export class GroupStudentService {
 				};
 			}
 
-			// Otherwise, just remove the student from the group
+			// Remove the student from the group
 			await this.prisma.studentGroupParticipation.delete({
 				where: {
 					studentId_groupId_semesterId: {
@@ -782,18 +716,28 @@ export class GroupStudentService {
 			);
 
 			// Send email notifications to remaining group members and the leaving student
-			await this.groupService.sendStudentLeaveNotification(
-				group,
-				student,
-				remainingMembers,
-			);
+			if (remainingMembers.length > 0) {
+				await this.groupService.sendStudentLeaveNotification(
+					group,
+					student,
+					remainingMembers,
+				);
+			}
 
-			// Return the updated group
-			const updatedGroup = await this.groupPublicService.findOne(groupId);
+			// Determine response based on whether group is now empty
+			const isGroupNowEmpty = group._count.studentGroupParticipations === 1;
+			let updatedGroup: any = null;
+
+			if (!isGroupNowEmpty) {
+				// Return the updated group if it still has members
+				updatedGroup = await this.groupPublicService.findOne(groupId);
+			}
 
 			return {
 				success: true,
-				message: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
+				message: isGroupNowEmpty
+					? `You have successfully left group "${group.name}" (${group.code}). The group is now empty and available for other students to join.`
+					: `You have successfully left group "${group.name}" (${group.code}). Remaining ${remainingMembers.length} members have been notified.`,
 				groupDeleted: false,
 				group: updatedGroup,
 				leftStudent: {
@@ -926,7 +870,7 @@ export class GroupStudentService {
 			}
 
 			// Check if thesis is approved
-			if (thesis.status !== 'Approved') {
+			if (thesis.status !== ThesisStatus.Approved) {
 				throw new ConflictException(
 					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" has status "${thesis.status}". Only approved theses can be picked by groups.`,
 				);
@@ -1088,6 +1032,40 @@ export class GroupStudentService {
 							groupId: null,
 						},
 					});
+
+					// Cancel approved thesis application if exists
+					const approvedApplication = await prisma.thesisApplication.findUnique(
+						{
+							where: {
+								groupId_thesisId: {
+									groupId: groupId,
+									thesisId: group.thesis!.id,
+								},
+							},
+						},
+					);
+
+					if (
+						approvedApplication &&
+						approvedApplication.status === ThesisStatus.Approved
+					) {
+						await prisma.thesisApplication.update({
+							where: {
+								groupId_thesisId: {
+									groupId: groupId,
+									thesisId: group.thesis!.id,
+								},
+							},
+							data: {
+								status: 'Cancelled',
+								updatedAt: new Date(),
+							},
+						});
+
+						this.logger.log(
+							`Approved thesis application automatically cancelled when unpicking thesis ${group.thesis!.id} from group ${groupId}`,
+						);
+					}
 				},
 				{ timeout: CONSTANTS.TIMEOUT },
 			);
@@ -1208,14 +1186,6 @@ export class GroupStudentService {
 				async (prisma) => {
 					// Delete all related records first (cascade deletions)
 					await Promise.all([
-						// Delete group required skills
-						prisma.groupRequiredSkill.deleteMany({
-							where: { groupId: groupId },
-						}),
-						// Delete group expected responsibilities
-						prisma.groupExpectedResponsibility.deleteMany({
-							where: { groupId: groupId },
-						}),
 						// Delete all pending requests for this group
 						prisma.request.deleteMany({
 							where: { groupId: groupId },

@@ -3,12 +3,12 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 export const GroupStudentDocs = {
 	create: {
 		summary: 'Create group',
-		description: `Create a new group with required skills and expected responsibilities.\n\n- **Student access only** (authentication and STUDENT role required).\n- Only allowed during PREPARING semester status.\n- Each student can only be a member of one group per semester.\n- Enforces maximum group limits per semester.\n- Group code is auto-generated.\n- The creator automatically becomes the group leader.\n- Validates that all specified skills and responsibilities exist.\n- Returns error if group creation rules are violated.\n- Logs all creation attempts and errors.\n\n**Fields:**\n- name, projectDirection, skillIds, responsibilityIds\n\n**Response includes:**\n- Complete group info: id, code, name, projectDirection, createdAt, updatedAt, semester, skills, responsibilities, members, leader`,
+		description: `Create a new group.\n\n- **Student access only** (authentication and STUDENT role required).\n- Only allowed during PREPARING semester status.\n- Each student can only be a member of one group per semester.\n- Enforces maximum group limits per semester.\n- Group code is auto-generated.\n- The creator automatically becomes the group leader.\n- Returns error if group creation rules are violated.\n- Logs all creation attempts and errors.\n\n**Fields:**\n- name, projectDirection\n\n**Response includes:**\n- Complete group info: id, code, name, projectDirection, createdAt, updatedAt, semester, members, leader`,
 	} as ApiOperationOptions,
 
 	update: {
 		summary: 'Update group',
-		description: `Update group information including name, project direction, required skills, and expected responsibilities.\n\n- **Student access only (group leader)**.\n- Only the group leader can perform updates.\n- Only allowed during PREPARING semester status.\n- Validates that all specified skills and responsibilities exist.\n- Updates trigger cache invalidation for related group data.\n- Returns error if update rules are violated.\n- Logs all update attempts and errors.\n\n**Fields:**\n- id (path), name, projectDirection, skillIds, responsibilityIds\n\n**Response includes:**\n- Complete group info (same as create)`,
+		description: `Update group information including name and project direction.\n\n- **Student access only (group leader)**.\n- Only the group leader can perform updates.\n- Only allowed during PREPARING semester status.\n- Updates trigger cache invalidation for related group data.\n- Returns error if update rules are violated.\n- Logs all update attempts and errors.\n\n**Fields:**\n- id (path), name, projectDirection\n\n**Response includes:**\n- Complete group info (same as create)`,
 	} as ApiOperationOptions,
 
 	changeLeader: {
@@ -23,7 +23,7 @@ export const GroupStudentDocs = {
 
 	leaveGroup: {
 		summary: 'Leave group',
-		description: `Allow a student to leave their current group.\n\n- **Student access only**.\n- Only allowed during the PREPARING semester status.\n- If group is assigned to a thesis, they cannot leave the group until the thesis is unassigned.\n- If the student is the group leader, they must transfer leadership to another member before leaving.\n- Cannot leave if the student is the only member of the group - the group must be deleted instead.\n- Sends email notifications to remaining group members.\n- Returns error if leave rules are violated.\n- Logs all leave attempts and errors.\n\n**Fields:**\n- id (path)\n\n**Response includes:**\n- success, message, groupDeleted (bool), group (updated info), leftStudent: userId, fullName, email, major`,
+		description: `Allow a student to leave their current group.\n\n- **Student access only**.\n- Only allowed during the PREPARING semester status.\n- If group is assigned to a thesis, they cannot leave the group until the thesis is unassigned.\n- Leaders can leave their groups freely - the system will preserve empty groups for admin management.\n- Groups are never automatically deleted when students leave - they remain as empty groups available for other students to join.\n- Sends email notifications to remaining group members (if any).\n- Returns error if leave rules are violated.\n- Logs all leave attempts and errors.\n\n**Fields:**\n- id (path)\n\n**Response includes:**\n- success, message, groupDeleted (always false), group (updated info or null if empty), leftStudent: userId, fullName, email, major`,
 	} as ApiOperationOptions,
 
 	pickThesis: {
@@ -33,7 +33,7 @@ export const GroupStudentDocs = {
 
 	unpickThesis: {
 		summary: 'Unpick thesis from group',
-		description: `Allow group leader to unpick (remove) the currently assigned thesis from their group during the PICKING semester status.\n\n- **Student access only (group leader)**.\n- Only the group leader can unpick thesis.\n- The group must have a thesis currently assigned.\n- Sends email notifications to group members and thesis lecturer.\n- Returns error if unpick rules are violated.\n- Logs all unpick attempts and errors.\n\n**Fields:**\n- id (path)\n\n**Response includes:**\n- success, message, group (updated info), unpickedThesis: id, englishName, vietnameseName`,
+		description: `Allow group leader to unpick (remove) the currently assigned thesis from their group during the PICKING semester status.\n\n- **Student access only (group leader)**.\n- Only the group leader can unpick thesis.\n- The group must have a thesis currently assigned.\n- **Automatic Application Cancellation:** When unpicking a thesis, the system automatically cancels any approved thesis application for that thesis to maintain data consistency.\n- **Bidirectional Cleanup:** Removes both Group.thesisId and Thesis.groupId relationships.\n- Sends email notifications to group members and thesis lecturer.\n- Returns error if unpick rules are violated.\n- Logs all unpick attempts and errors.\n\n**Fields:**\n- id (path)\n\n**Response includes:**\n- success, message, group (updated info), unpickedThesis: id, englishName, vietnameseName`,
 	} as ApiOperationOptions,
 
 	delete: {

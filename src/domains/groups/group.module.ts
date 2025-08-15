@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import {
+	GroupAdminController,
 	GroupLecturerController,
 	GroupModeratorController,
 	GroupPublicController,
@@ -9,6 +10,7 @@ import {
 	GroupSubmissionStudentController,
 } from '@/groups/controllers';
 import {
+	GroupAdminService,
 	GroupLecturerService,
 	GroupModeratorService,
 	GroupPublicService,
@@ -24,6 +26,7 @@ import { SubmissionModule } from '@/submissions/submission.module';
 @Module({
 	imports: [EmailModule, SubmissionModule],
 	controllers: [
+		GroupAdminController,
 		GroupModeratorController,
 		GroupStudentController,
 		GroupPublicController,
@@ -32,6 +35,7 @@ import { SubmissionModule } from '@/submissions/submission.module';
 		GroupSubmissionStudentController,
 	],
 	providers: [
+		GroupAdminService,
 		GroupModeratorService,
 		GroupStudentService,
 		GroupPublicService,

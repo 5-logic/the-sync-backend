@@ -26,11 +26,11 @@
 			"@/responsibilities/*": ["src/domains/responsibilities/*"],
 			"@/reviews/*": ["src/domains/reviews/*"],
 			"@/semesters/*": ["src/domains/semesters/*"],
-			"@/skill-sets/*": ["src/domains/skill-sets/*"],
 			"@/students/*": ["src/domains/students/*"],
 			"@/submissions/*": ["src/domains/submissions/*"],
 			"@/supervisions/*": ["src/domains/supervisions/*"],
 			"@/theses/*": ["src/domains/theses/*"],
+			"@/thesis-application/*": ["src/domains/thesis-application/*"],
 			"@/users/*": ["src/domains/users/*"]
 		},
 		"incremental": true,
