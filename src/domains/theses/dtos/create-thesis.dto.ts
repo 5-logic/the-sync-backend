@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString, IsUUID, IsUrl } from 'class-validator';
+import {
+	IsArray,
+	IsEnum,
+	IsOptional,
+	IsString,
+	IsUUID,
+	IsUrl,
+} from 'class-validator';
+
+import { ThesisOrientation } from '~/generated/prisma';
 
 export class CreateThesisDto {
 	@ApiProperty()
@@ -21,6 +30,11 @@ export class CreateThesisDto {
 	@ApiPropertyOptional()
 	@IsOptional()
 	domain?: string;
+
+	@ApiPropertyOptional({ enum: ThesisOrientation })
+	@IsOptional()
+	@IsEnum(ThesisOrientation)
+	orientation?: ThesisOrientation;
 
 	@ApiProperty()
 	@IsUrl()

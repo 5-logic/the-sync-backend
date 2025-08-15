@@ -20,6 +20,9 @@ export class ThesisResponse {
 	domain?: string;
 
 	@ApiProperty()
+	orientation: string;
+
+	@ApiProperty()
 	status: string;
 
 	@ApiProperty()
