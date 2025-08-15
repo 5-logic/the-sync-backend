@@ -229,6 +229,9 @@ export class PineconeThesisProcessor extends WorkerHost {
 
 			if (!thesis) {
 				this.logger.warn(`Thesis with ID ${thesisId} not found`);
+				// Save empty result to cache even when thesis not found
+				const cacheKey = `${DUPLICATE_CHECK_CACHE_KEY}${thesisId}`;
+				await this.cache.saveToCache(cacheKey, [], 0);
 				return;
 			}
 
@@ -245,6 +248,9 @@ export class PineconeThesisProcessor extends WorkerHost {
 				this.logger.warn(
 					`Thesis with ID ${thesisId} not found in Pinecone index`,
 				);
+				// Save empty result to cache when thesis not found in Pinecone
+				const cacheKey = `${DUPLICATE_CHECK_CACHE_KEY}${thesisId}`;
+				await this.cache.saveToCache(cacheKey, [], 0);
 				return;
 			}
 
@@ -254,6 +260,9 @@ export class PineconeThesisProcessor extends WorkerHost {
 				this.logger.warn(
 					`No vector found for thesis with ID ${thesisId} in Pinecone`,
 				);
+				// Save empty result to cache when no vector found
+				const cacheKey = `${DUPLICATE_CHECK_CACHE_KEY}${thesisId}`;
+				await this.cache.saveToCache(cacheKey, [], 0);
 				return;
 			}
 
