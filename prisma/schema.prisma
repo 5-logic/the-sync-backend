@@ -105,6 +105,8 @@ enum ThesisApplicationStatus {
   Approved  @map("approved")
   Rejected  @map("rejected")
   Cancelled @map("cancelled")
+
+  @@map("thesis_application_statuses")
 }
 
 enum ThesisOrientation {
@@ -487,6 +489,6 @@ model ThesisApplication {
   group  Group  @relation(fields: [groupId], references: [id])
   thesis Thesis @relation(fields: [thesisId], references: [id])
 
-  @@id([groupId, thesisId]) // composite primary key
+  @@id([groupId, thesisId])
   @@map("_thesis_applications")
 }

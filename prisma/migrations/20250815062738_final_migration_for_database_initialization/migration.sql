@@ -29,7 +29,10 @@ CREATE TYPE "public"."checklist_review_acceptances" AS ENUM ('accepted', 'reject
 CREATE TYPE "public"."ai_api_types" AS ENUM ('check_duplicate_thesis', 'suggest_thesis', 'suggest_participants');
 
 -- CreateEnum
-CREATE TYPE "public"."ThesisApplicationStatus" AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
+CREATE TYPE "public"."thesis_application_statuses" AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "public"."thesis_orientations" AS ENUM ('se', 'ai', 'neutral');
 
 -- CreateTable
 CREATE TABLE "public"."admins" (
@@ -122,6 +125,7 @@ CREATE TABLE "public"."theses" (
     "vietnamese_name" TEXT NOT NULL,
     "abbreviation" TEXT NOT NULL,
     "description" TEXT NOT NULL,
+    "orientation" "public"."thesis_orientations" NOT NULL DEFAULT 'neutral',
     "domain" TEXT,
     "status" "public"."thesis_statuses" NOT NULL DEFAULT 'new',
     "is_publish" BOOLEAN NOT NULL DEFAULT false,
@@ -305,7 +309,7 @@ CREATE TABLE "public"."_student_group_participations" (
 CREATE TABLE "public"."_thesis_applications" (
     "group_id" TEXT NOT NULL,
     "thesis_id" TEXT NOT NULL,
-    "status" "public"."ThesisApplicationStatus" NOT NULL DEFAULT 'pending',
+    "status" "public"."thesis_application_statuses" NOT NULL DEFAULT 'pending',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
