@@ -76,25 +76,30 @@ export class GroupAdminService {
 				});
 			}
 
-			const createdGroups = await this.prisma.$transaction(async (prisma) => {
-				const results: Array<{
-					id: string;
-					code: string;
-					name: string;
-					projectDirection: string | null;
-					semesterId: string;
-					thesisId: string | null;
-					createdAt: Date;
-					updatedAt: Date;
-				}> = [];
-				for (const groupData of groupsToCreate) {
-					const group = await prisma.group.create({
-						data: groupData,
-					});
-					results.push(group);
-				}
-				return results;
-			});
+			const createdGroups = await this.prisma.$transaction(
+				async (prisma) => {
+					const results: Array<{
+						id: string;
+						code: string;
+						name: string;
+						projectDirection: string | null;
+						semesterId: string;
+						thesisId: string | null;
+						createdAt: Date;
+						updatedAt: Date;
+					}> = [];
+					for (const groupData of groupsToCreate) {
+						const group = await prisma.group.create({
+							data: groupData,
+						});
+						results.push(group);
+					}
+					return results;
+				},
+				{
+					timeout: 1200000, // 20 minutes timeout for transaction
+				},
+			);
 
 			this.logger.log(
 				`Successfully created ${createdGroups.length} groups for semester ${semester.name} (${semester.code})`,
@@ -154,39 +159,44 @@ export class GroupAdminService {
 			});
 
 			const codePrefix = `${semester.code}SEAI`;
-			const updatedGroups = await this.prisma.$transaction(async (prisma) => {
-				const results: any[] = [];
+			const updatedGroups = await this.prisma.$transaction(
+				async (prisma) => {
+					const results: any[] = [];
 
-				for (let i = 0; i < sortedGroups.length; i++) {
-					const group = sortedGroups[i];
-					const sequentialNumber = (i + 1).toString().padStart(3, '0');
-					const newCode = `${codePrefix}${sequentialNumber}`;
+					for (let i = 0; i < sortedGroups.length; i++) {
+						const group = sortedGroups[i];
+						const sequentialNumber = (i + 1).toString().padStart(3, '0');
+						const newCode = `${codePrefix}${sequentialNumber}`;
 
-					const updatedGroup = await prisma.group.update({
-						where: { id: group.id },
-						data: {
-							code: newCode,
-						},
-						include: {
-							studentGroupParticipations: {
-								include: {
-									student: {
-										include: {
-											user: {
-												omit: { password: true },
+						const updatedGroup = await prisma.group.update({
+							where: { id: group.id },
+							data: {
+								code: newCode,
+							},
+							include: {
+								studentGroupParticipations: {
+									include: {
+										student: {
+											include: {
+												user: {
+													omit: { password: true },
+												},
 											},
 										},
 									},
 								},
 							},
-						},
-					});
+						});
 
-					results.push(updatedGroup);
-				}
+						results.push(updatedGroup);
+					}
 
-				return results;
-			});
+					return results;
+				},
+				{
+					timeout: 1200000, // 20 minutes timeout for transaction
+				},
+			);
 
 			this.logger.log(
 				`Successfully formatted ${updatedGroups.length} groups for semester ${semester.name} (${semester.code})`,
