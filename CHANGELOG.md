@@ -5,6 +5,135 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-08-15
+
+### Added
+
+- **Thesis Orientation System**:
+  - **New ThesisOrientation Enum**: Added orientation field to thesis model with values `SE` (Software Engineering), `AI` (Artificial Intelligence), and `Neutral`
+  - **Enhanced Thesis Creation**: `POST /theses` endpoint now accepts optional `orientation` parameter in `CreateThesisDto`
+  - **Default Value**: All existing theses default to `Neutral` orientation
+
+- **Student Responsibility Management Enhancement**:
+  - **Simplified Responsibility System**: Replaced complex skill-based system with integer-level responsibility associations
+  - **New Student Responsibility Model**: `StudentResponsibility` with numeric `level` field (default: 0)
+  - **Automatic Associations**: New students automatically receive all responsibility associations with level 0
+
+- **Enhanced AI Duplicate Detection with Caching**:
+  - **Cache Integration**: AI duplicate check results are now cached for improved performance
+  - **Background Processing**: Duplicate checks are performed asynchronously during thesis submission
+  - **Fallback Handling**: Enhanced error handling when Pinecone content is unavailable
+
+- **Database Initialization Optimization**:
+  - **Final Migration**: Consolidated all database migrations into single initialization file `20250815062738_final_migration_for_database_initialization`
+  - **Clean Schema**: Removed all obsolete migration files for cleaner database setup
+
+### Changed
+
+- **Major Architecture Refactoring - Skills System Removal**:
+  - **Removed Skill Sets Module**: Completely removed skill sets, skills, and skill-related functionality
+  - **Removed Database Tables**: Deleted `skills`, `skill_sets`, `_student_skills`, `_group_required_skills`, `_thesis_required_skills` tables
+  - **Removed SkillLevel Enum**: Eliminated skill level enumeration from database schema
+  - **API Changes**:
+    - `CreateThesisDto` - Removed `skillIds` array parameter
+    - `CreateGroupDto` - Removed `skillIds` and `responsibilityIds` array parameters
+    - All skill-related endpoints and responses removed
+
+- **Group Creation Workflow Changes**:
+  - **Disabled Student Group Creation**: Temporarily commented out `POST /groups` endpoint for students
+  - **API Access Restriction**: Students can no longer create new groups through the API
+  - **Controller Changes**: Group creation functionality disabled in `GroupStudentController`
+
+- **Semester Management Simplification**:
+  - **Removed Group Limits**: Eliminated `maxGroup` field from semester model and related validation
+  - **API Changes**:
+    - `CreateSemesterDto` - Removed `maxGroup` parameter
+    - Semester creation no longer requires group count limits
+  - **Validation Updates**: Removed group count validation from semester status transitions
+
+- **Enhanced API Permissions**:
+  - **Thesis Assignment**: `POST /theses/{id}/assign` now includes `ADMIN` role access
+  - **Thesis Unpicking**: `PUT /groups/{id}/unpick-thesis` now includes `ADMIN` role access
+  - **Improved Role-Based Access**: Enhanced permission model for administrative operations
+
+- **AI Service Optimization**:
+  - **Simplified Thesis Analysis**: Removed skill-based compatibility calculations
+  - **Content Fallback**: AI services now use basic thesis information when Pinecone content unavailable
+  - **Improved Error Handling**: Better fallback mechanisms for AI-powered features
+
+### Removed
+
+- **Complete Skills System Elimination**:
+  - **Skill Sets Module**: Removed entire skill sets domain module
+  - **Database Models**: Removed `Skill`, `SkillSet`, `StudentSkill`, `GroupRequiredSkill`, `ThesisRequiredSkill` models
+  - **API Endpoints**: All skill-related endpoints removed
+  - **DTOs and Services**: Removed skill-related DTOs, services, and validation logic
+
+- **Group Management Features**:
+  - **Student Group Creation**: Temporarily disabled group creation functionality for students
+  - **Skill-Based Matching**: Removed skill compatibility calculations from group suggestions
+  - **Group Skill Requirements**: Eliminated skill requirements from group model
+
+- **Semester Constraints**:
+  - **Group Limits**: Removed maximum group count restrictions
+  - **Validation Logic**: Eliminated group count validation from semester transitions
+
+### Fixed
+
+- **AI Duplicate Detection Reliability**:
+  - **Cache Integration**: Fixed issues with duplicate check availability by implementing proper caching
+  - **Status-Based Processing**: Duplicate checks now properly handle thesis status transitions
+  - **Error Recovery**: Improved error handling when vector database operations fail
+
+- **Database Schema Consistency**:
+  - **Migration Cleanup**: Consolidated and cleaned up database migration files
+  - **Enum Mapping**: Fixed thesis application status enum mapping in database
+  - **Foreign Key Relationships**: Enhanced data integrity with proper relationship cleanup
+
+- **Service Integration**:
+  - **Responsibility Associations**: Fixed automatic responsibility assignment for new students
+  - **Caching Consistency**: Improved cache management across services
+  - **Background Jobs**: Enhanced reliability of background processing tasks
+
+### Enhanced
+
+- **Performance Optimization**:
+  - **Caching Strategy**: Implemented comprehensive caching for AI-powered duplicate detection
+  - **Database Queries**: Optimized queries by removing complex skill-based joins
+  - **API Response Times**: Improved response times by simplifying data models
+
+- **Code Quality and Maintainability**:
+  - **Simplified Architecture**: Reduced complexity by removing skill system dependencies
+  - **Clean Database Schema**: Streamlined database structure with focused responsibility model
+  - **Improved Documentation**: Enhanced API documentation for new thesis orientation features
+
+- **Developer Experience**:
+  - **Cleaner Database Setup**: Single initialization migration for easier development environment setup
+  - **Simplified Testing**: Reduced test complexity by eliminating skill-related test scenarios
+  - **Better Error Messages**: Improved error messaging for AI and caching operations
+
+### Technical Improvements
+
+- **Database Architecture**: Simplified schema with focus on responsibility-based system instead of complex skill matching
+- **Service Layer**: Streamlined services by removing skill-related complexity and dependencies
+- **Caching Infrastructure**: Enhanced caching system for AI operations with proper invalidation strategies
+- **Background Processing**: Improved reliability of asynchronous operations for duplicate detection
+- **API Design**: Cleaner API surface with focused functionality and improved role-based access control
+
+### Migration Notes
+
+- **Breaking Changes**: This version includes breaking changes due to skill system removal
+- **Data Migration**: Existing skill-related data will be cleaned up during migration
+- **API Compatibility**: Endpoints requiring skill parameters are no longer available
+- **Client Updates**: Frontend applications will need updates to remove skill-related features
+
+### Pull Requests
+
+- [#258](https://github.com/5-logic/the-sync-backend/pull/258) - Merge dev branch for v0.9.0 release
+- [#257](https://github.com/5-logic/the-sync-backend/pull/257) - AI system enhancements and skills system removal
+
+---
+
 ## [0.8.8] - 2025-08-14
 
 ### Added
