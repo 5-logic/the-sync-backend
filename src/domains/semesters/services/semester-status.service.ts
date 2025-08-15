@@ -424,38 +424,6 @@ export class SemesterStatusService {
 		}
 	}
 
-	async validateMaxGroup(
-		semester: Semester,
-		dto: UpdateSemesterDto,
-	): Promise<void> {
-		const statusToCheck = dto.status ?? semester.status;
-		if (statusToCheck !== SemesterStatus.Preparing) {
-			this.logger.warn(
-				`Cannot update maxGroup when status is ${statusToCheck}`,
-			);
-			throw new ConflictException(
-				`Maximum number of Groups can only be updated when status is ${SemesterStatus.Preparing}`,
-			);
-		}
-		// Nếu có update maxGroup thì kiểm tra số lượng group hiện tại
-		if (dto.maxGroup) {
-			const groupCount = await this.prisma.group.count({
-				where: { semesterId: semester.id },
-			});
-			if (dto.maxGroup < groupCount) {
-				this.logger.warn(
-					`Cannot set maxGroup (${dto.maxGroup}) < current group count (${groupCount}) in semester ${semester.id}`,
-				);
-				throw new ConflictException(
-					`Maximum number of Groups cannot be less than the current number of groups (${groupCount}) in this semester`,
-				);
-			}
-		}
-		this.logger.log(
-			`Max group validation passed for semester with ID ${semester.id}`,
-		);
-	}
-
 	async validateMaxThesesPerLecturer(
 		semester: Semester,
 		dto: UpdateSemesterDto,
@@ -536,11 +504,7 @@ export class SemesterStatusService {
 
 		// Chỉ cho phép update các trường liên quan khi status là Preparing
 		const statusToCheck = dto.status ?? semester.status;
-		const updatingFields = [
-			'maxGroup',
-			'defaultThesesPerLecturer',
-			'maxThesesPerLecturer',
-		];
+		const updatingFields = ['defaultThesesPerLecturer', 'maxThesesPerLecturer'];
 		for (const field of updatingFields) {
 			if (
 				dto[field] !== undefined &&
@@ -555,9 +519,6 @@ export class SemesterStatusService {
 			}
 		}
 
-		if (dto.maxGroup !== undefined) {
-			await this.validateMaxGroup(semester, dto);
-		}
 		if (dto.maxThesesPerLecturer !== undefined) {
 			await this.validateMaxThesesPerLecturer(semester, dto);
 		}
