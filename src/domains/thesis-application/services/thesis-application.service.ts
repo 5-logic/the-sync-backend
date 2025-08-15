@@ -8,6 +8,8 @@ import {
 
 import { PrismaService } from '@/providers';
 
+import { ThesisApplicationStatus, ThesisStatus } from '~/generated/prisma';
+
 @Injectable()
 export class ThesisApplicationService {
 	private readonly logger = new Logger(ThesisApplicationService.name);
@@ -83,7 +85,7 @@ export class ThesisApplicationService {
 			throw new NotFoundException('Thesis not found');
 		}
 
-		if (thesis.status !== 'Approved') {
+		if (thesis.status !== ThesisStatus.Approved) {
 			this.logger.warn(
 				`Thesis ${thesisId} is not approved for application. Current status: ${thesis.status}`,
 			);
@@ -452,7 +454,7 @@ export class ThesisApplicationService {
 			await this.prisma.thesisApplication.findMany({
 				where: {
 					groupId: groupId,
-					status: 'Approved',
+					status: ThesisApplicationStatus.Approved,
 					thesisId: { not: thesisId },
 				},
 				include: {
@@ -484,7 +486,7 @@ export class ThesisApplicationService {
 		const existingApprovedApplications = await tx.thesisApplication.findMany({
 			where: {
 				groupId: groupId,
-				status: 'Approved',
+				status: ThesisApplicationStatus.Approved,
 				thesisId: { not: thesisId },
 			},
 		});

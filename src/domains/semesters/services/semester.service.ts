@@ -587,7 +587,7 @@ export class SemesterService {
 				where: {
 					semesterId: semester.id,
 					isPublish: true,
-					status: 'Approved',
+					status: ThesisStatus.Approved,
 				},
 			});
 

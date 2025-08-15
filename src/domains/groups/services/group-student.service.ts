@@ -16,7 +16,7 @@ import { GroupPublicService } from '@/groups/services';
 import { GroupService } from '@/groups/services/group.service';
 import { PrismaService } from '@/providers';
 
-import { SemesterStatus } from '~/generated/prisma';
+import { SemesterStatus, ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class GroupStudentService {
@@ -875,7 +875,7 @@ export class GroupStudentService {
 			}
 
 			// Check if thesis is approved
-			if (thesis.status !== 'Approved') {
+			if (thesis.status !== ThesisStatus.Approved) {
 				throw new ConflictException(
 					`Cannot pick thesis. The thesis "${thesis.vietnameseName}" has status "${thesis.status}". Only approved theses can be picked by groups.`,
 				);
@@ -1052,7 +1052,7 @@ export class GroupStudentService {
 
 					if (
 						approvedApplication &&
-						approvedApplication.status === 'Approved'
+						approvedApplication.status === ThesisStatus.Approved
 					) {
 						await prisma.thesisApplication.update({
 							where: {

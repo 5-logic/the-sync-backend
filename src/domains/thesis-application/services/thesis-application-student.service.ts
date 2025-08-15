@@ -10,6 +10,8 @@ import { PrismaService } from '@/providers';
 import { CreateThesisApplicationDto } from '@/thesis-application/dtos';
 import { ThesisApplicationService } from '@/thesis-application/services/thesis-application.service';
 
+import { ThesisApplicationStatus } from '~/generated/prisma';
+
 @Injectable()
 export class ThesisApplicationStudentService {
 	private readonly logger = new Logger(ThesisApplicationStudentService.name);
@@ -83,7 +85,7 @@ export class ThesisApplicationStudentService {
 					this.prisma.thesisApplication.findMany({
 						where: {
 							groupId: dto.groupId,
-							status: 'Approved',
+							status: ThesisApplicationStatus.Approved,
 						},
 						include: {
 							thesis: {

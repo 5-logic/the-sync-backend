@@ -16,6 +16,8 @@ import {
 	SupervisionService,
 } from '@/supervisions/services/supervision.service';
 
+import { ThesisStatus } from '~/generated/prisma';
+
 @Injectable()
 export class SupervisionModeratorService {
 	private readonly logger = new Logger(SupervisionModeratorService.name);
@@ -38,7 +40,9 @@ export class SupervisionModeratorService {
 			},
 		});
 
-		const notApproved = theses.filter((t) => t.status !== 'Approved');
+		const notApproved = theses.filter(
+			(t) => t.status !== ThesisStatus.Approved,
+		);
 		if (notApproved.length > 0) {
 			const thesisNames = notApproved
 				.map(function (t) {
