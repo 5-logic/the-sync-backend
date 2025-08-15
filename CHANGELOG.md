@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2025-08-15
+
+### Changed
+
+- **Enhanced Permission Management**:
+  - **Group Student Assignment API**: Modified `PUT /groups/:id/assign-student` endpoint to accept both `ADMIN` and `MODERATOR` roles instead of only `MODERATOR`
+  - **Thesis Assignment API**: Updated `POST /theses/:id/assign` endpoint to restrict access to `MODERATOR` and `LECTURER` roles only (removed `ADMIN` access)
+  - **Role-Based Access Control**: Improved authorization logic in group assignment service to support both admin and moderator roles
+
+- **Group Management Optimization**:
+  - **Batch Processing Enhancement**: Optimized group code formatting with parallel batch processing instead of sequential updates
+  - **Temporary Code Strategy**: Implemented two-phase update process using temporary codes to avoid conflicts during batch operations
+  - **Transaction Performance**: Enhanced transaction handling with 20-minute timeout for large batch operations
+
+- **Join Request Workflow Improvement**:
+  - **Automatic Request Cancellation**: When a student joins a group, all other pending join requests are automatically cancelled
+  - **Enhanced Transaction Handling**: Improved database transaction management for join request operations
+  - **Better Logging**: Enhanced logging messages to include request cancellation information
+
+### Enhanced
+
+- **Service Layer Improvements**:
+  - **Group Admin Service**: Enhanced `createMany()` method with improved transaction timeout handling (20 minutes)
+  - **Group Moderator Service**: Updated `assignStudent()` method to support both admin and moderator assignment
+  - **Request Student Service**: Improved `createJoinRequest()` method with automatic cleanup of pending requests
+
+- **Database Transaction Optimization**:
+  - **Parallel Processing**: Implemented parallel database operations for group code updates
+  - **Timeout Configuration**: Added configurable transaction timeouts for long-running operations
+  - **Error Recovery**: Better error handling and recovery mechanisms for batch operations
+
+- **Logging and Monitoring**:
+  - **Enhanced Thesis Assignment Logging**: Added user ID tracking in thesis assignment operations for better audit trails
+  - **Improved Error Messages**: More descriptive error messages for permission-related operations
+  - **Better Service Attribution**: Enhanced logging to distinguish between admin and moderator actions
+
+### Fixed
+
+- **Group Code Conflict Resolution**: Fixed potential unique constraint violations during batch group code updates by using temporary codes
+- **Permission Validation**: Improved user permission validation for thesis assignment operations
+- **Transaction Reliability**: Enhanced transaction handling to prevent timeouts during large batch operations
+
+### Technical Improvements
+
+- **API Security**: Refined role-based access control for better security granularity
+- **Performance Optimization**: Optimized batch processing operations with parallel execution strategies
+- **Code Quality**: Improved service architecture with better separation of concerns for admin and moderator operations
+- **Database Efficiency**: Enhanced database transaction management with appropriate timeout configurations
+
+---
+
 ## [0.9.0] - 2025-08-15
 
 ### Added
