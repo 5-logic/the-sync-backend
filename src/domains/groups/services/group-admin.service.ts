@@ -161,18 +161,34 @@ export class GroupAdminService {
 			const codePrefix = `${semester.code}SEAI`;
 			const updatedGroups = await this.prisma.$transaction(
 				async (prisma) => {
-					const results: any[] = [];
+					// Step 1: Batch update all groups with temporary codes to avoid conflicts
+					const tempUpdatePromises = sortedGroups.map((group, i) => {
+						const tempCode = `temp_${group.id}_${Date.now()}_${i}`;
+						return prisma.group.update({
+							where: { id: group.id },
+							data: { code: tempCode },
+						});
+					});
 
-					for (let i = 0; i < sortedGroups.length; i++) {
-						const group = sortedGroups[i];
+					await Promise.all(tempUpdatePromises);
+
+					// Step 2: Batch update with final codes
+					const finalUpdatePromises = sortedGroups.map((group, i) => {
 						const sequentialNumber = (i + 1).toString().padStart(3, '0');
 						const newCode = `${codePrefix}${sequentialNumber}`;
 
-						const updatedGroup = await prisma.group.update({
+						return prisma.group.update({
 							where: { id: group.id },
-							data: {
-								code: newCode,
-							},
+							data: { code: newCode },
+						});
+					});
+
+					await Promise.all(finalUpdatePromises);
+
+					// Step 3: Fetch all updated groups with relations in parallel
+					const groupsWithRelationsPromises = sortedGroups.map((group) =>
+						prisma.group.findUnique({
+							where: { id: group.id },
 							include: {
 								studentGroupParticipations: {
 									include: {
@@ -186,12 +202,11 @@ export class GroupAdminService {
 									},
 								},
 							},
-						});
+						}),
+					);
 
-						results.push(updatedGroup);
-					}
-
-					return results;
+					const results = await Promise.all(groupsWithRelationsPromises);
+					return results.filter(Boolean); // Remove any null results
 				},
 				{
 					timeout: 1200000, // 20 minutes timeout for transaction
