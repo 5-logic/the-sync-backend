@@ -22,7 +22,7 @@ import {
 import { mapThesis, mapThesisDetail } from '@/theses/mappers';
 import { ThesisDetailResponse, ThesisResponse } from '@/theses/responses';
 
-import { Skill, ThesisRequiredSkill, ThesisStatus } from '~/generated/prisma';
+import { ThesisStatus } from '~/generated/prisma';
 
 @Injectable()
 export class ThesisLecturerService {
@@ -43,10 +43,6 @@ export class ThesisLecturerService {
 		this.logger.log(`Creating thesis for lecturer with ID: ${lecturerId}`);
 
 		try {
-			if (dto.skillIds && dto.skillIds.length > 0) {
-				await this.validateSkillIds(dto.skillIds);
-			}
-
 			await this.validateSemesterAndThesisCount(lecturerId, dto.semesterId);
 
 			const result = await this.prisma.$transaction(
@@ -82,23 +78,9 @@ export class ThesisLecturerService {
 						},
 					});
 
-					let thesisRequiredSkills: (ThesisRequiredSkill & { skill: Skill })[] =
-						[];
-					if (dto.skillIds && dto.skillIds?.length > 0) {
-						thesisRequiredSkills =
-							await txn.thesisRequiredSkill.createManyAndReturn({
-								data: dto.skillIds.map((skillId) => ({
-									thesisId: thesis.id,
-									skillId: skillId,
-								})),
-								include: { skill: true },
-							});
-					}
-
 					const result: ThesisDetailResponse = mapThesisDetail({
 						...thesis,
 						thesisVersions: [firstThesisVersion],
-						thesisRequiredSkills: thesisRequiredSkills,
 					});
 
 					return result;
@@ -134,11 +116,6 @@ export class ThesisLecturerService {
 				include: {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
-					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
 					},
 					lecturer: {
 						include: { user: true },
@@ -218,10 +195,6 @@ export class ThesisLecturerService {
 				);
 			}
 
-			if (dto.skillIds && dto.skillIds.length > 0) {
-				await this.validateSkillIds(dto.skillIds);
-			}
-
 			if (dto.semesterId) {
 				await this.validateSemesterChange(id, existingThesis, dto.semesterId);
 			}
@@ -244,23 +217,6 @@ export class ThesisLecturerService {
 
 						this.logger.log(
 							`Created new thesis version ${newVersion} for thesis ID: ${id}`,
-						);
-					}
-
-					if (dto.skillIds) {
-						await txn.thesisRequiredSkill.deleteMany({
-							where: { thesisId: id },
-						});
-						if (dto.skillIds.length > 0) {
-							await txn.thesisRequiredSkill.createMany({
-								data: dto.skillIds.map((skillId) => ({
-									thesisId: id,
-									skillId,
-								})),
-							});
-						}
-						this.logger.log(
-							`Updated thesis required skills for thesis ID: ${id}. New skills count: ${dto.skillIds.length}`,
 						);
 					}
 
@@ -297,11 +253,6 @@ export class ThesisLecturerService {
 							thesisVersions: {
 								orderBy: { version: 'desc' },
 							},
-							thesisRequiredSkills: {
-								include: {
-									skill: true,
-								},
-							},
 							lecturer: {
 								include: { user: true },
 							},
@@ -322,6 +273,11 @@ export class ThesisLecturerService {
 				result,
 				500,
 			);
+
+			// Trigger duplicate check if status changed to Pending
+			if (newStatus === ThesisStatus.Pending) {
+				await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
+			}
 
 			return result;
 		} catch (error) {
@@ -457,11 +413,6 @@ export class ThesisLecturerService {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
 					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
 					lecturer: {
 						include: { user: true },
 					},
@@ -479,6 +430,9 @@ export class ThesisLecturerService {
 				updatedThesis,
 				ThesisStatus.Pending,
 			);
+
+			// Trigger duplicate check when thesis status changes to Pending
+			await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
 
 			return result;
 		} catch (error) {
@@ -568,27 +522,6 @@ export class ThesisLecturerService {
 			this.logger.error(`Error deleting thesis with ID ${id}`, error);
 
 			throw error;
-		}
-	}
-
-	private async validateSkillIds(skillIds: string[]) {
-		const existingSkills = await this.prisma.skill.findMany({
-			where: { id: { in: skillIds } },
-			select: { id: true },
-		});
-
-		if (existingSkills.length !== skillIds.length) {
-			const existingSkillIds = existingSkills.map((skill) => skill.id);
-			const missingSkillIds = skillIds.filter(
-				(skillId) => !existingSkillIds.includes(skillId),
-			);
-
-			this.logger.warn(
-				`Some skill IDs do not exist: ${missingSkillIds.join(', ')}`,
-			);
-			throw new NotFoundException(
-				`Some skills not found: ${missingSkillIds.join(', ')}`,
-			);
 		}
 	}
 
@@ -907,11 +840,6 @@ export class ThesisLecturerService {
 				include: {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
-					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
 					},
 					lecturer: {
 						include: { user: true },

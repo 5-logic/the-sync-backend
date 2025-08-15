@@ -155,6 +155,24 @@ export class StudentAdminService {
 							},
 						});
 
+						// Get all responsibilities and create associations with default level 0
+						const allResponsibilities = await txn.responsibility.findMany({
+							select: { id: true },
+						});
+
+						if (allResponsibilities.length > 0) {
+							await txn.studentResponsibility.createMany({
+								data: allResponsibilities.map((responsibility) => ({
+									studentId: userInfo.id,
+									responsibilityId: responsibility.id,
+								})),
+							});
+
+							this.logger.log(
+								`Created ${allResponsibilities.length} responsibility associations for student ${dto.studentCode}`,
+							);
+						}
+
 						isNewStudent = true;
 
 						this.logger.log(
@@ -261,6 +279,11 @@ export class StudentAdminService {
 				async (txn) => {
 					const createdStudents: StudentResponse[] = [];
 
+					// Get all responsibilities once for efficiency
+					const allResponsibilities = await txn.responsibility.findMany({
+						select: { id: true },
+					});
+
 					for (const studentData of dto.students) {
 						// Check if student already exists
 						const existingStudent = await txn.student.findUnique({
@@ -338,6 +361,20 @@ export class StudentAdminService {
 									semesterId: dto.semesterId,
 								},
 							});
+
+							// Create associations with all responsibilities with default level 0
+							if (allResponsibilities.length > 0) {
+								await txn.studentResponsibility.createMany({
+									data: allResponsibilities.map((responsibility) => ({
+										studentId: newUser.id,
+										responsibilityId: responsibility.id,
+									})),
+								});
+
+								this.logger.log(
+									`Created ${allResponsibilities.length} responsibility associations for student ${studentData.studentCode}`,
+								);
+							}
 
 							this.logger.log(
 								`Student ${studentData.studentCode} created successfully`,

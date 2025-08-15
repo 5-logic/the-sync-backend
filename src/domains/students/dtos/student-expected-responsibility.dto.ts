@@ -1,8 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsNumber, IsUUID } from 'class-validator';
 
-export class StudentExpectedResponsibilityDto {
+export class StudentResponsibilityDto {
 	@ApiProperty()
 	@IsUUID()
 	responsibilityId: string;
+
+	@ApiProperty()
+	@IsNumber()
+	level: number;
 }

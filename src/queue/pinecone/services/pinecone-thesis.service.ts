@@ -53,4 +53,15 @@ export class PineconeThesisService {
 			},
 		);
 	}
+
+	async processDuplicateCheck(thesisId: string, delay?: number) {
+		return await this.queue.add(PineconeJobType.CHECK_DUPLICATE, thesisId, {
+			delay: delay ?? 0,
+			attempts: 3,
+			backoff: {
+				type: PineconeThesisService.BACKOFF_TYPE,
+				delay: PineconeThesisService.BACKOFF_DELAY,
+			},
+		});
+	}
 }

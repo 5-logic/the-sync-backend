@@ -18,11 +18,6 @@ export const GroupPublicDocs = {
 
 	findGroupMembers: {
 		summary: 'Get group members',
-		description: `Get detailed information about all members of a specific group including their personal information, student codes, enrollment status, and leadership roles.\n\n- **Authenticated users only**.\n- Returns comprehensive member profiles with user details and participation status.\n- Results are cached for performance.\n- Returns 404 error if group does not exist.\n- Logs all fetch attempts and errors.\n\n**Response includes:**\n- userId, studentCode, fullName, email, phoneNumber, gender, major\n- isLeader\n- skills (id, name, skillSet, level)\n- responsibilities (id, name)`,
-	} as ApiOperationOptions,
-
-	findGroupSkillsAndResponsibilities: {
-		summary: 'Get group skills and responsibilities',
-		description: `Get comprehensive information about the required skills and expected responsibilities associated with a specific group.\n\n- **Authenticated users only**.\n- Returns detailed skill descriptions, categories, and responsibility definitions.\n- Useful for understanding group capabilities and project scope.\n- Returns 404 error if group does not exist.\n- Logs all fetch attempts and errors.\n\n**Response includes:**\n- skills: id, name, skillSet\n- responsibilities: id, name`,
+		description: `Get detailed information about all members of a specific group including their personal information, student codes, enrollment status, and leadership roles.\n\n- **Authenticated users only**.\n- Returns comprehensive member profiles with user details and participation status.\n- Results are cached for performance.\n- Returns 404 error if group does not exist.\n- Logs all fetch attempts and errors.\n\n**Response includes:**\n- userId, studentCode, fullName, email, phoneNumber, gender, major\n- isLeader`,
 	} as ApiOperationOptions,
 };

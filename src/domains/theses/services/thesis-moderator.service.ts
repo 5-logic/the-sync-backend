@@ -197,11 +197,6 @@ export class ThesisModeratorService {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
 					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
-					},
 					lecturer: {
 						include: { user: true },
 					},
@@ -344,11 +339,6 @@ export class ThesisModeratorService {
 				include: {
 					thesisVersions: {
 						orderBy: { version: 'desc' },
-					},
-					thesisRequiredSkills: {
-						include: {
-							skill: true,
-						},
 					},
 					lecturer: {
 						include: { user: true },

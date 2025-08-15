@@ -11,7 +11,6 @@ import { RequestModule } from '@/requests/request.module';
 import { ResponsibilityModule } from '@/responsibilities/responsibility.module';
 import { ReviewModule } from '@/reviews/review.module';
 import { SemesterModule } from '@/semesters/index';
-import { SkillSetModule } from '@/skill-sets/index';
 import { StudentModule } from '@/students/index';
 import { SubmissionModule } from '@/submissions/submission.module';
 import { SupervisionModule } from '@/supervisions/supervision.module';
@@ -31,7 +30,6 @@ import { ThesisApplicationModule } from '@/thesis-application/index';
 		ResponsibilityModule,
 		ReviewModule,
 		SemesterModule,
-		SkillSetModule,
 		StudentModule,
 		SubmissionModule,
 		SupervisionModule,

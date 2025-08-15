@@ -27,14 +27,6 @@ class Semester {
 	status: string;
 }
 
-class SkillSet {
-	@ApiProperty()
-	id: string;
-
-	@ApiProperty()
-	name: string;
-}
-
 class Enrollment {
 	@ApiProperty({ type: Semester })
 	semester: Semester;
@@ -43,26 +35,15 @@ class Enrollment {
 	status: string;
 }
 
-class StudentSkill {
-	@ApiProperty()
-	skillId: string;
-
-	@ApiProperty()
-	skillName: string;
-
-	@ApiProperty()
-	level: string;
-
-	@ApiProperty({ type: SkillSet })
-	skillSet: SkillSet;
-}
-
-class StudentExpectedResponsibility {
+class StudentResponsibility {
 	@ApiProperty()
 	responsibilityId: string;
 
 	@ApiProperty()
 	responsibilityName: string;
+
+	@ApiProperty()
+	level: string;
 }
 
 export class StudentDetailResponse extends StudentResponse {
@@ -72,9 +53,6 @@ export class StudentDetailResponse extends StudentResponse {
 	@ApiProperty({ type: Enrollment, isArray: true })
 	enrollments: Enrollment[];
 
-	@ApiProperty({ type: StudentSkill, isArray: true })
-	studentSkills: StudentSkill[];
-
-	@ApiProperty({ type: StudentExpectedResponsibility, isArray: true })
-	studentExpectedResponsibilities: StudentExpectedResponsibility[];
+	@ApiProperty({ type: StudentResponsibility, isArray: true })
+	studentResponsibilities: StudentResponsibility[];
 }

@@ -30,7 +30,7 @@ export class EmailConsumer extends WorkerHost {
 
 		this.logger.debug(
 			'EmailConsumer initialized with configuration:',
-			this.emailConfiguration,
+			JSON.stringify(this.emailConfiguration),
 		);
 		this.logger.log('Email transport initialized successfully.');
 	}

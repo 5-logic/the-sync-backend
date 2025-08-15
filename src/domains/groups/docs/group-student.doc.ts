@@ -3,12 +3,12 @@ import { ApiOperationOptions } from '@nestjs/swagger';
 export const GroupStudentDocs = {
 	create: {
 		summary: 'Create group',
-		description: `Create a new group with required skills and expected responsibilities.\n\n- **Student access only** (authentication and STUDENT role required).\n- Only allowed during PREPARING semester status.\n- Each student can only be a member of one group per semester.\n- Enforces maximum group limits per semester.\n- Group code is auto-generated.\n- The creator automatically becomes the group leader.\n- Validates that all specified skills and responsibilities exist.\n- Returns error if group creation rules are violated.\n- Logs all creation attempts and errors.\n\n**Fields:**\n- name, projectDirection, skillIds, responsibilityIds\n\n**Response includes:**\n- Complete group info: id, code, name, projectDirection, createdAt, updatedAt, semester, skills, responsibilities, members, leader`,
+		description: `Create a new group.\n\n- **Student access only** (authentication and STUDENT role required).\n- Only allowed during PREPARING semester status.\n- Each student can only be a member of one group per semester.\n- Enforces maximum group limits per semester.\n- Group code is auto-generated.\n- The creator automatically becomes the group leader.\n- Returns error if group creation rules are violated.\n- Logs all creation attempts and errors.\n\n**Fields:**\n- name, projectDirection\n\n**Response includes:**\n- Complete group info: id, code, name, projectDirection, createdAt, updatedAt, semester, members, leader`,
 	} as ApiOperationOptions,
 
 	update: {
 		summary: 'Update group',
-		description: `Update group information including name, project direction, required skills, and expected responsibilities.\n\n- **Student access only (group leader)**.\n- Only the group leader can perform updates.\n- Only allowed during PREPARING semester status.\n- Validates that all specified skills and responsibilities exist.\n- Updates trigger cache invalidation for related group data.\n- Returns error if update rules are violated.\n- Logs all update attempts and errors.\n\n**Fields:**\n- id (path), name, projectDirection, skillIds, responsibilityIds\n\n**Response includes:**\n- Complete group info (same as create)`,
+		description: `Update group information including name and project direction.\n\n- **Student access only (group leader)**.\n- Only the group leader can perform updates.\n- Only allowed during PREPARING semester status.\n- Updates trigger cache invalidation for related group data.\n- Returns error if update rules are violated.\n- Logs all update attempts and errors.\n\n**Fields:**\n- id (path), name, projectDirection\n\n**Response includes:**\n- Complete group info (same as create)`,
 	} as ApiOperationOptions,
 
 	changeLeader: {

@@ -5,11 +5,8 @@ import {
 	Major,
 	Responsibility,
 	Semester,
-	Skill,
-	SkillSet,
 	Student,
-	StudentExpectedResponsibility,
-	StudentSkill,
+	StudentResponsibility,
 	User,
 } from '~/generated/prisma';
 
@@ -17,8 +14,7 @@ type StudentDetailData = Student & {
 	user: User;
 	major: Major;
 	enrollments: (Enrollment & { semester: Semester })[];
-	studentSkills: (StudentSkill & { skill: Skill & { skillSet: SkillSet } })[];
-	studentExpectedResponsibilities: (StudentExpectedResponsibility & {
+	studentResponsibilities: (StudentResponsibility & {
 		responsibility: Responsibility;
 	})[];
 };
@@ -46,19 +42,9 @@ export const mapStudentDetailResponse = (
 		},
 		status: e.status,
 	})),
-	studentSkills: data.studentSkills.map((e) => ({
-		skillId: e.skill.id,
-		skillName: e.skill.name,
-		level: e.level.toString(),
-		skillSet: {
-			id: e.skill.skillSet.id,
-			name: e.skill.skillSet.name,
-		},
+	studentResponsibilities: data.studentResponsibilities.map((sr) => ({
+		responsibilityId: sr.responsibility.id,
+		responsibilityName: sr.responsibility.name,
+		level: sr.level.toString(),
 	})),
-	studentExpectedResponsibilities: data.studentExpectedResponsibilities.map(
-		(ser) => ({
-			responsibilityId: ser.responsibility.id,
-			responsibilityName: ser.responsibility.name,
-		}),
-	),
 });
