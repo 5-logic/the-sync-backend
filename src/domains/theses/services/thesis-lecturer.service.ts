@@ -705,26 +705,16 @@ export class ThesisLecturerService {
 			}
 
 			// Validate user permission to assign thesis
-			// First check if user is an admin
-			const admin = await this.prisma.admin.findFirst({
-				where: { id: userId },
+			// Check if user is a lecturer
+			const lecturer = await this.prisma.lecturer.findUnique({
+				where: { userId },
 			});
 
-			let lecturer: any = null;
-			if (!admin) {
-				// If not admin, check if user is a lecturer
-				lecturer = await this.prisma.lecturer.findUnique({
-					where: { userId },
-				});
-
-				if (!lecturer) {
-					this.logger.warn(
-						`User with ID ${userId} is neither admin nor lecturer`,
-					);
-					throw new NotFoundException(
-						`User not found or insufficient permissions`,
-					);
-				}
+			if (!lecturer) {
+				this.logger.warn(`User with ID ${userId} is not a lecturer`);
+				throw new NotFoundException(
+					`User not found or insufficient permissions`,
+				);
 			}
 
 			// Validate thesis supervision requirements
@@ -751,9 +741,8 @@ export class ThesisLecturerService {
 				);
 			}
 
-			// If user is admin, skip supervisor checks
 			// If lecturer is not a moderator, they must be one of the supervisors
-			if (!admin && lecturer && !lecturer.isModerator) {
+			if (lecturer && !lecturer.isModerator) {
 				const isSupervising = supervisors.some(
 					(supervision) => supervision.lecturerId === userId,
 				);
