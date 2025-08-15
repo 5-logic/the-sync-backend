@@ -23,11 +23,11 @@ export class GroupModeratorService {
 	async assignStudent(groupId: string, studentId: string, moderatorId: string) {
 		try {
 			this.logger.log(
-				`Moderator ${moderatorId} is assigning student ${studentId} to group ${groupId}`,
+				`User ${moderatorId} is assigning student ${studentId} to group ${groupId}`,
 			);
 
 			// Validate inputs and get required data in parallel
-			const [group, student, moderator, existingParticipation] =
+			const [group, student, admin, moderator, existingParticipation] =
 				await Promise.all([
 					this.prisma.group.findUnique({
 						where: { id: groupId },
@@ -65,6 +65,9 @@ export class GroupModeratorService {
 								},
 							},
 						},
+					}),
+					this.prisma.admin.findFirst({
+						where: { id: moderatorId },
 					}),
 					this.prisma.lecturer.findUnique({
 						where: { userId: moderatorId },
@@ -110,9 +113,10 @@ export class GroupModeratorService {
 				throw new NotFoundException(`Student not found`);
 			}
 
-			if (!moderator?.isModerator) {
+			// Check if user is admin or moderator
+			if (!admin && !moderator?.isModerator) {
 				throw new ConflictException(
-					`Access denied. Only moderators can assign students to groups`,
+					`Access denied. Only admins or moderators can assign students to groups`,
 				);
 			}
 
@@ -229,8 +233,12 @@ export class GroupModeratorService {
 				},
 			});
 
+			const assignerName = admin
+				? `Admin (${admin.username})`
+				: `Moderator "${moderator?.user?.fullName || 'Unknown'}"`;
+
 			this.logger.log(
-				`Student "${student.user.fullName}" (${student.user.email}) successfully assigned to group "${group.name}" (${group.code}) by moderator "${moderator.user.fullName}"`,
+				`Student "${student.user.fullName}" (${student.user.email}) successfully assigned to group "${group.name}" (${group.code}) by ${assignerName}`,
 			);
 
 			// Send email notifications to all group members

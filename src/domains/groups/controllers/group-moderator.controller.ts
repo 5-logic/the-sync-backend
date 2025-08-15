@@ -25,7 +25,7 @@ import { GroupModeratorService } from '@/groups/services';
 export class GroupModeratorController {
 	constructor(private readonly service: GroupModeratorService) {}
 
-	@Roles(Role.MODERATOR)
+	@Roles(Role.ADMIN, Role.MODERATOR)
 	@HttpCode(HttpStatus.OK)
 	@Put(':id/assign-student')
 	@ApiOperation(GroupModeratorDocs.assignStudent)
