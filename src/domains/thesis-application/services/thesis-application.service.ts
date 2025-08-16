@@ -138,15 +138,6 @@ export class ThesisApplicationService {
 							},
 						},
 					},
-					thesisRequiredSkills: {
-						include: {
-							skill: {
-								include: {
-									skillSet: true,
-								},
-							},
-						},
-					},
 				},
 			},
 			group: {
