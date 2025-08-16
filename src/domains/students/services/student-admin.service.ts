@@ -113,6 +113,7 @@ export class StudentAdminService {
 							where: { id: existingStudent.userId },
 							data: {
 								password: hashedPassword,
+								isActive: true,
 							},
 						});
 
@@ -317,6 +318,7 @@ export class StudentAdminService {
 								where: { id: existingStudent.userId },
 								data: {
 									password: hashedPassword,
+									isActive: true,
 								},
 							});
 
