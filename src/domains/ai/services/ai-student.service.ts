@@ -6,7 +6,7 @@ import { mapStudentDetailResponse } from '@/students/mappers';
 import { cleanJsonResponse } from '@/utils';
 
 interface AIResponse {
-	reasons: string;
+	reason: string;
 	students: Array<{
 		id: string;
 		compatibility: number;
@@ -90,7 +90,7 @@ export class AIStudentService {
 
 			if (availableStudents.length === 0) {
 				return {
-					reasons: 'No available students found for this semester',
+					reason: 'No available students found for this semester',
 					students: [],
 				};
 			}
@@ -164,7 +164,7 @@ export class AIStudentService {
 				.sort((a, b) => b.compatibility - a.compatibility);
 
 			return {
-				reasons: parsedResponse.reasons,
+				reason: parsedResponse.reason,
 				students: studentsWithCompatibility,
 			};
 		} catch (error) {
@@ -250,7 +250,7 @@ ${candidateStudents
 
 ## OUTPUT FORMAT (JSON only, no explanation):
 {
-  "reasons": "Brief explanation of what the group needs and why these students were selected",
+  "reason": "Brief explanation of what the group needs and why these students were selected",
   "students": [
     {
       "id": "student_id",

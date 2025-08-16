@@ -18,7 +18,7 @@ export class SuggestStudentsForGroupResponse {
 		example:
 			'The group needs members with strong Backend and AI skills to balance the current Frontend-heavy composition.',
 	})
-	reasons: string;
+	reason: string;
 
 	@ApiProperty({
 		type: [StudentWithCompatibility],
