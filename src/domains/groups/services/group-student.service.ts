@@ -661,41 +661,61 @@ export class GroupStudentService {
 					},
 				});
 
-			// If this is the last member (leader), delete the entire group
+			// If this is the last member (leader), remove relationship and reset group info
 			if (group._count.studentGroupParticipations === 1) {
 				await this.prisma.$transaction(
 					async (prisma) => {
-						// Delete all related records first
+						// Remove the student from the group
+						await prisma.studentGroupParticipation.delete({
+							where: {
+								studentId_groupId_semesterId: {
+									studentId: studentId,
+									groupId: groupId,
+									semesterId: group.semesterId,
+								},
+							},
+						});
+
+						// Delete all related records but keep the group
 						await Promise.all([
 							prisma.request.deleteMany({
 								where: { groupId: groupId },
 							}),
-							prisma.studentGroupParticipation.deleteMany({
+							prisma.thesisApplication.deleteMany({
+								where: { groupId: groupId },
+							}),
+							prisma.submission.deleteMany({
 								where: { groupId: groupId },
 							}),
 						]);
 
-						// Delete the group itself
-						await prisma.group.delete({
+						// Reset group information to default state
+						await prisma.group.update({
 							where: { id: groupId },
+							data: {
+								name: group.code, // Set name to current code
+								projectDirection: null, // Clear project direction
+								thesisId: null, // Clear thesis assignment
+							},
 						});
 					},
 					{ timeout: CONSTANTS.TIMEOUT },
 				);
 
 				this.logger.log(
-					`Group "${group.name}" (${group.code}) was automatically deleted as the last member (leader) left`,
+					`Student "${student.user.fullName}" (${student.user.email}) left group "${group.name}" (${group.code}). Group has been reset and is now available for new members.`,
 				);
 
 				return {
 					success: true,
-					message: `You have successfully left the group. Since you were the last member, group "${group.name}" (${group.code}) has been automatically deleted.`,
-					groupDeleted: true,
-					deletedGroup: {
-						id: group.id,
-						code: group.code,
-						name: group.name,
-						semester: group.semester,
+					message: `You have successfully left group "${group.name}" (${group.code}). The group has been reset and is now available for other students to join.`,
+					groupDeleted: false,
+					group: null, // Group is empty now
+					leftStudent: {
+						userId: student.userId,
+						fullName: student.user.fullName,
+						email: student.user.email,
+						major: student.major,
 					},
 				};
 			}
