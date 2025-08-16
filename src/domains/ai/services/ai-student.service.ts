@@ -1,6 +1,28 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
+import {
+	SuggestGroupsForStudentResponse,
+	SuggestStudentsForGroupResponse,
+} from '@/ai/responses';
 import { GeminiProviderService, PrismaService } from '@/providers';
+import { mapStudentDetailResponse } from '@/students/mappers';
+import { cleanJsonResponse } from '@/utils';
+
+interface AIResponse {
+	reason: string;
+	students: Array<{
+		id: string;
+		compatibility: number;
+	}>;
+}
+
+interface AIGroupSuggestionResponse {
+	reason: string;
+	groups: Array<{
+		id: string;
+		compatibility: number;
+	}>;
+}
 
 @Injectable()
 export class AIStudentService {
@@ -11,363 +33,496 @@ export class AIStudentService {
 		private readonly gemini: GeminiProviderService,
 	) {}
 
-	/**
-	 * Suggest students for a group based on skills, responsibilities, and thesis content
-	 */
-	async suggestStudentsForGroup(groupId: string, topK: number = 10) {
-		try {
-			this.logger.log(`Suggesting students for group: ${groupId}`);
+	async suggestStudentsForGroup(
+		groupId: string,
+		semesterId: string,
+	): Promise<SuggestStudentsForGroupResponse> {
+		this.logger.log(
+			`Suggesting students for group ${groupId} in semester ${semesterId}`,
+		);
 
-			// Get group with basic information
+		try {
+			// Get group information with current members and their responsibilities
 			const group = await this.prisma.group.findUnique({
 				where: { id: groupId },
 				include: {
-					thesis: {
-						select: {
-							id: true,
-							englishName: true,
-							vietnameseName: true,
-							description: true,
-						},
-					},
 					studentGroupParticipations: {
+						where: { semesterId },
 						include: {
 							student: {
 								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-											email: true,
-										},
-									},
-									major: {
-										select: {
-											id: true,
-											name: true,
-											code: true,
+									user: true,
+									studentResponsibilities: {
+										include: {
+											responsibility: true,
 										},
 									},
 								},
 							},
 						},
 					},
-					semester: {
-						select: {
-							id: true,
-							name: true,
-						},
-					},
 				},
 			});
+
 			if (!group) {
 				throw new NotFoundException('Group not found');
 			}
 
-			// Build query from group information
-			// const queryText = this.buildGroupQueryText(group);
-
-			// TODO: Implement vector search using queryText in STUDENT namespace
-			// const index = this.pinecone
-			//   .getClient()
-			//   .index(this.pinecone.getIndexName())
-			//   .namespace(AIStudentService.STUDENT_NAMESPACE);
-			// Use queryText to find similar students in vector database
-
-			// For now, we'll use a simple approach - fetch some vectors and calculate similarity manually
-			// In a full implementation, you would generate embeddings for queryText and use vector search
-
-			// Get current group member IDs to exclude them
-			const currentMemberIds =
-				group.studentGroupParticipations?.map((p: any) => p.student.userId) ||
-				[];
-
-			// Temporary: Get enrolled students not in any group
+			// Get available students (enrolled in semester but not in any group)
 			const availableStudents = await this.prisma.student.findMany({
 				where: {
 					enrollments: {
 						some: {
-							semesterId: group.semester.id,
+							semesterId: semesterId,
 						},
 					},
 					studentGroupParticipations: {
 						none: {
-							semesterId: group.semester.id,
+							semesterId: semesterId,
 						},
-					},
-					userId: {
-						notIn: currentMemberIds, // Exclude current group members
 					},
 				},
 				include: {
-					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
+					user: true,
+					major: true,
+					enrollments: {
+						where: { semesterId },
+						include: {
+							semester: true,
 						},
 					},
-					major: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
+					studentResponsibilities: {
+						include: {
+							responsibility: true,
 						},
 					},
 				},
-				take: topK * 2, // Get more than needed for filtering
 			});
 
-			// Use AI to calculate compatibility scores
-			const aiScores = await this.calculateCompatibilityWithAI(
-				group,
-				availableStudents.slice(0, topK),
-			);
-
-			// Map the AI scores back to full student information
-			const suggestions = aiScores.map((aiScore) => {
-				const student = availableStudents.find(
-					(s) => s.userId === aiScore.userId,
-				);
-				if (!student) {
-					throw new Error(`Student with ID ${aiScore.userId} not found`);
-				}
-
+			if (availableStudents.length === 0) {
 				return {
-					id: student.userId,
-					studentCode: student.studentCode,
-					fullName: student.user.fullName,
-					email: student.user.email,
-					major: student.major
-						? {
-								id: student.major.id,
-								name: student.major.name,
-								code: student.major.code,
-							}
-						: null,
-					similarityScore: aiScore.similarityScore,
-					matchPercentage: aiScore.matchPercentage,
+					reason: 'No available students found for this semester',
+					students: [],
 				};
-			});
+			}
 
-			this.logger.log(
-				`Found ${suggestions.length} student suggestions for group ${groupId}`,
+			// Format data for AI prompt
+			const currentMembers = group.studentGroupParticipations.map(
+				(participation) => ({
+					id: participation.student.user.id,
+					fullName: participation.student.user.fullName,
+					studentCode: participation.student.studentCode,
+					responsibilities: participation.student.studentResponsibilities.map(
+						(sr) => ({
+							name: sr.responsibility.name,
+							level: sr.level,
+						}),
+					),
+				}),
 			);
 
-			return suggestions;
+			const candidateStudents = availableStudents.map((student) => ({
+				id: student.user.id,
+				fullName: student.user.fullName,
+				studentCode: student.studentCode,
+				responsibilities: student.studentResponsibilities.map((sr) => ({
+					name: sr.responsibility.name,
+					level: sr.level,
+				})),
+			}));
+
+			// Create AI prompt
+			const prompt = this.buildPromptForGroupSuggestion(
+				currentMembers,
+				candidateStudents,
+			);
+
+			// Get AI suggestion
+			const ai = this.gemini.getClient();
+			const modelName = this.gemini.getModelName();
+
+			const response = await ai.models.generateContent({
+				model: modelName,
+				contents: prompt,
+			});
+
+			const responseText = response.text?.trim();
+			if (!responseText) {
+				throw new Error('Empty response from AI');
+			}
+
+			let parsedResponse: AIResponse;
+			try {
+				const cleanedResponse = cleanJsonResponse(responseText);
+				parsedResponse = JSON.parse(cleanedResponse);
+			} catch (parseError) {
+				this.logger.error('Failed to parse AI response:', parseError);
+				throw new Error('Invalid AI response format');
+			}
+
+			// Get detailed student information for suggested students with compatibility scores
+			const suggestedStudentIds = parsedResponse.students.map((s) => s.id);
+			const compatibilityMap = new Map(
+				parsedResponse.students.map((s) => [s.id, s.compatibility]),
+			);
+
+			const studentsWithCompatibility = availableStudents
+				.filter((student) => suggestedStudentIds.includes(student.user.id))
+				.map((student) => ({
+					...mapStudentDetailResponse(student),
+					compatibility: compatibilityMap.get(student.user.id) || 0,
+				}))
+				.sort((a, b) => b.compatibility - a.compatibility);
+
+			return {
+				reason: parsedResponse.reason,
+				students: studentsWithCompatibility,
+			};
 		} catch (error) {
-			this.logger.error('Error suggesting students for group', error);
+			this.logger.error(
+				`Error suggesting students for group ${groupId}:`,
+				error,
+			);
 			throw error;
 		}
 	}
 
-	/**
-	 * Build comprehensive query text combining group requirements and thesis content
-	 */
-	/**
-	 * Calculate compatibility score between a student and group
-	 */
-	private calculateStudentGroupCompatibility(
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		_student: any,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		_group: any,
-	): number {
-		// Base compatibility score for basic enrollment criteria
-		// In the future, this could include other factors like:
-		// - Academic performance
-		// - Previous project experience
-		// - Schedule compatibility
-		// - Communication preferences
-		return 75; // Base compatibility score
-	}
-
-	/**
-	 * Suggest groups for a student based on skills, responsibilities, and interests
-	 */
-	async suggestGroupsForStudent(
+	suggestGroupsForStudent(
 		studentId: string,
 		semesterId: string,
-		topK: number = 10,
-	) {
-		try {
-			this.logger.log(
-				`Suggesting groups for student: ${studentId} in semester: ${semesterId}`,
-			);
+	): Promise<SuggestGroupsForStudentResponse> {
+		return this.suggestGroupsForStudentInternal(studentId, semesterId);
+	}
 
-			// Get student with full information
+	private async suggestGroupsForStudentInternal(
+		studentId: string,
+		semesterId: string,
+	): Promise<SuggestGroupsForStudentResponse> {
+		this.logger.log(
+			`Suggesting groups for student ${studentId} in semester ${semesterId}`,
+		);
+
+		try {
+			// Get student information with responsibilities
 			const student = await this.prisma.student.findUnique({
 				where: { userId: studentId },
 				include: {
-					user: {
-						select: {
-							id: true,
-							fullName: true,
-							email: true,
-						},
-					},
-					major: {
-						select: {
-							id: true,
-							name: true,
-							code: true,
-						},
-					},
+					user: true,
+					major: true,
 					enrollments: {
-						where: {
-							semesterId: semesterId,
-						},
+						where: { semesterId },
 						include: {
 							semester: true,
+						},
+					},
+					studentResponsibilities: {
+						include: {
+							responsibility: true,
 						},
 					},
 				},
 			});
 
 			if (!student) {
-				throw new NotFoundException(`Student with ID ${studentId} not found`);
+				throw new NotFoundException('Student not found');
 			}
 
-			// Check if student is enrolled in the specified semester
-			if (!student.enrollments || student.enrollments.length === 0) {
-				throw new NotFoundException(
-					`Student with ID ${studentId} is not enrolled in semester ${semesterId}`,
-				);
+			// Check if student is enrolled in the semester
+			if (student.enrollments.length === 0) {
+				throw new NotFoundException('Student is not enrolled in this semester');
 			}
 
-			// Build student query text for vector search
-			// const studentQueryText = this.buildStudentQueryText(student);
-
-			// TODO: Implement vector search in GROUP namespace
-			// const groupIndex = this.pinecone
-			//   .getClient()
-			//   .index(this.pinecone.getIndexName())
-			//   .namespace(AIStudentService.GROUP_NAMESPACE);
-			// Use studentQueryText to find similar groups
-
-			// Get available groups (not full and in same semester)
-			const allGroups = await this.prisma.group.findMany({
+			// Get all groups in the semester with ≤ 4 members (excluding groups with 0 members)
+			const groups = await this.prisma.group.findMany({
 				where: {
-					semesterId: semesterId, // Filter by semester
+					semesterId: semesterId,
 					studentGroupParticipations: {
-						none: {
-							studentId: student.userId,
+						some: {
+							semesterId: semesterId,
 						},
 					},
 				},
 				include: {
-					thesis: {
-						select: {
-							id: true,
-							englishName: true,
-							vietnameseName: true,
-							description: true,
-						},
-					},
 					studentGroupParticipations: {
+						where: { semesterId },
 						include: {
 							student: {
 								include: {
-									user: {
-										select: {
-											id: true,
-											fullName: true,
-										},
-									},
-									major: {
-										select: {
-											id: true,
-											name: true,
-											code: true,
+									user: true,
+									studentResponsibilities: {
+										include: {
+											responsibility: true,
 										},
 									},
 								},
 							},
 						},
 					},
-					_count: {
-						select: {
-							studentGroupParticipations: true,
-						},
-					},
 				},
 			});
 
-			// Filter groups with less than 5 members
-			const availableGroups = allGroups.filter(
-				(group) => group._count.studentGroupParticipations < 5,
+			// Filter groups with 1-4 members
+			const eligibleGroups = groups.filter(
+				(group) =>
+					group.studentGroupParticipations.length >= 1 &&
+					group.studentGroupParticipations.length <= 4,
 			);
 
-			// Use AI to calculate compatibility scores
-			const aiScores = await this.calculateGroupCompatibilityWithAI(
-				student,
-				availableGroups,
-			);
-
-			// Map the AI scores back to full group information and limit to topK
-			const groupSuggestions = aiScores.slice(0, topK).map((aiScore) => {
-				const group = availableGroups.find((g) => g.id === aiScore.id);
-				if (!group) {
-					throw new Error(`Group with ID ${aiScore.id} not found`);
-				}
-
-				// Find the leader of the group
-				const leaderParticipation = group.studentGroupParticipations.find(
-					(sgp) => sgp.isLeader,
-				);
-
+			if (eligibleGroups.length === 0) {
 				return {
-					group: {
-						id: group.id,
-						code: group.code,
-						name: group.name,
-						projectDirection: group.projectDirection,
-						thesis: group.thesis,
-						currentMembersCount: group._count.studentGroupParticipations,
-						leader: leaderParticipation
-							? {
-									id: leaderParticipation.student.userId,
-									name: leaderParticipation.student.user.fullName,
-								}
-							: null,
-						members: group.studentGroupParticipations.map((sgp) => ({
-							id: sgp.student.userId,
-							name: sgp.student.user.fullName,
-							major: sgp.student.major
-								? {
-										id: sgp.student.major.id,
-										name: sgp.student.major.name,
-										code: sgp.student.major.code,
-									}
-								: null,
-							isLeader: sgp.isLeader,
-						})),
-					},
-					compatibilityScore: aiScore.compatibilityScore,
+					reason: 'No suitable groups found in this semester',
+					groups: [],
 				};
+			}
+
+			// Format student data
+			const studentData = {
+				id: student.user.id,
+				fullName: student.user.fullName,
+				studentCode: student.studentCode,
+				responsibilities: student.studentResponsibilities.map((sr) => ({
+					name: sr.responsibility.name,
+					level: sr.level,
+				})),
+			};
+
+			// Format groups data
+			const groupsData = eligibleGroups.map((group) => ({
+				id: group.id,
+				code: group.code,
+				name: group.name,
+				memberCount: group.studentGroupParticipations.length,
+				members: group.studentGroupParticipations.map((participation) => ({
+					id: participation.student.user.id,
+					fullName: participation.student.user.fullName,
+					studentCode: participation.student.studentCode,
+					responsibilities: participation.student.studentResponsibilities.map(
+						(sr) => ({
+							name: sr.responsibility.name,
+							level: sr.level,
+						}),
+					),
+				})),
+			}));
+
+			// Create AI prompt
+			const prompt = this.buildPromptForStudentGroupSuggestion(
+				studentData,
+				groupsData,
+			);
+
+			// Get AI suggestion
+			const ai = this.gemini.getClient();
+			const modelName = this.gemini.getModelName();
+
+			const response = await ai.models.generateContent({
+				model: modelName,
+				contents: prompt,
 			});
+
+			const responseText = response.text?.trim();
+			if (!responseText) {
+				throw new Error('Empty response from AI');
+			}
+
+			let parsedResponse: AIGroupSuggestionResponse;
+			try {
+				const cleanedResponse = cleanJsonResponse(responseText);
+				parsedResponse = JSON.parse(cleanedResponse);
+			} catch (parseError) {
+				this.logger.error('Failed to parse AI response:', parseError);
+				throw new Error('Invalid AI response format');
+			}
+
+			// Get detailed group information for suggested groups with compatibility scores
+			const suggestedGroupIds = parsedResponse.groups.map((g) => g.id);
+			const compatibilityMap = new Map(
+				parsedResponse.groups.map((g) => [g.id, g.compatibility]),
+			);
+
+			const groupsWithCompatibility = eligibleGroups
+				.filter((group) => suggestedGroupIds.includes(group.id))
+				.map((group) => ({
+					id: group.id,
+					code: group.code,
+					name: group.name,
+					compatibility: compatibilityMap.get(group.id) || 0,
+				}))
+				.sort((a, b) => b.compatibility - a.compatibility);
 
 			return {
-				student: {
-					id: student.userId,
-					studentCode: student.studentCode,
-					name: student.user.fullName,
-					email: student.user.email,
-					major: student.major
-						? {
-								id: student.major.id,
-								name: student.major.name,
-								code: student.major.code,
-							}
-						: null,
-				},
-				suggestions: groupSuggestions,
-				totalGroups: availableGroups.length,
+				reason: parsedResponse.reason,
+				groups: groupsWithCompatibility,
 			};
 		} catch (error) {
-			this.logger.error('Error suggesting groups for student', error);
+			this.logger.error(
+				`Error suggesting groups for student ${studentId}:`,
+				error,
+			);
 			throw error;
 		}
+	}
+
+	private buildPromptForGroupSuggestion(
+		currentMembers: Array<{
+			id: string;
+			fullName: string;
+			studentCode: string;
+			responsibilities: Array<{ name: string; level: number }>;
+		}>,
+		candidateStudents: Array<{
+			id: string;
+			fullName: string;
+			studentCode: string;
+			responsibilities: Array<{ name: string; level: number }>;
+		}>,
+	): string {
+		return `
+You are a team formation expert. Analyze the current group members and suggest the most suitable students to join the group based on responsibility balance and team synergy.
+
+## CONTEXT:
+- Each student has 5 responsibilities: Backend, Frontend, DevOps, BA (Business Analyst), and AI
+- Each responsibility has a level from 0 to 5 (0 = no experience, 5 = expert level)
+- A well-balanced group should have complementary skills and avoid gaps in critical areas
+
+## CURRENT GROUP MEMBERS:
+${currentMembers
+	.map(
+		(member) => `
+- ${member.fullName} (${member.studentCode}):
+  ${member.responsibilities
+		.map((r) => `  - ${r.name}: ${r.level}/5`)
+		.join('\n')}`,
+	)
+	.join('\n')}
+
+## CANDIDATE STUDENTS:
+${candidateStudents
+	.map(
+		(student) => `
+- ID: ${student.id}, ${student.fullName} (${student.studentCode}):
+  ${student.responsibilities
+		.map((r) => `  - ${r.name}: ${r.level}/5`)
+		.join('\n')}`,
+	)
+	.join('\n')}
+
+## EVALUATION CRITERIA:
+1. **Skill Gap Analysis**: Identify missing or weak areas in the current group
+2. **Complementary Skills**: Prefer candidates who strengthen weak areas
+3. **Balanced Distribution**: Avoid overloading one area while neglecting others
+4. **Overall Team Synergy**: Consider how well the candidate would fit with existing members
+
+## COMPATIBILITY SCORING (0.0 to 1.0):
+- 0.9-1.0: Excellent fit, fills critical gaps perfectly
+- 0.7-0.8: Very good fit, strengthens team significantly
+- 0.5-0.6: Good fit, provides solid contribution
+- 0.3-0.4: Fair fit, some benefits but limitations
+- 0.0-0.2: Poor fit, doesn't address team needs
+
+## INSTRUCTIONS:
+1. Analyze the current group's strengths and weaknesses
+2. Identify what types of skills the group needs most
+3. Evaluate each candidate against these needs
+4. Select the top 3-5 most suitable candidates
+5. Provide compatibility scores and clear reasoning
+
+## OUTPUT FORMAT (JSON only, no explanation):
+{
+  "reason": "Brief explanation of what the group needs and why these students were selected",
+  "students": [
+    {
+      "id": "student_id",
+      "compatibility": 0.85
+    }
+  ]
+}
+`;
+	}
+
+	private buildPromptForStudentGroupSuggestion(
+		studentData: {
+			id: string;
+			fullName: string;
+			studentCode: string;
+			responsibilities: Array<{ name: string; level: number }>;
+		},
+		groupsData: Array<{
+			id: string;
+			code: string;
+			name: string;
+			memberCount: number;
+			members: Array<{
+				id: string;
+				fullName: string;
+				studentCode: string;
+				responsibilities: Array<{ name: string; level: number }>;
+			}>;
+		}>,
+	): string {
+		return `
+You are a team formation expert. Analyze the student's strengths and suggest the most suitable groups for them to join based on skill complementarity and team needs.
+
+## CONTEXT:
+- Each student has 5 responsibilities: Backend, Frontend, DevOps, BA (Business Analyst), and AI
+- Each responsibility has a level from 0 to 5 (0 = no experience, 5 = expert level)
+- Good team matches occur when the student's strengths complement the group's weaknesses
+
+## STUDENT PROFILE:
+${studentData.fullName} (${studentData.studentCode}):
+${studentData.responsibilities
+	.map((r) => `  - ${r.name}: ${r.level}/5`)
+	.join('\n')}
+
+## AVAILABLE GROUPS:
+${groupsData
+	.map(
+		(group) => `
+- Group ID: ${group.id}, ${group.name} (${group.code}) - ${group.memberCount} members:
+${group.members
+	.map(
+		(member) => `
+  Member: ${member.fullName} (${member.studentCode}):
+    ${member.responsibilities
+			.map((r) => `    - ${r.name}: ${r.level}/5`)
+			.join('\n')}`,
+	)
+	.join('\n')}`,
+	)
+	.join('\n')}
+
+## EVALUATION CRITERIA:
+1. **Skill Gap Analysis**: Identify what skills each group is missing or weak in
+2. **Student's Strengths**: Consider where the student excels (level 3-5)
+3. **Complementary Fit**: How well does the student fill the group's gaps?
+4. **Team Balance**: Will adding this student create a well-rounded team?
+5. **Growth Opportunities**: Consider groups where the student can learn from others
+
+## COMPATIBILITY SCORING (0.0 to 1.0):
+- 0.9-1.0: Perfect match, student's strengths exactly fill critical gaps
+- 0.7-0.8: Excellent fit, strong contribution with good balance
+- 0.5-0.6: Good fit, solid addition to the team
+- 0.3-0.4: Fair fit, some benefits but not optimal
+- 0.0-0.2: Poor fit, doesn't address team needs effectively
+
+## INSTRUCTIONS:
+1. Analyze each group's current skill composition and identify gaps
+2. Evaluate how the student's skills would complement each group
+3. Consider both filling gaps and maintaining balance
+4. Select the top 3-5 most suitable groups
+5. Provide compatibility scores and reasoning
+
+## OUTPUT FORMAT (JSON only, no explanation):
+{
+  "reason": "Brief explanation of the student's key strengths and why these groups were selected",
+  "groups": [
+    {
+      "id": "group_id",
+      "compatibility": 0.85
+    }
+  ]
+}
+`;
 	}
 
 	async getGroup(groupId: string): Promise<{ id: string; semesterId: string }> {
@@ -384,412 +539,5 @@ export class AIStudentService {
 		}
 
 		return group;
-	}
-
-	/**
-	 * Use AI to calculate compatibility scores between students and a group
-	 */
-	private async calculateCompatibilityWithAI(
-		group: any,
-		students: any[],
-	): Promise<
-		Array<{
-			userId: string;
-			similarityScore: number;
-			matchPercentage: number;
-		}>
-	> {
-		try {
-			// Prepare group information for AI prompt
-			const groupInfo = {
-				name: group.name,
-				projectDirection: group.projectDirection || 'Not specified',
-				requiredSkills: [{ name: 'None specified' }], // Skills removed from database
-				expectedResponsibilities: [{ name: 'None specified' }], // Responsibilities removed from database
-				currentMembers:
-					group.studentGroupParticipations?.map((sgp: any) => ({
-						name: sgp.student.user.fullName,
-						major: sgp.student.major
-							? {
-									name: sgp.student.major.name,
-									code: sgp.student.major.code,
-								}
-							: null,
-						skills: [{ name: 'None', level: 'N/A' }], // Skills removed from database
-						responsibilities: [{ name: 'None' }], // Responsibilities removed from database
-					})) || [],
-				thesis: group.thesis
-					? {
-							englishName: group.thesis.englishName,
-							vietnameseName: group.thesis.vietnameseName,
-							description: group.thesis.description,
-						}
-					: null,
-			};
-
-			// Prepare student information for AI prompt
-			const studentsInfo = students.map((student) => ({
-				userId: student.userId,
-				major: student.major
-					? {
-							name: student.major.name,
-							code: student.major.code,
-						}
-					: null,
-				skills: [{ name: 'None', level: 'N/A' }], // Skills removed from database
-				responsibilities: [{ name: 'None' }], // Responsibilities removed from database
-			}));
-
-			const prompt = `
-You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well each student matches with a specific group based on skills, responsibilities, academic background (major), and project requirements.
-
-## Group Information:
-- **Group Name**: ${groupInfo.name}
-- **Project Direction**: ${groupInfo.projectDirection}
-- **Required Skills**: ${groupInfo.requiredSkills.map((s) => s.name).join(', ') || 'None specified'}
-- **Expected Responsibilities**: ${groupInfo.expectedResponsibilities.map((r) => r.name).join(', ') || 'None specified'}
-- **Current Members**: ${
-				groupInfo.currentMembers.length > 0
-					? groupInfo.currentMembers
-							.map(
-								(m) =>
-									`${m.name} [Major: ${m.major?.name || 'Unknown'}] (Skills: ${m.skills.map((s) => `${s.name} (${s.level})`).join(', ') || 'None'}, Responsibilities: ${m.responsibilities.map((r) => r.name).join(', ') || 'None'})`,
-							)
-							.join('; ')
-					: 'No current members'
-			}
-${groupInfo.thesis ? `- **Thesis**: ${groupInfo.thesis.englishName || groupInfo.thesis.vietnameseName} - ${groupInfo.thesis.description}` : '- **Thesis**: Not selected yet'}
-
-## Students to Evaluate:
-${JSON.stringify(studentsInfo, null, 2)}
-
-## Evaluation Criteria:
-1. **Skill Matching (30% weight)**: How well do the student's skills align with the group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
-2. **Major Compatibility (25% weight)**: How well does the student's academic major align with the project requirements and existing team members' majors? Consider diversity benefits and relevance to thesis topic.
-3. **Responsibility Alignment (25% weight)**: How well do the student's expected responsibilities match the group's expected responsibilities?
-4. **Group Dynamics (15% weight)**: How well would this student complement the existing team members' skills, responsibilities, and academic backgrounds?
-5. **Project Fit (5% weight)**: How suitable is the student for the thesis/project direction (if available)?
-
-## Scoring Instructions:
-- **similarityScore**: A decimal between 0.0 and 1.0 representing overall compatibility
-- **matchPercentage**: An integer between 0 and 100 representing the percentage match
-
-## Output Format:
-Return ONLY a valid JSON array with objects containing exactly these three fields:
-[
-  {
-    "userId": "student_user_id",
-    "similarityScore": 0.85,
-    "matchPercentage": 85
-  }
-]
-
-## Important Notes:
-- Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
-- Higher skill levels should result in better scores for matching required skills
-- Students with majors relevant to the project/thesis should score higher
-- Consider academic diversity - having different but complementary majors can be beneficial
-- Students with responsibilities that complement existing members should score higher
-- Ensure scores are realistic and well-distributed across the range
-- Return results in descending order by matchPercentage
-- Do not include any explanation or additional text, only the JSON array
-			`;
-
-			const ai = this.gemini.getClient();
-			const modelName = this.gemini.getModelName();
-
-			const response = await ai.models.generateContent({
-				model: modelName,
-				contents: prompt,
-			});
-
-			const responseText = response.text?.trim();
-			if (!responseText) {
-				throw new Error('Empty response from AI');
-			}
-
-			// Parse AI response
-			let aiScores: Array<{
-				userId: string;
-				similarityScore: number;
-				matchPercentage: number;
-			}>;
-			try {
-				// Remove potential markdown code blocks
-				const cleanedResponse = responseText
-					.replace(/```json\n?|\n?```/g, '')
-					.trim();
-				aiScores = JSON.parse(cleanedResponse);
-			} catch (parseError) {
-				this.logger.error('Failed to parse AI response:', parseError);
-				this.logger.error('AI Response:', responseText);
-				throw new Error('Invalid JSON response from AI');
-			}
-
-			// Validate response format
-			if (!Array.isArray(aiScores)) {
-				throw new Error('AI response is not an array');
-			}
-
-			// Validate each score object
-			for (const score of aiScores) {
-				if (
-					!score.userId ||
-					typeof score.similarityScore !== 'number' ||
-					typeof score.matchPercentage !== 'number'
-				) {
-					throw new Error('Invalid score object format from AI');
-				}
-
-				// Ensure scores are within valid ranges
-				score.similarityScore = Math.max(0, Math.min(1, score.similarityScore));
-				score.matchPercentage = Math.max(
-					0,
-					Math.min(100, Math.round(score.matchPercentage)),
-				);
-			}
-
-			// Sort by matchPercentage in descending order
-			aiScores.sort((a, b) => b.matchPercentage - a.matchPercentage);
-
-			this.logger.log(
-				`AI compatibility calculation completed for ${aiScores.length} students`,
-			);
-			return aiScores;
-		} catch (error) {
-			this.logger.error('Error calculating compatibility with AI:', error);
-
-			// Fallback to manual calculation if AI fails
-			this.logger.warn('Falling back to manual compatibility calculation');
-			return students
-				.map((student) => {
-					const compatibilityScore = this.calculateStudentGroupCompatibility(
-						student,
-						group,
-					);
-					return {
-						userId: student.userId,
-						similarityScore: compatibilityScore / 100,
-						matchPercentage: compatibilityScore,
-					};
-				})
-				.sort((a, b) => b.matchPercentage - a.matchPercentage);
-		}
-	}
-
-	/**
-	 * Use AI to calculate compatibility scores between a student and groups
-	 */
-	private async calculateGroupCompatibilityWithAI(
-		student: any,
-		groups: any[],
-	): Promise<
-		Array<{
-			id: string;
-			compatibilityScore: number;
-		}>
-	> {
-		try {
-			// Prepare student information for AI prompt
-			const studentInfo = {
-				userId: student.userId,
-				major: student.major
-					? {
-							name: student.major.name,
-							code: student.major.code,
-						}
-					: null,
-				skills:
-					student.studentSkills?.map((ss: any) => ({
-						name: ss.skill.name,
-						level: ss.level,
-					})) || [],
-				responsibilities:
-					student.studentExpectedResponsibilities?.map((sr: any) => ({
-						name: sr.responsibility.name,
-					})) || [],
-			};
-
-			// Prepare groups information for AI prompt
-			const groupsInfo = groups.map((group) => ({
-				id: group.id,
-				name: group.name,
-				code: group.code,
-				projectDirection: group.projectDirection || 'Not specified',
-				requiredSkills:
-					group.groupRequiredSkills?.map((gs: any) => ({
-						name: gs.skill.name,
-					})) || [],
-				expectedResponsibilities:
-					group.groupExpectedResponsibilities?.map((gr: any) => ({
-						name: gr.responsibility.name,
-					})) || [],
-				currentMembers:
-					group.studentGroupParticipations?.map((sgp: any) => ({
-						name: sgp.student.user.fullName,
-						major: sgp.student.major
-							? {
-									name: sgp.student.major.name,
-									code: sgp.student.major.code,
-								}
-							: null,
-						skills:
-							sgp.student.studentSkills?.map((ss: any) => ({
-								name: ss.skill.name,
-								level: ss.level,
-							})) || [],
-						responsibilities:
-							sgp.student.studentExpectedResponsibilities?.map((sr: any) => ({
-								name: sr.responsibility.name,
-							})) || [],
-					})) || [],
-				thesis: group.thesis
-					? {
-							englishName: group.thesis.englishName,
-							vietnameseName: group.thesis.vietnameseName,
-							description: group.thesis.description,
-						}
-					: null,
-				currentMembersCount: group._count.studentGroupParticipations,
-			}));
-
-			const prompt = `
-You are an AI assistant that evaluates student-group compatibility for academic projects. Your task is to analyze how well a student fits with various groups based on skills, responsibilities, academic background (major), and project requirements.
-
-## Student Information:
-${JSON.stringify(studentInfo, null, 2)}
-
-## Groups to Evaluate:
-${JSON.stringify(groupsInfo, null, 2)}
-
-## Evaluation Criteria:
-1. **Skill Matching (30% weight)**: How well do the student's skills align with each group's required skills? Consider both skill presence and proficiency levels (Beginner/Intermediate/Proficient/Advanced/Expert).
-2. **Major Compatibility (25% weight)**: How well does the student's academic major align with each group's project requirements and existing team members' majors? Consider diversity benefits and relevance to thesis topic.
-3. **Responsibility Alignment (25% weight)**: How well do the student's expected responsibilities match each group's expected responsibilities?
-4. **Group Dynamics (15% weight)**: How well would this student complement the existing team members' skills, responsibilities, and academic backgrounds?
-5. **Project Fit (5% weight)**: How suitable is the student for the group's thesis/project direction (if available)?
-
-## Scoring Instructions:
-- **compatibilityScore**: An integer between 0 and 100 representing overall compatibility
-- **matchingSkills**: Count of skills that match between student and group requirements
-- **matchingResponsibilities**: Count of responsibilities that match between student expectations and group expectations
-
-## Output Format:
-Return ONLY a valid JSON array with objects containing exactly these four fields:
-[
-  {
-    "id": "group_id",
-    "compatibilityScore": 85,
-    "matchingSkills": 3,
-    "matchingResponsibilities": 2
-  }
-]
-
-## Important Notes:
-- Consider skill levels: Expert > Advanced > Proficient > Intermediate > Beginner
-- Higher skill levels should result in better compatibility scores for matching required skills
-- Students with majors relevant to the project/thesis should receive higher compatibility scores
-- Consider academic diversity - different but complementary majors can be beneficial for project success
-- Students should fit well with groups that complement their skills and interests
-- Groups with fewer members might be more welcoming but consider if the student adds value
-- Ensure scores are realistic and well-distributed across the range
-- Return results in descending order by compatibilityScore
-- Only include groups with compatibilityScore > 30
-- Do not include any explanation or additional text, only the JSON array
-			`;
-
-			const ai = this.gemini.getClient();
-			const modelName = this.gemini.getModelName();
-
-			const response = await ai.models.generateContent({
-				model: modelName,
-				contents: prompt,
-			});
-
-			const responseText = response.text?.trim();
-			if (!responseText) {
-				throw new Error('Empty response from AI');
-			}
-
-			// Parse AI response
-			let aiScores: Array<{
-				id: string;
-				compatibilityScore: number;
-				matchingSkills: number;
-				matchingResponsibilities: number;
-			}>;
-			try {
-				// Remove potential markdown code blocks
-				const cleanedResponse = responseText
-					.replace(/```json\n?|\n?```/g, '')
-					.trim();
-				aiScores = JSON.parse(cleanedResponse);
-			} catch (parseError) {
-				this.logger.error('Failed to parse AI response:', parseError);
-				this.logger.error('AI Response:', responseText);
-				throw new Error('Invalid JSON response from AI');
-			}
-
-			// Validate response format
-			if (!Array.isArray(aiScores)) {
-				throw new Error('AI response is not an array');
-			}
-
-			// Validate each score object
-			for (const score of aiScores) {
-				if (
-					!score.id ||
-					typeof score.compatibilityScore !== 'number' ||
-					typeof score.matchingSkills !== 'number' ||
-					typeof score.matchingResponsibilities !== 'number'
-				) {
-					throw new Error('Invalid score object format from AI');
-				}
-
-				// Ensure scores are within valid ranges
-				score.compatibilityScore = Math.max(
-					0,
-					Math.min(100, Math.round(score.compatibilityScore)),
-				);
-				score.matchingSkills = Math.max(0, Math.round(score.matchingSkills));
-				score.matchingResponsibilities = Math.max(
-					0,
-					Math.round(score.matchingResponsibilities),
-				);
-			}
-
-			// Sort by compatibilityScore in descending order and filter > 30
-			const filteredScores = aiScores
-				.filter((score) => score.compatibilityScore > 30)
-				.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
-
-			this.logger.log(
-				`AI group compatibility calculation completed for ${filteredScores.length} groups`,
-			);
-			return filteredScores;
-		} catch (error) {
-			this.logger.error(
-				'Error calculating group compatibility with AI:',
-				error,
-			);
-
-			// Fallback to manual calculation if AI fails
-			this.logger.warn(
-				'Falling back to manual group compatibility calculation',
-			);
-			return groups
-				.map((group) => {
-					const compatibilityScore = this.calculateStudentGroupCompatibility(
-						student,
-						group,
-					);
-					return {
-						id: group.id,
-						compatibilityScore,
-					};
-				})
-				.filter((score) => score.compatibilityScore > 30)
-				.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
-		}
 	}
 }
