@@ -192,7 +192,7 @@ export class GroupModeratorService {
 			});
 			if (studentsWithoutGroup >= 4) {
 				throw new BadGatewayException(
-					`Cannot assign student to group. There are already ${studentsWithoutGroup} students without a group in this semester. You can notify them to create / join a group.`,
+					`Cannot assign student to group. There are already ${studentsWithoutGroup} students without a group in this semester. You can notify them to join a group.`,
 				);
 			}
 
