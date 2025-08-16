@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.3] - 2025-08-16
+
+### Added
+
+- **AI-Powered Thesis Suggestion System**:
+  - **New Thesis Suggestion API**: Added `GET /ai/thesis/suggest-for-group/:groupId` endpoint for AI-powered thesis recommendations based on group capabilities
+  - **New Response Models**: Added `ThesisSuggestionResponse` and `ThesisSuggestion` interfaces for structured thesis recommendation responses
+  - **Multi-Supervisor Support**: Enhanced thesis suggestion system to handle theses with multiple supervisors through supervision relationships
+
+- **Enhanced AI Analysis Capabilities**:
+  - **Comprehensive Group Analysis**: AI now evaluates group members' academic majors, responsibility skills (Backend, Frontend, DevOps, BA, AI), and skill levels (0-10 scale)
+  - **Advanced Compatibility Scoring**: Implemented sophisticated scoring algorithm with weighted criteria: Skill Match (35%), Academic Background (25%), Content Relevance (20%), Thesis Orientation (15%), Group Capacity (5%)
+  - **Pinecone Integration**: Enhanced thesis content retrieval from Pinecone vector database for more accurate content-based matching
+
+### Changed
+
+- **Thesis Suggestion Algorithm Enhancement**:
+  - **AI-Powered Analysis**: Replaced basic thesis filtering with comprehensive AI analysis using Gemini AI integration
+  - **Enhanced Thesis Filtering**: Only suggest theses that are approved, published, available (not assigned to any group), and in the same semester
+  - **Improved Response Structure**: Enhanced API response to include detailed thesis information with supervisor names, compatibility scores, and reasoning
+
+- **Student Account Management**:
+  - **Automatic Account Activation**: When updating student passwords (both individual and bulk operations), accounts are now automatically set to active (`isActive: true`)
+  - **Enhanced User Experience**: Streamlined student onboarding process by automatically activating accounts during password updates
+
+- **Semester Lifecycle Management**:
+  - **Automatic Student Deactivation**: When a semester status is updated to `End`, all enrolled students are automatically deactivated (`isActive: false`)
+  - **Enhanced Semester Transitions**: Improved semester end process with comprehensive student status management and detailed logging
+
+### Enhanced
+
+- **AI Service Architecture**:
+  - **Advanced Prompt Engineering**: Implemented sophisticated AI prompts with detailed evaluation criteria for thesis-group matching
+  - **Robust Error Handling**: Enhanced error handling with fallback mechanisms when AI services are unavailable
+  - **Content Integration**: Improved integration between Pinecone vector database and AI analysis for comprehensive thesis evaluation
+
+- **API Documentation and Type Safety**:
+  - **Enhanced Swagger Documentation**: Updated API documentation for thesis suggestion endpoints with detailed parameter descriptions
+  - **Improved Response Types**: Better TypeScript types and response structures for thesis suggestion functionality
+  - **Comprehensive Validation**: Enhanced input validation and response format validation for AI-powered endpoints
+
+### Fixed
+
+- **AI Response Processing**: Enhanced JSON parsing for AI responses with proper markdown code block removal and validation
+- **Thesis Content Retrieval**: Improved error handling for Pinecone content retrieval with graceful fallback to basic thesis information
+- **Account State Consistency**: Fixed account activation flow during password updates for better user account management
+
+### Technical Improvements
+
+- **Service Integration**: Enhanced integration between AI services, Pinecone vector database, and thesis management systems
+- **Performance Optimization**: Optimized thesis suggestion algorithm with efficient database queries and AI processing
+- **Code Quality**: Improved code organization with better separation of concerns in AI thesis suggestion functionality
+- **Error Recovery**: Enhanced error handling and recovery mechanisms throughout AI-powered thesis suggestion features
+
+### Pull Requests
+
+- [#260](https://github.com/5-logic/the-sync-backend/pull/260) - AI-powered thesis suggestion system, student account management, and semester lifecycle enhancements
+
+---
+
 ## [0.9.2] - 2025-08-16
 
 ### Added
