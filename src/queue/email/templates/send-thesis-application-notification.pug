@@ -9,8 +9,6 @@
 //- + groupCode: Code of the group that applied
 //- + leaderName: Name of the group leader
 //- + memberCount: Total number of members in the group
-//- + members: Array of group members with their information
-//- + major: Major information (if all members have same major)
 //- + applicationDate: Date when the application was submitted
 //- + semesterName: Name of the semester
 
@@ -74,14 +72,6 @@ block content
     .info-item
       span.info-label Application Date:
       span.info-value #{applicationDate}
-
-  if members && members.length > 0
-    .info-box
-      h3 👨‍🎓 Group Members
-      each member, index in members
-        .info-item
-          span.info-label #{index + 1}. #{member.fullName}:
-          span.info-value #{member.studentCode} - #{member.major}
 
   .success-box
     h3 📝 Action Required
