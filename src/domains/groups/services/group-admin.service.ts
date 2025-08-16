@@ -35,7 +35,7 @@ export class GroupAdminService {
 				},
 			});
 
-			const maxGroupsAllowed = Math.floor(
+			const maxGroupsAllowed = Math.round(
 				(totalStudentsInSemester / 4.5) * 1.2,
 			);
 
@@ -283,9 +283,30 @@ export class GroupAdminService {
 				);
 			}
 
-			const deletedGroup = await this.prisma.group.delete({
-				where: { id: groupId },
-			});
+			const deletedGroup = await this.prisma.$transaction(
+				async (prisma) => {
+					// Delete all related records first
+					await Promise.all([
+						prisma.request.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.thesisApplication.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.submission.deleteMany({
+							where: { groupId: groupId },
+						}),
+					]);
+
+					// Delete the group itself
+					return await prisma.group.delete({
+						where: { id: groupId },
+					});
+				},
+				{
+					timeout: 1200000, // 20 minutes timeout for transaction
+				},
+			);
 
 			this.logger.log(
 				`Successfully deleted empty group ${deletedGroup.code} from semester ${group.semester.name} (${group.semester.code})`,
