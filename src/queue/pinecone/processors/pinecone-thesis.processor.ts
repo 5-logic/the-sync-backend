@@ -17,6 +17,7 @@ import {
 } from '@/queue/pinecone/constants';
 import { PineconeJobType } from '@/queue/pinecone/enums';
 import { ThesisDetailResponse } from '@/theses/responses';
+import { cleanJsonResponse } from '@/utils';
 
 import { ThesisStatus } from '~/generated/prisma';
 
@@ -498,7 +499,7 @@ Guidelines:
 - 86-100%: Nearly identical unique content and custom solutions
 
 ## Output Format:
-Return ONLY a valid JSON array with objects containing exactly these two fields:
+- Return ONLY a valid JSON array with objects containing exactly these two fields:
 [
   {
     "id": "thesis_id",
@@ -506,6 +507,7 @@ Return ONLY a valid JSON array with objects containing exactly these two fields:
     "duplicatePercentage": 65
   }
 ]
+- Return ONLY raw JSON array (no markdown, no code block, no explanations).
 
 ## VALID Reason Examples (specific unique content):
 ✅ "Identical recommendation algorithm using collaborative filtering weights"
@@ -538,7 +540,8 @@ Remember: If two theses only share common technology choices and standard archit
 				contents: prompt,
 			});
 
-			const responseText = response.text?.trim();
+			const responseText = cleanJsonResponse(response.text?.trim());
+
 			if (!responseText) {
 				this.logger.warn('Empty response from AI for duplicate analysis');
 				return this.fallbackCalculation(originalThesis, candidates);
@@ -574,7 +577,7 @@ Remember: If two theses only share common technology choices and standard archit
 					const candidate = candidatesWithContent.find(
 						(c) => c.id === score.id,
 					);
-					if (candidate && score.duplicatePercentage > 30) {
+					if (candidate) {
 						result.push({
 							id: score.id,
 							englishName: candidate.englishName,
