@@ -15,7 +15,10 @@ import { Request } from 'express';
 import { AI_API_TAGS, AI_CONSTANTS } from '@/ai/constants';
 import { AIStudentDocs } from '@/ai/docs';
 import { SuggestGroupsForStudentDto } from '@/ai/dtos';
-import { SuggestStudentsForGroupResponse } from '@/ai/responses';
+import {
+	SuggestGroupsForStudentResponse,
+	SuggestStudentsForGroupResponse,
+} from '@/ai/responses';
 import { AIStatisticsService, AIStudentService } from '@/ai/services';
 import { JwtAccessAuthGuard, RoleGuard } from '@/auth/guards';
 import { UserPayload } from '@/auth/interfaces';
@@ -57,10 +60,11 @@ export class AIStudentController {
 	@HttpCode(HttpStatus.OK)
 	@Post('suggest-groups-for-student')
 	@ApiOperation(AIStudentDocs.suggestGroupsForStudent)
+	@ApiBaseResponse(SuggestGroupsForStudentResponse, HttpStatus.OK)
 	async suggestGroupsForStudent(
 		@Body() dto: SuggestGroupsForStudentDto,
 		@Req() req: Request,
-	) {
+	): Promise<SuggestGroupsForStudentResponse> {
 		const user = req.user as UserPayload;
 
 		// Log AI API call
