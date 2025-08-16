@@ -3,6 +3,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SuggestStudentsForGroupResponse } from '@/ai/responses';
 import { GeminiProviderService, PrismaService } from '@/providers';
 import { mapStudentDetailResponse } from '@/students/mappers';
+import { cleanJsonResponse } from '@/utils';
 
 interface AIResponse {
 	reasons: string;
@@ -141,10 +142,7 @@ export class AIStudentService {
 
 			let parsedResponse: AIResponse;
 			try {
-				// Remove potential markdown code blocks
-				const cleanedResponse = responseText
-					.replace(/```json\n?|\n?```/g, '')
-					.trim();
+				const cleanedResponse = cleanJsonResponse(responseText);
 				parsedResponse = JSON.parse(cleanedResponse);
 			} catch (parseError) {
 				this.logger.error('Failed to parse AI response:', parseError);
