@@ -40,4 +40,7 @@ export enum EmailJobType {
 	// Reviews in Submissions
 	SEND_REVIEWER_ASSIGNMENT_NOTIFICATION = 'send-reviewer-assignment-notification',
 	SEND_REVIEW_COMPLETED_NOTIFICATION = 'send-review-completed-notification',
+
+	// Thesis Applications
+	SEND_THESIS_APPLICATION_NOTIFICATION = 'send-thesis-application-notification',
 }

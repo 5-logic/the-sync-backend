@@ -1,0 +1,127 @@
+//- Data to be rendered in the email template
+//- + lecturerName: Name of the lecturer/supervisor
+//- + thesisEnglishName: English name of the thesis
+//- + thesisVietnameseName: Vietnamese name of the thesis
+//- + thesisAbbreviation: Abbreviation of the thesis (optional)
+//- + thesisDomain: Domain of the thesis (optional)
+//- + thesisOrientation: Orientation of the thesis (SE/AI/Neutral)
+//- + groupName: Name of the group that applied
+//- + groupCode: Code of the group that applied
+//- + leaderName: Name of the group leader
+//- + memberCount: Total number of members in the group
+//- + members: Array of group members with their information
+//- + major: Major information (if all members have same major)
+//- + applicationDate: Date when the application was submitted
+//- + semesterName: Name of the semester
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{lecturerName},
+
+  p
+    | A student group has submitted an application to work on one of your supervised theses. Please review the application details below and take appropriate action.
+
+  .info-box
+    h3 📋 Thesis Information
+    
+    .info-item
+      span.info-label English Name:
+      span.info-value #{thesisEnglishName}
+    
+    .info-item
+      span.info-label Vietnamese Name:
+      span.info-value #{thesisVietnameseName}
+    
+    if thesisAbbreviation
+      .info-item
+        span.info-label Abbreviation:
+        span.info-value #{thesisAbbreviation}
+    
+    if thesisDomain
+      .info-item
+        span.info-label Domain:
+        span.info-value #{thesisDomain}
+    
+    .info-item
+      span.info-label Orientation:
+      span.info-value #{thesisOrientation}
+
+  .info-box
+    h3 👥 Applicant Group Information
+    
+    .info-item
+      span.info-label Group Name:
+      span.info-value #{groupName}
+    
+    .info-item
+      span.info-label Group Code:
+      span.info-value #{groupCode}
+    
+    .info-item
+      span.info-label Group Leader:
+      span.info-value #{leaderName}
+    
+    .info-item
+      span.info-label Total Members:
+      span.info-value #{memberCount}
+    
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName}
+    
+    .info-item
+      span.info-label Application Date:
+      span.info-value #{applicationDate}
+
+  if members && members.length > 0
+    .info-box
+      h3 👨‍🎓 Group Members
+      each member, index in members
+        .info-item
+          span.info-label #{index + 1}. #{member.fullName}:
+          span.info-value #{member.studentCode} - #{member.major}
+
+  .success-box
+    h3 📝 Action Required
+    p
+      | This application is currently #[strong pending] your approval. As the thesis supervisor, you need to:
+    ul
+      li Review the group composition and member qualifications
+      li Assess if the group fits the thesis requirements
+      li Consider the group's academic background and skills
+      li Check if you have capacity to supervise this group
+    
+    p
+      strong Available Actions:
+    ul
+      li #[strong Approve] - Accept the group for this thesis
+      li #[strong Reject] - Decline the application with feedback
+
+  .warning-box
+    h3 ⚠️ Important Notes
+    ul
+      li Applications are processed on a first-come, first-served basis
+      li Once you approve a group, the thesis will be assigned to them
+      li You can only approve one group per thesis
+      li Students will be notified of your decision automatically
+      li Make sure to review all pending applications before making a decision
+
+  .info-box
+    h3 🚀 Quick Actions
+    p
+      | Ready to review this application? Access your dashboard to:
+    ul
+      li View detailed student profiles and academic records
+      li Check other pending applications for your theses
+      li Approve or reject applications with feedback
+      li Communicate with students if needed
+      li View thesis assignment status and timeline
+
+  p
+    | Please log in to TheSync to review and respond to this thesis application. Your timely response helps students plan their capstone projects effectively.
+
+  p
+    strong Note: 
+    | This application will remain pending until you take action. Students are waiting for your decision to proceed with their thesis work.
