@@ -28,6 +28,17 @@ export class GroupAdminService {
 				throw new Error('Semester not found');
 			}
 
+			// Check maximum groups allowed based on student count
+			const totalStudentsInSemester = await this.prisma.enrollment.count({
+				where: {
+					semesterId: dto.semesterId,
+				},
+			});
+
+			const maxGroupsAllowed = Math.floor(
+				(totalStudentsInSemester / 4.5) * 1.2,
+			);
+
 			const existingGroups = await this.prisma.group.findMany({
 				where: {
 					semesterId: dto.semesterId,
@@ -35,6 +46,21 @@ export class GroupAdminService {
 				select: { code: true },
 				orderBy: { code: 'desc' },
 			});
+
+			const currentGroupCount = existingGroups.length;
+			const requestedNewGroups = dto.numberOfGroup;
+			const totalGroupsAfterCreation = currentGroupCount + requestedNewGroups;
+
+			if (totalGroupsAfterCreation > maxGroupsAllowed) {
+				throw new BadRequestException(
+					`Cannot create ${requestedNewGroups} groups. ` +
+						`Current groups: ${currentGroupCount}, ` +
+						`Total students: ${totalStudentsInSemester}, ` +
+						`Maximum groups allowed: ${maxGroupsAllowed}. ` +
+						`Creating ${requestedNewGroups} groups would result in ${totalGroupsAfterCreation} total groups, ` +
+						`which exceeds the maximum limit.`,
+				);
+			}
 
 			let nextNumber = 1;
 			if (existingGroups.length > 0) {
