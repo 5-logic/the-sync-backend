@@ -12,7 +12,10 @@ import { Request } from 'express';
 
 import { AI_API_TAGS, AI_CONSTANTS } from '@/ai/constants';
 import { AIThesisDocs } from '@/ai/docs';
-import { DuplicateThesisResponse } from '@/ai/responses';
+import {
+	DuplicateThesisResponse,
+	ThesisSuggestionResponse,
+} from '@/ai/responses';
 import { AIStatisticsService, AIThesisService } from '@/ai/services';
 import {
 	JwtAccessAuthGuard,
@@ -60,11 +63,10 @@ export class AIThesisController {
 	@HttpCode(HttpStatus.OK)
 	@Get('suggest-for-group/:groupId')
 	@ApiOperation(AIThesisDocs.suggestThesesForGroup)
-	@ApiArrayResponse(Object, HttpStatus.OK)
 	async suggestThesesForGroup(
 		@Param('groupId') groupId: string,
 		@Req() req: Request,
-	) {
+	): Promise<ThesisSuggestionResponse> {
 		const user = req.user as UserPayload;
 
 		// Get semester from group and log AI API call

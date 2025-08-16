@@ -423,6 +423,26 @@ export class SemesterService {
 				}
 			}
 
+			// Nếu status mới là End, set isActive = false cho tất cả students đã enroll vào semester này
+			if (updated.status === SemesterStatus.End && statusChanged) {
+				const enrolledStudentIds = await this.prisma.enrollment.findMany({
+					where: { semesterId: id },
+					select: { studentId: true },
+				});
+
+				if (enrolledStudentIds.length > 0) {
+					const studentIds = enrolledStudentIds.map((e) => e.studentId);
+					const updatedStudentsResult = await this.prisma.user.updateMany({
+						where: { id: { in: studentIds } },
+						data: { isActive: false },
+					});
+
+					this.logger.log(
+						`Set isActive = false for ${updatedStudentsResult.count} students in ended semester ${id}`,
+					);
+				}
+			}
+
 			// Nếu status mới là Preparing, gửi email cho lecturers (chỉ khi status thay đổi)
 			if (updated.status === SemesterStatus.Preparing && statusChanged) {
 				await this.notificationService.sendSemesterPreparingNotifications(
