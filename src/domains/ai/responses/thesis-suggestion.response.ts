@@ -7,6 +7,6 @@ export interface ThesisSuggestion {
 	id: string;
 	englishName: string;
 	abbreviation: string;
-	supervisor: string;
+	supervisorsName: string[];
 	compatibility: number;
 }

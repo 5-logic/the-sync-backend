@@ -118,9 +118,13 @@ export class AIThesisService {
 					semesterId: group.semesterId,
 				},
 				include: {
-					lecturer: {
+					supervisions: {
 						include: {
-							user: true,
+							lecturer: {
+								include: {
+									user: true,
+								},
+							},
 						},
 					},
 				},
@@ -179,11 +183,24 @@ export class AIThesisService {
 					const thesis = thesesMap.get(suggestion.id);
 					if (!thesis) return null;
 
+					// Collect all supervisors
+					const supervisorsName: string[] = [];
+
+					// Add additional supervisors from supervisions if any
+					if (thesis.supervisions) {
+						thesis.supervisions.forEach((supervision) => {
+							const supervisorName = supervision.lecturer.user.fullName;
+							if (!supervisorsName.includes(supervisorName)) {
+								supervisorsName.push(supervisorName);
+							}
+						});
+					}
+
 					return {
 						id: thesis.id,
 						englishName: thesis.englishName,
 						abbreviation: thesis.abbreviation,
-						supervisor: thesis.lecturer.user.fullName,
+						supervisorsName: supervisorsName,
 						compatibility: compatibilityMap.get(thesis.id) || 0,
 					};
 				})
