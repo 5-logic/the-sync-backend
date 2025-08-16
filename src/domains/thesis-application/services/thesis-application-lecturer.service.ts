@@ -31,7 +31,38 @@ export class ThesisApplicationLecturerService {
 
 			const theses = await this.prisma.thesis.findMany({
 				where: thesesWhere,
-				select: { id: true },
+				include: {
+					thesisApplications: {
+						include: {
+							group: {
+								include: {
+									semester: true,
+									studentGroupParticipations: {
+										include: {
+											student: {
+												include: {
+													user: {
+														omit: { password: true },
+													},
+													major: true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+					},
+					lecturer: {
+						include: {
+							user: {
+								omit: { password: true },
+							},
+						},
+					},
+					semester: true,
+				},
 			});
 
 			if (theses.length === 0) {
@@ -41,22 +72,38 @@ export class ThesisApplicationLecturerService {
 				return [];
 			}
 
-			const thesisIds = theses.map((thesis) => thesis.id);
-
-			const thesisApplications = await this.prisma.thesisApplication.findMany({
-				where: {
-					thesisId: { in: thesisIds },
+			// Transform the data to the new structure
+			const formattedResponse = theses.map((thesis) => ({
+				thesis: {
+					id: thesis.id,
+					englishName: thesis.englishName,
+					vietnameseName: thesis.vietnameseName,
+					abbreviation: thesis.abbreviation,
+					description: thesis.description,
+					orientation: thesis.orientation,
+					domain: thesis.domain,
+					status: thesis.status,
+					isPublish: thesis.isPublish,
+					createdAt: thesis.createdAt,
+					updatedAt: thesis.updatedAt,
+					lecturer: thesis.lecturer,
+					semester: thesis.semester,
 				},
-				include:
-					this.thesisApplicationService.getComprehensiveApplicationInclude(),
-				orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-			});
+				requests: thesis.thesisApplications.map((application) => ({
+					groupId: application.groupId,
+					thesisId: application.thesisId,
+					status: application.status,
+					createdAt: application.createdAt,
+					updatedAt: application.updatedAt,
+					group: application.group,
+				})),
+			}));
 
 			this.logger.log(
-				`Found ${thesisApplications.length} thesis applications for lecturer ${lecturerId}`,
+				`Found ${formattedResponse.length} theses with applications for lecturer ${lecturerId}`,
 			);
 
-			return thesisApplications;
+			return formattedResponse;
 		} catch (error) {
 			this.logger.error(
 				`Error finding thesis applications for lecturer ${lecturerId}`,
