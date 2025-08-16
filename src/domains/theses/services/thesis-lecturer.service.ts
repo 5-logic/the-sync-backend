@@ -690,7 +690,7 @@ export class ThesisLecturerService {
 		dto: AssignThesisDto,
 	): Promise<ThesisDetailResponse> {
 		this.logger.log(
-			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId}`,
+			`Assigning thesis with ID: ${id} to group with ID: ${dto.groupId} by user with ID: ${userId}`,
 		);
 
 		try {
@@ -704,14 +704,17 @@ export class ThesisLecturerService {
 				throw new NotFoundException(`Thesis not found`);
 			}
 
-			// Validate lecturer permission to assign thesis
+			// Validate user permission to assign thesis
+			// Check if user is a lecturer
 			const lecturer = await this.prisma.lecturer.findUnique({
 				where: { userId },
 			});
 
 			if (!lecturer) {
-				this.logger.warn(`Lecturer with ID ${userId} not found`);
-				throw new NotFoundException(`Lecturer not found`);
+				this.logger.warn(`User with ID ${userId} is not a lecturer`);
+				throw new NotFoundException(
+					`User not found or insufficient permissions`,
+				);
 			}
 
 			// Validate thesis supervision requirements
@@ -739,7 +742,7 @@ export class ThesisLecturerService {
 			}
 
 			// If lecturer is not a moderator, they must be one of the supervisors
-			if (!lecturer.isModerator) {
+			if (lecturer && !lecturer.isModerator) {
 				const isSupervising = supervisors.some(
 					(supervision) => supervision.lecturerId === userId,
 				);
@@ -848,7 +851,7 @@ export class ThesisLecturerService {
 			});
 
 			this.logger.log(
-				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId}`,
+				`Thesis with ID: ${id} successfully assigned to group with ID: ${dto.groupId} by user with ID: ${userId}`,
 			);
 			this.logger.debug('Assignment result', JSON.stringify(updatedThesis));
 
@@ -866,7 +869,7 @@ export class ThesisLecturerService {
 			return result;
 		} catch (error) {
 			this.logger.error(
-				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId}`,
+				`Error assigning thesis with ID ${id} to group with ID ${dto.groupId} by user with ID ${userId}`,
 				error,
 			);
 

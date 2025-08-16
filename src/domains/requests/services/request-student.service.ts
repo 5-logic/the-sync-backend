@@ -72,35 +72,54 @@ export class RequestStudentService {
 
 			if (isEmptyGroup) {
 				// First student joins automatically as leader
-				const participation =
-					await this.prisma.studentGroupParticipation.create({
-						data: {
-							studentId: userId,
-							groupId: dto.groupId,
-							semesterId: group.semesterId,
-							isLeader: true,
-						},
-						include: {
-							student: {
+				const result = await this.prisma.$transaction(
+					async (prisma) => {
+						const participation = await prisma.studentGroupParticipation.create(
+							{
+								data: {
+									studentId: userId,
+									groupId: dto.groupId,
+									semesterId: group.semesterId,
+									isLeader: true,
+								},
 								include: {
-									user: { omit: { password: true } },
+									student: {
+										include: {
+											user: { omit: { password: true } },
+										},
+									},
+									group: {
+										select: {
+											id: true,
+											code: true,
+											name: true,
+										},
+									},
 								},
 							},
-							group: {
-								select: {
-									id: true,
-									code: true,
-									name: true,
-								},
-							},
-						},
-					});
+						);
 
-				this.logger.log(
-					`Student ${userId} automatically joined empty group ${group.code} as leader`,
+						// Cancel all other pending join requests from this student
+						await prisma.request.updateMany({
+							where: {
+								studentId: userId,
+								type: RequestType.Join,
+								status: RequestStatus.Pending,
+								groupId: { not: dto.groupId },
+							},
+							data: { status: RequestStatus.Cancelled },
+						});
+
+						return participation;
+					},
+					{ timeout: CONSTANTS.TIMEOUT },
 				);
 
-				return participation;
+				this.logger.log(
+					`Student ${userId} automatically joined empty group ${group.code} as leader and cancelled all other pending join requests`,
+				);
+
+				return result;
 			} else {
 				// Group has members, create join request for leader approval
 				await this.requestService.validateNoPendingJoinRequest(userId);

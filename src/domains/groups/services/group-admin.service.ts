@@ -28,6 +28,17 @@ export class GroupAdminService {
 				throw new Error('Semester not found');
 			}
 
+			// Check maximum groups allowed based on student count
+			const totalStudentsInSemester = await this.prisma.enrollment.count({
+				where: {
+					semesterId: dto.semesterId,
+				},
+			});
+
+			const maxGroupsAllowed = Math.round(
+				(totalStudentsInSemester / 4.5) * 1.2,
+			);
+
 			const existingGroups = await this.prisma.group.findMany({
 				where: {
 					semesterId: dto.semesterId,
@@ -35,6 +46,21 @@ export class GroupAdminService {
 				select: { code: true },
 				orderBy: { code: 'desc' },
 			});
+
+			const currentGroupCount = existingGroups.length;
+			const requestedNewGroups = dto.numberOfGroup;
+			const totalGroupsAfterCreation = currentGroupCount + requestedNewGroups;
+
+			if (totalGroupsAfterCreation > maxGroupsAllowed) {
+				throw new BadRequestException(
+					`Cannot create ${requestedNewGroups} groups. ` +
+						`Current groups: ${currentGroupCount}, ` +
+						`Total students: ${totalStudentsInSemester}, ` +
+						`Maximum groups allowed: ${maxGroupsAllowed}. ` +
+						`Creating ${requestedNewGroups} groups would result in ${totalGroupsAfterCreation} total groups, ` +
+						`which exceeds the maximum limit.`,
+				);
+			}
 
 			let nextNumber = 1;
 			if (existingGroups.length > 0) {
@@ -76,25 +102,30 @@ export class GroupAdminService {
 				});
 			}
 
-			const createdGroups = await this.prisma.$transaction(async (prisma) => {
-				const results: Array<{
-					id: string;
-					code: string;
-					name: string;
-					projectDirection: string | null;
-					semesterId: string;
-					thesisId: string | null;
-					createdAt: Date;
-					updatedAt: Date;
-				}> = [];
-				for (const groupData of groupsToCreate) {
-					const group = await prisma.group.create({
-						data: groupData,
-					});
-					results.push(group);
-				}
-				return results;
-			});
+			const createdGroups = await this.prisma.$transaction(
+				async (prisma) => {
+					const results: Array<{
+						id: string;
+						code: string;
+						name: string;
+						projectDirection: string | null;
+						semesterId: string;
+						thesisId: string | null;
+						createdAt: Date;
+						updatedAt: Date;
+					}> = [];
+					for (const groupData of groupsToCreate) {
+						const group = await prisma.group.create({
+							data: groupData,
+						});
+						results.push(group);
+					}
+					return results;
+				},
+				{
+					timeout: 1200000, // 20 minutes timeout for transaction
+				},
+			);
 
 			this.logger.log(
 				`Successfully created ${createdGroups.length} groups for semester ${semester.name} (${semester.code})`,
@@ -154,39 +185,59 @@ export class GroupAdminService {
 			});
 
 			const codePrefix = `${semester.code}SEAI`;
-			const updatedGroups = await this.prisma.$transaction(async (prisma) => {
-				const results: any[] = [];
+			const updatedGroups = await this.prisma.$transaction(
+				async (prisma) => {
+					// Step 1: Batch update all groups with temporary codes to avoid conflicts
+					const tempUpdatePromises = sortedGroups.map((group, i) => {
+						const tempCode = `temp_${group.id}_${Date.now()}_${i}`;
+						return prisma.group.update({
+							where: { id: group.id },
+							data: { code: tempCode },
+						});
+					});
 
-				for (let i = 0; i < sortedGroups.length; i++) {
-					const group = sortedGroups[i];
-					const sequentialNumber = (i + 1).toString().padStart(3, '0');
-					const newCode = `${codePrefix}${sequentialNumber}`;
+					await Promise.all(tempUpdatePromises);
 
-					const updatedGroup = await prisma.group.update({
-						where: { id: group.id },
-						data: {
-							code: newCode,
-						},
-						include: {
-							studentGroupParticipations: {
-								include: {
-									student: {
-										include: {
-											user: {
-												omit: { password: true },
+					// Step 2: Batch update with final codes
+					const finalUpdatePromises = sortedGroups.map((group, i) => {
+						const sequentialNumber = (i + 1).toString().padStart(3, '0');
+						const newCode = `${codePrefix}${sequentialNumber}`;
+
+						return prisma.group.update({
+							where: { id: group.id },
+							data: { code: newCode },
+						});
+					});
+
+					await Promise.all(finalUpdatePromises);
+
+					// Step 3: Fetch all updated groups with relations in parallel
+					const groupsWithRelationsPromises = sortedGroups.map((group) =>
+						prisma.group.findUnique({
+							where: { id: group.id },
+							include: {
+								studentGroupParticipations: {
+									include: {
+										student: {
+											include: {
+												user: {
+													omit: { password: true },
+												},
 											},
 										},
 									},
 								},
 							},
-						},
-					});
+						}),
+					);
 
-					results.push(updatedGroup);
-				}
-
-				return results;
-			});
+					const results = await Promise.all(groupsWithRelationsPromises);
+					return results.filter(Boolean); // Remove any null results
+				},
+				{
+					timeout: 1200000, // 20 minutes timeout for transaction
+				},
+			);
 
 			this.logger.log(
 				`Successfully formatted ${updatedGroups.length} groups for semester ${semester.name} (${semester.code})`,
@@ -232,9 +283,30 @@ export class GroupAdminService {
 				);
 			}
 
-			const deletedGroup = await this.prisma.group.delete({
-				where: { id: groupId },
-			});
+			const deletedGroup = await this.prisma.$transaction(
+				async (prisma) => {
+					// Delete all related records first
+					await Promise.all([
+						prisma.request.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.thesisApplication.deleteMany({
+							where: { groupId: groupId },
+						}),
+						prisma.submission.deleteMany({
+							where: { groupId: groupId },
+						}),
+					]);
+
+					// Delete the group itself
+					return await prisma.group.delete({
+						where: { id: groupId },
+					});
+				},
+				{
+					timeout: 1200000, // 20 minutes timeout for transaction
+				},
+			);
 
 			this.logger.log(
 				`Successfully deleted empty group ${deletedGroup.code} from semester ${group.semester.name} (${group.semester.code})`,
