@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2025-08-16
+
+### Added
+
+- **Enhanced AI-Powered Team Formation System**:
+  - **New Response Models**: Added `SuggestGroupsForStudentResponse` and `SuggestStudentsForGroupResponse` with compatibility scoring and detailed reasoning
+  - **AI-Driven Compatibility Analysis**: Implemented sophisticated AI-powered team matching based on responsibility balance and skill complementarity
+  - **Structured API Responses**: Enhanced AI suggestion endpoints to return structured data with reasons and compatibility scores (0.0-1.0 scale)
+
+- **Thesis Application Notification System**:
+  - **New Email Job Type**: Added `SEND_THESIS_APPLICATION_NOTIFICATION` for automated thesis application notifications
+  - **Email Template**: New `send-thesis-application-notification.pug` template for professional notification emails
+  - **Automated Notifications**: Integrated notification sending into thesis application workflow
+
+- **Utility Functions**:
+  - **JSON Response Cleaner**: New `cleanJsonResponse` utility function in `src/utils/string.util.ts` for improved AI response parsing
+  - **Enhanced Data Processing**: Better handling of AI-generated JSON responses with markdown code block removal
+
+### Changed
+
+- **AI Student API Enhancements**:
+  - **API Response Structure**: Enhanced `GET /ai/students/suggest-for-group/:groupId` to return `SuggestStudentsForGroupResponse` with compatibility scores
+  - **API Response Structure**: Enhanced `POST /ai/students/suggest-groups-for-student` to return `SuggestGroupsForStudentResponse` with detailed group recommendations
+  - **Service Method Update**: Updated `suggestStudentsForGroup()` method to accept `semesterId` parameter for improved filtering
+  - **Algorithm Improvement**: Replaced simple compatibility calculations with AI-driven analysis considering responsibility balance and team synergy
+
+- **Group Management Logic Improvements**:
+  - **Group Departure Behavior**: When the last member leaves a group, the group is now reset (name, project direction, thesis assignment cleared) instead of being deleted
+  - **Group Creation Limits**: Implemented validation to prevent group creation when it would exceed semester maximum group limits based on enrolled student count
+  - **Enhanced Transaction Handling**: Improved group deletion and member removal processes with comprehensive transaction management
+
+- **Thesis Application System Enhancement**:
+  - **Data Retrieval Optimization**: Enhanced `findByLecturerId()` method in `ThesisApplicationLecturerService` to return comprehensive thesis data with nested applications
+  - **Response Structure**: Modified thesis application responses to include detailed lecturer, semester, and group information
+  - **Query Optimization**: Streamlined database queries by removing unnecessary skill-related inclusions
+
+- **AI Service Architecture Refactoring**:
+  - **Advanced Prompt Engineering**: Implemented sophisticated AI prompts for team formation considering 5 responsibility areas (Backend, Frontend, DevOps, BA, AI) with 0-5 skill levels
+  - **Compatibility Scoring**: Enhanced scoring system with detailed criteria for skill gap analysis, complementary skills, and team balance
+  - **Error Handling**: Improved AI response parsing with robust error handling and fallback mechanisms
+
+### Removed
+
+- **Thesis Assignment API**: Temporarily commented out `POST /theses/:id/assign` endpoint and related functionality in `ThesisLecturerController`
+- **Legacy AI Methods**: Removed unused `suggestStudentsForGroup` and `suggestGroupsForStudent` implementations in favor of enhanced AI-powered versions
+
+### Enhanced
+
+- **AI Algorithm Sophistication**:
+  - **Multi-Factor Analysis**: AI now evaluates team formation based on skill gap analysis, complementary skills, balanced distribution, and team synergy
+  - **Responsibility-Based Matching**: Enhanced matching algorithm focusing on 5 core responsibilities with detailed level analysis (0-5 scale)
+  - **Contextual Recommendations**: AI provides detailed reasoning for team suggestions with specific focus on group needs and student strengths
+
+- **Group Lifecycle Management**:
+  - **Improved Member Departure**: Enhanced group behavior when members leave, maintaining group availability while resetting customizations
+  - **Better State Management**: Improved group state transitions with proper cleanup of related records (requests, thesis applications, submissions)
+  - **Enhanced Logging**: More detailed logging for group operations with better debugging information
+
+- **API Documentation and Type Safety**:
+  - **Comprehensive Swagger Documentation**: Enhanced API documentation for all AI endpoints with detailed response models
+  - **Type-Safe Responses**: Added proper TypeScript interfaces for all AI API responses with compatibility scoring
+  - **Response Consistency**: Standardized response formats across all AI-powered endpoints
+
+### Fixed
+
+- **AI Response Processing**: Enhanced JSON parsing for AI responses with proper markdown code block removal and error handling
+- **Group State Consistency**: Fixed group state management when the last member leaves to maintain group availability
+- **Data Integrity**: Improved transaction handling for complex group operations to prevent orphaned records
+- **Property Naming**: Corrected property name from 'reasons' to 'reason' in AI response structures
+
+### Technical Improvements
+
+- **Service Architecture**: Enhanced AI service architecture with better separation of concerns and improved prompt engineering
+- **Database Operations**: Optimized database queries for thesis applications with comprehensive data inclusion
+- **Utility Functions**: Added reusable utility functions for common AI response processing tasks
+- **Error Recovery**: Improved error handling and recovery mechanisms throughout AI-powered features
+- **Code Quality**: Better code organization with proper TypeScript types and comprehensive documentation
+
+### Pull Requests
+
+- [#259](https://github.com/5-logic/the-sync-backend/pull/259) - Enhanced AI-powered team formation system, thesis application notifications, and group management improvements
+
+---
+
 ## [0.9.1] - 2025-08-15
 
 ### Changed
