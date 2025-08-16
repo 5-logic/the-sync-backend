@@ -25,7 +25,7 @@ import { ApiArrayResponse, ApiBaseResponse } from '@/common';
 import { THESIS_API_TAGS, THESIS_CONSTANTS } from '@/theses/constants';
 import { ThesisLecturerDocs } from '@/theses/docs';
 import {
-	AssignThesisDto,
+	// AssignThesisDto,
 	CreateThesisDto,
 	UpdateThesisDto,
 } from '@/theses/dtos';
@@ -107,19 +107,19 @@ export class ThesisLecturerController {
 		return await this.service.remove(user.id, id);
 	}
 
-	@Roles(Role.MODERATOR, Role.LECTURER)
-	@HttpCode(HttpStatus.OK)
-	@Post(':id/assign')
-	@ApiOperation(ThesisLecturerDocs.assignThesis)
-	@ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
-	async assignThesis(
-		@Req() req: Request,
+	// @Roles(Role.MODERATOR, Role.LECTURER)
+	// @HttpCode(HttpStatus.OK)
+	// @Post(':id/assign')
+	// @ApiOperation(ThesisLecturerDocs.assignThesis)
+	// @ApiBaseResponse(ThesisDetailResponse, HttpStatus.OK)
+	// async assignThesis(
+	// 	@Req() req: Request,
 
-		@Param('id') id: string,
-		@Body() dto: AssignThesisDto,
-	): Promise<ThesisDetailResponse> {
-		const user = req.user as UserPayload;
+	// 	@Param('id') id: string,
+	// 	@Body() dto: AssignThesisDto,
+	// ): Promise<ThesisDetailResponse> {
+	// 	const user = req.user as UserPayload;
 
-		return await this.service.assignThesis(user.id, id, dto);
-	}
+	// 	return await this.service.assignThesis(user.id, id, dto);
+	// }
 }
