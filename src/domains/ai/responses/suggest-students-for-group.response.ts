@@ -2,6 +2,16 @@ import { ApiProperty } from '@nestjs/swagger';
 
 import { StudentDetailResponse } from '@/students/responses';
 
+export class StudentWithCompatibility extends StudentDetailResponse {
+	@ApiProperty({
+		description: 'Compatibility score from 0.0 to 1.0',
+		example: 0.85,
+		minimum: 0,
+		maximum: 1,
+	})
+	compatibility: number;
+}
+
 export class SuggestStudentsForGroupResponse {
 	@ApiProperty({
 		description: 'Reasons why these students are recommended for the group',
@@ -11,8 +21,9 @@ export class SuggestStudentsForGroupResponse {
 	reasons: string;
 
 	@ApiProperty({
-		type: [StudentDetailResponse],
-		description: 'List of recommended students sorted by compatibility score',
+		type: [StudentWithCompatibility],
+		description:
+			'List of recommended students with compatibility scores, sorted by compatibility',
 	})
-	students: StudentDetailResponse[];
+	students: StudentWithCompatibility[];
 }

@@ -149,26 +149,23 @@ export class AIStudentService {
 				throw new Error('Invalid AI response format');
 			}
 
-			// Get detailed student information for suggested students
+			// Get detailed student information for suggested students with compatibility scores
 			const suggestedStudentIds = parsedResponse.students.map((s) => s.id);
-			const detailedStudents = availableStudents
-				.filter((student) => suggestedStudentIds.includes(student.user.id))
-				.map((student) => mapStudentDetailResponse(student));
-
-			// Sort students by compatibility score from AI response
 			const compatibilityMap = new Map(
 				parsedResponse.students.map((s) => [s.id, s.compatibility]),
 			);
 
-			detailedStudents.sort((a, b) => {
-				const compatibilityA = compatibilityMap.get(a.id) || 0;
-				const compatibilityB = compatibilityMap.get(b.id) || 0;
-				return compatibilityB - compatibilityA;
-			});
+			const studentsWithCompatibility = availableStudents
+				.filter((student) => suggestedStudentIds.includes(student.user.id))
+				.map((student) => ({
+					...mapStudentDetailResponse(student),
+					compatibility: compatibilityMap.get(student.user.id) || 0,
+				}))
+				.sort((a, b) => b.compatibility - a.compatibility);
 
 			return {
 				reasons: parsedResponse.reasons,
-				students: detailedStudents,
+				students: studentsWithCompatibility,
 			};
 		} catch (error) {
 			this.logger.error(
