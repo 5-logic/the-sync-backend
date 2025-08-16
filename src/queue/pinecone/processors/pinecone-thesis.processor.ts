@@ -472,18 +472,22 @@ ${JSON.stringify(
 ❌ Common deployment strategies
 ❌ Standard research methods and data collection
 ❌ General academic writing structure
+❌ Same technology for different business domains (face recognition for attendance vs face recognition for employee check-in)
+❌ Same algorithm applied to different contexts (recommendation for e-commerce vs recommendation for learning)
+❌ Same technical solution for different industries or use cases (chatbot for customer service vs chatbot for education)
+❌ Common AI/ML techniques applied to different problem domains (CNN for medical imaging vs CNN for product recognition)
 
 ## ONLY COUNT as duplication - Unique specific content:
-✅ Identical business rules or domain logic
-✅ Same specific algorithms or mathematical formulas
-✅ Identical data processing workflows
-✅ Same specific problem-solving approaches for unique challenges
-✅ Identical experimental designs for novel scenarios
-✅ Same specific feature implementations beyond standard CRUD
-✅ Identical unique optimization techniques
-✅ Same specific analysis methods for particular domains
-✅ Identical novel integration patterns
-✅ Same specific custom solutions to unique problems
+✅ Identical business rules or domain logic within the same problem space
+✅ Same specific algorithms or mathematical formulas for identical use cases
+✅ Identical data processing workflows for the same business domain
+✅ Same specific problem-solving approaches for nearly identical challenges
+✅ Identical experimental designs for the same research domain
+✅ Same specific feature implementations beyond standard CRUD for similar systems
+✅ Identical unique optimization techniques for the same performance goals
+✅ Same specific analysis methods for identical research questions
+✅ Identical novel integration patterns for the same business requirements
+✅ Same specific custom solutions to nearly identical problems in the same domain
 
 ## Scoring Instructions:
 - **duplicatePercentage**: Based ONLY on unique specific content overlap
@@ -525,11 +529,16 @@ Guidelines:
 ❌ "CRUD operations implementation"
 ❌ "MVC design pattern"
 ❌ "Standard login/logout functionality"
+❌ "Face recognition technology usage"
+❌ "Machine learning implementation"
+❌ "Recommendation system approach"
+❌ "Chatbot development"
+❌ "Image processing techniques"
 
 ## Candidate Metadata:
 ${candidatesWithContent.map((candidate) => `ID: ${candidate.id} -> English: "${candidate.englishName}", Vietnamese: "${candidate.vietnameseName}", Description: "${candidate.description}"`).join('\n')}
 
-Remember: If two theses only share common technology choices and standard architectures, they should score 0-15% with reasons like ["Different business domains", "Distinct problem approaches", "Unique implementation details"] or simply no reasons if truly different.
+Remember: If two theses only share common technology choices and standard architectures, they should score 0-15% with reasons like ["Different business domains", "Distinct problem approaches", "Unique implementation details"] or simply no reasons if truly different. Same technology or algorithm applied to DIFFERENT business domains, industries, or contexts should NOT be considered duplication. Focus on identical business logic within the SAME or VERY SIMILAR problem space. For example: face recognition for attendance vs face recognition for employee check-in are DIFFERENT domains despite using same technology.
 			`;
 
 			const ai = this.gemini.getClient();
