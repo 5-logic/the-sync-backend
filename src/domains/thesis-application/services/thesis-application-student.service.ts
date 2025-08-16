@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
+import { EmailQueueService } from '@/queue/email';
+import { EmailJobType } from '@/queue/email/enums';
 import { CreateThesisApplicationDto } from '@/thesis-application/dtos';
 import { ThesisApplicationService } from '@/thesis-application/services/thesis-application.service';
 
@@ -19,6 +21,7 @@ export class ThesisApplicationStudentService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly thesisApplicationService: ThesisApplicationService,
+		private readonly emailQueueService: EmailQueueService,
 	) {}
 
 	async create(
@@ -141,6 +144,9 @@ export class ThesisApplicationStudentService {
 					dto.thesisId,
 					existingApplication,
 				);
+
+			// Send email notification to supervisor
+			await this.sendThesisApplicationNotification(thesisApplication);
 
 			this.logger.log(
 				`Thesis application ${existingApplication ? 'recreated' : 'created'} successfully for group ${dto.groupId} and thesis ${dto.thesisId}`,
@@ -351,6 +357,122 @@ export class ThesisApplicationStudentService {
 				error,
 			);
 			throw error;
+		}
+	}
+
+	private async sendThesisApplicationNotification(thesisApplication: any) {
+		try {
+			this.logger.log(
+				`Sending thesis application notification for group ${thesisApplication.groupId} and thesis ${thesisApplication.thesisId}`,
+			);
+
+			// Get comprehensive application data with all necessary information
+			const applicationWithDetails =
+				await this.prisma.thesisApplication.findUnique({
+					where: {
+						groupId_thesisId: {
+							groupId: thesisApplication.groupId,
+							thesisId: thesisApplication.thesisId,
+						},
+					},
+					include: {
+						thesis: {
+							include: {
+								lecturer: {
+									include: {
+										user: {
+											omit: { password: true },
+										},
+									},
+								},
+								semester: true,
+							},
+						},
+						group: {
+							include: {
+								semester: true,
+								studentGroupParticipations: {
+									include: {
+										student: {
+											include: {
+												user: {
+													omit: { password: true },
+												},
+											},
+										},
+									},
+									where: {
+										isLeader: true,
+									},
+								},
+							},
+						},
+					},
+				});
+
+			if (!applicationWithDetails) {
+				this.logger.warn('Application not found for notification');
+				return;
+			}
+
+			const { thesis, group } = applicationWithDetails;
+			const supervisor = thesis.lecturer;
+			const leader = group.studentGroupParticipations[0]?.student;
+
+			if (!supervisor?.user?.email) {
+				this.logger.warn(
+					`No email found for supervisor of thesis ${thesis.id}`,
+				);
+				return;
+			}
+
+			// Get total member count (including leader)
+			const totalMembers = await this.prisma.studentGroupParticipation.count({
+				where: {
+					groupId: group.id,
+					semesterId: group.semesterId,
+				},
+			});
+
+			// Prepare email data
+			const emailData = {
+				to: supervisor.user.email,
+				subject: `New Thesis Application - ${thesis.englishName}`,
+				context: {
+					lecturerName: supervisor.user.fullName,
+					thesisEnglishName: thesis.englishName,
+					thesisVietnameseName: thesis.vietnameseName,
+					thesisAbbreviation: thesis.abbreviation,
+					thesisDomain: thesis.domain,
+					thesisOrientation: thesis.orientation,
+					groupName: group.name,
+					groupCode: group.code,
+					leaderName: leader?.user?.fullName || 'Unknown',
+					memberCount: totalMembers,
+					applicationDate: applicationWithDetails.createdAt.toLocaleDateString(
+						'en-US',
+						{
+							year: 'numeric',
+							month: 'long',
+							day: 'numeric',
+						},
+					),
+					semesterName: group.semester.name,
+				},
+			};
+
+			// Send email
+			await this.emailQueueService.sendEmail(
+				EmailJobType.SEND_THESIS_APPLICATION_NOTIFICATION,
+				emailData,
+			);
+
+			this.logger.log(
+				`Thesis application notification sent successfully to ${supervisor.user.email}`,
+			);
+		} catch (error) {
+			this.logger.error('Error sending thesis application notification', error);
+			// Don't throw error as it shouldn't block the main operation
 		}
 	}
 }
