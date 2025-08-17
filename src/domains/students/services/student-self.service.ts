@@ -50,21 +50,13 @@ export class StudentSelfService {
 
 					// Update student responsibilities if provided
 					if (dto.studentResponsibilities) {
-						// Remove existing responsibilities
-						await txn.studentResponsibility.deleteMany({
+						await txn.studentResponsibility.updateMany({
 							where: { studentId: id },
+							data: dto.studentResponsibilities.map((responsibility) => ({
+								responsibilityId: responsibility.responsibilityId,
+								level: responsibility.level,
+							})),
 						});
-
-						// Add new responsibilities if any
-						if (dto.studentResponsibilities.length > 0) {
-							await txn.studentResponsibility.createMany({
-								data: dto.studentResponsibilities.map((responsibility) => ({
-									studentId: id,
-									responsibilityId: responsibility.responsibilityId,
-									level: responsibility.level,
-								})),
-							});
-						}
 					}
 
 					const result: StudentResponse = mapStudentV1(
