@@ -21,7 +21,7 @@ import { ApiBaseResponse } from '@/common';
 import { STUDENT_API_TAGS, STUDENT_CONSTANTS } from '@/students/constants';
 import { StudentSelfDocs } from '@/students/docs';
 import { SelfUpdateStudentDto } from '@/students/dtos';
-import { StudentResponse } from '@/students/responses';
+import { StudentDetailResponse } from '@/students/responses';
 import { StudentSelfService } from '@/students/services';
 
 @UseGuards(JwtAccessAuthGuard, RoleGuard)
@@ -35,11 +35,11 @@ export class StudentSelfController {
 	@HttpCode(HttpStatus.OK)
 	@Put()
 	@ApiOperation(StudentSelfDocs.update)
-	@ApiBaseResponse(StudentResponse, HttpStatus.OK)
+	@ApiBaseResponse(StudentDetailResponse, HttpStatus.OK)
 	async update(
 		@Req() req: Request,
 		@Body() dto: SelfUpdateStudentDto,
-	): Promise<StudentResponse> {
+	): Promise<StudentDetailResponse> {
 		const user = req.user as UserPayload;
 
 		return await this.service.update(user.id, dto);

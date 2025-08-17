@@ -7,8 +7,8 @@ import {
 } from '@/providers';
 // import { CACHE_KEY } from '@/students/constants';
 import { SelfUpdateStudentDto } from '@/students/dtos';
-import { mapStudentV1 } from '@/students/mappers';
-import { StudentResponse } from '@/students/responses';
+import { mapStudentDetailResponse } from '@/students/mappers';
+import { StudentDetailResponse } from '@/students/responses';
 
 @Injectable()
 export class StudentSelfService {
@@ -22,7 +22,7 @@ export class StudentSelfService {
 	async update(
 		id: string,
 		dto: SelfUpdateStudentDto,
-	): Promise<StudentResponse> {
+	): Promise<StudentDetailResponse> {
 		this.logger.log(`Updating student with ID: ${id}`);
 
 		try {
@@ -39,7 +39,7 @@ export class StudentSelfService {
 					}
 
 					// Update user information
-					const updatedUser = await txn.user.update({
+					await txn.user.update({
 						where: { id },
 						data: {
 							fullName: dto.fullName,
@@ -59,10 +59,34 @@ export class StudentSelfService {
 						});
 					}
 
-					const result: StudentResponse = mapStudentV1(
-						updatedUser,
-						existingStudent,
-					);
+					// Fetch the complete student data with all relations like in findOne
+					const updatedStudent = await txn.student.findUnique({
+						where: { userId: id },
+						include: {
+							user: true,
+							major: true,
+							enrollments: {
+								include: {
+									semester: true,
+								},
+								orderBy: {
+									status: 'asc',
+								},
+							},
+							studentResponsibilities: {
+								include: {
+									responsibility: true,
+								},
+							},
+						},
+					});
+
+					if (!updatedStudent) {
+						throw new NotFoundException(`Student not found after update`);
+					}
+
+					const result: StudentDetailResponse =
+						mapStudentDetailResponse(updatedStudent);
 
 					return result;
 				},
