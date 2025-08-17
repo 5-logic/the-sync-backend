@@ -1,5 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export class GroupLeader {
+	@ApiProperty({
+		description: 'Leader full name',
+		example: 'Nguyen Van A',
+	})
+	fullName: string;
+
+	@ApiProperty({
+		description: 'Leader student code',
+		example: 'SE161234',
+	})
+	studentCode: string;
+
+	@ApiProperty({
+		description: 'Leader email',
+		example: 'se161234@fpt.edu.vn',
+	})
+	email: string;
+}
+
 export class GroupWithCompatibility {
 	@ApiProperty({
 		description: 'Group ID',
@@ -18,6 +38,20 @@ export class GroupWithCompatibility {
 		example: 'Group 001',
 	})
 	name: string;
+
+	@ApiProperty({
+		description: 'Group leader information',
+		type: GroupLeader,
+	})
+	leader: GroupLeader;
+
+	@ApiProperty({
+		description: 'Number of current group members',
+		example: 3,
+		minimum: 1,
+		maximum: 5,
+	})
+	memberCount: number;
 
 	@ApiProperty({
 		description: 'Compatibility score from 0.0 to 1.0',

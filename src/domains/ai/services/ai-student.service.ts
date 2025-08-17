@@ -342,12 +342,29 @@ export class AIStudentService {
 
 			const groupsWithCompatibility = eligibleGroups
 				.filter((group) => suggestedGroupIds.includes(group.id))
-				.map((group) => ({
-					id: group.id,
-					code: group.code,
-					name: group.name,
-					compatibility: compatibilityMap.get(group.id) || 0,
-				}))
+				.map((group) => {
+					// Find the leader of the group
+					const leaderParticipation = group.studentGroupParticipations.find(
+						(p) => p.isLeader,
+					);
+
+					// If no leader found, use the first member as fallback
+					const leader =
+						leaderParticipation || group.studentGroupParticipations[0];
+
+					return {
+						id: group.id,
+						code: group.code,
+						name: group.name,
+						leader: {
+							fullName: leader.student.user.fullName,
+							studentCode: leader.student.studentCode,
+							email: leader.student.user.email,
+						},
+						memberCount: group.studentGroupParticipations.length,
+						compatibility: compatibilityMap.get(group.id) || 0,
+					};
+				})
 				.sort((a, b) => b.compatibility - a.compatibility);
 
 			return {
