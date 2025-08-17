@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2025-08-18
+
+### Added
+
+- **Enhanced AI Group Suggestion Response**:
+  - **Leader Information**: Added comprehensive leader details to `POST /ai/students/suggest-groups-for-student` endpoint response
+  - **Member Count**: Added `memberCount` field to group suggestions for better group capacity awareness
+
+### Changed
+
+- **AI Group Suggestion API Enhancement**:
+  - **Enhanced Response Structure**: Updated `GroupWithCompatibility` response model in `SuggestGroupsForStudentResponse` to include leader details and member count
+  - **Leader Detection Logic**: Enhanced AI student service to automatically detect group leaders and provide fallback to first member if no leader is designated
+
+- **Student Self-Update API Improvement**:
+  - **Response Type Enhancement**: Changed `PUT /students` endpoint response from `StudentResponse` to `StudentDetailResponse` for more comprehensive student information
+  - **Detailed Student Information**: Enhanced student update response to include major, enrollments, and responsibility details after updates
+
+- **Student Responsibility Management Optimization**:
+  - **Database Operation Improvement**: Replaced delete-and-create pattern with `updateMany` operation for better performance in student responsibility updates
+  - **Enhanced Data Retrieval**: Improved student data fetching after updates to include all related information (major, enrollments, responsibilities)
+
+### Enhanced
+
+- **API Response Consistency**: Standardized student update responses to return detailed information consistent with other student detail endpoints
+- **Group Suggestion Intelligence**: Enhanced AI group suggestions with leadership context and membership information for better decision making
+- **Performance Optimization**: Optimized database operations for student responsibility updates using batch operations
+
+### Technical Improvements
+
+- **Response Model Enhancement**: Added new `GroupLeader` class with comprehensive leader information (fullName, studentCode, email)
+- **Service Layer Optimization**: Improved `StudentSelfService.update()` method to fetch complete student data after updates
+- **Database Transaction Efficiency**: Enhanced student responsibility update logic with more efficient `updateMany` operations
+- **Type Safety**: Updated TypeScript types and API documentation for enhanced group suggestion responses
+
+### Pull Requests
+
+- Direct commits implementing AI group suggestion enhancements and student response improvements
+
+---
+
 ## [0.9.3] - 2025-08-16
 
 ### Added
