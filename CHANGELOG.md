@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2025-08-18
+
+### Changed
+
+- **Student Responsibility Update Optimization**:
+  - **Individual Updates**: Enhanced student responsibility update logic in `PUT /students` endpoint to use individual `update` operations instead of batch `updateMany`
+  - **Composite Key Handling**: Improved handling of composite primary key (`studentId_responsibilityId`) for more reliable responsibility level updates
+  - **Transaction Safety**: Enhanced transaction reliability by using precise record targeting for responsibility updates
+
+- **AI Student Suggestion Filtering Enhancement**:
+  - **Active User Filter**: Added `isActive: true` filter to AI student suggestion queries in `POST /ai/students/suggest-groups-for-student` endpoint
+  - **Data Quality Improvement**: Ensures only active users are included in AI-powered student suggestions for better recommendation accuracy
+
+### Enhanced
+
+- **Database Operation Precision**: Improved student responsibility updates with more precise database operations using composite key constraints
+- **AI Recommendation Quality**: Enhanced AI suggestion algorithms by filtering out inactive users, ensuring only relevant and available students are suggested
+- **Data Integrity**: Better transaction handling for student responsibility updates with individual record targeting
+
+### Technical Improvements
+
+- **Service Layer Optimization**: Enhanced `StudentSelfService.update()` method with more reliable responsibility update logic
+- **Query Optimization**: Improved AI student query filtering to include user activity status for better performance and accuracy
+- **Database Constraints**: Better utilization of composite primary key constraints for more robust data operations
+
+### Pull Requests
+
+- Direct commits implementing student responsibility update optimization and AI suggestion filtering improvements
+
+---
+
 ## [0.9.4] - 2025-08-18
 
 ### Added
