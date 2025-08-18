@@ -50,13 +50,19 @@ export class StudentSelfService {
 
 					// Update student responsibilities if provided
 					if (dto.studentResponsibilities) {
-						await txn.studentResponsibility.updateMany({
-							where: { studentId: id },
-							data: dto.studentResponsibilities.map((responsibility) => ({
-								responsibilityId: responsibility.responsibilityId,
-								level: responsibility.level,
-							})),
-						});
+						for (const r of dto.studentResponsibilities) {
+							await txn.studentResponsibility.update({
+								where: {
+									studentId_responsibilityId: {
+										responsibilityId: r.responsibilityId,
+										studentId: id,
+									},
+								},
+								data: {
+									level: r.level,
+								},
+							});
+						}
 					}
 
 					// Fetch the complete student data with all relations like in findOne
