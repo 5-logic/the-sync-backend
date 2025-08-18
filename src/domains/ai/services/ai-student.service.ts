@@ -81,6 +81,9 @@ export class AIStudentService {
 							semesterId: semesterId,
 						},
 					},
+					user: {
+						isActive: true,
+					},
 				},
 				include: {
 					user: true,
