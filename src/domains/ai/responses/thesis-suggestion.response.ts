@@ -1,3 +1,5 @@
+import { ThesisOrientation } from '~/generated/prisma';
+
 export interface ThesisSuggestionResponse {
 	reason: string;
 	theses: ThesisSuggestion[];
@@ -9,4 +11,5 @@ export interface ThesisSuggestion {
 	abbreviation: string;
 	supervisorsName: string[];
 	compatibility: number;
+	orientation: ThesisOrientation;
 }

@@ -202,6 +202,7 @@ export class AIThesisService {
 						abbreviation: thesis.abbreviation,
 						supervisorsName: supervisorsName,
 						compatibility: compatibilityMap.get(thesis.id) || 0,
+						orientation: thesis.orientation,
 					};
 				})
 				.filter((thesis) => thesis !== null)
