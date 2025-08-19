@@ -138,3 +138,6 @@ dist
 /generated/prisma
 /rendered-templates
 render-pug-templates.js
+
+# Pinecone data backup files
+scripts/pinecone_data.json
