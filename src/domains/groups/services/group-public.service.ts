@@ -347,4 +347,103 @@ export class GroupPublicService {
 			throw error;
 		}
 	}
+
+	async findGroupResponsibilities(groupId: string) {
+		try {
+			this.logger.log(`Finding responsibilities for group ID: ${groupId}`);
+
+			// Get all members of the group with their responsibilities
+			const groupMembers = await this.prisma.studentGroupParticipation.findMany(
+				{
+					where: {
+						groupId: groupId,
+					},
+					select: {
+						student: {
+							select: {
+								userId: true,
+								studentResponsibilities: {
+									select: {
+										level: true,
+										responsibility: {
+											select: {
+												id: true,
+												name: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			);
+
+			if (groupMembers.length === 0) {
+				this.logger.warn(`No members found for group ID: ${groupId}`);
+				return [];
+			}
+
+			// Get all unique responsibilities
+			const allResponsibilities = new Map<
+				string,
+				{ id: string; name: string }
+			>();
+			const memberResponsibilities = new Map<string, Map<string, number>>();
+
+			// Process each member's responsibilities
+			groupMembers.forEach((member) => {
+				const studentId = member.student.userId;
+				const studentResponsibilityMap = new Map<string, number>();
+
+				member.student.studentResponsibilities.forEach((sr) => {
+					const { responsibility, level } = sr;
+					allResponsibilities.set(responsibility.id, {
+						id: responsibility.id,
+						name: responsibility.name,
+					});
+					studentResponsibilityMap.set(responsibility.id, level);
+				});
+
+				memberResponsibilities.set(studentId, studentResponsibilityMap);
+			});
+
+			// Calculate average for each responsibility
+			const averageResponsibilities = Array.from(
+				allResponsibilities.values(),
+			).map((responsibility) => {
+				const levels = groupMembers
+					.map((member) => {
+						const studentResponsibilityMap = memberResponsibilities.get(
+							member.student.userId,
+						);
+						return studentResponsibilityMap?.get(responsibility.id) || 0;
+					})
+					.filter((level) => level !== undefined);
+
+				const average =
+					levels.length > 0
+						? levels.reduce((sum, level) => sum + level, 0) / levels.length
+						: 0;
+
+				return {
+					responsibilityId: responsibility.id,
+					responsibilityName: responsibility.name,
+					averageLevel: Math.round(average * 100) / 100, // Round to 2 decimal places
+				};
+			});
+
+			this.logger.log(
+				`Found responsibilities for ${groupMembers.length} members in group ID: ${groupId}`,
+			);
+
+			return averageResponsibilities;
+		} catch (error) {
+			this.logger.error(
+				`Error finding responsibilities for group ID ${groupId}`,
+				error,
+			);
+			throw error;
+		}
+	}
 }

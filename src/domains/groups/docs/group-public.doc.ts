@@ -20,4 +20,9 @@ export const GroupPublicDocs = {
 		summary: 'Get group members',
 		description: `Get detailed information about all members of a specific group including their personal information, student codes, enrollment status, and leadership roles.\n\n- **Authenticated users only**.\n- Returns comprehensive member profiles with user details and participation status.\n- Results are cached for performance.\n- Returns 404 error if group does not exist.\n- Logs all fetch attempts and errors.\n\n**Response includes:**\n- userId, studentCode, fullName, email, phoneNumber, gender, major\n- isLeader`,
 	} as ApiOperationOptions,
+
+	findGroupResponsibilities: {
+		summary: 'Get group responsibilities analysis',
+		description: `Get average responsibility levels for all members in a group.\n\n- **Authenticated users only**.\n- Calculates average responsibility levels across all group members.\n- Returns empty array if group has no members.\n- Logs all fetch attempts and errors.\n\n**Response format:**\nArray of objects with:\n- responsibilityId: string\n- responsibilityName: string\n- averageLevel: number (rounded to 2 decimal places)\n\n**Responsibility Types:**\n- Backend, Frontend, DevOps, BA, AI`,
+	} as ApiOperationOptions,
 };
