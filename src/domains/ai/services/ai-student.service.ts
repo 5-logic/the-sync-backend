@@ -444,7 +444,7 @@ ${candidateStudents
 1. Analyze the current group's strengths and weaknesses
 2. Identify what types of skills the group needs most
 3. Evaluate each candidate against these needs
-4. Select the top 3-5 most suitable candidates
+4. Select the top 5 most suitable candidates
 5. Provide compatibility scores and clear reasoning
 
 ## OUTPUT FORMAT (JSON only, no explanation):
@@ -529,7 +529,7 @@ ${group.members
 1. Analyze each group's current skill composition and identify gaps
 2. Evaluate how the student's skills would complement each group
 3. Consider both filling gaps and maintaining balance
-4. Select the top 3-5 most suitable groups
+4. Select the top 5 most suitable groups
 5. Provide compatibility scores and reasoning
 
 ## OUTPUT FORMAT (JSON only, no explanation):
