@@ -4,27 +4,16 @@ import * as path from 'path';
 import * as readline from 'readline';
 
 // Script for managing Pinecone data operations
-// Note: Export function only saves vector IDs and metadata, not the actual vector values
+// Note: Export function saves vector IDs and metadata in format: [{ "id": "...", "metadata": { ... } }]
+//       Import function supports both old and new formats and uses upsertRecords (no vector values needed)
 // Usage:
 // - pnpm pinecone: Interactive menu to choose operations
 // - pnpm pinecone export: Export vector IDs and metadata from Pinecone to JSON file
-// - pnpm pinecone import: Import data from JSON file to Pinecone (creates dummy zero vectors if no values)
+// - pnpm pinecone import: Import data from JSON file to Pinecone using upsertRecords method
 // - pnpm pinecone clear: Clear all data from Pinecone namespace
 
 const NAMESPACE = 'pinecone-thesis-namespace';
 const DATA_FILE = path.join(__dirname, 'pinecone_data.json');
-
-interface PineconeVector {
-	id: string;
-	values?: number[]; // Optional since we won't export values
-	metadata?: Record<string, any>;
-}
-
-interface PineconeData {
-	vectors: PineconeVector[];
-	namespace: string;
-	exportedAt: string;
-}
 
 // Initialize Pinecone client
 const initializePinecone = (): Pinecone => {
@@ -71,7 +60,7 @@ const exportData = async (): Promise<void> => {
 			statsResponse.namespaces[NAMESPACE].recordCount === 0
 		) {
 			console.log('⚠️  No data found in Pinecone namespace');
-			const emptyData: PineconeData = {
+			const emptyData = {
 				vectors: [],
 				namespace: NAMESPACE,
 				exportedAt: new Date().toISOString(),
@@ -96,7 +85,7 @@ const exportData = async (): Promise<void> => {
 
 		if (!queryResponse.matches || queryResponse.matches.length === 0) {
 			console.log('⚠️  No data found in Pinecone namespace');
-			const emptyData: PineconeData = {
+			const emptyData = {
 				vectors: [],
 				namespace: NAMESPACE,
 				exportedAt: new Date().toISOString(),
@@ -107,13 +96,13 @@ const exportData = async (): Promise<void> => {
 			return;
 		}
 
-		// Convert matches to our format (only ID and metadata, no values)
-		const vectors: PineconeVector[] = queryResponse.matches.map((match) => ({
+		// Convert matches to new export format (id + metadata structure)
+		const vectors = queryResponse.matches.map((match) => ({
 			id: match.id,
 			metadata: match.metadata || {},
 		}));
 
-		const data: PineconeData = {
+		const data = {
 			vectors,
 			namespace: NAMESPACE,
 			exportedAt: new Date().toISOString(),
@@ -145,7 +134,7 @@ const importData = async (): Promise<void> => {
 
 		// Read data from JSON file
 		const fileContent = fs.readFileSync(DATA_FILE, 'utf-8');
-		let data: PineconeData;
+		let data: any;
 
 		try {
 			data = JSON.parse(fileContent);
@@ -169,40 +158,41 @@ const importData = async (): Promise<void> => {
 		const pinecone = initializePinecone();
 		const index = getIndex(pinecone);
 
-		// Get index dimension for creating dummy vectors
-		const statsResponse = await index.describeIndexStats();
-		const dimension = statsResponse.dimension || 1024;
-		console.log(`📊 Using index dimension: ${dimension}`);
+		// Prepare records for import using upsertRecords (similar to thesis processor)
+		const records = data.vectors.map((vector: any) => {
+			// Handle both old format (with metadata property) and new format (flattened)
+			let metadata: Record<string, any>;
 
-		// Check if vectors have values, if not create dummy values
-		const vectorsWithoutValues = data.vectors.filter(
-			(vector) => !vector.values || vector.values.length === 0,
+			if (vector.metadata) {
+				// Old format: { id: "...", metadata: { ... } }
+				metadata = vector.metadata;
+			} else {
+				// New format: { id: "...", prop1: "...", prop2: "..." }
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { id, ...rest } = vector;
+				metadata = rest;
+			}
+
+			// Create record in the format expected by upsertRecords
+			const record = {
+				_id: vector.id,
+				...metadata,
+			};
+
+			return record;
+		});
+
+		console.log(
+			'📦 Sample record structure:',
+			JSON.stringify(records[0], null, 2),
 		);
 
-		if (vectorsWithoutValues.length > 0) {
-			console.log(
-				`⚠️  Found ${vectorsWithoutValues.length} vectors without values. Creating dummy vectors with minimal non-zero values...`,
-			);
-			console.log(
-				'Note: These vectors will have dummy embeddings and may not be useful for similarity search.',
-			);
-
-			// Add dummy values to vectors without values (with at least one non-zero value)
-			data.vectors.forEach((vector) => {
-				if (!vector.values || vector.values.length === 0) {
-					vector.values = new Array(dimension).fill(0);
-					// Set first value to a small non-zero number to satisfy Pinecone requirement
-					vector.values[0] = 0.001;
-				}
-			});
-		}
-
-		// Import vectors in batches (Pinecone has batch size limits)
+		// Import records in batches using upsertRecords (same approach as thesis processor)
 		const batchSize = 100;
-		const batches: PineconeVector[][] = [];
+		const batches: any[][] = [];
 
-		for (let i = 0; i < data.vectors.length; i += batchSize) {
-			batches.push(data.vectors.slice(i, i + batchSize));
+		for (let i = 0; i < records.length; i += batchSize) {
+			batches.push(records.slice(i, i + batchSize));
 		}
 
 		console.log(`📦 Importing in ${batches.length} batches...`);
@@ -210,34 +200,19 @@ const importData = async (): Promise<void> => {
 		for (let i = 0; i < batches.length; i++) {
 			const batch = batches[i];
 			console.log(
-				`⏳ Processing batch ${i + 1}/${batches.length} (${batch.length} vectors)`,
+				`⏳ Processing batch ${i + 1}/${batches.length} (${batch.length} records)`,
 			);
 
-			// Ensure all vectors have the required fields for upsert
-			const upsertBatch = batch.map((vector) => ({
-				id: vector.id,
-				values:
-					vector.values ||
-					(() => {
-						const dummyValues = new Array(dimension).fill(0);
-						dummyValues[0] = 0.001; // Ensure at least one non-zero value
-						return dummyValues;
-					})(),
-				metadata: vector.metadata || {},
-			}));
-
-			await index.namespace(NAMESPACE).upsert(upsertBatch);
+			// Use upsertRecords similar to thesis processor
+			await index.namespace(NAMESPACE).upsertRecords(batch);
 		}
 
 		console.log(
-			`✅ Successfully imported ${data.vectors.length} vectors to Pinecone`,
+			`✅ Successfully imported ${records.length} records to Pinecone`,
 		);
-
-		if (vectorsWithoutValues.length > 0) {
-			console.log(
-				`⚠️  Note: ${vectorsWithoutValues.length} vectors were imported with dummy zero values.`,
-			);
-		}
+		console.log(
+			'💡 Records imported using upsertRecords method (no vector values needed)',
+		);
 	} catch (error) {
 		console.error('❌ Error importing data:', error);
 		process.exit(1);
@@ -304,11 +279,17 @@ const showInteractiveMenu = async (): Promise<void> => {
 		console.log('\n🔧 Pinecone Data Management Tool');
 		console.log('================================');
 		console.log('1. Export vector IDs and metadata from Pinecone to JSON file');
-		console.log('2. Import data from JSON file to Pinecone');
+		console.log('   Format: [{ "id": "...", "metadata": { ... } }]');
+		console.log(
+			'2. Import data from JSON file to Pinecone using upsertRecords',
+		);
+		console.log('   Supports both old and new formats:');
+		console.log('   - Old: [{ "id": "...", "metadata": { ... } }]');
+		console.log('   - New: [{ "id": "...", "prop1": "...", "prop2": "..." }]');
 		console.log('3. Clear all data from Pinecone namespace');
 		console.log('4. Exit');
 		console.log('================================');
-		console.log('Note: Export only saves IDs and metadata, not vector values');
+		console.log('Note: Uses upsertRecords method (no vector values needed)');
 	};
 
 	const askQuestion = (question: string): Promise<string> => {
