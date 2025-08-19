@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2025-08-20
+
+### Added
+
+- **Group Responsibilities Analytics API**:
+  - **New Endpoint**: Added `GET /groups/:id/responsibilities` endpoint to retrieve average responsibility levels for group members
+  - **Comprehensive Analytics**: Provides detailed breakdown of group capabilities across all responsibility areas (Backend, Frontend, DevOps, BA, AI)
+  - **Average Calculation**: Automatically calculates average responsibility levels across all group members with precision to 2 decimal places
+
+- **Enhanced Thesis Suggestion Response**:
+  - **Thesis Orientation Field**: Added `orientation` field to thesis suggestion responses in `POST /ai/thesis/suggest-for-group/:groupId` endpoint
+  - **Better Categorization**: Enhanced thesis suggestions with orientation information (SE, AI, Neutral) for better matching
+
+- **Pinecone Data Management System**:
+  - **New Management Script**: Added comprehensive `scripts/pinecone.ts` for managing Pinecone vector database operations
+  - **Interactive CLI**: Interactive command-line interface with options for export, import, and clear operations
+  - **Flexible Data Formats**: Supports both legacy and new data formats for vector import/export
+  - **Enhanced Package Commands**: Added `pinecone` script command in package.json for data management operations
+
+- **Enhanced Seeding System**:
+  - **Expanded Student Dataset**: Added 12 new student entries (5 AI major, 7 SE major) for better testing scenarios
+  - **Realistic Contact Information**: Updated phone numbers for all lecturers and students with unique, realistic numbers
+  - **Improved Data Diversity**: Enhanced student and lecturer data with more diverse contact information
+
+### Changed
+
+- **AI Student Suggestion Algorithm Enhancement**:
+  - **Selection Criteria Update**: Updated AI algorithms to select top 5 most suitable candidates/groups instead of top 3-5 range
+  - **Consistent Recommendations**: Standardized selection criteria across both `POST /ai/students/suggest-for-group/:groupId` and `POST /ai/students/suggest-groups-for-student` endpoints
+  - **Improved Precision**: Enhanced recommendation precision with fixed selection count for more consistent results
+
+- **Database Reset Command Optimization**:
+  - **Streamlined Reset Process**: Removed separate Pinecone clearing script in favor of integrated reset command
+  - **Enhanced prisma:reset**: Updated `prisma:reset` command to handle both database and vector store reset operations
+
+### Enhanced
+
+- **Group Analytics Architecture**:
+  - **Comprehensive Data Retrieval**: Enhanced group service to fetch detailed member responsibility data with nested relationships
+  - **Efficient Calculations**: Optimized responsibility level calculations with proper handling of missing data
+  - **Structured Response Format**: Standardized response format with responsibility ID, name, and average level
+
+- **Pinecone Integration Improvements**:
+  - **Batch Processing**: Enhanced Pinecone operations with efficient batch processing (100 records per batch)
+  - **Error Handling**: Improved error handling and recovery mechanisms for vector database operations
+  - **Format Compatibility**: Backward compatibility support for existing Pinecone data formats
+
+- **API Documentation Enhancement**:
+  - **Comprehensive Documentation**: Updated Swagger documentation for new group responsibilities endpoint
+  - **Clear Parameter Descriptions**: Enhanced API documentation with detailed parameter and response descriptions
+
+### Technical Improvements
+
+- **Service Architecture Enhancement**: Improved `GroupPublicService` with new `findGroupResponsibilities()` method for analytics capabilities
+- **Vector Database Management**: Enhanced Pinecone integration with comprehensive data management tools and utilities
+- **Development Experience**: Improved development workflow with better seeding data and management scripts
+- **Code Quality**: Enhanced code organization with better separation of concerns in analytics and data management features
+- **Performance Optimization**: Optimized database queries for group responsibility calculations with efficient data aggregation
+
+### Pull Requests
+
+- Direct commits implementing group analytics API, enhanced thesis suggestions, Pinecone management system, and improved seeding data
+
+---
+
 ## [0.9.5] - 2025-08-18
 
 ### Changed
