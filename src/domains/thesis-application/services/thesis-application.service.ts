@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@/providers';
+import { EmailJobType, EmailQueueService } from '@/queue/email';
 
 import { ThesisApplicationStatus, ThesisStatus } from '~/generated/prisma';
 
@@ -14,7 +15,10 @@ import { ThesisApplicationStatus, ThesisStatus } from '~/generated/prisma';
 export class ThesisApplicationService {
 	private readonly logger = new Logger(ThesisApplicationService.name);
 
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly emailQueueService: EmailQueueService,
+	) {}
 
 	public getApplicationInclude() {
 		return {
@@ -504,6 +508,98 @@ export class ThesisApplicationService {
 		this.logger.log(
 			`Successfully assigned group ${groupId} to thesis ${thesisId} (bidirectional)`,
 		);
+
+		// Get group members and thesis details for email notification
+		const groupWithDetails = await tx.group.findUnique({
+			where: { id: groupId },
+			include: {
+				studentGroupParticipations: {
+					include: {
+						student: {
+							include: {
+								user: {
+									select: {
+										email: true,
+										firstName: true,
+										lastName: true,
+									},
+								},
+							},
+						},
+					},
+				},
+				thesis: {
+					include: {
+						supervisions: {
+							include: {
+								lecturer: {
+									include: {
+										user: {
+											select: {
+												firstName: true,
+												lastName: true,
+											},
+										},
+									},
+								},
+							},
+						},
+						semester: {
+							select: {
+								name: true,
+							},
+						},
+					},
+				},
+			},
+		});
+
+		// Send approval notification emails to all group members
+		if (groupWithDetails) {
+			const emailPromises = groupWithDetails.studentGroupParticipations.map(
+				(participation) => {
+					const student = participation.student;
+					const thesis = groupWithDetails.thesis;
+
+					// Get all supervisors names
+					const supervisorNames = thesis.supervisions
+						.map(
+							(supervision) =>
+								`${supervision.lecturer.user.firstName} ${supervision.lecturer.user.lastName}`,
+						)
+						.join(', ');
+
+					return this.emailQueueService.sendEmail(
+						EmailJobType.SEND_THESIS_APPLICATION_APPROVAL_NOTIFICATION,
+						{
+							to: student.user.email,
+							subject: `🎉 Thesis Application Approved - ${thesis.englishName}`,
+							context: {
+								studentName: `${student.user.firstName} ${student.user.lastName}`,
+								groupName: groupWithDetails.name,
+								groupCode: groupWithDetails.code,
+								thesisEnglishName: thesis.englishName,
+								thesisVietnameseName: thesis.vietnameseName,
+								thesisAbbreviation: thesis.abbreviation,
+								supervisorName: supervisorNames,
+								semesterName: thesis.semester.name,
+								approvalDate: new Date().toLocaleDateString('en-US', {
+									year: 'numeric',
+									month: 'long',
+									day: 'numeric',
+								}),
+							},
+						},
+					);
+				},
+			);
+
+			await Promise.all(emailPromises);
+
+			this.logger.log(
+				`Sent thesis approval notifications to ${groupWithDetails.studentGroupParticipations.length} group members`,
+			);
+		}
 
 		const otherApplications = await tx.thesisApplication.findMany({
 			where: {

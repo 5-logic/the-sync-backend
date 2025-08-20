@@ -1,0 +1,103 @@
+//- Data to be rendered in the email template
+//- + studentName: Name of the student receiving the notification
+//- + groupName: Name of the group
+//- + groupCode: Code of the group
+//- + thesisEnglishName: English name of the thesis
+//- + thesisVietnameseName: Vietnamese name of the thesis
+//- + thesisAbbreviation: Abbreviation of the thesis (optional)
+//- + supervisorName: Names of all supervisors (comma-separated)
+//- + semesterName: Name of the semester
+//- + approvalDate: Date when the application was approved
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{studentName},
+
+  .success-box
+    h3 🎉 Congratulations! Your Thesis Application Has Been Approved
+    p
+      | We are pleased to inform you that your group's thesis application has been #[strong approved] by your supervisor. You can now proceed with your capstone project!
+
+  .info-box
+    h3 📋 Approved Thesis Details
+    
+    .info-item
+      span.info-label English Name:
+      span.info-value #{thesisEnglishName}
+    
+    .info-item
+      span.info-label Vietnamese Name:
+      span.info-value #{thesisVietnameseName}
+    
+    if thesisAbbreviation
+      .info-item
+        span.info-label Abbreviation:
+        span.info-value #{thesisAbbreviation}
+    
+    .info-item
+      span.info-label Supervisor(s):
+      span.info-value #{supervisorName}
+    
+    .info-item
+      span.info-label Semester:
+      span.info-value #{semesterName}
+
+  .info-box
+    h3 👥 Your Group Information
+    
+    .info-item
+      span.info-label Group Name:
+      span.info-value #{groupName}
+    
+    .info-item
+      span.info-label Group Code:
+      span.info-value #{groupCode}
+    
+    .info-item
+      span.info-label Approval Date:
+      span.info-value #{approvalDate}
+
+  .info-box
+    h3 🚀 Next Steps
+    p
+      | Now that your thesis application has been approved, here's what you need to do next:
+    
+    ol
+      li #[strong Meet with your supervisors] - Schedule an initial meeting to discuss project expectations and timeline
+      li #[strong Review project requirements] - Understand the scope, deliverables, and evaluation criteria
+      li #[strong Set up project workspace] - Create necessary repositories, documentation, and collaboration tools
+      li #[strong Plan your timeline] - Work with your supervisors to establish milestones and deadlines
+      li #[strong Begin research phase] - Start literature review and preliminary research
+
+  .warning-box
+    h3 ⚠️ Important Reminders
+    ul
+      li This thesis assignment is now confirmed and cannot be changed without supervisors approval
+      li Regular meetings with your supervisors are mandatory
+      li You must follow the project timeline and submit deliverables on time
+      li Any major changes to the project scope must be discussed with your supervisors
+      li Maintain professional communication and collaboration with your team members
+
+  .info-box
+    h3 📞 Contact Information
+    p
+      | For any questions or concerns regarding your thesis project:
+    ul
+      li Contact your supervisors #{supervisorName} directly
+      li Reach out to the academic coordinator for administrative matters
+      li Use TheSync platform for project updates and submissions
+      li Check your email regularly for important announcements
+
+  p
+    | We wish you the best of luck with your thesis project! This is an important milestone in your academic journey, and we're confident you'll do excellent work.
+
+  p
+    strong Remember: 
+    | Success in your thesis project requires dedication, regular communication with your supervisors, and consistent progress. Start early and stay organized!
+
+  p
+    | Best regards,
+    br
+    | The Academic Team

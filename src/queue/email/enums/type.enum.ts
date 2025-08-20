@@ -43,4 +43,5 @@ export enum EmailJobType {
 
 	// Thesis Applications
 	SEND_THESIS_APPLICATION_NOTIFICATION = 'send-thesis-application-notification',
+	SEND_THESIS_APPLICATION_APPROVAL_NOTIFICATION = 'send-thesis-application-approval-notification',
 }
