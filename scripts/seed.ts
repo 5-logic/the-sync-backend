@@ -212,7 +212,7 @@ const seedStudents = async () => {
 		},
 		// New students - AI Major
 		{
-			id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+			id: 'da9c0a28-23e9-4f56-bbc2-435be3e3a6b9',
 			fullName: 'Võ Ngọc Bảo Hân - Student',
 			email: 'bakaqc.dev@gmail.com',
 			gender: Gender.Female,
@@ -221,7 +221,7 @@ const seedStudents = async () => {
 			majorId: '45395511-36c9-43f1-83ac-9ae65f708dbc',
 		},
 		{
-			id: 'b2c3d4e5-f6g7-8901-bcde-f21234567891',
+			id: 'a195481d-fd23-4788-bf9e-ce9d9dd5cc25',
 			fullName: 'Phạm Hoàng Gia Tiên - Student',
 			email: 'thesync.team001@gmail.com',
 			gender: Gender.Male,
@@ -230,7 +230,7 @@ const seedStudents = async () => {
 			majorId: '45395511-36c9-43f1-83ac-9ae65f708dbc',
 		},
 		{
-			id: 'c3d4e5f6-g7h8-9012-cdef-321234567892',
+			id: 'cbe9cf90-6e4f-44d3-85df-e1802155b53f',
 			fullName: 'Trần Hoài Ngọc Linh - Student',
 			email: 'brainbox.platform@gmail.com',
 			gender: Gender.Female,
@@ -239,7 +239,7 @@ const seedStudents = async () => {
 			majorId: '45395511-36c9-43f1-83ac-9ae65f708dbc',
 		},
 		{
-			id: 'd4e5f6g7-h8i9-0123-defa-421234567893',
+			id: 'e039c081-5597-4ee4-9765-35c65af04d3f',
 			fullName: 'Nguyễn Văn Tính - Student',
 			email: 'evora.17c@gmail.com',
 			gender: Gender.Male,
@@ -248,7 +248,7 @@ const seedStudents = async () => {
 			majorId: '45395511-36c9-43f1-83ac-9ae65f708dbc',
 		},
 		{
-			id: 'e5f6g7h8-i9j0-1234-efab-521234567894',
+			id: '1ec74aa9-7af4-4bbc-851f-a9cbacbd2d97',
 			fullName: 'Đào Văn Tấn - Student',
 			email: 'quocchuong2609@gmail.com',
 			gender: Gender.Male,
@@ -258,7 +258,7 @@ const seedStudents = async () => {
 		},
 		// New students - SE Major
 		{
-			id: 'f6g7h8i9-j0k1-2345-fabc-621234567895',
+			id: '61f19625-ca32-4bee-b04c-58f6dd72710f',
 			fullName: 'Lê Minh Thịnh - Student',
 			email: 'nghiaht1423@gmail.com',
 			gender: Gender.Male,
@@ -267,7 +267,7 @@ const seedStudents = async () => {
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
-			id: 'g7h8i9j0-k1l2-3456-abcd-721234567896',
+			id: '8655bbb2-562d-4565-b5da-76676954ca89',
 			fullName: 'Trần Minh Nguyệt - Student',
 			email: 'thunderstorm3846@gmail.com',
 			gender: Gender.Female,
@@ -276,7 +276,7 @@ const seedStudents = async () => {
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
-			id: 'h8i9j0k1-l2m3-4567-bcde-821234567897',
+			id: '8ec9135f-75e3-4e82-9448-caf5ec67bd97',
 			fullName: 'Đào Minh Nghĩa - Student',
 			email: 'hotrongnghia745@gmail.com',
 			gender: Gender.Male,
@@ -285,7 +285,7 @@ const seedStudents = async () => {
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
-			id: 'i9j0k1l2-m3n4-5678-cdef-921234567898',
+			id: 'bf74f327-1aba-4181-b227-9403c834d800',
 			fullName: 'Dương Minh Hoàng - Student',
 			email: 'htn11a2@gmail.com',
 			gender: Gender.Male,
@@ -294,7 +294,7 @@ const seedStudents = async () => {
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
-			id: 'j0k1l2m3-n4o5-6789-defa-a21234567899',
+			id: '82480571-2758-4def-90ab-f65e87c99913',
 			fullName: 'Trần Thanh Hùng - Student',
 			email: 'tranthanhhung3846@gmail.com',
 			gender: Gender.Male,
@@ -303,7 +303,7 @@ const seedStudents = async () => {
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
-			id: 'k1l2m3n4-o5p6-7890-efab-b21234567800',
+			id: '77f2d469-229d-4d68-ae41-000307320a38',
 			fullName: 'Ngô Thanh Nhung - Student',
 			email: 'htnfptqn@gmail.com',
 			gender: Gender.Female,
@@ -312,7 +312,7 @@ const seedStudents = async () => {
 			majorId: '476723ef-1eb2-4a00-944c-1bef7054c44a',
 		},
 		{
-			id: 'l2m3n4o5-p6q7-8901-fabc-c21234567801',
+			id: '2cdf58e3-53d4-4cd6-b035-fd51c7e02d4c',
 			fullName: 'Trần Đức Lễ - Student',
 			email: 'htnghia12a2@gmail.com',
 			gender: Gender.Male,
