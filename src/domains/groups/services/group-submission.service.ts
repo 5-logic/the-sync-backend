@@ -64,9 +64,9 @@ export class GroupSubmissionService {
 
 		const now = new Date();
 
-		if (now >= milestone.startDate) {
+		if (now >= milestone.endDate) {
 			throw new ConflictException(
-				`Submission creation is only allowed before the milestone start date. Start date: ${milestone.startDate.toISOString()}`,
+				`Submission creation is only allowed before the milestone end date. End date: ${milestone.endDate.toISOString()}`,
 			);
 		}
 
@@ -184,9 +184,9 @@ export class GroupSubmissionService {
 
 		const now = new Date();
 
-		if (now > milestone.startDate) {
+		if (now > milestone.endDate) {
 			throw new ConflictException(
-				`Submission updates are only allowed before the milestone start date. Start date: ${milestone.startDate.toISOString()}`,
+				`Submission updates are only allowed before the milestone end date. End date: ${milestone.endDate.toISOString()}`,
 			);
 		}
 
