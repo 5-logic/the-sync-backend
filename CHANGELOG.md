@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.7] - 2025-08-20
+
+### Changed
+
+- **Submission Deadline Management Enhancement**:
+  - **API Behavior Change**: Modified submission creation and update validation in `POST /group-submissions/:groupId/milestones/:milestoneId` and `PUT /group-submissions/:groupId/milestones/:milestoneId` endpoints
+  - **Deadline Logic Update**: Changed submission deadline validation from `milestone.startDate` to `milestone.endDate` for both creation and update operations
+  - **Improved User Experience**: Students can now create and update submissions throughout the entire milestone duration (from start to end date) instead of only before the start date
+
+- **AI Duplicate Detection Optimization**:
+  - **Response Filtering**: Enhanced `checkDuplicate` operation in Pinecone thesis processor to only return theses with `duplicatePercentage >= 1%`
+  - **Reduced Noise**: Eliminates low-relevance duplicate detection results that fall below the 1% threshold for cleaner, more meaningful duplicate analysis
+
+### Enhanced
+
+- **Development Data Quality**:
+  - **Seed Data Improvement**: Updated student seed data with unique, consistent UUID generation for better testing scenarios
+  - **Responsibility Levels**: Added random level assignment (0-5) for student responsibilities during seeding to create more realistic test data
+  - **Data Consistency**: Enhanced seed data structure with proper UUID format and realistic responsibility level distribution
+
+### Fixed
+
+- **Submission Validation Logic**: Corrected submission timeline validation to allow submissions throughout the milestone period instead of restricting them to before the milestone starts
+- **AI Analysis Precision**: Improved duplicate detection accuracy by filtering out negligible similarity results below 1% threshold
+
+### Technical Improvements
+
+- **Service Layer Enhancement**: Updated `GroupSubmissionService.validateCreateSubmissionTimeline()` and `validateUpdateSubmissionTimeline()` methods with improved deadline logic
+- **AI Processing Optimization**: Enhanced Pinecone thesis processor with more efficient duplicate detection filtering
+- **Seed Data Architecture**: Improved seeding system with better UUID generation and realistic data distribution patterns
+- **Code Quality**: Enhanced validation error messages to reflect the new end-date-based deadline logic
+
+### Pull Requests
+
+- Direct commits implementing submission deadline improvements, AI duplicate detection optimization, and enhanced seed data quality
+
+---
+
 ## [0.9.6] - 2025-08-20
 
 ### Added
