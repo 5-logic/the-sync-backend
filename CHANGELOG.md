@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.8] - 2025-08-20
+
+### Added
+
+- **Thesis Application Approval Notification System**:
+  - **New Email Notification**: Added `SEND_THESIS_APPLICATION_APPROVAL_NOTIFICATION` email job type for automated approval notifications
+  - **Comprehensive Email Template**: New `send-thesis-application-approval-notification.pug` template with detailed thesis and group information
+  - **Multi-Recipient Support**: Automatically sends approval notifications to all group members when a thesis application is approved
+
+### Enhanced
+
+- **Thesis Application Workflow**:
+  - **Automatic Notification Trigger**: Enhanced `PUT /thesis-applications/:groupId/:thesisId` endpoint to automatically send approval notifications when status is updated to `Approved`
+  - **Rich Email Content**: Approval emails include thesis details (English/Vietnamese names, abbreviation), supervisor information, group details, and next steps guidance
+  - **Professional Communication**: Structured email content with congratulations message, project details, next steps, and important reminders
+
+- **Email Service Architecture**:
+  - **Service Integration**: Enhanced `ThesisApplicationService.handleApprovalProcess()` method to integrate with `EmailQueueService` for notification delivery
+  - **Data Enrichment**: Improved data retrieval to include comprehensive group member, thesis, and supervisor information for rich email context
+  - **Error Handling**: Robust email delivery with Promise.all for concurrent notification sending to multiple group members
+
+### Technical Improvements
+
+- **Background Job Processing**: Enhanced email queue system with new thesis application approval notification job type
+- **Template System**: Professional email template with comprehensive styling and structured information layout
+- **Service Dependencies**: Updated `ThesisApplicationService` constructor to include `EmailQueueService` dependency injection
+- **Logging Enhancement**: Added detailed logging for notification delivery tracking and debugging
+- **Data Consistency**: Ensured approval notifications are sent as part of the same transaction as status updates
+
+### API Changes
+
+- **Enhanced Endpoint Behavior**: `PUT /thesis-applications/:groupId/:thesisId` endpoint now triggers automatic email notifications when thesis applications are approved
+- **Request Parameters**: Endpoint accepts `UpdateThesisApplicationDto` with `status` field (enum: `ThesisApplicationStatus`)
+- **Side Effects**: When status is set to `Approved`, the system now automatically sends notification emails to all group members
+
+### Pull Requests
+
+- Direct commit implementing thesis application approval notification system
+
+---
+
 ## [0.9.7] - 2025-08-20
 
 ### Changed
