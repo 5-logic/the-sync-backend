@@ -122,7 +122,10 @@ export class RequestStudentService {
 				return result;
 			} else {
 				// Group has members, create join request for leader approval
-				await this.requestService.validateNoPendingJoinRequest(userId);
+				await this.requestService.validateNoPendingJoinRequest(
+					userId,
+					dto.groupId,
+				);
 
 				const request = await this.prisma.request.create({
 					data: {

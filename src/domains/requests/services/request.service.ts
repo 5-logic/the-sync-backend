@@ -82,19 +82,32 @@ export class RequestService {
 		}
 	}
 
-	async validateNoPendingJoinRequest(userId: string) {
+	async validateNoPendingJoinRequest(userId: string, groupId?: string) {
+		const where: any = {
+			studentId: userId,
+			type: RequestType.Join,
+			status: RequestStatus.Pending,
+		};
+
+		// Nếu có groupId, chỉ kiểm tra pending request cho group cụ thể
+		if (groupId) {
+			where.groupId = groupId;
+		}
+
 		const pendingRequest = await this.prisma.request.findFirst({
-			where: {
-				studentId: userId,
-				type: RequestType.Join,
-				status: RequestStatus.Pending,
-			},
+			where,
 		});
 
 		if (pendingRequest) {
-			throw new ConflictException(
-				`Student already has a pending join request. Cancel it before sending a new one`,
-			);
+			if (groupId) {
+				throw new ConflictException(
+					`Student already has a pending join request for this group`,
+				);
+			} else {
+				throw new ConflictException(
+					`Student already has a pending join request. Cancel it before sending a new one`,
+				);
+			}
 		}
 	}
 
