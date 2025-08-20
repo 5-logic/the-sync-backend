@@ -520,8 +520,7 @@ export class ThesisApplicationService {
 								user: {
 									select: {
 										email: true,
-										firstName: true,
-										lastName: true,
+										fullName: true,
 									},
 								},
 							},
@@ -536,8 +535,7 @@ export class ThesisApplicationService {
 									include: {
 										user: {
 											select: {
-												firstName: true,
-												lastName: true,
+												fullName: true,
 											},
 										},
 									},
@@ -563,10 +561,7 @@ export class ThesisApplicationService {
 
 					// Get all supervisors names
 					const supervisorNames = thesis.supervisions
-						.map(
-							(supervision) =>
-								`${supervision.lecturer.user.firstName} ${supervision.lecturer.user.lastName}`,
-						)
+						.map((supervision) => supervision.lecturer.user.fullName)
 						.join(', ');
 
 					return this.emailQueueService.sendEmail(
@@ -575,7 +570,7 @@ export class ThesisApplicationService {
 							to: student.user.email,
 							subject: `🎉 Thesis Application Approved - ${thesis.englishName}`,
 							context: {
-								studentName: `${student.user.firstName} ${student.user.lastName}`,
+								studentName: student.user.fullName,
 								groupName: groupWithDetails.name,
 								groupCode: groupWithDetails.code,
 								thesisEnglishName: thesis.englishName,
