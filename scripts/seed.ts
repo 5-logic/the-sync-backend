@@ -379,6 +379,7 @@ const seedStudents = async () => {
 						data: allResponsibilities.map((responsibility) => ({
 							studentId: student.id,
 							responsibilityId: responsibility.id,
+							level: Math.floor(Math.random() * 6),
 						})),
 					});
 
