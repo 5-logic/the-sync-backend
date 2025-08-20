@@ -512,6 +512,7 @@ Guidelines:
   }
 ]
 - Return ONLY raw JSON array (no markdown, no code block, no explanations).
+- **IMPORTANT**: Only include theses with duplicatePercentage >= 1. Skip any thesis with duplicatePercentage < 1%.
 
 ## VALID Reason Examples (specific unique content):
 ✅ "Identical recommendation algorithm using collaborative filtering weights"
