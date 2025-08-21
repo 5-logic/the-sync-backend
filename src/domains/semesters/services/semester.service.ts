@@ -236,10 +236,11 @@ export class SemesterService {
 			});
 
 			// Thesis đã được duyệt (status = 'Approved')
-			const thesisApproved = await this.prisma.thesis.count({
+			const thesisPublished = await this.prisma.thesis.count({
 				where: {
 					semesterId,
 					status: ThesisStatus.Approved,
+					isPublish: true,
 				},
 			});
 
@@ -297,7 +298,7 @@ export class SemesterService {
 				progressOverview: {
 					totalStudentGrouped,
 					totalGroupPickedThesis,
-					thesisApproved,
+					thesisPublished,
 					totalAssignedSupervisors,
 				},
 				supervisorLoadDistribution,
