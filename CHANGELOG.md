@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.9] - 2025-08-21
+
+### Changed
+
+- **Group Creation Limit Calculation**:
+  - Updated group creation logic in `GroupAdminService` to use `Math.ceil` instead of `Math.round` for calculating `maxGroupsAllowed`. This ensures more accurate group limits based on student count.
+
+- **Join Request Validation Enhancement**:
+  - Improved join request validation in `RequestStudentService` and `RequestService`. Now, pending join requests are checked per group (with `groupId`), preventing duplicate requests for the same group and providing clearer error messages.
+  - API change: When creating a join request, the system now checks for pending requests specific to the group. If a pending request exists for the group, a specific conflict error is thrown.
+
+- **Semester Statistics and Supervisor Load Distribution**:
+  - Enhanced `SemesterService.getStatistics()` to:
+    - Check semester status before calculating statistics.
+    - Count only published theses (`isPublish: true`) for approved thesis statistics.
+    - Calculate supervisor load distribution differently based on semester status (`Preparing` vs. later phases).
+    - Supervisor load now counts each thesis as 0.5 point and tracks raw thesis count for more accurate load reporting.
+    - Improved logic for required thesis calculation and moderator alert: now uses `Math.ceil(totalGroups * 1.2)` for required thesis count.
+    - Only groups with active participations are counted for alerts.
+
+- **Thesis Application Notification Data**:
+  - Updated `ThesisApplicationService` to use `fullName` instead of `firstName`/`lastName` for students and supervisors in approval notification emails. This improves consistency and supports users with single names.
+
+- **Minor Wording Updates**:
+  - Improved warning messages in `SemesterStatusService` for transitions when groups have not picked a thesis.
+
+### API Changes
+
+- **Join Request API**:
+  - When creating a join request, the backend now checks for pending requests per group. If a pending request exists for the same group, the error message is: `Student already has a pending join request for this group`.
+  - No changes to request DTOs, but the validation logic is stricter and more informative.
+
+- **Semester Statistics API**:
+  - The statistics endpoint now returns more accurate supervisor load distribution and thesis counts, reflecting only published theses and correct supervisor assignment logic.
+
+- **Thesis Application Approval Notification**:
+  - Notification emails now use `fullName` for all recipients and supervisors.
+
+### Technical Improvements
+
+- Improved calculation logic for group limits and required thesis count.
+- Enhanced supervisor load distribution logic for more accurate reporting.
+- Improved error handling and messaging for join requests and semester transitions.
+- Refactored notification email context for better name handling.
+
+### Pull Requests
+
+- Direct commits for version 0.9.9 (no PR link available).
+
 ## [0.9.8] - 2025-08-20
 
 ### Added
