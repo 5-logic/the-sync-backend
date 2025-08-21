@@ -35,9 +35,7 @@ export class GroupAdminService {
 				},
 			});
 
-			const maxGroupsAllowed = Math.round(
-				(totalStudentsInSemester / 4.5) * 1.2,
-			);
+			const maxGroupsAllowed = Math.ceil((totalStudentsInSemester / 4.5) * 1.2);
 
 			const existingGroups = await this.prisma.group.findMany({
 				where: {
