@@ -203,6 +203,16 @@ export class SemesterService {
 
 	async getStatistics(semesterId: string) {
 		try {
+			// Get semester info to check status
+			const semester = await this.prisma.semester.findUnique({
+				where: { id: semesterId },
+				select: { status: true },
+			});
+
+			if (!semester) {
+				throw new NotFoundException(`Semester with ID ${semesterId} not found`);
+			}
+
 			// Summary card
 			const [totalStudents, totalLecturers, totalTheses, totalGroups] =
 				await Promise.all([
@@ -244,46 +254,84 @@ export class SemesterService {
 				},
 			});
 
-			// Tổng số supervisor đã được phân công (distinct lecturerId trong supervision của thesis thuộc semester)
-			const assignedSupervisors = await this.prisma.supervision.findMany({
-				where: {
-					thesis: {
-						semesterId,
-						groupId: { not: null },
-					},
-				},
-				select: { lecturerId: true },
-				distinct: ['lecturerId'],
-			});
-			const totalAssignedSupervisors = assignedSupervisors.length;
+			// Supervisor Load Distribution: Logic khác nhau dựa vào semester status
+			let supervisions;
+			let assignedSupervisors;
 
-			// Supervisor Load Distribution: số lượng thesis được pick mà lecturer hướng dẫn (từ bảng supervision)
-			const supervisions = await this.prisma.supervision.findMany({
-				where: {
-					thesis: {
-						semesterId,
-						groupId: { not: null },
-					},
-				},
-				include: {
-					lecturer: {
-						include: {
-							user: true,
+			if (semester.status === SemesterStatus.Preparing) {
+				// Khi semester ở trạng thái Preparing: tính tất cả thesis mà lecturer supervise
+				supervisions = await this.prisma.supervision.findMany({
+					where: {
+						thesis: {
+							semesterId,
 						},
 					},
-				},
-			});
-			// Group by lecturerId
+					include: {
+						lecturer: {
+							include: {
+								user: true,
+							},
+						},
+					},
+				});
+
+				// Tổng số supervisor đã được phân công (distinct lecturerId trong supervision của thesis thuộc semester)
+				assignedSupervisors = await this.prisma.supervision.findMany({
+					where: {
+						thesis: {
+							semesterId,
+						},
+					},
+					select: { lecturerId: true },
+					distinct: ['lecturerId'],
+				});
+			} else {
+				// Khi semester từ Picking trở đi: chỉ tính những thesis có group pick
+				supervisions = await this.prisma.supervision.findMany({
+					where: {
+						thesis: {
+							semesterId,
+							groupId: { not: null },
+						},
+					},
+					include: {
+						lecturer: {
+							include: {
+								user: true,
+							},
+						},
+					},
+				});
+
+				// Tổng số supervisor đã được phân công (distinct lecturerId trong supervision của thesis thuộc semester)
+				assignedSupervisors = await this.prisma.supervision.findMany({
+					where: {
+						thesis: {
+							semesterId,
+							groupId: { not: null },
+						},
+					},
+					select: { lecturerId: true },
+					distinct: ['lecturerId'],
+				});
+			}
+
+			const totalAssignedSupervisors = assignedSupervisors.length;
+
+			// Group by lecturerId và tính load (mỗi thesis = 0.5 point)
 			const supervisorMap = new Map();
 			for (const s of supervisions) {
 				if (!supervisorMap.has(s.lecturerId)) {
 					supervisorMap.set(s.lecturerId, {
 						lecturerId: s.lecturerId,
 						fullName: s.lecturer.user.fullName,
-						thesisCount: 1,
+						thesisCount: 0.5, // Mỗi thesis tính là 0.5
+						rawThesisCount: 1, // Để tracking số thesis thực tế
 					});
 				} else {
-					supervisorMap.get(s.lecturerId).thesisCount++;
+					const current = supervisorMap.get(s.lecturerId);
+					current.thesisCount += 0.5;
+					current.rawThesisCount += 1;
 				}
 			}
 			const supervisorLoadDistribution = Array.from(supervisorMap.values());
