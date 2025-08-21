@@ -501,12 +501,12 @@ export class SemesterService {
 
 			// Nếu status mới là Picking, gửi email cho students (chỉ khi status thay đổi)
 			if (updated.status === SemesterStatus.Picking && statusChanged) {
+				// Kiểm tra và gửi cảnh báo thiếu thesis cho moderators
+				await this.checkAndSendInsufficientThesisAlert(updated);
+
 				await this.notificationService.sendSemesterPickingNotifications(
 					updated,
 				);
-
-				// Kiểm tra và gửi cảnh báo thiếu thesis cho moderators
-				await this.checkAndSendInsufficientThesisAlert(updated);
 			}
 
 			// Nếu chuyển sang Ongoing, kiểm tra và gửi cảnh báo groups chưa pick thesis
@@ -649,7 +649,14 @@ export class SemesterService {
 	): Promise<void> {
 		try {
 			const totalGroups = await this.prisma.group.count({
-				where: { semesterId: semester.id },
+				where: {
+					semesterId: semester.id,
+					studentGroupParticipations: {
+						some: {
+							semesterId: semester.id,
+						},
+					},
+				},
 			});
 
 			const availableThesis = await this.prisma.thesis.count({
@@ -660,8 +667,10 @@ export class SemesterService {
 				},
 			});
 
+			const requiredThesis = Math.ceil(totalGroups * 1.2);
+
 			// Chỉ gửi cảnh báo nếu thiếu thesis
-			if (availableThesis < totalGroups) {
+			if (availableThesis < requiredThesis) {
 				await this.notificationService.sendModeratorInsufficientThesisAlert(
 					semester,
 					totalGroups,
