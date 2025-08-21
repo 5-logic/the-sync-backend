@@ -36,7 +36,7 @@ export class SemesterStatusService {
 			},
 		});
 		if (groupsWithoutThesisCount > 0) {
-			const message = `Cannot transition ongoingPhase from ScopeAdjustable to ScopeLocked. There are ${groupsWithoutThesisCount} groups with students that have not picked a thesis.`;
+			const message = `Cannot transition ongoingPhase from ScopeAdjustable to ScopeLocked. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
@@ -267,7 +267,7 @@ export class SemesterStatusService {
 		});
 
 		if (groupsWithoutThesisCount > 0) {
-			const message = `Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. There are ${groupsWithoutThesisCount} groups with students that have not picked a thesis.`;
+			const message = `Cannot transition from ${SemesterStatus.Picking} to ${SemesterStatus.Ongoing}. There are ${groupsWithoutThesisCount} groups that have not picked a thesis.`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
