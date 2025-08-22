@@ -676,6 +676,10 @@ export class SemesterService {
 					totalGroups,
 					availableThesis,
 				);
+
+				throw new ConflictException(
+					`Insufficient thesis for semester ${semester.name}: ${availableThesis} thesis available, but ${requiredThesis} required for ${totalGroups} groups (require at least 1.2 thesis per group).`,
+				);
 			}
 		} catch (error) {
 			this.logger.error('Error checking insufficient thesis', error);
