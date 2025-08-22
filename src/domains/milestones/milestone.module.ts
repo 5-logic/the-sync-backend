@@ -9,8 +9,10 @@ import {
 	MilestonePublicService,
 } from '@/milestones/services';
 import { MilestoneService } from '@/milestones/services/milestone.service';
+import { MilestoneJobModule } from '@/queue/milestone';
 
 @Module({
+	imports: [MilestoneJobModule],
 	controllers: [MilestoneAdminController, MilestonePublicController],
 	providers: [MilestoneService, MilestoneAdminService, MilestonePublicService],
 })

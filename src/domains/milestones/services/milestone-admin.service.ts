@@ -10,6 +10,7 @@ import {
 	// CacheHelperService,
 	PrismaService,
 } from '@/providers';
+import { MilestoneJobService } from '@/queue/milestone';
 
 @Injectable()
 export class MilestoneAdminService {
@@ -19,6 +20,7 @@ export class MilestoneAdminService {
 		// private readonly cache: CacheHelperService,
 		private readonly prisma: PrismaService,
 		private readonly milestoneService: MilestoneService,
+		private readonly milestoneJobService: MilestoneJobService,
 	) {}
 
 	async create(dto: CreateMilestoneDto): Promise<MilestoneResponse> {
@@ -72,6 +74,23 @@ export class MilestoneAdminService {
 
 			this.logger.log(`Milestone created with ID: ${milestone.id}`);
 			this.logger.debug('Created Milestone', JSON.stringify(milestone));
+
+			// Tạo job cho việc A (chạy trước startDate 3 ngày)
+			try {
+				await this.milestoneJobService.scheduleTask(
+					milestone.id,
+					milestone.name,
+					milestone.startDate,
+					milestone.semesterId,
+				);
+				this.logger.log(`Scheduled Task A for milestone: ${milestone.id}`);
+			} catch (jobError) {
+				this.logger.error(
+					`Failed to schedule Task A for milestone: ${milestone.id}`,
+					jobError,
+				);
+				// Không throw error để không ảnh hưởng đến việc tạo milestone
+			}
 
 			const result: MilestoneResponse = mapMilestone(milestone);
 
@@ -131,6 +150,29 @@ export class MilestoneAdminService {
 
 			this.logger.log(`Milestone updated with ID: ${updated.id}`);
 			this.logger.debug('Updated Milestone', JSON.stringify(updated));
+
+			// Nếu startDate thay đổi, cập nhật lại job
+			if (
+				dto.startDate &&
+				new Date(dto.startDate).getTime() !==
+					new Date(existing.startDate).getTime()
+			) {
+				try {
+					await this.milestoneJobService.rescheduleTask(
+						updated.id,
+						updated.name,
+						updated.startDate,
+						updated.semesterId,
+					);
+					this.logger.log(`Rescheduled Task A for milestone: ${updated.id}`);
+				} catch (jobError) {
+					this.logger.error(
+						`Failed to reschedule Task A for milestone: ${updated.id}`,
+						jobError,
+					);
+					// Không throw error để không ảnh hưởng đến việc update milestone
+				}
+			}
 
 			const result: MilestoneResponse = mapMilestone(updated);
 
@@ -265,6 +307,18 @@ export class MilestoneAdminService {
 
 			this.logger.log(`Milestone deleted with ID: ${deleted.id}`);
 			this.logger.debug('Deleted Milestone', JSON.stringify(deleted));
+
+			// Hủy job cho việc A khi milestone bị xóa
+			try {
+				await this.milestoneJobService.cancelTaskA(deleted.id);
+				this.logger.log(`Cancelled Task A for milestone: ${deleted.id}`);
+			} catch (jobError) {
+				this.logger.error(
+					`Failed to cancel Task A for milestone: ${deleted.id}`,
+					jobError,
+				);
+				// Không throw error vì milestone đã được xóa thành công
+			}
 
 			const result: MilestoneResponse = mapMilestone(deleted);
 
