@@ -216,8 +216,10 @@ export class SemesterStatusService {
 			},
 		});
 
-		if (approvedPublicThesisCount < currentGroup) {
-			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. Approved & public thesis count (${approvedPublicThesisCount}) is less than currentGroup (${currentGroup}).`;
+		const requiredThesis = Math.ceil(currentGroup * 1.2);
+
+		if (approvedPublicThesisCount < requiredThesis) {
+			const message = `Cannot transition from ${SemesterStatus.Preparing} to ${SemesterStatus.Picking}. ${approvedPublicThesisCount} thesis available, but ${requiredThesis} required for ${currentGroup} groups (require at least 1.2 thesis per group).`;
 			this.logger.warn(message);
 			throw new ConflictException(message);
 		}
