@@ -669,12 +669,15 @@ export class SemesterService {
 
 			const requiredThesis = Math.ceil(totalGroups * 1.2);
 
+			const shortfall = requiredThesis - availableThesis;
+
 			// Chỉ gửi cảnh báo nếu thiếu thesis
 			if (availableThesis < requiredThesis) {
 				await this.notificationService.sendModeratorInsufficientThesisAlert(
 					semester,
 					totalGroups,
 					availableThesis,
+					shortfall,
 				);
 
 				throw new ConflictException(

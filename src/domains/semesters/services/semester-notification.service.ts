@@ -271,13 +271,12 @@ export class SemesterNotificationService {
 		semester: any,
 		totalGroups: number,
 		availableThesis: number,
+		shortfall: number,
 	): Promise<void> {
 		try {
 			this.logger.log(
 				`Sending insufficient thesis alert for semester ${semester.name} (${semester.code})`,
 			);
-
-			const shortfall = totalGroups - availableThesis;
 
 			// Lấy tất cả moderators
 			const moderators = await this.prisma.lecturer.findMany({
