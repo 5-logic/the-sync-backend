@@ -1,0 +1,27 @@
+//- Data to be rendered in the email template
+//- + recipientName: Name of the recipient
+//- + milestoneName: Name of the milestone
+//- + startDate: Start date of the milestone (formatted)
+
+extends layouts/email-layout
+
+block content
+  .greeting
+    | Dear #{recipientName},
+
+  p This is a friendly reminder about an upcoming milestone for your capstone thesis project.
+
+  .info-box
+    h3 📅 Milestone Reminder
+    .info-item
+      span.info-label Milestone:
+      span.info-value #{milestoneName}
+    .info-item
+      span.info-label Start Date:
+      span.info-value #{startDate}
+
+  p Please make sure to prepare accordingly and complete all necessary work before the milestone begins.
+
+  p Best regards,
+  p 
+    strong TheSync Team
