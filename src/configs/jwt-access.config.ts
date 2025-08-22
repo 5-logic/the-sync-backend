@@ -15,7 +15,7 @@ export const jwtAccessConfig = registerAs(
 		return {
 			secret: process.env.JWT_ACCESS_TOKEN_SECRET,
 			signOptions: {
-				expiresIn: '1h',
+				expiresIn: '5h',
 			},
 		};
 	},
