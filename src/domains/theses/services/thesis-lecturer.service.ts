@@ -276,7 +276,7 @@ export class ThesisLecturerService {
 
 			// Trigger duplicate check if status changed to Pending
 			if (newStatus === ThesisStatus.Pending) {
-				await this.pinecone.processDuplicateCheck(id, 1000); // 1 second delay
+				await this.pinecone.processDuplicateCheck(id, 3000); // 3 second delay
 			}
 
 			return result;
