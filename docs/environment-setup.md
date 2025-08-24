@@ -25,7 +25,6 @@ Create a `.env` file in the root directory of the project and configure the foll
 | 15  | `PINECONE_API_KEY`         | Pinecone API key for vector database operations                           | `pcsk_example123abc456def789ghi012jkl345mno678pqr901stu234vwx` |
 | 16  | `PINECONE_INDEX_NAME`      | Pinecone index name for storing vector embeddings                         | `thesis-embeddings`                                            |
 | 17  | `GEMINI_API_KEY`           | Google Gemini API key for AI-powered features                             | `AIzaSyExample123456789AbCdEfGhIjKlMnOpQrSt`                   |
-| 18  | `GEMINI_MODEL_NAME`        | Gemini model name for AI processing                                       | `gemini-2.5-flash`                                             |
 
 ### Required Variables
 
@@ -64,7 +63,6 @@ The application uses Pinecone for vector database operations and AI-powered feat
 The application uses Google Gemini for AI-powered content analysis and processing:
 
 - **GEMINI_API_KEY**: API key for authenticating with Google Gemini AI services.
-- **GEMINI_MODEL_NAME**: Specifies which Gemini model to use for AI processing (e.g., `gemini-2.5-flash`).
 
 ### BullMQ Dashboard
 
@@ -112,5 +110,4 @@ PINECONE_INDEX_NAME=thesis-embeddings
 
 # Google Gemini AI Configuration
 GEMINI_API_KEY=AIzaSyExample123456789AbCdEfGhIjKlMnOpQrSt
-GEMINI_MODEL_NAME=gemini-2.5-flash
 ```
