@@ -5,7 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.9] - 2025-08-21
+## [1.0.0] - 2025-08-25
+
+### Changed
+
+- **Gemini Configuration Simplification**:
+  - **Configuration Cleanup**: Removed `GEMINI_MODEL_NAME` environment variable requirement from Gemini configuration
+  - **Model Management Enhancement**: Updated `GeminiProviderService` to use hardcoded model names (`gemini-2.5-flash` and `gemini-2.5-flash-lite`) instead of environment-based configuration
+  - **Service Method Updates**: Added new `getModelLiteName()` method that returns `gemini-2.5-flash-lite` for AI thesis service operations
+
+- **AI Thesis Processing Optimization**:
+  - **Model Selection Improvement**: Updated AI thesis service to use `getModelLiteName()` instead of `getModelName()` for better performance with lighter model variant
+  - **Code Cleanup**: Removed unused `calculateRelevanceWithAI()` method from `AIThesisService` (192 lines removed) to improve code maintainability
+
+- **Thesis Duplicate Check Enhancement**:
+  - **Processing Delay Optimization**: Increased duplicate check processing delay from 1 second to 3 seconds when thesis status changes to `Pending` for improved reliability
+
+### Enhanced
+
+- **Environment Setup Simplification**:
+  - **Documentation Update**: Removed `GEMINI_MODEL_NAME` from environment setup documentation for cleaner configuration
+  - **Configuration Streamlining**: Simplified Gemini configuration setup by eliminating redundant environment variable requirements
+
+- **AI Service Architecture**:
+  - **Performance Optimization**: Enhanced AI processing by using appropriate model variants for different operations
+  - **Code Quality**: Improved service maintainability by removing obsolete AI relevance calculation methods
+
+### Fixed
+
+- **Configuration Reliability**: Fixed potential configuration errors by removing dependency on `GEMINI_MODEL_NAME` environment variable
+- **AI Processing Stability**: Enhanced duplicate check reliability with optimized processing delays
+- **Service Dependencies**: Improved service initialization by simplifying Gemini configuration requirements
+
+### Technical Improvements
+
+- **Service Architecture**: Streamlined Gemini provider service with cleaner model management
+- **Code Maintainability**: Removed dead code and improved service method organization
+- **Performance Optimization**: Enhanced AI processing with appropriate model selection for different use cases
+- **Configuration Management**: Simplified environment setup with reduced configuration complexity
+
+### Pull Requests
+
+- Direct commits for version 1.0.0 (no PR links available)
+
+---
+
+## [0.9.9] - 2025-08-22
 
 ### Changed
 
