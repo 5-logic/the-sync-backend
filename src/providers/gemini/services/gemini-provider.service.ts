@@ -28,6 +28,10 @@ export class GeminiProviderService {
 	}
 
 	getModelName(): string {
-		return this.geminiConfiguration.modelName;
+		return 'gemini-2.5-flash';
+	}
+
+	getModelLiteName(): string {
+		return 'gemini-2.5-flash-lite';
 	}
 }
