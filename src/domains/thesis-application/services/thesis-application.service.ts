@@ -57,12 +57,18 @@ export class ThesisApplicationService {
 			throw new NotFoundException('Semester not found');
 		}
 
-		if (semester.status !== 'Picking') {
+		const pickingCondition = semester.status === 'Picking';
+		const ongoingCondition =
+			semester.status === 'Ongoing' &&
+			semester.ongoingPhase === 'ScopeAdjustable';
+		const condition = pickingCondition || ongoingCondition;
+
+		if (!condition) {
 			this.logger.warn(
 				`Semester ${semesterId} is not in Picking phase. Current status: ${semester.status}`,
 			);
 			throw new ConflictException(
-				'Thesis applications can only be submitted during the Picking phase',
+				'Thesis applications can only be submitted during the Picking status or Ongoing status with ScopeAdjustable phase',
 			);
 		}
 	}
