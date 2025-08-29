@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-08-29
+
+### Fixed
+
+- **Student Enrollment Status Validation Enhancement**:
+  - **Expanded Enrollment Validation**: Enhanced student enrollment validation to accept both `NotYet` and `Ongoing` status when students submit thesis applications
+  - **Improved Access Control**: Students with `Ongoing` enrollment status can now participate in thesis application processes alongside those with `NotYet` status
+
+### API Changes
+
+- **Thesis Application Student Service Enhancement**:
+  - **Affected Service**: `ThesisApplicationStudentService.create()` method
+  - **Updated Query Logic**: Modified student enrollment validation query to include multiple statuses:
+    ```typescript
+    status: {
+      in: ['NotYet', 'Ongoing'],
+    }
+    ```
+  - **Previous Behavior**: Only students with `NotYet` enrollment status could submit thesis applications
+  - **New Behavior**: Students with either `NotYet` or `Ongoing` enrollment status can submit thesis applications
+  - **API Endpoint**: `POST /thesis-applications/:semesterId` (Student role) - no changes to request/response format
+
+### Technical Improvements
+
+- **Database Query Enhancement**: Updated Prisma query in `ThesisApplicationStudentService` to use `in` operator for multiple enrollment status validation
+- **Business Logic Improvement**: Enhanced enrollment status checking to support students in different phases of semester progression
+- **Service Layer Refinement**: Improved data fetching logic to accommodate expanded enrollment status criteria
+
+### Pull Requests
+
+- Direct commit: `d3c3608` - Enhanced student enrollment status validation for thesis applications
+
+---
+
 ## [1.0.1] - 2025-08-29
 
 ### Fixed
