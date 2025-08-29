@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-08-29
+
+### Fixed
+
+- **Thesis Application Submission Validation Enhancement**:
+  - **Extended Semester Phase Support**: Fixed thesis application submission validation to allow submissions during `Ongoing` semester status with `ScopeAdjustable` phase, in addition to the existing `Picking` status
+  - **Improved User Experience**: Students can now submit thesis applications during scope adjustment periods, providing more flexibility in the thesis selection process
+
+### API Changes
+
+- **Enhanced Thesis Application Endpoint**:
+  - **Endpoint**: `POST /thesis-applications/:semesterId` (Student role)
+  - **Updated Validation Logic**: The endpoint now accepts thesis applications during two scenarios:
+    - During `Picking` semester status (existing behavior)
+    - During `Ongoing` semester status with `ScopeAdjustable` phase (new behavior)
+  - **Request Parameters**: No changes to request DTOs - endpoint continues to accept `CreateThesisApplicationDto` with `groupId` and `thesisId`
+  - **Error Response**: Updated error message to reflect new validation rules: "Thesis applications can only be submitted during the Picking status or Ongoing status with ScopeAdjustable phase"
+
+### Technical Improvements
+
+- **Service Layer Enhancement**: Updated `ThesisApplicationService.validateSemesterStatus()` method with improved validation logic
+- **Better Business Logic**: Enhanced semester phase validation to support thesis scope adjustments during ongoing semesters
+- **Code Quality**: Improved conditional logic with clear separation of picking and ongoing phase validation
+
+### Pull Requests
+
+- Direct commit: `44a7021` - Enhanced semester status validation for thesis applications
+
+---
+
 ## [1.0.0] - 2025-08-25
 
 ### Changed
