@@ -44,7 +44,9 @@ export class ThesisApplicationStudentService {
 						enrollments: {
 							where: {
 								semesterId: semesterId,
-								status: 'NotYet',
+								status: {
+									in: ['NotYet', 'Ongoing'],
+								},
 							},
 						},
 					},
