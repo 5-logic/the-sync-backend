@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-08-30
+
+### Added
+
+- **Pinecone Vector Database Data Export**:
+  - **New Data Files**: Added comprehensive Pinecone vector database exports for thesis data management
+  - **Picking Phase Data**: Added `pinecone_data_picking.json` containing thesis vectors for the picking semester phase
+  - **Preparing Phase Data**: Added `pinecone_data_preparing.json` containing thesis vectors for the preparing semester phase
+
+### Enhanced
+
+- **AI Thesis Processing Data Management**:
+  - **Vector Database Integration**: Enhanced system with pre-exported vector data for different semester phases
+  - **Thesis Content Indexing**: Improved thesis search and recommendation capabilities with structured vector embeddings
+  - **Data Persistence**: Added backup mechanism for Pinecone vector data to ensure data integrity across deployments
+
+### Technical Improvements
+
+- **Data Architecture**: Enhanced data management system with comprehensive vector database exports containing thesis metadata, descriptions, and content
+- **Search Optimization**: Improved thesis discovery and AI-powered recommendations with pre-indexed vector data
+- **Deployment Support**: Added data migration support for Pinecone vector database initialization in different environments
+- **Content Management**: Enhanced thesis content processing with structured vector embeddings for better AI analysis
+
+### Data Structure
+
+- **Thesis Vectors**: Each export contains detailed thesis information including:
+  - Thesis metadata (abbreviation, domain, status, lecturer/group assignments)
+  - Complete thesis descriptions and context
+  - Structured content for AI processing and semantic search
+  - Multi-language support (English and Vietnamese names)
+
+### Pull Requests
+
+- Direct commit: Added Pinecone vector database exports for enhanced thesis management and AI processing capabilities
+
+---
+
 ## [1.0.2] - 2025-08-29
 
 ### Fixed
