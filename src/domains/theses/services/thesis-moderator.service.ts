@@ -65,7 +65,10 @@ export class ThesisModeratorService {
 			// Validate semester status for publish
 			const invalidSemester = theses.filter(
 				(t) =>
-					t.semester.status !== 'Preparing' && t.semester.status !== 'Picking',
+					t.semester.status !== 'Preparing' &&
+					t.semester.status !== 'Picking' &&
+					(t.semester.status !== 'Ongoing' ||
+						t.semester.ongoingPhase !== 'ScopeAdjustable'),
 			);
 			if (invalidSemester.length > 0) {
 				const thesisIds = invalidSemester.map((t) => t.id).join(', ');
@@ -73,7 +76,7 @@ export class ThesisModeratorService {
 					`Cannot publish theses because their semester is not in Preparing or Picking: ${thesisIds}`,
 				);
 				throw new ConflictException(
-					`Cannot publish theses when semester are not in Preparing or Picking.`,
+					`Cannot publish theses when semester are not in Preparing or Picking or Ongoing (ScopeAdjustable).`,
 				);
 			}
 
